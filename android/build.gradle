@@ -1,8 +1,8 @@
 group 'com.appsflyer.appsflyersdk'
 version '1.0-SNAPSHOT'
-
 buildscript {
     repositories {
+        mavenCentral()
         google()
         jcenter()
     }
@@ -11,19 +11,16 @@ buildscript {
         classpath 'com.android.tools.build:gradle:3.1.2'
     }
 }
-
 rootProject.allprojects {
     repositories {
+        mavenCentral()
         google()
         jcenter()
     }
 }
-
 apply plugin: 'com.android.library'
-
 android {
-    compileSdkVersion 27
-
+    compileSdkVersion 25
     defaultConfig {
         minSdkVersion 16
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
@@ -31,4 +28,10 @@ android {
     lintOptions {
         disable 'InvalidPackage'
     }
+    buildToolsVersion '27.0.3'
+}
+
+dependencies {
+    implementation 'com.appsflyer:af-android-sdk:4.8.18'
+    implementation 'com.android.installreferrer:installreferrer:1.0'
 }
