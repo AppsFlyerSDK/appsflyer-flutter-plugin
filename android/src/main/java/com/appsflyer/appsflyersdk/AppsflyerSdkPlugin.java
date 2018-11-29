@@ -2,13 +2,6 @@ package com.appsflyer.appsflyersdk;
 
 import android.app.Application;
 import android.content.Context;
-import android.util.Log;
-
-import com.appsflyer.AFLogger;
-import com.appsflyer.AppsFlyerLib;
-import com.appsflyer.AppsFlyerProperties;
-
-import java.util.logging.Level;
 
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
@@ -19,30 +12,34 @@ import io.flutter.plugin.common.PluginRegistry.Registrar;
 /** AppsflyerSdkPlugin */
 public class AppsflyerSdkPlugin implements MethodCallHandler {
   /** Plugin registration. */
-  private static Context context;
-  private static Application application;
+  private final AppsFlyerDelegate delegate;
+  private final Registrar registrar;
 
   public static void registerWith(Registrar registrar) {
     final MethodChannel channel = new MethodChannel(registrar.messenger(), "appsflyer_sdk");
-    channel.setMethodCallHandler(new AppsflyerSdkPlugin());
-    context = registrar.context();
-    application = registrar.activity().getApplication();
+    final AppsFlyerDelegate delegate = new AppsFlyerDelegate(registrar.activity());
+
+    channel.setMethodCallHandler(new AppsflyerSdkPlugin(registrar, delegate));
   }
 
   @Override
   public void onMethodCall(MethodCall call, Result result) {
-    if (call.method.equals("initSdk")) {
-      Log.d("FlutterSdk","Call");
-      String afDevKey = call.argument("afDevKey");
-      Log.d("FlutterSdk","Dev key: "+afDevKey);
-      Log.d("FlutterSdk",context.toString());
-      AppsFlyerLib.getInstance().setLogLevel(AFLogger.LogLevel.VERBOSE);
-      AppsFlyerLib.getInstance().init(afDevKey,null, context);
-      AppsFlyerLib.getInstance().trackEvent(context, null, null);
-      AppsFlyerLib.getInstance().startTracking(application);
-//      result.success("Android initSdk");
-    } else {
-//      result.notImplemented();
+    String method = call.method;
+    switch (method) {
+    case "initSdk":
+      delegate.initSdk(call, result);
+      break;
+    case "trackEvent":
+      delegate.trackEvent(call, result);
+      break;
+    default:
+      result.notImplemented();
+      break;
     }
+  }
+
+  AppsflyerSdkPlugin(Registrar registrar, AppsFlyerDelegate delegate) {
+    this.registrar = registrar;
+    this.delegate = delegate;
   }
 }
