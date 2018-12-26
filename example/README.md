@@ -1,8 +1,14 @@
 # appsflyer_sdk_example
 
-Demonstrates how to use the appsflyer_sdk plugin.
 
-## Getting Started
+This plugin has a demo project bundled with it. To give it a try , clone this repo and from root a.e. `flutter_appsflyer_sdk` execute the following:
 
-For help getting started with Flutter, view our online
-[documentation](https://flutter.io/).
+```bash
+$ flutter packages get
+$ cd example/
+$ flutter run 
+
+```
+
+
+![demo printscreen](example/demo_example.png?raw=true)
