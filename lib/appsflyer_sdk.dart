@@ -11,7 +11,7 @@ import 'dart:core';
 class AppsflyerSdk {
   static const MethodChannel _channel =
       const MethodChannel(AppsflyerConstants.AF_METHOD_CHANNEL);
-  static Stream<dynamic> _afStream;
+  
   static StreamController _afGCDStreamController;
   static StreamController _afOpenAttributionStreamController;
 
