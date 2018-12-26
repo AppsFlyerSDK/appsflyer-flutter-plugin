@@ -1,6 +1,10 @@
+<img src="https://www.appsflyer.com/wp-content/uploads/2016/11/logo-1.svg"  width="200">
+
 # appsflyer_sdk
 
 A new flutter plugin for AppsFlyer SDK.
+
+[![pub package](https://img.shields.io/pub/v/video_player.svg)](https://pub.dartlang.org/packages/appsflyer_sdk)
 
 ## Getting Started
 
