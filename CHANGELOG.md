@@ -1,6 +1,12 @@
-## 0.0.1
 
-Initial release.
+## 1.0.0
+
+First stable version
+
+
+## 0.0.5
+
+- Changed access modifiers from public to private to class variables
 
 ## 0.0.3
 
@@ -11,6 +17,6 @@ Supported sdk functions:
 - registerConversionDataCallback
 - registerOnAppOpenAttributionCallback
 
-## 0.0.5
+## 0.0.1
 
-- Changed access modifiers from public to private to class variables
+Initial release.
