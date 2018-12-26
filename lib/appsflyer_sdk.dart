@@ -64,7 +64,7 @@ class AppsflyerSdk {
 
     if (_afGCDStreamController != null) {
       afOptions[AppsflyerConstants.AF_GCD] = true;
-      registerListener();
+      _registerListener();
     } else {
       afOptions[AppsflyerConstants.AF_GCD] = false;
     }
@@ -81,7 +81,7 @@ class AppsflyerSdk {
         "trackEvent", {'eventName': eventName, 'eventValues': eventValues});
   }
 
-  static void registerListener() {
+  static void _registerListener() {
     BinaryMessages.setMessageHandler(AppsflyerConstants.AF_EVENTS_CHANNEL,
         (ByteData message) async {
       final buffer = message.buffer;
