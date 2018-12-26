@@ -17,9 +17,9 @@ For help on editing plugin code, view the [documentation](https://flutter.io/dev
 - [Supported Platforms](#supported-platforms)
 - [SDK versions](#plugin-build-for)
 - [API Methods](#api-methods) 
- - [initSdk](#initSdk) 
- - [trackEvent](#trackEvent) 
- - [Conversion Data and on app open attribution](#registerConversionDataCallback)
+  - [initSdk](#initSdk) 
+  - [trackEvent](#trackEvent) 
+  - [Conversion Data and on app open attribution](#registerConversionDataCallback)
 
 
 ## <a id="supported-platforms"> Supported Platforms
