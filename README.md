@@ -4,7 +4,7 @@
 
 A Flutter plugin for AppsFlyer SDK. 
 
-[![pub package](https://img.shields.io/pub/v/video_player.svg)](https://pub.dartlang.org/packages/appsflyer_sdk)
+[![pub package](https://img.shields.io/pub/v/appsflyer_sdk.svg)](https://pub.dartlang.org/packages/appsflyer_sdk)
 
 ## Getting Started
 
