@@ -11,4 +11,4 @@ $ flutter run
 ```
 
 
-![demo printscreen](example/demo_example.png?raw=true)
+![demo printscreen](demo_example.png?raw=true)
