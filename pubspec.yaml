@@ -1,6 +1,6 @@
 name: appsflyer_sdk
 description: A new flutter plugin project.
-version: 0.0.3
+version: 0.0.4
 author: Shahar Cohen <shahar.cohen@appsflyer.com>
 homepage: https://github.com/AppsFlyerSDK/flutter_appsflyer_sdk
 

@@ -11,18 +11,18 @@ import 'dart:core';
 class AppsflyerSdk {
   static const MethodChannel _channel =
       const MethodChannel(AppsflyerConstants.AF_METHOD_CHANNEL);
-  static Stream<dynamic> afStream;
-  static StreamController afGCDStreamController;
-  static StreamController afOpenAttributionStreamController;
+  static Stream<dynamic> _afStream;
+  static StreamController _afGCDStreamController;
+  static StreamController _afOpenAttributionStreamController;
 
   static Stream<dynamic> registerConversionDataCallback() {
-    afGCDStreamController = StreamController();
-    return afGCDStreamController.stream;
+    _afGCDStreamController = StreamController();
+    return _afGCDStreamController.stream;
   }
 
   static Stream<dynamic> registerOnAppOpenAttributionCallback() {
-    afOpenAttributionStreamController = StreamController();
-    return afOpenAttributionStreamController.stream;
+    _afOpenAttributionStreamController = StreamController();
+    return _afOpenAttributionStreamController.stream;
   }
 
   static Future<dynamic> initSdk(Map options) async {
@@ -62,7 +62,7 @@ class AppsflyerSdk {
             ? options[AppsflyerConstants.AF_IS_DEBUG]
             : false;
 
-    if (afGCDStreamController != null) {
+    if (_afGCDStreamController != null) {
       afOptions[AppsflyerConstants.AF_GCD] = true;
       registerListener();
     } else {
@@ -91,10 +91,10 @@ class AppsflyerSdk {
       String type = decodedJSON['type'];
       switch (type) {
         case AppsflyerConstants.AF_GET_CONVERSION_DATA:
-          afGCDStreamController.sink.add(decodedJSON);
+          _afGCDStreamController.sink.add(decodedJSON);
           break;
         case AppsflyerConstants.AF_ON_APP_OPEN_ATTRIBUTION:
-          afOpenAttributionStreamController.sink.add(decodedJSON);
+          _afOpenAttributionStreamController.sink.add(decodedJSON);
           break;
         default:
       }
