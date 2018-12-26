@@ -2,7 +2,7 @@
 
 # appsflyer_sdk
 
-A new flutter plugin for AppsFlyer SDK.
+A Flutter plugin for AppsFlyer SDK. 
 
 [![pub package](https://img.shields.io/pub/v/video_player.svg)](https://pub.dartlang.org/packages/appsflyer_sdk)
 
