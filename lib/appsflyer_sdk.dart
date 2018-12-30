@@ -1,9 +1,7 @@
 import 'dart:io';
-
 import 'package:flutter/services.dart';
 import 'appsflyer_constants.dart';
 import 'dart:async';
-
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:core';
@@ -29,32 +27,18 @@ class AppsflyerSdk {
     Map<String, dynamic> afOptions = {};
     //validations
     dynamic devKey = options[AppsflyerConstants.AF_DEV_KEY];
+    assert(devKey != null);
+    assert(devKey is String);
 
-    if (devKey != null) {
-      //Check that the dev key is a valid number
-      if (devKey is String) {
-        afOptions[AppsflyerConstants.AF_DEV_KEY] = devKey;
-      }
-    } else {
-      throw Exception("Expected a dev key");
-    }
+    afOptions[AppsflyerConstants.AF_DEV_KEY] = devKey;
 
     if (Platform.isIOS) {
       dynamic appID = options[AppsflyerConstants.AF_APP_Id];
-      if (appID != null) {
-        if (!(appID is String)) {
-          throw Exception("App id suppose to be a string");
-        }
-        RegExp exp = RegExp(r'^\d{8,11}$');
-        if (exp.hasMatch(appID)) {
-          afOptions[AppsflyerConstants.AF_APP_Id] = appID;
-        } else {
-          throw Exception(
-              "App id (iTunes) need to be a number, for example '123456789'");
-        }
-      } else {
-        throw Exception("Expected an app id");
-      }
+      assert(appID != null);
+      assert(appID is String);
+      RegExp exp = RegExp(r'^\d{8,11}$');
+      assert(exp.hasMatch(appID));
+      afOptions[AppsflyerConstants.AF_APP_Id] = appID;
     }
 
     afOptions[AppsflyerConstants.AF_IS_DEBUG] =
@@ -73,9 +57,7 @@ class AppsflyerSdk {
   }
 
   static Future<bool> trackEvent(String eventName, Map eventValues) async {
-    if (eventValues == null) {
-      throw Exception("Event value can't be null");
-    }
+    assert(eventValues != null);
 
     return await _channel.invokeMethod(
         "trackEvent", {'eventName': eventName, 'eventValues': eventValues});
