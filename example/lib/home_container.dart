@@ -20,8 +20,6 @@ class HomeContainer extends StatelessWidget {
       this.onAppOpenAttributionText,
       this.eventResponseText,
       this.onEventPress}) {
-    print("OnAppOpenAttribution 2: " + onAppOpenAttributionText);
-
     gcdTextField.text = gcdText;
     onAppOpenAttributionTextField.text = onAppOpenAttributionText;
     eventResponseTextField.text = eventResponseText;

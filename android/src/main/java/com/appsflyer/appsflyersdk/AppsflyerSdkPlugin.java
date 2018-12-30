@@ -63,15 +63,15 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
     public void onMethodCall(MethodCall call, Result result) {
         final String method = call.method;
         switch (method) {
-            case "initSdk":
-                initSdk(call, result);
-                break;
-            case "trackEvent":
-                trackEvent(call, result);
-                break;
-            default:
-                result.notImplemented();
-                break;
+        case "initSdk":
+            initSdk(call, result);
+            break;
+        case "trackEvent":
+            trackEvent(call, result);
+            break;
+        default:
+            result.notImplemented();
+            break;
         }
     }
 
@@ -81,7 +81,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
 
         String afDevKey = call.argument(AppsFlyerConstants.AF_DEV_KEY);
 
-        //TODO: get config from options in flutter
         boolean getGCD = call.argument(AppsFlyerConstants.AF_GCD);
 
         if (getGCD) {
@@ -89,10 +88,10 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
         }
 
         boolean isDebug = call.argument(AppsFlyerConstants.AF_IS_DEBUG);
-        if(isDebug) {
+        if (isDebug) {
             instance.setLogLevel(AFLogger.LogLevel.DEBUG);
             instance.setDebugLog(true);
-        }else{
+        } else {
             instance.setDebugLog(false);
         }
 
@@ -103,7 +102,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
         final Map<String, String> response = new HashMap<>();
         response.put("status", "OK");
 
-        //TODO: in future versions we have callbac k from native SDK
         result.success(response);
     }
 
@@ -117,7 +115,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
         // Send event data through appsflyer sdk
         instance.trackEvent(mContext, eventName, eventValues);
 
-        //TODO: in future versions we have callback from native SDK
         result.success(true);
     }
 
@@ -159,7 +156,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
         }
     }
 
-    private void handleError(String eventType, String errorMessage){
+    private void handleError(String eventType, String errorMessage) {
 
         try {
             JSONObject obj = new JSONObject();
@@ -180,7 +177,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
 
         ByteBuffer message = ByteBuffer.allocateDirect(bytes.length);
         message.put(bytes);
-
 
         mFlutterVliew.send(AppsFlyerConstants.AF_EVENTS_CHANNEL, message, new BinaryMessenger.BinaryReply() {
             @Override
