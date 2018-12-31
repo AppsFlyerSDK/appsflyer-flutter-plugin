@@ -15,9 +15,8 @@ class AppsflyerSdk {
 
   ///Returns the [AppsflyerSdk] instance, initialized with a custom options
   ///provided by the user
-  AppsflyerSdk(Map options, [Function callback(dynamic response) = null]) {
+  AppsflyerSdk(Map options) {
     _afOptions = _validateOptions(options);
-    // _initSdk(afOptions, callback);
   }
 
   Map<String, dynamic> _validateOptions(Map options) {
