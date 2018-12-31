@@ -7,23 +7,20 @@ import 'dart:typed_data';
 import 'dart:core';
 
 class AppsflyerSdk {
-  static const MethodChannel _channel =
+  MethodChannel channel =
       const MethodChannel(AppsflyerConstants.AF_METHOD_CHANNEL);
+  StreamController _afGCDStreamController;
+  StreamController _afOpenAttributionStreamController;
+  Map<String, dynamic> _afOptions;
 
-  static StreamController _afGCDStreamController;
-  static StreamController _afOpenAttributionStreamController;
-
-  static Stream<dynamic> registerConversionDataCallback() {
-    _afGCDStreamController = StreamController();
-    return _afGCDStreamController.stream;
+  ///Returns the [AppsflyerSdk] instance, initialized with a custom options
+  ///provided by the user
+  AppsflyerSdk(Map options, [Function callback(dynamic response) = null]) {
+    _afOptions = _validateOptions(options);
+    // _initSdk(afOptions, callback);
   }
 
-  static Stream<dynamic> registerOnAppOpenAttributionCallback() {
-    _afOpenAttributionStreamController = StreamController();
-    return _afOpenAttributionStreamController.stream;
-  }
-
-  static Future<dynamic> initSdk(Map options) async {
+  Map<String, dynamic> _validateOptions(Map options) {
     Map<String, dynamic> afOptions = {};
     //validations
     dynamic devKey = options[AppsflyerConstants.AF_DEV_KEY];
@@ -34,7 +31,7 @@ class AppsflyerSdk {
 
     if (Platform.isIOS) {
       dynamic appID = options[AppsflyerConstants.AF_APP_Id];
-      assert(appID != null);
+      assert(appID != null, "appleAppId is required for iOS apps");
       assert(appID is String);
       RegExp exp = RegExp(r'^\d{8,11}$');
       assert(exp.hasMatch(appID));
@@ -53,17 +50,38 @@ class AppsflyerSdk {
       afOptions[AppsflyerConstants.AF_GCD] = false;
     }
 
-    return await _channel.invokeMethod("initSdk", afOptions);
+    return afOptions;
   }
 
-  static Future<bool> trackEvent(String eventName, Map eventValues) async {
+  ///Returns `Stream`. Accessing AppsFlyer Conversion Data from the SDK
+  Stream<dynamic> registerConversionDataCallback() {
+    _afGCDStreamController = StreamController();
+    return _afGCDStreamController.stream;
+  }
+
+  ///Returns `Stream`. Accessing AppsFlyer attribution, referred from deep linking
+  Stream<dynamic> registerOnAppOpenAttributionCallback() {
+    _afOpenAttributionStreamController = StreamController();
+    return _afOpenAttributionStreamController.stream;
+  }
+
+  ///initialize the SDK, using the options initialized from the constructor|
+  Future<dynamic> initSdk() async {
+    return channel.invokeMethod("initSdk", _afOptions);
+  }
+
+  ///These in-app events help you track how loyal users discover your app, and attribute them to specific
+  ///campaigns/media-sources. Please take the time define the event/s you want to measure to allow you
+  ///to track ROI (Return on Investment) and LTV (Lifetime Value).
+  ///- The `trackEvent` method allows you to send in-app events to AppsFlyer analytics. This method allows you to add events dynamically by adding them directly to the application code.
+  Future<bool> trackEvent(String eventName, Map eventValues) async {
     assert(eventValues != null);
 
-    return await _channel.invokeMethod(
+    return await channel.invokeMethod(
         "trackEvent", {'eventName': eventName, 'eventValues': eventValues});
   }
 
-  static void _registerListener() {
+  void _registerListener() {
     BinaryMessages.setMessageHandler(AppsflyerConstants.AF_EVENTS_CHANNEL,
         (ByteData message) async {
       final buffer = message.buffer;

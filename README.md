@@ -4,7 +4,7 @@
 
 A Flutter plugin for AppsFlyer SDK.
 
-[![pub package](https://img.shields.io/pub/v/appsflyer_sdk.svg)](https://pub.dartlang.org/packages/appsflyer_sdk)   [![Build Status](https://travis-ci.org/AppsFlyerSDK/flutter_appsflyer_sdk.svg?branch=master)](https://travis-ci.org/AppsFlyerSDK/flutter_appsflyer_sdk)
+[![pub package](https://img.shields.io/pub/v/appsflyer_sdk.svg)](https://pub.dartlang.org/packages/appsflyer_sdk) [![Build Status](https://travis-ci.org/AppsFlyerSDK/flutter_appsflyer_sdk.svg?branch=master)](https://travis-ci.org/AppsFlyerSDK/flutter_appsflyer_sdk)
 
 ## Getting Started
 
@@ -29,9 +29,7 @@ For help on editing plugin code, view the [documentation](https://flutter.io/dev
 
 ---
 
-##### **`static Future<dynamic> initSdk(Map options) async`**
-
-initialize the SDK.
+##### **`AppsflyerSdk(Map options)`**
 
 | parameter | type  | description       |
 | --------- | ----- | ----------------- |
@@ -51,11 +49,28 @@ _Example:_
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 //..
 
+Map options = { "afDevKey": afDevKey,
+                "appId": appId,
+                "isDebug": true};
+
+AppsflyerSdk appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
+
+```
+
+##### **`static Future<dynamic> initSdk() async`**
+
+initialize the SDK, using the options initialized from the constructor|
+
+_Example:_
+
+```dart
+import 'package:appsflyer_sdk/appsflyer_sdk.dart';
+//..
+
+AppsflyerSdk appsflyerSdk = AppsflyerSdk({...});
+
 try {
-      dynamic options = {
-                         "afDevKey": afDevKey,
-                         "appId": appId, "isDebug": true};
-      result = await AppsflyerSdk.initSdk(options);
+      result = await appsflyerSdk.initSdk();
     } on Exception catch (e) {
       print("error: " + e.toString());
       return;
@@ -83,7 +98,7 @@ _Example:_
 Future<bool> sendEvent(String eventName, Map eventValues) async {
     bool result;
     try {
-      result = await AppsflyerSdk.trackEvent(eventName, eventValues);
+      result = await appsflyerSdk.trackEvent(eventName, eventValues);
     } on Exception catch (e) {}
       print("Result trackEvent: ${result}");
   }
@@ -100,7 +115,7 @@ Returns `Stream`. Accessing AppsFlyer Attribution / Conversion Data from the SDK
 _Example:_
 
 ```dart
-AppsflyerSdk.registerConversionDataCallback().listen((data) {
+appsflyerSdk.registerConversionDataCallback().listen((data) {
       //print("GCD: " + data.toString());
       //....
     }).onError((handleError) {
@@ -137,7 +152,7 @@ _Example of failure response:_
 _Example:_
 
 ```dart
-AppsflyerSdk.registerOnAppOpenAttributionCallback().listen((data) {
+appsflyerSdk.registerOnAppOpenAttributionCallback().listen((data) {
       //print("OnAppOpenAttribution: " + data.toString());
       //....
     }).onError((handleError) {

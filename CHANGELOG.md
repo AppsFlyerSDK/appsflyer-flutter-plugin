@@ -1,3 +1,8 @@
+## 1.0.4
+
+- Added dartdoc documentation.
+- Changed static methods to class instance methods.
+
 ## 1.0.0
 
 First stable version

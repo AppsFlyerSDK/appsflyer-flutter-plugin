@@ -5,6 +5,10 @@ import 'home_container.dart';
 import 'utils.dart';
 
 class MainPage extends StatefulWidget {
+  final AppsflyerSdk appsFlyerSdk;
+
+  MainPage({this.appsFlyerSdk});
+
   @override
   State<StatefulWidget> createState() {
     return MainPageState();
@@ -12,8 +16,6 @@ class MainPage extends StatefulWidget {
 }
 
 class MainPageState extends State<MainPage> {
-  final String afDevKey = "7jKdYxdnYcbSQ5iWrGytWc";
-  final String appId = "300200652";
   String gcdText = "";
   String eventResponseText = "Press on the button";
   String onAppOpenAttributionText = "";
@@ -22,7 +24,6 @@ class MainPageState extends State<MainPage> {
   void initState() {
     super.initState();
     registerCallbacks();
-    initSdk();
   }
 
   @override
@@ -40,26 +41,10 @@ class MainPageState extends State<MainPage> {
     );
   }
 
-  Future<Null> initSdk() async {
-    dynamic result = '';
-    try {
-      dynamic options = {"afDevKey": afDevKey, "appId": appId, "isDebug": true};
-      result = await AppsflyerSdk.initSdk(options);
-    } on Exception catch (e) {
-      result = e.toString();
-      print("error: " + result);
-      return;
-    }
-
-    setState(() {
-      gcdText = Utils.formatJson(result);
-    });
-  }
-
   Future<bool> sendEvent(String eventName, Map eventValues) async {
     bool result;
     try {
-      result = await AppsflyerSdk.trackEvent(eventName, eventValues);
+      result = await widget.appsFlyerSdk.trackEvent(eventName, eventValues);
     } on Exception catch (e) {}
     setState(() {
       eventResponseText = result.toString();
@@ -68,7 +53,7 @@ class MainPageState extends State<MainPage> {
   }
 
   void registerCallbacks() {
-    AppsflyerSdk.registerConversionDataCallback().listen((data) {
+    widget.appsFlyerSdk.registerConversionDataCallback().listen((data) {
       print("GCD: " + data.toString());
       setState(() {
         gcdText = Utils.formatJson(data);
@@ -77,7 +62,7 @@ class MainPageState extends State<MainPage> {
       print("error");
     });
 
-    AppsflyerSdk.registerOnAppOpenAttributionCallback().listen((data) {
+    widget.appsFlyerSdk.registerOnAppOpenAttributionCallback().listen((data) {
       print("OnAppOpenAttribution: " + data.toString());
       setState(() {
         onAppOpenAttributionText = Utils.formatJson(data);
