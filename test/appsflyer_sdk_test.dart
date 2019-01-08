@@ -1,32 +1,39 @@
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
 import 'package:flutter/services.dart';
 
 void main() {
-  // AppsflyerSdk instance;
-  // MockMethodChannel methodChannel;
-  // MockEventChannel eventChannel;
+  AppsflyerSdk instance;
 
-  // group('AppsFlyerSdk', () {
-  //   final List<MethodCall> log = <MethodCall>[];
-  //   // const AppsflyerSdk appsflyerSdk = AppsflyerSdk(options);
+  group('AppsFlyerSdk', () {
+    final List<MethodCall> log = <MethodCall>[];
+    const MethodChannel methodChannel = MethodChannel('af-api');
+    // const AppsflyerSdk appsflyerSdk = AppsflyerSdk(options);
 
-  //   setUp(() {
-  //     methodChannel = MockMethodChannel();
-  //     eventChannel = MockEventChannel();
-  //     instance =
-  //         AppsflyerSdk.private(methodChannel, {'afDevKey': 'sdfhj2342cx'});
-  //   });
-  // });
+    setUp(() {
+      methodChannel.setMethodCallHandler((MethodCall methodCall) async {
+        log.add(methodCall);
+        return '';
+      });
 
-  test('basic test', () {
-    int x = 3;
-    expect(x, 3);
+      log.clear();
+
+      instance =
+          AppsflyerSdk.private(methodChannel, {'afDevKey': 'sdfhj2342cx'});
+    });
+
+    test('check initSdk call', () async {
+      methodChannel.setMockMethodCallHandler((MethodCall methodCall) async {
+        switch (methodCall.method) {
+          case 'initSdk':
+            return 'SUCCESS';
+            break;
+        }
+      });
+
+      dynamic res = await instance.initSdk();
+      expect(res, 'SUCCESS');
+    });
   });
 }
-
-class MockMethodChannel extends Mock implements MethodChannel {}
-
-class MockEventChannel extends Mock implements EventChannel {}
