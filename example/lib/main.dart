@@ -14,13 +14,12 @@ class MyApp extends StatelessWidget {
 
   MyApp({appsFlyerOptions}) {
     appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
-    initSdk();
   }
 
   @override
   Widget build(BuildContext context) {
     return new MaterialApp(
-      home: new MainPage(appsFlyerSdk: appsflyerSdk),
+      home: new MainPage(appsFlyerSdk: appsflyerSdk, initSdk: initSdk),
     );
   }
 

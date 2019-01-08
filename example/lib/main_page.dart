@@ -6,8 +6,9 @@ import 'utils.dart';
 
 class MainPage extends StatefulWidget {
   final AppsflyerSdk appsFlyerSdk;
+  final Function initSdk;
 
-  MainPage({this.appsFlyerSdk});
+  MainPage({this.appsFlyerSdk, this.initSdk});
 
   @override
   State<StatefulWidget> createState() {
@@ -24,6 +25,7 @@ class MainPageState extends State<MainPage> {
   void initState() {
     super.initState();
     registerCallbacks();
+    widget.initSdk();
   }
 
   @override

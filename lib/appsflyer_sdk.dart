@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/services.dart';
+import 'package:meta/meta.dart';
 import 'appsflyer_constants.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -7,17 +8,25 @@ import 'dart:typed_data';
 import 'dart:core';
 
 class AppsflyerSdk {
-  MethodChannel channel =
-      const MethodChannel(AppsflyerConstants.AF_METHOD_CHANNEL);
   StreamController _afGCDStreamController;
   StreamController _afOpenAttributionStreamController;
-  Map<String, dynamic> _afOptions;
+  Map _options;
+  static AppsflyerSdk _instance;
+  final MethodChannel _methodChannel;
 
   ///Returns the [AppsflyerSdk] instance, initialized with a custom options
   ///provided by the user
-  AppsflyerSdk(Map options) {
-    _afOptions = _validateOptions(options);
+  factory AppsflyerSdk(Map options) {
+    if (_instance == null) {
+      MethodChannel methodChannel =
+          const MethodChannel(AppsflyerConstants.AF_METHOD_CHANNEL);
+      _instance = AppsflyerSdk.private(methodChannel, options);
+    }
+    return _instance;
   }
+
+  @visibleForTesting
+  AppsflyerSdk.private(this._methodChannel, this._options);
 
   Map<String, dynamic> _validateOptions(Map options) {
     Map<String, dynamic> afOptions = {};
@@ -66,7 +75,8 @@ class AppsflyerSdk {
 
   ///initialize the SDK, using the options initialized from the constructor|
   Future<dynamic> initSdk() async {
-    return channel.invokeMethod("initSdk", _afOptions);
+    Map<String, dynamic> afOptions = _validateOptions(_options);
+    return _methodChannel.invokeMethod("initSdk", afOptions);
   }
 
   ///These in-app events help you track how loyal users discover your app, and attribute them to specific
@@ -76,7 +86,7 @@ class AppsflyerSdk {
   Future<bool> trackEvent(String eventName, Map eventValues) async {
     assert(eventValues != null);
 
-    return await channel.invokeMethod(
+    return await _methodChannel.invokeMethod(
         "trackEvent", {'eventName': eventName, 'eventValues': eventValues});
   }
 
