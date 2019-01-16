@@ -40,7 +40,7 @@ For help on editing plugin code, view the [documentation](https://flutter.io/dev
 | name       | type      | default | description                                                                                                                    |
 | ---------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `afDevKey` | `string`  |         | [Appsflyer Dev key](https://support.appsflyer.com/hc/en-us/articles/207032126-AppsFlyer-SDK-Integration-Android)               |
-| `appId`    | `string`  |         | [Apple Application ID](https://support.appsflyer.com/hc/en-us/articles/207032066-AppsFlyer-SDK-Integration-iOS) (for iOS only) |
+| `afAppId`  | `string`  |         | [Apple Application ID](https://support.appsflyer.com/hc/en-us/articles/207032066-AppsFlyer-SDK-Integration-iOS) (for iOS only) |
 | `isDebug`  | `boolean` | `false` | debug mode (optional)                                                                                                          |
 
 _Example:_
@@ -50,7 +50,7 @@ import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 //..
 
 Map options = { "afDevKey": afDevKey,
-                "appId": appId,
+                "afAppId": appId,
                 "isDebug": true};
 
 AppsflyerSdk appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
