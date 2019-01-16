@@ -1,3 +1,7 @@
+## 1.0.6
+
+- Fixed iOS app id crash
+
 ## 1.0.4
 
 - Added dartdoc documentation.
