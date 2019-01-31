@@ -32,6 +32,7 @@ android {
 }
 
 dependencies {
-    implementation 'com.appsflyer:af-android-sdk:4.8.18'
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'com.appsflyer:af-android-sdk:4.8.19'
     implementation 'com.android.installreferrer:installreferrer:1.0'
 }

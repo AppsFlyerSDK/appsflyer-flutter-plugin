@@ -2,10 +2,10 @@ import './main_page.dart';
 import 'package:flutter/material.dart';
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 
-// void main() => runApp(myApp());
-
 void main() {
-  final Map options = {"afDevKey": "fdsgjkdfkg3435"};
+  final AppsFlyerOptions options = AppsFlyerOptions(afDevKey: "sdfgkj32432");
+  print("++++++++++++++DEV KEY++++++++++++" + options.afDevKey);
+  print("++++++++++++++APP ID+++++++++++++" + options.appId);
   runApp(MyApp(appsFlyerOptions: options));
 }
 
