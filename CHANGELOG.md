@@ -1,3 +1,8 @@
+## 1.0.8
+
+- Added `AppsFlyerOptions` to support easier options setup
+- Changed plugin lib structure
+
 ## 1.0.6
 
 - Fixed iOS app id crash

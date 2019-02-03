@@ -23,7 +23,7 @@ For help on editing plugin code, view the [documentation](https://flutter.io/dev
 ### This plugin is built for
 
 - iOS AppsFlyerSDK **v4.8.10**
-- Android AppsFlyerSDK **v4.8.18**
+- Android AppsFlyerSDK **v4.8.19**
 
 ##<a id="api-methods"> API Methods
 
@@ -55,6 +55,25 @@ Map options = { "afDevKey": afDevKey,
 
 AppsflyerSdk appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
 
+```
+
+** Or you can use `AppsFlyerOptions` class instead**
+
+##### **`AppsflyerSdk(Map options)`**
+
+| parameter | type               | description       |
+| --------- | ------------------ | ----------------- |
+| `options` | `AppsFlyerOptions` | SDK configuration |
+
+_Example:_
+
+```dart
+import 'package:appsflyer_sdk/appsflyer_sdk.dart';
+//..
+
+final AppsFlyerOptions options = AppsFlyerOptions(afDevKey: "af dev key",
+                                                  showDebug: true,
+                                                  appId: "123456789");
 ```
 
 ##### **`static Future<dynamic> initSdk() async`**

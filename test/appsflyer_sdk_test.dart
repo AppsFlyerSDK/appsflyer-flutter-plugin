@@ -1,7 +1,6 @@
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/services.dart';
 
 void main() {
   AppsflyerSdk instance;
@@ -19,8 +18,9 @@ void main() {
 
       log.clear();
 
-      instance =
-          AppsflyerSdk.private(methodChannel, {'afDevKey': 'sdfhj2342cx'});
+      //test map options way
+      instance = AppsflyerSdk.private(methodChannel,
+          mapOptions: {'afDevKey': 'sdfhj2342cx'});
     });
 
     test('check initSdk call', () async {

@@ -3,35 +3,74 @@ part of appsflyer_sdk;
 class AppsflyerSdk {
   StreamController _afGCDStreamController;
   StreamController _afOpenAttributionStreamController;
-  AppsFlyerOptions _options;
   static AppsflyerSdk _instance;
   final MethodChannel _methodChannel;
 
+  AppsFlyerOptions afOptions;
+  Map mapOptions;
+
   ///Returns the [AppsflyerSdk] instance, initialized with a custom options
   ///provided by the user
-  factory AppsflyerSdk(AppsFlyerOptions options) {
+  factory AppsflyerSdk(options) {
     if (_instance == null) {
       MethodChannel methodChannel =
           const MethodChannel(AppsflyerConstants.AF_METHOD_CHANNEL);
-      _instance = AppsflyerSdk.private(methodChannel, options);
+
+      //check if the option variable is AFOptions type or map type
+      if (options is AppsFlyerOptions) {
+        _instance = AppsflyerSdk.private(methodChannel, afOptions: options);
+      } else if (options is Map) {
+        _instance = AppsflyerSdk.private(methodChannel, mapOptions: options);
+      }
     }
     return _instance;
   }
 
   @visibleForTesting
-  AppsflyerSdk.private(this._methodChannel, this._options);
+  AppsflyerSdk.private(this._methodChannel, {this.afOptions, this.mapOptions});
 
-  Map<String, dynamic> _validateOptions(AppsFlyerOptions options) {
-    Map<String, dynamic> afOptions = {};
+  Map<String, dynamic> _validateAFOptions(AppsFlyerOptions options) {
+    Map<String, dynamic> validatedOptions = {};
     //validations
     dynamic devKey = options.afDevKey;
+    assert(devKey != null);
+    assert(devKey is String);
+
+    validatedOptions[AppsflyerConstants.AF_DEV_KEY] = devKey;
+
+    if (Platform.isIOS) {
+      dynamic appID = options.appId;
+      assert(appID != null, "appleAppId is required for iOS apps");
+      assert(appID is String);
+      RegExp exp = RegExp(r'^\d{8,11}$');
+      assert(exp.hasMatch(appID));
+      validatedOptions[AppsflyerConstants.AF_APP_Id] = appID;
+    }
+
+    validatedOptions[AppsflyerConstants.AF_IS_DEBUG] =
+        (options.showDebug != null) ? options.showDebug : false;
+
+    if (_afGCDStreamController != null) {
+      validatedOptions[AppsflyerConstants.AF_GCD] = true;
+      _registerListener();
+    } else {
+      validatedOptions[AppsflyerConstants.AF_GCD] = false;
+    }
+
+    return validatedOptions;
+  }
+
+  Map<String, dynamic> _validateMapOptions(Map options) {
+    Map<String, dynamic> afOptions = {};
+    //validations
+    dynamic devKey = options[AppsflyerConstants.AF_DEV_KEY];
     assert(devKey != null);
     assert(devKey is String);
 
     afOptions[AppsflyerConstants.AF_DEV_KEY] = devKey;
 
     if (Platform.isIOS) {
-      dynamic appID = options.appId;
+      dynamic appID = options[AppsflyerConstants.AF_APP_Id];
       assert(appID != null, "appleAppId is required for iOS apps");
       assert(appID is String);
       RegExp exp = RegExp(r'^\d{8,11}$');
@@ -40,7 +79,9 @@ class AppsflyerSdk {
     }
 
     afOptions[AppsflyerConstants.AF_IS_DEBUG] =
-        (options.showDebug != null) ? options.showDebug : false;
+        options.containsKey(AppsflyerConstants.AF_IS_DEBUG)
+            ? options[AppsflyerConstants.AF_IS_DEBUG]
+            : false;
 
     if (_afGCDStreamController != null) {
       afOptions[AppsflyerConstants.AF_GCD] = true;
@@ -66,8 +107,14 @@ class AppsflyerSdk {
 
   ///initialize the SDK, using the options initialized from the constructor|
   Future<dynamic> initSdk() async {
-    Map<String, dynamic> afOptions = _validateOptions(_options);
-    return _methodChannel.invokeMethod("initSdk", afOptions);
+    Map<String, dynamic> validatedOptions;
+    if (mapOptions != null) {
+      validatedOptions = _validateMapOptions(mapOptions);
+    } else if (afOptions != null) {
+      validatedOptions = _validateAFOptions(afOptions);
+    }
+
+    return _methodChannel.invokeMethod("initSdk", validatedOptions);
   }
 
   ///These in-app events help you track how loyal users discover your app, and attribute them to specific

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 
 void main() {
-  final AppsFlyerOptions options = AppsFlyerOptions(afDevKey: "sdfgkj32432");
+  final AppsFlyerOptions options = AppsFlyerOptions(afDevKey: "fdf");
   print("++++++++++++++DEV KEY++++++++++++" + options.afDevKey);
   print("++++++++++++++APP ID+++++++++++++" + options.appId);
   runApp(MyApp(appsFlyerOptions: options));
