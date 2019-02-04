@@ -1,7 +1,10 @@
 package com.appsflyer.appsflyersdk;
 
+import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
+import android.content.Intent;
+import android.util.Log;
 
 import com.appsflyer.AFLogger;
 import com.appsflyer.AppsFlyerConversionListener;
@@ -39,6 +42,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
     private FlutterView mFlutterVliew;
     private Context mContext;
     private Application mApplication;
+    private Intent mIntent;
 
     private static AppsflyerSdkPlugin instance = null;
 
@@ -46,6 +50,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
         this.mFlutterVliew = registrar.view();
         this.mContext = registrar.activity().getApplicationContext();
         this.mApplication = registrar.activity().getApplication();
+        this.mIntent = registrar.activity().getIntent();
     }
 
     public static void registerWith(Registrar registrar) {
@@ -69,6 +74,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
         case "trackEvent":
             trackEvent(call, result);
             break;
+        case "setHost":
+            Log.d("Flutter_Debug","SetHost");
+            break;
         default:
             result.notImplemented();
             break;
@@ -76,8 +84,13 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
     }
 
     private void initSdk(MethodCall call, MethodChannel.Result result) {
+
         AppsFlyerConversionListener gcdListener = null;
         AppsFlyerLib instance = AppsFlyerLib.getInstance();
+
+        if(mIntent.getData()!=null) {
+            instance.setPluginDeepLinkData(mIntent);
+        }
 
         String afDevKey = call.argument(AppsFlyerConstants.AF_DEV_KEY);
 
@@ -122,6 +135,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
         return new AppsFlyerConversionListener() {
             @Override
             public void onInstallConversionDataLoaded(Map<String, String> map) {
+                Log.d("Flutter_Debug","+++++++++++++++GCD++++++++++++++");
                 handleSuccess(AF_ON_INSTALL_CONVERSION_DATA_LOADED, map);
             }
 
@@ -132,6 +146,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
 
             @Override
             public void onAppOpenAttribution(Map<String, String> map) {
+                Log.d("Flutter_Debug","+++++++++++++++OAOA++++++++++++++");
                 handleSuccess(AF_ON_APP_OPEN_ATTRIBUTION, map);
             }
 

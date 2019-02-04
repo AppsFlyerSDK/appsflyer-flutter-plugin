@@ -128,6 +128,12 @@ class AppsflyerSdk {
         "trackEvent", {'eventName': eventName, 'eventValues': eventValues});
   }
 
+  ///
+  void setHost({String hostPrefix, String hostName}) async {
+    await _methodChannel.invokeMethod(
+        "setHost", {'hostPrefix': hostPrefix, 'hostName': hostName});
+  }
+
   void _registerListener() {
     BinaryMessages.setMessageHandler(AppsflyerConstants.AF_EVENTS_CHANNEL,
         (ByteData message) async {
