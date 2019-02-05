@@ -1,6 +1,8 @@
 package com.appsflyer.appsflyersdk;
 
 public class AppsFlyerConstants {
+    final static String AF_HOST_PREFIX = "hostPrefix";
+    final static String AF_HOST_NAME = "hostName";
     final static String AF_IS_DEBUG = "isDebug";
     final static String AF_DEV_KEY = "afDevKey";
     final static String AF_EVENT_NAME = "eventName";
@@ -14,5 +16,5 @@ public class AppsFlyerConstants {
     final static String AF_GCD = "GCD";
     final static String AF_EVENTS_CHANNEL = "af-events";
     final static String AF_METHOD_CHANNEL = "af-api";
-    final static String AF_FLUTTER_LOG_TAG = "AppsFlyerFlutter";
+    final static String AF_FLUTTER_LOG_TAG = "Flutter_Debug";
 }

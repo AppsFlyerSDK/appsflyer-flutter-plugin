@@ -128,6 +128,34 @@ class AppsflyerSdk {
         "trackEvent", {'eventName': eventName, 'eventValues': eventValues});
   }
 
+  void setHost(String hostPrefix, String hostName) {
+    _methodChannel.invokeMethod(
+        "setHost", {'hostPrefix': hostPrefix, 'hostName': hostName});
+  }
+
+  void setCollectIMEI(bool isCollect) {
+    _methodChannel.invokeMethod("setCollectIMEI", {'isCollect': isCollect});
+  }
+
+  void setCollectAndroidId(bool isCollect) {
+    _methodChannel
+        .invokeMethod("setCollectAndroidId", {'isCollect': isCollect});
+  }
+
+  Future<String> getHostName() async {
+    return await _methodChannel.invokeMethod("getHostName");
+  }
+
+  Future<String> getHostPrefix() async {
+    return await _methodChannel.invokeMethod("getHostPrefix");
+  }
+
+  void setMinTimeBetweenSessions(int seconds) {
+    assert(seconds >= 0, "the minimum timeout must be a positive number");
+    _methodChannel
+        .invokeMethod("setMinTimeBetweenSessions", {'seconds': seconds});
+  }
+
   void _registerListener() {
     BinaryMessages.setMessageHandler(AppsflyerConstants.AF_EVENTS_CHANNEL,
         (ByteData message) async {

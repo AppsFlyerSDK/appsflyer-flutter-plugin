@@ -63,16 +63,157 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
     public void onMethodCall(MethodCall call, Result result) {
         final String method = call.method;
         switch (method) {
-        case "initSdk":
-            initSdk(call, result);
-            break;
-        case "trackEvent":
-            trackEvent(call, result);
-            break;
-        default:
-            result.notImplemented();
-            break;
+            case "initSdk":
+                initSdk(call, result);
+                break;
+            case "trackEvent":
+                trackEvent(call, result);
+                break;
+            case "setHost":
+                setHost(call, result);
+                break;
+            case "setCurrencyCode":
+                setCurrencyCode(call, result);
+                break;
+            case "setIsUpdate":
+                setIsUpdate(call, result);
+                break;
+            case "stopTracking":
+                stopTracking(call, result);
+                break;
+            case "enableUninstallTracking":
+                enableUninstallTracking(call, result);
+                break;
+            case "updateServerUninstallToken":
+                updateServerUninstallToken(call, result);
+                break;
+            case "setImeiData":
+                setImeiData(call, result);
+                break;
+            case "setAndroidIdData":
+                setAndroidIdData(call,result);
+                break;
+            case "enableLocationCollection":
+                enableLocationCollection(call, result);
+                break;
+            case "setCustomerUserId":
+                setCustomerUserId(call, result);
+                break;
+            case "waitForCustomerUserId":
+                waitForCustomerUserId(call, result);
+                break;
+            case "setAdditionalData":
+                setAdditionalData(call,result);
+                break;
+            case "setUserEmails":
+                setUserEmails(call, result);
+                break;
+            case "setCollectAndroidId":
+                setCollectAndroidId(call, result);
+                break;
+            case "setCollectIMEI":
+                setCollectIMEI(call, result);
+                break;
+            case "getHostName":
+                getHostName(result);
+                break;
+            case "getHostPrefix":
+                getHostPrefix(result);
+                break;
+            case "setMinTimeBetweenSessions":
+                setMinTimeBetweenSessions(call, result);
+                break;
+            case "validateAndTrackInAppPurchase":
+                validateAndTrackInAppPurchase(call,result);
+                break;
+            default:
+                result.notImplemented();
+                break;
         }
+    }
+
+    private void validateAndTrackInAppPurchase(MethodCall call, Result result) {
+
+    }
+
+    private void setMinTimeBetweenSessions(MethodCall call, Result result) {
+        int seconds = call.argument("seconds");
+        AppsFlyerLib.getInstance().setMinTimeBetweenSessions(seconds);
+        result.success(null);
+    }
+
+    private void getHostPrefix(Result result) {
+//        result.success(AppsFlyerLib.getInstance());
+    }
+
+    private void getHostName(Result result) {
+
+    }
+
+    private void setCollectIMEI(MethodCall call, Result result) {
+        boolean isCollect = call.argument("isCollect");
+        AppsFlyerLib.getInstance().setCollectIMEI(isCollect);
+        result.success(null);
+    }
+
+    private void setCollectAndroidId(MethodCall call, Result result) {
+        boolean isCollect = call.argument("isCollect");
+        AppsFlyerLib.getInstance().setCollectAndroidID(isCollect);
+        result.success(null);
+    }
+
+    private void waitForCustomerUserId(MethodCall call, Result result) {
+
+    }
+
+    private void setAdditionalData(MethodCall call, Result result) {
+
+    }
+
+    private void setUserEmails(MethodCall call, Result result) {
+    }
+
+    private void setCustomerUserId(MethodCall call, Result result) {
+
+    }
+
+    private void enableLocationCollection(MethodCall call, Result result) {
+
+    }
+
+    private void setAndroidIdData(MethodCall call, Result result) {
+
+    }
+
+    private void setImeiData(MethodCall call, Result result) {
+
+    }
+
+    private void updateServerUninstallToken(MethodCall call, Result result) {
+
+    }
+
+    private void enableUninstallTracking(MethodCall call, Result result) {
+
+    }
+
+    private void stopTracking(MethodCall call, Result result) {
+
+    }
+
+    private void setIsUpdate(MethodCall call, Result result) {
+    }
+
+    private void setCurrencyCode(MethodCall call, Result result) {
+
+    }
+
+    private void setHost(MethodCall call, MethodChannel.Result result) {
+        String hostPrefix = call.argument(AppsFlyerConstants.AF_HOST_PREFIX);
+        String hostName = call.argument(AppsFlyerConstants.AF_HOST_NAME);
+
+        //TODO - uncomment the method when 4.8.20 is released
+//        AppsFlyerLib.getInstance().setHost(hostPrefix, hostName);
     }
 
     private void initSdk(MethodCall call, MethodChannel.Result result) {
