@@ -150,10 +150,82 @@ class AppsflyerSdk {
     return await _methodChannel.invokeMethod("getHostPrefix");
   }
 
+  void setAndroidIdData(String androidId) {
+    _methodChannel.invokeMethod("setAndroidIdData", {'androidId': androidId});
+  }
+
   void setMinTimeBetweenSessions(int seconds) {
     assert(seconds >= 0, "the minimum timeout must be a positive number");
     _methodChannel
         .invokeMethod("setMinTimeBetweenSessions", {'seconds': seconds});
+  }
+
+  void setImeiData(String imei) {
+    _methodChannel.invokeMethod("setImeiData", {'imei': imei});
+  }
+
+  void setCurrencyCode(String currencyCode) {
+    _methodChannel
+        .invokeMethod("setCurrencyCode", {'currencyCode': currencyCode});
+  }
+
+  void setCustomerUserId(String id) {
+    _methodChannel.invokeMethod("setCustomerUserId", {'id': id});
+  }
+
+  void setIsUpdate(bool isUpdate) {
+    _methodChannel.invokeMethod("setIsUpdate", {'isUpdate': isUpdate});
+  }
+
+  void stopTracking(bool isTrackingStopped, BuildContext context) {
+    _methodChannel.invokeMethod("stopTracking",
+        {'isTrackingStopped': isTrackingStopped, 'context': context});
+  }
+
+  void enableLocationCollection(bool flag) {
+    _methodChannel.invokeMethod("enableLocationCollection", {'flag': flag});
+  }
+
+  void enableUninstallTracking(String senderId) {
+    _methodChannel
+        .invokeMethod("enableUninstallTracking", {'senderId': senderId});
+  }
+
+  void updateServerUninstallToken(BuildContext context, String token) {
+    _methodChannel.invokeMethod(
+        "updateServerUninstallToken", {'context': context, 'token': token});
+  }
+
+  void setUserEmails(List<String> emails) {
+    _methodChannel.invokeMethod("setUserEmails", {'emails': emails});
+  }
+
+  void waitForCostumerUserId(bool wait) {
+    _methodChannel.invokeMethod("waitForCostumerUserId", {'wait': wait});
+  }
+
+  void validateAndTrackInAppPurchase(
+      BuildContext context,
+      String publicKey,
+      String signature,
+      String purchaseData,
+      String price,
+      String currency,
+      Map<String, String> additionalParameters) {
+    _methodChannel.invokeMethod("validateAndTrackInAppPurchase", {
+      'context': context,
+      'publicKey': publicKey,
+      'signature': signature,
+      'purchaseData': purchaseData,
+      'price': price,
+      'currency': currency,
+      'additionalParameters': additionalParameters
+    });
+  }
+
+  void setAdditionalData(Map<String, dynamic> customData) {
+    _methodChannel
+        .invokeMethod("setAdditionalData", {'customData': customData});
   }
 
   void _registerListener() {

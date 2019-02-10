@@ -12,6 +12,7 @@ import org.json.JSONObject;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import io.flutter.plugin.common.BinaryMessenger;
@@ -91,7 +92,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
                 setImeiData(call, result);
                 break;
             case "setAndroidIdData":
-                setAndroidIdData(call,result);
+                setAndroidIdData(call, result);
                 break;
             case "enableLocationCollection":
                 enableLocationCollection(call, result);
@@ -103,7 +104,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
                 waitForCustomerUserId(call, result);
                 break;
             case "setAdditionalData":
-                setAdditionalData(call,result);
+                setAdditionalData(call, result);
                 break;
             case "setUserEmails":
                 setUserEmails(call, result);
@@ -124,7 +125,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
                 setMinTimeBetweenSessions(call, result);
                 break;
             case "validateAndTrackInAppPurchase":
-                validateAndTrackInAppPurchase(call,result);
+                validateAndTrackInAppPurchase(call, result);
                 break;
             default:
                 result.notImplemented();
@@ -133,11 +134,19 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
     }
 
     private void validateAndTrackInAppPurchase(MethodCall call, Result result) {
-
+        Context context = (Context)call.argument("context");
+        String publicKey = (String)call.argument("publicKey");
+        String signature = (String)call.argument("signature");
+        String purchaseData = (String)call.argument("purchaseData");
+        String price = (String)call.argument("price");
+        String currency = (String)call.argument("currency");
+        Map<String, String> additionalParameters = (Map<String,String>)call.argument("additionalParameters");
+        AppsFlyerLib.getInstance().validateAndTrackInAppPurchase(context,publicKey,signature,purchaseData,price,currency,additionalParameters);
+        result.success(null);
     }
 
     private void setMinTimeBetweenSessions(MethodCall call, Result result) {
-        int seconds = call.argument("seconds");
+        int seconds = (int) call.argument("seconds");
         AppsFlyerLib.getInstance().setMinTimeBetweenSessions(seconds);
         result.success(null);
     }
@@ -151,61 +160,91 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
     }
 
     private void setCollectIMEI(MethodCall call, Result result) {
-        boolean isCollect = call.argument("isCollect");
+        boolean isCollect = (boolean) call.argument("isCollect");
         AppsFlyerLib.getInstance().setCollectIMEI(isCollect);
         result.success(null);
     }
 
     private void setCollectAndroidId(MethodCall call, Result result) {
-        boolean isCollect = call.argument("isCollect");
+        boolean isCollect = (boolean) call.argument("isCollect");
         AppsFlyerLib.getInstance().setCollectAndroidID(isCollect);
         result.success(null);
     }
 
     private void waitForCustomerUserId(MethodCall call, Result result) {
-
+        boolean wait = (boolean)call.argument("");
+        AppsFlyerLib.getInstance().waitForCustomerUserId(wait);
+        result.success(null);
     }
 
     private void setAdditionalData(MethodCall call, Result result) {
-
+        HashMap<String,Object> customData = (HashMap<String,Object>)call.argument("customData");
+        AppsFlyerLib.getInstance().setAdditionalData(customData);
+        result.success(null);
     }
 
     private void setUserEmails(MethodCall call, Result result) {
+        List<String> userEmails = call.argument("emails");
+        if (userEmails != null) {
+            AppsFlyerLib.getInstance().setUserEmails(userEmails.toArray(new String[0]));
+        }
+        result.success(null);
     }
 
     private void setCustomerUserId(MethodCall call, Result result) {
-
+        String userId = (String) call.argument("id");
+        AppsFlyerLib.getInstance().setCustomerUserId(userId);
+        result.success(null);
     }
 
     private void enableLocationCollection(MethodCall call, Result result) {
-
+        boolean flag = (boolean) call.argument("flag");
+        AppsFlyerLib.getInstance().enableLocationCollection(flag);
+        result.success(null);
     }
 
     private void setAndroidIdData(MethodCall call, Result result) {
-
+        String androidId = (String) call.argument("androidId");
+        AppsFlyerLib.getInstance().setAndroidIdData(androidId);
+        result.success(null);
     }
 
     private void setImeiData(MethodCall call, Result result) {
-
+        String imei = (String) call.argument("imei");
+        AppsFlyerLib.getInstance().setImeiData(imei);
+        result.success(null);
     }
 
     private void updateServerUninstallToken(MethodCall call, Result result) {
-
+        Context context = (Context) call.argument("context");
+        String token = (String) call.argument("token");
+        AppsFlyerLib.getInstance().updateServerUninstallToken(context, token);
+        result.success(null);
     }
 
     private void enableUninstallTracking(MethodCall call, Result result) {
-
+        String senderId = (String) call.argument("senderId");
+        AppsFlyerLib.getInstance().enableUninstallTracking(senderId);
+        result.success(null);
     }
 
     private void stopTracking(MethodCall call, Result result) {
-
+        boolean isTrackingStopped = (boolean) call.argument("isTrackingStopped");
+        Context context = (Context) call.argument("context");
+        AppsFlyerLib.getInstance().stopTracking(isTrackingStopped, context);
+        result.success(null);
     }
 
     private void setIsUpdate(MethodCall call, Result result) {
+        boolean isUpdate = (boolean) call.argument("isUpdate");
+        AppsFlyerLib.getInstance().setIsUpdate(isUpdate);
+        result.success(null);
     }
 
     private void setCurrencyCode(MethodCall call, Result result) {
-
+        String currencyCode = (String) call.argument("currencyCode");
+        AppsFlyerLib.getInstance().setCurrencyCode(currencyCode);
+        result.success(null);
     }
 
     private void setHost(MethodCall call, MethodChannel.Result result) {
@@ -220,15 +259,15 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
         AppsFlyerConversionListener gcdListener = null;
         AppsFlyerLib instance = AppsFlyerLib.getInstance();
 
-        String afDevKey = call.argument(AppsFlyerConstants.AF_DEV_KEY);
+        String afDevKey = (String) call.argument(AppsFlyerConstants.AF_DEV_KEY);
 
-        boolean getGCD = call.argument(AppsFlyerConstants.AF_GCD);
+        boolean getGCD = (boolean) call.argument(AppsFlyerConstants.AF_GCD);
 
         if (getGCD) {
             gcdListener = registerConversionListener(instance);
         }
 
-        boolean isDebug = call.argument(AppsFlyerConstants.AF_IS_DEBUG);
+        boolean isDebug = (boolean) call.argument(AppsFlyerConstants.AF_IS_DEBUG);
         if (isDebug) {
             instance.setLogLevel(AFLogger.LogLevel.DEBUG);
             instance.setDebugLog(true);
