@@ -1,5 +1,12 @@
 part of appsflyer_sdk;
 
+enum EmailCryptType {
+  EmailCryptTypeNone,
+  EmailCryptTypeSHA1,
+  EmailCryptTypeMD5,
+  EmailCryptTypeSHA256
+}
+
 class AppsflyerConstants {
   static const String AF_DEV_KEY = "afDevKey";
   static const String AF_APP_Id = "afAppId";

@@ -25,7 +25,10 @@ class MainPageState extends State<MainPage> {
   void initState() {
     super.initState();
     registerCallbacks();
-    widget.initSdk();
+    widget.initSdk().then((res) {
+      widget.appsFlyerSdk.setUserEmails(
+          ["a@a.com", "b.@b.com"], EmailCryptType.EmailCryptTypeSHA1);
+    });
   }
 
   @override

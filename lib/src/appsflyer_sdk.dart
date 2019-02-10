@@ -196,12 +196,18 @@ class AppsflyerSdk {
         "updateServerUninstallToken", {'context': context, 'token': token});
   }
 
-  void setUserEmails(List<String> emails) {
-    _methodChannel.invokeMethod("setUserEmails", {'emails': emails});
+  void setUserEmails(List<String> emails, [EmailCryptType cryptType]) {
+    if (cryptType != null) {
+      int cryptTypeInt = EmailCryptType.values.indexOf(cryptType);
+      _methodChannel.invokeMethod("setUserEmailsWithCryptType",
+          {'emails': emails, 'cryptType': cryptTypeInt});
+    } else {
+      _methodChannel.invokeMethod("setUserEmails", {'emails': emails});
+    }
   }
 
-  void waitForCostumerUserId(bool wait) {
-    _methodChannel.invokeMethod("waitForCostumerUserId", {'wait': wait});
+  void waitForCustomerUserId(bool wait) {
+    _methodChannel.invokeMethod("waitForCustomerUserId", {'wait': wait});
   }
 
   void validateAndTrackInAppPurchase(

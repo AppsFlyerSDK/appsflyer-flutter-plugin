@@ -6,6 +6,7 @@ import android.content.Context;
 import com.appsflyer.AFLogger;
 import com.appsflyer.AppsFlyerConversionListener;
 import com.appsflyer.AppsFlyerLib;
+import com.appsflyer.AppsFlyerProperties;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -109,6 +110,8 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
             case "setUserEmails":
                 setUserEmails(call, result);
                 break;
+            case "setUserEmailsWithCryptType":
+                setUserEmailsWithCryptType(call, result);
             case "setCollectAndroidId":
                 setCollectAndroidId(call, result);
                 break;
@@ -131,6 +134,13 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
                 result.notImplemented();
                 break;
         }
+    }
+
+    private void setUserEmailsWithCryptType(MethodCall call, Result result) {
+        List<String> emails = call.argument("emails");
+        int cryptTypeInt = call.argument("cryptType");
+        AppsFlyerProperties.EmailsCryptType cryptType = AppsFlyerProperties.EmailsCryptType.values()[cryptTypeInt];
+        AppsFlyerLib.getInstance().setUserEmails(cryptType, emails.toArray(new String[0]));
     }
 
     private void validateAndTrackInAppPurchase(MethodCall call, Result result) {
