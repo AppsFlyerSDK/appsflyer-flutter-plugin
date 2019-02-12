@@ -140,7 +140,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
         List<String> emails = call.argument("emails");
         int cryptTypeInt = call.argument("cryptType");
         AppsFlyerProperties.EmailsCryptType cryptType = AppsFlyerProperties.EmailsCryptType.values()[cryptTypeInt];
-        AppsFlyerLib.getInstance().setUserEmails(cryptType, emails.toArray(new String[0]));
+        if(emails!=null) {
+            AppsFlyerLib.getInstance().setUserEmails(cryptType, emails.toArray(new String[0]));
+        }
     }
 
     private void validateAndTrackInAppPurchase(MethodCall call, Result result) {

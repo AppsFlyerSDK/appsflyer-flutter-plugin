@@ -25,31 +25,68 @@
         [self setUserEmailsWithCryptType:call result:result];
     }
     else if([@"updateServerUninstallToken" isEqualToString:call.method]){
-        
+        [self updateServerUninstallToken:call result:result];
     }else if([@"enableUninstallTracking" isEqualToString:call.method]){
-        
+        //
     }else if([@"enableLocationCollection" isEqualToString:call.method]){
-        
+        //
     }else if([@"stopTracking" isEqualToString:call.method]){
-        
+        [self stopTracking:call result:result];
     }else if([@"setIsUpdate" isEqualToString:call.method]){
-        
+        //
     }else if([@"setCustomerUserId" isEqualToString:call.method]){
-        
+        [self setCustomerUserId:call result:result];
     }else if([@"setCurrencyCode" isEqualToString:call.method ]){
-        
+        //
     }else if([@"setMinTimeBetweenSessions" isEqualToString:call.method]){
-        
+        //
     }else if([@"getHostPrefix" isEqualToString:call.method]){
         
     }else if([@"getHostName" isEqualToString:call.method]){
         
     }else if([@"setHost" isEqualToString:call.method]){
         
+    }else if([@"setAdditionalData" isEqualToString:call.method]){
+        [self setAdditionalData:call result:result];
+    }else if([@"validataAndTrackInAppPurchase" isEqualToString:call.method]){
+        [self validateAndTrackInAppPurchase:call result:result];
     }
     else{
         result(FlutterMethodNotImplemented);
     }
+}
+
+- (void)validateAndTrackInAppPurchase:(FlutterMethodCall*)call result:(FlutterResult)result{
+    NSString* publicKey = call.arguments[@"publicKey"];
+    NSString* signature = call.arguments[@"signature"];
+    NSString* purchaseData = call.arguments[@"purchaseData"];
+    NSString* price = call.arguments[@"price"];
+    NSString* currecncy = call.arguments[@"currency"];
+    NSDictionary* additionalParameters = call.arguments[@"additionalParameters"];
+    result(nil);
+}
+
+- (void)setAdditionalData:(FlutterMethodCall*)call result:(FlutterResult)result{
+    NSDictionary* data = call.arguments[@"customData"];
+    [[AppsFlyerTracker sharedTracker] setAdditionalData:data];
+    result(nil);
+}
+
+- (void)setCustomerUserId:(FlutterMethodCall*)call result:(FlutterResult)result{
+    NSString* userId = call.arguments[@"id"];
+    [[AppsFlyerTracker sharedTracker] setCustomerUserID:userId];
+    result(nil);
+}
+
+- (void)stopTracking:(FlutterMethodCall*)call result:(FlutterResult)result{
+    BOOL stopTracking = call.arguments[@"isTrackingStopped"];
+    [[AppsFlyerTracker sharedTracker] setIsStopTracking:stopTracking];
+    result(nil);
+}
+
+- (void)updateServerUninstallToken:(FlutterMethodCall*)call result:(FlutterResult)result{
+    //TODO:
+    result(nil);
 }
 
 - (void)waitForCustomerId:(FlutterMethodCall*)call result:(FlutterResult)result{
@@ -61,7 +98,7 @@
     NSArray *emaillsArray = [emails copy];
     NSNumber* cryptTypeInt = (id)call.arguments[@"cryptType"];
     EmailCryptType cryptType = (EmailCryptType)[cryptTypeInt integerValue];
-    [AppsFlyerTracker sharedTracker] setUserEmails:emaillsArray withCryptType:cryptType;
+    [[AppsFlyerTracker sharedTracker] setUserEmails:emaillsArray withCryptType:cryptType];
     result(nil);
 }
 

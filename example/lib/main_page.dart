@@ -26,8 +26,10 @@ class MainPageState extends State<MainPage> {
     super.initState();
     registerCallbacks();
     widget.initSdk().then((res) {
+      //test all the api functions
       widget.appsFlyerSdk.setUserEmails(
           ["a@a.com", "b.@b.com"], EmailCryptType.EmailCryptTypeSHA1);
+      widget.appsFlyerSdk.enableLocationCollection(true);
     });
   }
 
