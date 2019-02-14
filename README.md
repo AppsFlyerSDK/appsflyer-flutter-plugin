@@ -6,12 +6,11 @@ A Flutter plugin for AppsFlyer SDK.
 
 [![pub package](https://img.shields.io/pub/v/appsflyer_sdk.svg)](https://pub.dartlang.org/packages/appsflyer_sdk) [![Build Status](https://travis-ci.org/AppsFlyerSDK/flutter_appsflyer_sdk.svg?branch=master)](https://travis-ci.org/AppsFlyerSDK/flutter_appsflyer_sdk)
 
-## Getting Started
+In order for us to provide optimal support, we would kindly ask you to submit any issues to support@appsflyer.com
 
-For help getting started with Flutter, view our online
-[documentation](https://flutter.io/).
+When submitting an issue please specify your AppsFlyer sign-up (account) email , your app ID , production steps, logs, code snippets and any additional relevant information.
 
-For help on editing plugin code, view the [documentation](https://flutter.io/developing-packages/#edit-plugin-package).
+
 
 ---
 
@@ -22,14 +21,18 @@ For help on editing plugin code, view the [documentation](https://flutter.io/dev
 
 ### This plugin is built for
 
-- iOS AppsFlyerSDK **v4.8.10**
-- Android AppsFlyerSDK **v4.8.19**
+- iOS AppsFlyerSDK **v4.8.12**
+- Android AppsFlyerSDK **v4.8.20**
 
 ##<a id="api-methods"> API Methods
 
 ---
+## **Getting started**
+In order to install the plugin, visit [this](https://pub.dartlang.org/packages/appsflyer_sdk#-installing-tab-) page.
 
-##### **`AppsflyerSdk(Map options)`**
+To start using AppsFlyer you first need to create an instance of `AppsflyerSdk` before using any other of our sdk functionalities.  
+
+##### **`AppsflyerSdk(Map options)`** 
 
 | parameter | type  | description       |
 | --------- | ----- | ----------------- |
@@ -57,7 +60,7 @@ AppsflyerSdk appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
 
 ```
 
-** Or you can use `AppsFlyerOptions` class instead**
+**Or you can use `AppsFlyerOptions` class instead**
 
 ##### **`AppsflyerSdk(Map options)`**
 
@@ -75,6 +78,8 @@ final AppsFlyerOptions options = AppsFlyerOptions(afDevKey: "af dev key",
                                                   showDebug: true,
                                                   appId: "123456789");
 ```
+
+Once `AppsflyerSdk` object is created, you can call `initSdk` method.
 
 ##### **`static Future<dynamic> initSdk() async`**
 
@@ -98,7 +103,6 @@ try {
 ```
 
 ---
-
 ##### **`static Future<bool> trackEvent(String eventName, Map eventValues) async`** (optional)
 
 - These in-app events help you track how loyal users discover your app, and attribute them to specific
@@ -165,7 +169,8 @@ _Example of failure response:_
   "data": "SOME_ERROR_MESSAGE"
 }
 ```
-
+#### Deep Link
+In case you want to use [deep links](https://en.wikipedia.org/wiki/Deep_linking) in your app, you will need to use `registerOnAppOpenAttributionCallback` on the `AppsflyerSdk` instance you've created. 
 ##### **`static Stream<dynamic> registerOnAppOpenAttributionCallback()`**
 
 _Example:_
@@ -192,3 +197,124 @@ _Example of response on deep-link "https://flutter.demo" :_
 ```
 
 ---
+#### Other functionalities:
+**`void setUserEmails(List<String> emails, [EmailCryptType cryptType]`**
+Set the user emails with the given encryption (`EmailCryptTypeNone, EmailCryptTypeSHA1, EmailCryptTypeMD5, EmailCryptTypeSHA256`). the default encryption is `EmailCryptTypeNone`.
+_Example:_
+```dart
+appsFlyerSdk.setUserEmails(
+       ["a@a.com", "b@b.com"], EmailCryptType.EmailCryptTypeSHA1);
+```
+**`void setMinTimeBetweenSessions(int seconds)`**
+You can set the minimum time between session (the default is 5 seconds)
+```dart
+appsFlyerSdk.setMinTimeBetweenSessions(3)
+```
+**`void stopTracking(bool isTrackingStopped)`**
+You can stop sending events to Appsflyer by using this method.
+_Example:_
+```dart
+widget.appsFlyerSdk.stopTracking(true);
+```
+**`void setCurrencyCode(String currencyCode)`**
+_Example:_
+```dart
+appsFlyerSdk.setCurrencyCode("currencyCode");
+```
+**`void setIsUpdate(bool isUpdate)`**
+_Example:_
+```dart
+appsFlyerSdk.setIsUpdate(true);
+```
+**`void enableUninstallTracking(String senderId)`**
+_Example:_
+```dart
+appsFlyerSdk.enableUninstallTracking("senderId");
+```
+**`void setImeiData(String imei)`**
+_Example:_
+```dart
+appsFlyerSdk.setImeiData("imei");
+```
+**`void setAndroidIdData(String androidIdData)`**
+_Example:_
+```dart
+appsFlyerSdk.setAndroidIdData("androidId");
+```
+**`void enableLocationCollection(bool flag)`**
+_Example:_
+```dart
+appsFlyerSdk.enableLocationCollection(true);
+```
+**`void setCustomerUserId(String userId)`**
+[What is customer user id?](https://support.appsflyer.com/hc/en-us/articles/207032016-Customer-User-ID)
+_Example:_
+```dart
+appsFlyerSdk.setCustomerUserId("id");
+```
+**`void waitForCustomerUserId(bool wait)`**
+You can set this function to `true` if you don't want to track events without setting customer id first.
+_Example:_
+```dart
+appsFlyerSdk.waitForCustomerUserId(true);
+```
+**`void setAdditionalData(Map addionalData)`**
+_Example:_
+```dart
+appsFlyerSdk.setAdditionalData({"customData": "data"});
+```
+**`void setCollectAndroidId(bool isCollect)`**
+_Example:_
+```dart
+appsFlyerSdk.setCollectAndroidId(true);
+```
+**`void setCollectIMEI(bool isCollect)`**
+_Example:_
+```dart
+appsFlyerSdk.setCollectIMEI(false);
+```
+**`void setHost(String hostPrefix, String hostName)`**
+You can change the default host (appsflyer) by using this function
+_Example:_
+```dart
+appsFlyerSdk.setHost("pref", "my-host");
+```
+**`Future<String> getHostName()`**
+_Example:_
+```dart
+appsFlyerSdk.getHostName().then((name) {
+         print("Host name: ${name}");
+       });
+```
+**`Future<String> getHostPrefix()`**
+_Example:_
+```dart
+appsFlyerSdk.getHostPrefix().then((name) {
+         print("Host prefix: ${name}");
+       });
+```
+**`void updateServerUninstallToken(String token)`**
+_Example:_
+```dart
+appsFlyerSdk.updateServerUninstallToken("token");
+```
+**`Stream validateAndTrackInAppPurchase( String publicKey,
+      String signature,
+      String purchaseData,
+      String price,
+      String currency,
+      Map<String, String> additionalParameters)`**
+_Example:_
+```dart
+appsFlyerSdk.validateAndTrackInAppPurchase(
+           "publicKey",
+           "signature",
+           "purchaseData",
+           "price",
+           "currency",
+           {"fs": "fs"}).listen((data) {
+         print(data);
+       }).onError((error) {
+         print(error);
+       });
+```

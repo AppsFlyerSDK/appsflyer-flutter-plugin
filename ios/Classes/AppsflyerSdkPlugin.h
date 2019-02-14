@@ -26,3 +26,4 @@
 // Stream Channels
 #define afMethodChannel                 @"af-api"
 #define afEventChannel                  @"af-events"
+#define afValidatePurchaseChannel       @"af-validate-purchase"

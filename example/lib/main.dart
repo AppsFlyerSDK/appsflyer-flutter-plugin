@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 
 void main() {
-  final AppsFlyerOptions options = AppsFlyerOptions(afDevKey: "fdf");
-  print("++++++++++++++DEV KEY++++++++++++" + options.afDevKey);
-  print("++++++++++++++APP ID+++++++++++++" + options.appId);
+  final AppsFlyerOptions options =
+      AppsFlyerOptions(afDevKey: "yourDevKey", appId: "12456324");
   runApp(MyApp(appsFlyerOptions: options));
 }
 
@@ -24,7 +23,7 @@ class MyApp extends StatelessWidget {
   }
 
   Future<void> initSdk() {
-    appsflyerSdk.initSdk().then((onValue) {
+    return appsflyerSdk.initSdk().then((onValue) {
       print(onValue.toString());
     }).catchError((onError) {
       print(onError.toString());

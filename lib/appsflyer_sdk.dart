@@ -7,6 +7,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:core';
+import 'package:flutter/material.dart';
 
 part 'src/appsflyer_sdk.dart';
 part 'src/appsflyer_constants.dart';
