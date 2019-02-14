@@ -4,9 +4,7 @@ import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 
 void main() {
   final AppsFlyerOptions options =
-      AppsFlyerOptions(afDevKey: "fdf", appId: "12456324");
-  print("++++++++++++++DEV KEY++++++++++++" + options.afDevKey);
-  print("++++++++++++++APP ID+++++++++++++" + options.appId);
+      AppsFlyerOptions(afDevKey: "yourDevKey", appId: "12456324");
   runApp(MyApp(appsFlyerOptions: options));
 }
 
