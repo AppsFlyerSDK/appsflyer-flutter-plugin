@@ -27,9 +27,40 @@ class MainPageState extends State<MainPage> {
     registerCallbacks();
     widget.initSdk().then((res) {
       //test all the api functions
-      widget.appsFlyerSdk.setUserEmails(
-          ["a@a.com", "b.@b.com"], EmailCryptType.EmailCryptTypeSHA1);
-      widget.appsFlyerSdk.enableLocationCollection(true);
+      // widget.appsFlyerSdk.setUserEmails(
+      // ["a@a.com", "b.@b.com"], EmailCryptType.EmailCryptTypeSHA1);
+      // widget.appsFlyerSdk.setMinTimeBetweenSessions(3);
+      // widget.appsFlyerSdk.stopTracking(false);
+      // widget.appsFlyerSdk.setCurrencyCode("currencyCode");
+      // widget.appsFlyerSdk.setIsUpdate(true);
+      // widget.appsFlyerSdk.enableUninstallTracking("senderId");
+      // widget.appsFlyerSdk.setImeiData("imei");
+      // widget.appsFlyerSdk.setAndroidIdData("androidId");
+      // widget.appsFlyerSdk.enableLocationCollection(true);
+      // widget.appsFlyerSdk.setCustomerUserId("id");
+      // widget.appsFlyerSdk.waitForCustomerUserId(true);
+      // widget.appsFlyerSdk.setAdditionalData({"customData": "data"});
+      // widget.appsFlyerSdk.setCollectAndroidId(true);
+      // widget.appsFlyerSdk.setCollectIMEI(true);
+      // widget.appsFlyerSdk.setHost("pref", "my-host");
+      // widget.appsFlyerSdk.getHostName().then((name) {
+      //   print("Host name: ${name}");
+      // });
+      // widget.appsFlyerSdk.getHostPrefix().then((name) {
+      //   print("Host prefix: ${name}");
+      // });
+      // widget.appsFlyerSdk.updateServerUninstallToken("token");
+      // widget.appsFlyerSdk.validateAndTrackInAppPurchase(
+      //     "publicKey",
+      //     "signature",
+      //     "purchaseData",
+      //     "price",
+      //     "currency",
+      //     {"fs": "fs"}).listen((data) {
+      //   print(data);
+      // }).onError((error) {
+      //   print(error);
+      // });
     });
   }
 
@@ -48,7 +79,7 @@ class MainPageState extends State<MainPage> {
     );
   }
 
-  Future<bool> sendEvent(String eventName, Map eventValues) async {
+  void sendEvent(String eventName, Map eventValues) async {
     bool result;
     try {
       result = await widget.appsFlyerSdk.trackEvent(eventName, eventValues);

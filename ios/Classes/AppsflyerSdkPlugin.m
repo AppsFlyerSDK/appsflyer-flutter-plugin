@@ -39,16 +39,16 @@
     }else if([@"setCurrencyCode" isEqualToString:call.method ]){
         //
     }else if([@"setMinTimeBetweenSessions" isEqualToString:call.method]){
-        //
+        [self setMinTimeBetweenSessions:call result:result];
     }else if([@"getHostPrefix" isEqualToString:call.method]){
-        
+        [self getHostPrefix:result];
     }else if([@"getHostName" isEqualToString:call.method]){
-        
-    }else if([@"setHost" isEqualToString:call.method]){
-        
+        [self getHostName:result];
+    }else if([@"setHost" isEqualToString:call.method]){
+        [self setHost:call result:result];
     }else if([@"setAdditionalData" isEqualToString:call.method]){
         [self setAdditionalData:call result:result];
-    }else if([@"validataAndTrackInAppPurchase" isEqualToString:call.method]){
+    }else if([@"validateAndTrackInAppPurchase" isEqualToString:call.method]){
         [self validateAndTrackInAppPurchase:call result:result];
     }
     else{
@@ -56,14 +56,55 @@
     }
 }
 
+- (void)getHostPrefix:(FlutterResult)result{
+    result([[AppsFlyerTracker sharedTracker] hostPrefix]);
+}
+
+- (void)getHostName:(FlutterResult)result{
+    result([[AppsFlyerTracker sharedTracker] host]);
+}
+
+- (void)setHost:(FlutterMethodCall*)call result:(FlutterResult)result{
+    NSString* hostName = call.arguments[@"hostName"];
+    NSString* hostPrefix = call.arguments[@"hostPrefix"];
+    [[AppsFlyerTracker sharedTracker] setHost:hostName withHostPrefix:hostPrefix];
+    result(nil);
+}
+
 - (void)validateAndTrackInAppPurchase:(FlutterMethodCall*)call result:(FlutterResult)result{
     NSString* publicKey = call.arguments[@"publicKey"];
     NSString* signature = call.arguments[@"signature"];
-    NSString* purchaseData = call.arguments[@"purchaseData"];
     NSString* price = call.arguments[@"price"];
-    NSString* currecncy = call.arguments[@"currency"];
+    NSString* currency = call.arguments[@"currency"];
     NSDictionary* additionalParameters = call.arguments[@"additionalParameters"];
+    [[AppsFlyerTracker sharedTracker] validateAndTrackInAppPurchase:publicKey price:price currency:currency transactionId:signature additionalParameters:additionalParameters
+                                                            success:^(NSDictionary *response) {
+                                                                NSLog(@"Success");
+                                                                [self onValidateSuccess:response];
+                                                            }
+                                                            failure:^(NSError *error, id reponse) {
+                                                                NSLog(@"Fail");
+                                                                [self onValidateFail:error];
+                                                            }];
     result(nil);
+}
+
+- (void)onValidateSuccess: (NSDictionary*) data{
+    NSDictionary* message = @{
+                              @"status": afSuccess,
+                              @"data": data
+                              };
+    
+    [self performSelectorOnMainThread:@selector(handleCallback:) withObject:@[message,afValidatePurchaseChannel] waitUntilDone:NO];
+}
+
+-(void)onValidateFail:(NSError*)error{
+    NSDictionary* message = @{
+                              @"status": afSuccess,
+                              @"error": @"error connecting"
+                              };
+    
+    [self performSelectorOnMainThread:@selector(handleCallback:) withObject:@[message,afValidatePurchaseChannel] waitUntilDone:NO];
 }
 
 - (void)setAdditionalData:(FlutterMethodCall*)call result:(FlutterResult)result{
@@ -85,7 +126,6 @@
 }
 
 - (void)updateServerUninstallToken:(FlutterMethodCall*)call result:(FlutterResult)result{
-    //TODO:
     result(nil);
 }
 
@@ -153,6 +193,12 @@
     result(@YES);
 }
 
+- (void)setMinTimeBetweenSessions:(FlutterMethodCall*)call result:(FlutterResult)result{
+    NSInteger seconds = [(id)call.arguments[@"seconds"] integerValue];
+    [AppsFlyerTracker sharedTracker].minTimeBetweenSessions = seconds;
+    result(nil);
+}
+
 - (void)appDidBecomeActive {
     [[AppsFlyerTracker sharedTracker] trackAppLaunch];
     NSLog(@"App Did Become Active");
@@ -166,7 +212,7 @@
                               @"data": installData
                               };
     
-    [self performSelectorOnMainThread:@selector(handleCallback:) withObject:message waitUntilDone:NO];
+    [self performSelectorOnMainThread:@selector(handleCallback:) withObject:@[message,afEventChannel] waitUntilDone:NO];
 }
 
 -(void)onConversionDataRequestFailure:(NSError *) _errorMessage {
@@ -177,7 +223,7 @@
                                    @"data": _errorMessage.localizedDescription
                                    };
     
-    [self performSelectorOnMainThread:@selector(handleCallback:) withObject:errorMessage waitUntilDone:NO];
+    [self performSelectorOnMainThread:@selector(handleCallback:) withObject:@[errorMessage,afEventChannel] waitUntilDone:NO];
 }
 
 
@@ -189,7 +235,7 @@
                               @"data": attributionData
                               };
     
-    [self performSelectorOnMainThread:@selector(handleCallback:) withObject:message waitUntilDone:NO];
+    [self performSelectorOnMainThread:@selector(handleCallback:) withObject:@[message,afEventChannel] waitUntilDone:NO];
 }
 
 - (void) onAppOpenAttributionFailure:(NSError *)_errorMessage {
@@ -200,21 +246,24 @@
                                    @"data": _errorMessage.localizedDescription
                                    };
     
-    [self performSelectorOnMainThread:@selector(handleCallback:) withObject:errorMessage waitUntilDone:NO];
+    [self performSelectorOnMainThread:@selector(handleCallback:) withObject:@[errorMessage,afEventChannel] waitUntilDone:NO];
 }
 
 
--(void) handleCallback:(NSDictionary *) message{
+-(void) handleCallback:(NSArray *) objArray{
     
     UIViewController *topMostViewControllerObj =  [[[UIApplication sharedApplication] delegate] window].rootViewController;
     FlutterViewController *flutterViewController = (FlutterViewController *)topMostViewControllerObj;
+    
+    NSDictionary* message = [objArray objectAtIndex:0];
+    NSString* channel = [objArray objectAtIndex:1];
     
     NSError *error;
     NSData *dataFromDict = [NSJSONSerialization dataWithJSONObject:message
                                                            options:NSJSONWritingPrettyPrinted
                                                              error:&error];
     if(!error){
-        [flutterViewController sendOnChannel:afEventChannel message:dataFromDict binaryReply:^(NSData * _Nullable reply) {
+        [flutterViewController sendOnChannel:channel message:dataFromDict binaryReply:^(NSData * _Nullable reply) {
             //
         }];
     }

@@ -2,9 +2,11 @@ package com.appsflyer.appsflyersdk;
 
 import android.app.Application;
 import android.content.Context;
+import android.util.Log;
 
 import com.appsflyer.AFLogger;
 import com.appsflyer.AppsFlyerConversionListener;
+import com.appsflyer.AppsFlyerInAppPurchaseValidatorListener;
 import com.appsflyer.AppsFlyerLib;
 import com.appsflyer.AppsFlyerProperties;
 
@@ -24,12 +26,15 @@ import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
 import io.flutter.view.FlutterView;
 
+import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_EVENTS_CHANNEL;
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_FAILURE;
+import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_FLUTTER_LOG_TAG;
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_ON_APP_OPEN_ATTRIBUTION;
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_ON_ATTRIBUTION_FAILURE;
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_ON_INSTALL_CONVERSION_DATA_LOADED;
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_ON_INSTALL_CONVERSION_FAILURE;
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_SUCCESS;
+import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_VALIDATE_PURCHASE_CHANNEL;
 
 /**
  * AppsflyerSdkPlugin
@@ -146,15 +151,45 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
     }
 
     private void validateAndTrackInAppPurchase(MethodCall call, Result result) {
-        Context context = (Context)call.argument("context");
+        registerValidatorListener();
         String publicKey = (String)call.argument("publicKey");
         String signature = (String)call.argument("signature");
         String purchaseData = (String)call.argument("purchaseData");
         String price = (String)call.argument("price");
         String currency = (String)call.argument("currency");
         Map<String, String> additionalParameters = (Map<String,String>)call.argument("additionalParameters");
-        AppsFlyerLib.getInstance().validateAndTrackInAppPurchase(context,publicKey,signature,purchaseData,price,currency,additionalParameters);
+        AppsFlyerLib.getInstance().validateAndTrackInAppPurchase(mContext,publicKey,signature,purchaseData,price,currency,additionalParameters);
         result.success(null);
+    }
+
+    private void registerValidatorListener() {
+        AppsFlyerInAppPurchaseValidatorListener validatorListener = new AppsFlyerInAppPurchaseValidatorListener() {
+            @Override
+            public void onValidateInApp() {
+                JSONObject obj = new JSONObject();
+
+                try {
+                    obj.put("status", AF_SUCCESS);
+                    sendEventToDart(obj, AF_VALIDATE_PURCHASE_CHANNEL);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+            }
+
+            @Override
+            public void onValidateInAppFailure(String s) {
+                JSONObject obj = new JSONObject();
+                try {
+                    obj.put("status", AF_FAILURE);
+                    obj.put("error", s);
+                    sendEventToDart(obj, AF_VALIDATE_PURCHASE_CHANNEL);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+        AppsFlyerLib.getInstance().registerValidatorListener(mContext,validatorListener);
     }
 
     private void setMinTimeBetweenSessions(MethodCall call, Result result) {
@@ -164,11 +199,11 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
     }
 
     private void getHostPrefix(Result result) {
-//        result.success(AppsFlyerLib.getInstance());
+        result.success(AppsFlyerLib.getInstance().getHostPrefix());
     }
 
     private void getHostName(Result result) {
-
+        result.success(AppsFlyerLib.getInstance().getHostName());
     }
 
     private void setCollectIMEI(MethodCall call, Result result) {
@@ -184,7 +219,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
     }
 
     private void waitForCustomerUserId(MethodCall call, Result result) {
-        boolean wait = (boolean)call.argument("");
+        boolean wait = (boolean)call.argument("wait");
         AppsFlyerLib.getInstance().waitForCustomerUserId(wait);
         result.success(null);
     }
@@ -228,9 +263,8 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
     }
 
     private void updateServerUninstallToken(MethodCall call, Result result) {
-        Context context = (Context) call.argument("context");
         String token = (String) call.argument("token");
-        AppsFlyerLib.getInstance().updateServerUninstallToken(context, token);
+        AppsFlyerLib.getInstance().updateServerUninstallToken(mContext, token);
         result.success(null);
     }
 
@@ -242,8 +276,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
 
     private void stopTracking(MethodCall call, Result result) {
         boolean isTrackingStopped = (boolean) call.argument("isTrackingStopped");
-        Context context = (Context) call.argument("context");
-        AppsFlyerLib.getInstance().stopTracking(isTrackingStopped, context);
+        AppsFlyerLib.getInstance().stopTracking(isTrackingStopped, mContext);
         result.success(null);
     }
 
@@ -263,8 +296,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
         String hostPrefix = call.argument(AppsFlyerConstants.AF_HOST_PREFIX);
         String hostName = call.argument(AppsFlyerConstants.AF_HOST_NAME);
 
-        //TODO - uncomment the method when 4.8.20 is released
-//        AppsFlyerLib.getInstance().setHost(hostPrefix, hostName);
+        AppsFlyerLib.getInstance().setHost(hostPrefix, hostName);
     }
 
     private void initSdk(MethodCall call, MethodChannel.Result result) {
@@ -314,27 +346,27 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
         return new AppsFlyerConversionListener() {
             @Override
             public void onInstallConversionDataLoaded(Map<String, String> map) {
-                handleSuccess(AF_ON_INSTALL_CONVERSION_DATA_LOADED, map);
+                handleSuccess(AF_ON_INSTALL_CONVERSION_DATA_LOADED, map, AF_EVENTS_CHANNEL);
             }
 
             @Override
             public void onInstallConversionFailure(String errorMessage) {
-                handleError(AF_ON_INSTALL_CONVERSION_FAILURE, errorMessage);
+                handleError(AF_ON_INSTALL_CONVERSION_FAILURE, errorMessage, AF_EVENTS_CHANNEL);
             }
 
             @Override
             public void onAppOpenAttribution(Map<String, String> map) {
-                handleSuccess(AF_ON_APP_OPEN_ATTRIBUTION, map);
+                handleSuccess(AF_ON_APP_OPEN_ATTRIBUTION, map, AF_EVENTS_CHANNEL);
             }
 
             @Override
             public void onAttributionFailure(String errorMessage) {
-                handleError(AF_ON_ATTRIBUTION_FAILURE, errorMessage);
+                handleError(AF_ON_ATTRIBUTION_FAILURE, errorMessage, AF_EVENTS_CHANNEL);
             }
         };
     }
 
-    private void handleSuccess(String eventType, Map<String, String> data) {
+    private void handleSuccess(String eventType, Map<String, String> data, String channel) {
         try {
             JSONObject obj = new JSONObject();
 
@@ -342,13 +374,13 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
             obj.put("type", eventType);
             obj.put("data", new JSONObject(data));
 
-            sendEventToDart(obj);
+            sendEventToDart(obj, channel);
         } catch (JSONException e) {
             e.printStackTrace();
         }
     }
 
-    private void handleError(String eventType, String errorMessage) {
+    private void handleError(String eventType, String errorMessage, String channel) {
 
         try {
             JSONObject obj = new JSONObject();
@@ -357,20 +389,20 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
             obj.put("type", eventType);
             obj.put("data", errorMessage);
 
-            sendEventToDart(obj);
+            sendEventToDart(obj, channel);
         } catch (JSONException e) {
             e.printStackTrace();
         }
     }
 
-    private void sendEventToDart(final JSONObject params) {
+    private void sendEventToDart(final JSONObject params, String channel) {
 
         byte[] bytes = params.toString().getBytes();
 
         ByteBuffer message = ByteBuffer.allocateDirect(bytes.length);
         message.put(bytes);
 
-        mFlutterVliew.send(AppsFlyerConstants.AF_EVENTS_CHANNEL, message, new BinaryMessenger.BinaryReply() {
+        mFlutterVliew.send(channel, message, new BinaryMessenger.BinaryReply() {
             @Override
             public void reply(ByteBuffer byteBuffer) {
                 //
