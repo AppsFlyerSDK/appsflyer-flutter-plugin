@@ -1,5 +1,6 @@
 package com.appsflyer.appsflyersdk;
 
+import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
 import android.util.Log;
@@ -46,6 +47,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
     private FlutterView mFlutterVliew;
     private Context mContext;
     private Application mApplication;
+    private Intent mIntent;
 
     private static AppsflyerSdkPlugin instance = null;
 
@@ -53,6 +55,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
         this.mFlutterVliew = registrar.view();
         this.mContext = registrar.activity().getApplicationContext();
         this.mApplication = registrar.activity().getApplication();
+        this.mIntent = registrar.activity().getIntent();
     }
 
     public static void registerWith(Registrar registrar) {
@@ -300,8 +303,13 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
     }
 
     private void initSdk(MethodCall call, MethodChannel.Result result) {
+
         AppsFlyerConversionListener gcdListener = null;
         AppsFlyerLib instance = AppsFlyerLib.getInstance();
+
+        if(mIntent.getData()!=null) {
+            instance.setPluginDeepLinkData(mIntent);
+        }
 
         String afDevKey = (String) call.argument(AppsFlyerConstants.AF_DEV_KEY);
 
