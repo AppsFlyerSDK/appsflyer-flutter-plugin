@@ -1,5 +1,5 @@
 #import <Flutter/Flutter.h>
-#import <AppsFlyerFramework/AppsFlyerLib/AppsFlyerTracker.h>
+#import <AppsFlyerLib/AppsFlyerTracker.h>
 
 
 @interface AppsflyerSdkPlugin : NSObject<FlutterPlugin, AppsFlyerTrackerDelegate>
