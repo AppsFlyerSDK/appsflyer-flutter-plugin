@@ -3,6 +3,7 @@ package com.appsflyer.appsflyersdk;
 import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
+import android.content.Intent;
 import android.util.Log;
 
 import com.appsflyer.AFLogger;
