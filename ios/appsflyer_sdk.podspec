@@ -3,7 +3,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'appsflyer_sdk'
-  s.version          = '1.1.1'
+  s.version          = '1.1.2'
   s.summary          = 'AppsFlyer Integration for Flutter'
   s.description      = <<-DESC
 AppsFlyer is the market leader in mobile advertising attribution & analytics, helping marketers to pinpoint their targeting, optimize their ad spend and boost their ROI.
@@ -21,6 +21,6 @@ AppsFlyer is the market leader in mobile advertising attribution & analytics, he
   s.source_files = 'Classes/**/*'
   s.public_header_files = 'Classes/**/*.h'
   s.dependency 'Flutter'
-  s.ios.dependency 'AppsFlyerFramework', '4.8.12'
+  s.ios.dependency 'AppsFlyerFramework', '4.9.0'
   
 end

@@ -1,5 +1,8 @@
 # Versions
 
+## 1.1.2 
+- Updated appsflyer framework to 4.9.0
+
 ## 1.1.0
 
 - Added the following functions:
