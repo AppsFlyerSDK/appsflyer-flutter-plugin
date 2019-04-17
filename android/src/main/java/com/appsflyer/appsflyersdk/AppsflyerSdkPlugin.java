@@ -139,6 +139,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
             case "validateAndTrackInAppPurchase":
                 validateAndTrackInAppPurchase(call, result);
                 break;
+            case "getAppsDeviceFlyerId":
+                result.success(AppsFlyerLib.getInstance().getAppsFlyerUID(mContext));
+                break;
             default:
                 result.notImplemented();
                 break;

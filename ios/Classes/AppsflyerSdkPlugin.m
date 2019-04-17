@@ -48,8 +48,11 @@
         [self setHost:call result:result];
     }else if([@"setAdditionalData" isEqualToString:call.method]){
         [self setAdditionalData:call result:result];
+        
     }else if([@"validateAndTrackInAppPurchase" isEqualToString:call.method]){
         [self validateAndTrackInAppPurchase:call result:result];
+    }else if([@"getAppsDeviceFlyerId" isEqualToString:call.method]){
+        result([AppsFlyerTracker sharedTracker].getAppsDeviceFlyerId)
     }
     else{
         result(FlutterMethodNotImplemented);
