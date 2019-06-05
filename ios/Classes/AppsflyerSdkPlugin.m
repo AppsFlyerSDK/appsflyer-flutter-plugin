@@ -50,10 +50,16 @@
         [self setAdditionalData:call result:result];
     }else if([@"validateAndTrackInAppPurchase" isEqualToString:call.method]){
         [self validateAndTrackInAppPurchase:call result:result];
+    }else if([@"getAppsFlyerUID" isEqualToString:call.method]){
+        [self getAppsFlyerUID:result];
     }
     else{
         result(FlutterMethodNotImplemented);
     }
+}
+
+- (void)getAppsFlyerUID:(FlutterResult)result{
+    result([[AppsFlyerTracker sharedTracker] getAppsFlyerUID]);
 }
 
 - (void)getHostPrefix:(FlutterResult)result{
