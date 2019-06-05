@@ -74,95 +74,103 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
     public void onMethodCall(MethodCall call, Result result) {
         final String method = call.method;
         switch (method) {
-            case "initSdk":
-                initSdk(call, result);
-                break;
-            case "trackEvent":
-                trackEvent(call, result);
-                break;
-            case "setHost":
-                setHost(call, result);
-                break;
-            case "setCurrencyCode":
-                setCurrencyCode(call, result);
-                break;
-            case "setIsUpdate":
-                setIsUpdate(call, result);
-                break;
-            case "stopTracking":
-                stopTracking(call, result);
-                break;
-            case "enableUninstallTracking":
-                enableUninstallTracking(call, result);
-                break;
-            case "updateServerUninstallToken":
-                updateServerUninstallToken(call, result);
-                break;
-            case "setImeiData":
-                setImeiData(call, result);
-                break;
-            case "setAndroidIdData":
-                setAndroidIdData(call, result);
-                break;
-            case "enableLocationCollection":
-                enableLocationCollection(call, result);
-                break;
-            case "setCustomerUserId":
-                setCustomerUserId(call, result);
-                break;
-            case "waitForCustomerUserId":
-                waitForCustomerUserId(call, result);
-                break;
-            case "setAdditionalData":
-                setAdditionalData(call, result);
-                break;
-            case "setUserEmails":
-                setUserEmails(call, result);
-                break;
-            case "setUserEmailsWithCryptType":
-                setUserEmailsWithCryptType(call, result);
-            case "setCollectAndroidId":
-                setCollectAndroidId(call, result);
-                break;
-            case "setCollectIMEI":
-                setCollectIMEI(call, result);
-                break;
-            case "getHostName":
-                getHostName(result);
-                break;
-            case "getHostPrefix":
-                getHostPrefix(result);
-                break;
-            case "setMinTimeBetweenSessions":
-                setMinTimeBetweenSessions(call, result);
-                break;
-            case "validateAndTrackInAppPurchase":
-                validateAndTrackInAppPurchase(call, result);
-                break;
-            default:
-                result.notImplemented();
-                break;
+        case "initSdk":
+            initSdk(call, result);
+            break;
+        case "trackEvent":
+            trackEvent(call, result);
+            break;
+        case "setHost":
+            setHost(call, result);
+            break;
+        case "setCurrencyCode":
+            setCurrencyCode(call, result);
+            break;
+        case "setIsUpdate":
+            setIsUpdate(call, result);
+            break;
+        case "stopTracking":
+            stopTracking(call, result);
+            break;
+        case "enableUninstallTracking":
+            enableUninstallTracking(call, result);
+            break;
+        case "updateServerUninstallToken":
+            updateServerUninstallToken(call, result);
+            break;
+        case "setImeiData":
+            setImeiData(call, result);
+            break;
+        case "setAndroidIdData":
+            setAndroidIdData(call, result);
+            break;
+        case "enableLocationCollection":
+            enableLocationCollection(call, result);
+            break;
+        case "setCustomerUserId":
+            setCustomerUserId(call, result);
+            break;
+        case "waitForCustomerUserId":
+            waitForCustomerUserId(call, result);
+            break;
+        case "setAdditionalData":
+            setAdditionalData(call, result);
+            break;
+        case "setUserEmails":
+            setUserEmails(call, result);
+            break;
+        case "setUserEmailsWithCryptType":
+            setUserEmailsWithCryptType(call, result);
+        case "setCollectAndroidId":
+            setCollectAndroidId(call, result);
+            break;
+        case "setCollectIMEI":
+            setCollectIMEI(call, result);
+            break;
+        case "getHostName":
+            getHostName(result);
+            break;
+        case "getHostPrefix":
+            getHostPrefix(result);
+            break;
+        case "setMinTimeBetweenSessions":
+            setMinTimeBetweenSessions(call, result);
+            break;
+        case "validateAndTrackInAppPurchase":
+            validateAndTrackInAppPurchase(call, result);
+            break;
+        case "getAppsFlyerUID":
+            getAppsFlyerUID(result);
+            break;
+        default:
+            result.notImplemented();
+            break;
         }
+    }
+
+    private void getAppsFlyerUID(Result result) {
+        result.success(AppsFlyerLib.getInstance().getAppsFlyerUID(this.mContext));
     }
 
     private void setUserEmailsWithCryptType(MethodCall call, Result result) {
         List<String> emails = call.argument("emails");
         int cryptTypeInt = call.argument("cryptType");
         AppsFlyerProperties.EmailsCryptType cryptType = AppsFlyerProperties.EmailsCryptType.values()[cryptTypeInt];
-        if(emails!=null) {
+        if (emails != null) {
             AppsFlyerLib.getInstance().setUserEmails(cryptType, emails.toArray(new String[0]));
         }
     }
 
     private void validateAndTrackInAppPurchase(MethodCall call, Result result) {
         registerValidatorListener();
-        String publicKey = (String)call.argument("publicKey");
-        String signature = (String)call.argument("signature");
-        String purchaseData = (String)call.argument("purchaseData");
-        String price = (String)call.argument("price");
-        String currency = (String)call.argument("currency");
-        Map<String, String> additionalParameters = (Map<String,String>)call.argument("additionalParameters");
-        AppsFlyerLib.getInstance().validateAndTrackInAppPurchase(mContext,publicKey,signature,purchaseData,price,currency,additionalParameters);
+        String publicKey = (String) call.argument("publicKey");
+        String signature = (String) call.argument("signature");
+        String purchaseData = (String) call.argument("purchaseData");
+        String price = (String) call.argument("price");
+        String currency = (String) call.argument("currency");
+        Map<String, String> additionalParameters = (Map<String, String>) call.argument("additionalParameters");
+        AppsFlyerLib.getInstance().validateAndTrackInAppPurchase(mContext, publicKey, signature, purchaseData, price,
+                currency, additionalParameters);
         result.success(null);
     }
 
@@ -193,7 +201,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
                 }
             }
         };
-        AppsFlyerLib.getInstance().registerValidatorListener(mContext,validatorListener);
+        AppsFlyerLib.getInstance().registerValidatorListener(mContext, validatorListener);
     }
 
     private void setMinTimeBetweenSessions(MethodCall call, Result result) {
@@ -223,13 +231,13 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
     }
 
     private void waitForCustomerUserId(MethodCall call, Result result) {
-        boolean wait = (boolean)call.argument("wait");
+        boolean wait = (boolean) call.argument("wait");
         AppsFlyerLib.getInstance().waitForCustomerUserId(wait);
         result.success(null);
     }
 
     private void setAdditionalData(MethodCall call, Result result) {
-        HashMap<String,Object> customData = (HashMap<String,Object>)call.argument("customData");
+        HashMap<String, Object> customData = (HashMap<String, Object>) call.argument("customData");
         AppsFlyerLib.getInstance().setAdditionalData(customData);
         result.success(null);
     }
@@ -308,7 +316,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
         AppsFlyerConversionListener gcdListener = null;
         AppsFlyerLib instance = AppsFlyerLib.getInstance();
 
-        if(mIntent.getData()!=null) {
+        if (mIntent.getData() != null) {
             instance.setPluginDeepLinkData(mIntent);
         }
 

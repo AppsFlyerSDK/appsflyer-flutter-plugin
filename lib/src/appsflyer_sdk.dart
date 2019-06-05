@@ -226,6 +226,10 @@ class AppsflyerSdk {
     }
   }
 
+  Future<String> getAppsFlyerUID() async {
+    return await _methodChannel.invokeMethod("getAppsFlyerUID");
+  }
+
   void waitForCustomerUserId(bool wait) {
     _methodChannel.invokeMethod("waitForCustomerUserId", {'wait': wait});
   }

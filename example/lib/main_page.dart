@@ -43,6 +43,9 @@ class MainPageState extends State<MainPage> {
       // widget.appsFlyerSdk.setCollectAndroidId(true);
       // widget.appsFlyerSdk.setCollectIMEI(true);
       // widget.appsFlyerSdk.setHost("pref", "my-host");
+      // widget.appsFlyerSdk.getAppsFlyerUID().then((value) {
+      //   print("AppsFlyerUID: ${value}");
+      // });
       // widget.appsFlyerSdk.getHostName().then((name) {
       //   print("Host name: ${name}");
       // });
