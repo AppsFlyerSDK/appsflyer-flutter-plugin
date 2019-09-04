@@ -1,5 +1,7 @@
 # Versions
-
+## 1.1.3
+- Added getAppsFlyerUID function to get a device unique user id
+  
 ## 1.1.2 
 - Updated appsflyer framework to 4.9.0
 
