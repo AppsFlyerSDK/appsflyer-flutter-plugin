@@ -4,6 +4,7 @@ class AppsflyerSdk {
   StreamController _afGCDStreamController;
   StreamController _afOpenAttributionStreamController;
   StreamController _afValidtaPurchaseController;
+  final eventChannel = EventChannel(AppsflyerConstants.AF_EVENTS_CHANNEL);
   static AppsflyerSdk _instance;
   final MethodChannel _methodChannel;
 
@@ -259,12 +260,8 @@ class AppsflyerSdk {
   }
 
   void _registerGCDListener() {
-    BinaryMessages.setMessageHandler(AppsflyerConstants.AF_EVENTS_CHANNEL,
-        (ByteData message) async {
-      final buffer = message.buffer;
-      final decodedStr = utf8.decode(buffer.asUint8List());
-      var decodedJSON = jsonDecode(decodedStr);
-
+    eventChannel.receiveBroadcastStream().listen((data) {
+      var decodedJSON = jsonDecode(data);
       String type = decodedJSON['type'];
       switch (type) {
         case AppsflyerConstants.AF_GET_CONVERSION_DATA:
@@ -273,25 +270,16 @@ class AppsflyerSdk {
         case AppsflyerConstants.AF_ON_APP_OPEN_ATTRIBUTION:
           _afOpenAttributionStreamController.sink.add(decodedJSON);
           break;
-        default:
       }
-
-      return null;
     });
   }
 
   void _registerPurchaseValidateListener() {
-    BinaryMessages.setMessageHandler(
-        AppsflyerConstants.AF_VALIDATE_PURCHASE_CHANNEL,
-        (ByteData message) async {
-      final buffer = message.buffer;
-      final decodedStr = utf8.decode(buffer.asUint8List());
-      var decodedJSON = jsonDecode(decodedStr);
-      bool success = decodedJSON['success'] == AppsflyerConstants.AF_SUCCESS;
-      if (success) {
+    eventChannel.receiveBroadcastStream().listen((data) {
+      var decodedJSON = jsonDecode(data);
+      String type = decodedJSON['type'];
+      if (type == AppsflyerConstants.AF_VALIDATE_PURCHASE) {
         _afValidtaPurchaseController.sink.add(decodedJSON);
-      } else {
-        _afValidtaPurchaseController.sink.addError(decodedJSON);
       }
     });
   }

@@ -1,10 +1,11 @@
 package com.appsflyer.appsflyersdk;
 
-import android.app.Activity;
 import android.app.Application;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.util.Log;
+import android.content.IntentFilter;
+import android.os.Build;
 
 import com.appsflyer.AFLogger;
 import com.appsflyer.AppsFlyerConversionListener;
@@ -19,8 +20,10 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Observable;
 
 import io.flutter.plugin.common.BinaryMessenger;
+import io.flutter.plugin.common.EventChannel;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
@@ -30,33 +33,34 @@ import io.flutter.view.FlutterView;
 
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_EVENTS_CHANNEL;
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_FAILURE;
-import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_FLUTTER_LOG_TAG;
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_ON_APP_OPEN_ATTRIBUTION;
-import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_ON_ATTRIBUTION_FAILURE;
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_ON_INSTALL_CONVERSION_DATA_LOADED;
-import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_ON_INSTALL_CONVERSION_FAILURE;
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_SUCCESS;
-import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_VALIDATE_PURCHASE_CHANNEL;
+import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_VALIDATE_PURCHASE;
 
 /**
  * AppsflyerSdkPlugin
  */
 public class AppsflyerSdkPlugin implements MethodCallHandler {
+    private final EventChannel mEventChannel;
     /**
      * Plugin registration.
      */
-    private FlutterView mFlutterVliew;
+    private FlutterView mFlutterView;
     private Context mContext;
     private Application mApplication;
     private Intent mIntent;
+    private BroadcastReceiver mBroadcastReceiver;
 
     private static AppsflyerSdkPlugin instance = null;
 
     AppsflyerSdkPlugin(Registrar registrar) {
-        this.mFlutterVliew = registrar.view();
+        this.mFlutterView = registrar.view();
         this.mContext = registrar.activity().getApplicationContext();
         this.mApplication = registrar.activity().getApplication();
         this.mIntent = registrar.activity().getIntent();
+        this.mEventChannel = new EventChannel(registrar.messenger(), AF_EVENTS_CHANNEL);
+                mEventChannel.setStreamHandler(new AppsFlyerStreamHandler(mContext));
     }
 
     public static void registerWith(Registrar registrar) {
@@ -74,77 +78,77 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
     public void onMethodCall(MethodCall call, Result result) {
         final String method = call.method;
         switch (method) {
-        case "initSdk":
-            initSdk(call, result);
-            break;
-        case "trackEvent":
-            trackEvent(call, result);
-            break;
-        case "setHost":
-            setHost(call, result);
-            break;
-        case "setCurrencyCode":
-            setCurrencyCode(call, result);
-            break;
-        case "setIsUpdate":
-            setIsUpdate(call, result);
-            break;
-        case "stopTracking":
-            stopTracking(call, result);
-            break;
-        case "enableUninstallTracking":
-            enableUninstallTracking(call, result);
-            break;
-        case "updateServerUninstallToken":
-            updateServerUninstallToken(call, result);
-            break;
-        case "setImeiData":
-            setImeiData(call, result);
-            break;
-        case "setAndroidIdData":
-            setAndroidIdData(call, result);
-            break;
-        case "enableLocationCollection":
-            enableLocationCollection(call, result);
-            break;
-        case "setCustomerUserId":
-            setCustomerUserId(call, result);
-            break;
-        case "waitForCustomerUserId":
-            waitForCustomerUserId(call, result);
-            break;
-        case "setAdditionalData":
-            setAdditionalData(call, result);
-            break;
-        case "setUserEmails":
-            setUserEmails(call, result);
-            break;
-        case "setUserEmailsWithCryptType":
-            setUserEmailsWithCryptType(call, result);
-        case "setCollectAndroidId":
-            setCollectAndroidId(call, result);
-            break;
-        case "setCollectIMEI":
-            setCollectIMEI(call, result);
-            break;
-        case "getHostName":
-            getHostName(result);
-            break;
-        case "getHostPrefix":
-            getHostPrefix(result);
-            break;
-        case "setMinTimeBetweenSessions":
-            setMinTimeBetweenSessions(call, result);
-            break;
-        case "validateAndTrackInAppPurchase":
-            validateAndTrackInAppPurchase(call, result);
-            break;
-        case "getAppsFlyerUID":
-            getAppsFlyerUID(result);
-            break;
-        default:
-            result.notImplemented();
-            break;
+            case "initSdk":
+                initSdk(call, result);
+                break;
+            case "trackEvent":
+                trackEvent(call, result);
+                break;
+            case "setHost":
+                setHost(call, result);
+                break;
+            case "setCurrencyCode":
+                setCurrencyCode(call, result);
+                break;
+            case "setIsUpdate":
+                setIsUpdate(call, result);
+                break;
+            case "stopTracking":
+                stopTracking(call, result);
+                break;
+            case "enableUninstallTracking":
+                enableUninstallTracking(call, result);
+                break;
+            case "updateServerUninstallToken":
+                updateServerUninstallToken(call, result);
+                break;
+            case "setImeiData":
+                setImeiData(call, result);
+                break;
+            case "setAndroidIdData":
+                setAndroidIdData(call, result);
+                break;
+            case "enableLocationCollection":
+                enableLocationCollection(call, result);
+                break;
+            case "setCustomerUserId":
+                setCustomerUserId(call, result);
+                break;
+            case "waitForCustomerUserId":
+                waitForCustomerUserId(call, result);
+                break;
+            case "setAdditionalData":
+                setAdditionalData(call, result);
+                break;
+            case "setUserEmails":
+                setUserEmails(call, result);
+                break;
+            case "setUserEmailsWithCryptType":
+                setUserEmailsWithCryptType(call, result);
+            case "setCollectAndroidId":
+                setCollectAndroidId(call, result);
+                break;
+            case "setCollectIMEI":
+                setCollectIMEI(call, result);
+                break;
+            case "getHostName":
+                getHostName(result);
+                break;
+            case "getHostPrefix":
+                getHostPrefix(result);
+                break;
+            case "setMinTimeBetweenSessions":
+                setMinTimeBetweenSessions(call, result);
+                break;
+            case "validateAndTrackInAppPurchase":
+                validateAndTrackInAppPurchase(call, result);
+                break;
+            case "getAppsFlyerUID":
+                getAppsFlyerUID(result);
+                break;
+            default:
+                result.notImplemented();
+                break;
         }
     }
 
@@ -182,7 +186,8 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
 
                 try {
                     obj.put("status", AF_SUCCESS);
-                    sendEventToDart(obj, AF_VALIDATE_PURCHASE_CHANNEL);
+                    obj.put("type", AF_VALIDATE_PURCHASE);
+                    sendEventToDart(obj, AF_EVENTS_CHANNEL);
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -194,8 +199,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
                 JSONObject obj = new JSONObject();
                 try {
                     obj.put("status", AF_FAILURE);
+                    obj.put("type", AF_VALIDATE_PURCHASE);
                     obj.put("error", s);
-                    sendEventToDart(obj, AF_VALIDATE_PURCHASE_CHANNEL);
+                    sendEventToDart(obj, AF_EVENTS_CHANNEL);
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -368,7 +374,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
 
             @Override
             public void onInstallConversionFailure(String errorMessage) {
-                handleError(AF_ON_INSTALL_CONVERSION_FAILURE, errorMessage, AF_EVENTS_CHANNEL);
+                handleError(AF_ON_INSTALL_CONVERSION_DATA_LOADED, errorMessage, AF_EVENTS_CHANNEL);
             }
 
             @Override
@@ -378,7 +384,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
 
             @Override
             public void onAttributionFailure(String errorMessage) {
-                handleError(AF_ON_ATTRIBUTION_FAILURE, errorMessage, AF_EVENTS_CHANNEL);
+                handleError(AF_ON_APP_OPEN_ATTRIBUTION, errorMessage, AF_EVENTS_CHANNEL);
             }
         };
     }
@@ -413,17 +419,10 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
     }
 
     private void sendEventToDart(final JSONObject params, String channel) {
-
-        byte[] bytes = params.toString().getBytes();
-
-        ByteBuffer message = ByteBuffer.allocateDirect(bytes.length);
-        message.put(bytes);
-
-        mFlutterVliew.send(channel, message, new BinaryMessenger.BinaryReply() {
-            @Override
-            public void reply(ByteBuffer byteBuffer) {
-                //
-            }
-        });
+        Intent intent = new Intent();
+        intent.addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES);
+        intent.setAction(AppsFlyerConstants.AF_BROADCAST_ACTION_NAME);
+        intent.putExtra("params",params.toString());
+        mContext.sendBroadcast(intent);
     }
 }
