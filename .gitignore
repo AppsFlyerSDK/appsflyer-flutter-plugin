@@ -94,3 +94,7 @@ android/gradle/
 android/\.project
 
 android/\.classpath
+
+example/ios/Flutter/flutter_export_environment.sh
+
+example/ios/Runner.xcodeproj/project.pbxproj

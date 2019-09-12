@@ -1,13 +1,11 @@
-#include "AppDelegate.h"
-#include "GeneratedPluginRegistrant.h"
-#import <AppsFlyerFramework/AppsFlyerLib/AppsFlyerTracker.h>
+#import "AppDelegate.h"
+#import "GeneratedPluginRegistrant.h"
+#import <AppsFlyerLib/AppsFlyerTracker.h>
 
 @implementation AppDelegate
 
-- (BOOL)application:(UIApplication *)application
-didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     [GeneratedPluginRegistrant registerWithRegistry:self];
-    // Override point for customization after application launch.
     return [super application:application didFinishLaunchingWithOptions:launchOptions];
 }
 

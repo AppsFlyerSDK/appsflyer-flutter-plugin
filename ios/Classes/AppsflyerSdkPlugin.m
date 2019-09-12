@@ -1,13 +1,29 @@
 #import "AppsflyerSdkPlugin.h"
+#import "AppsFlyerStreamHandler.h"
 
-@implementation AppsflyerSdkPlugin
+@implementation AppsflyerSdkPlugin {
+    FlutterEventChannel *_eventChannel;
+    AppsFlyerStreamHandler *_streamHandler;
+}
+
+- (instancetype)initWithMessenger:(nonnull NSObject<FlutterBinaryMessenger> *)messenger {
+    self = [super init];
+    if (self) {
+        
+        _streamHandler = [[AppsFlyerStreamHandler alloc] init];
+        
+        _eventChannel = [FlutterEventChannel eventChannelWithName:afEventChannel binaryMessenger:messenger];
+        [_eventChannel setStreamHandler:_streamHandler];
+    }
+    return self;
+}
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
     
-    FlutterMethodChannel* channel = [FlutterMethodChannel
-                                     methodChannelWithName:afMethodChannel
-                                     binaryMessenger:[registrar messenger]];
-    AppsflyerSdkPlugin* instance = [[AppsflyerSdkPlugin alloc] init];
+    id<FlutterBinaryMessenger> messenger = [registrar messenger];
+    
+    FlutterMethodChannel *channel = [FlutterMethodChannel methodChannelWithName:afMethodChannel binaryMessenger:messenger];
+    AppsflyerSdkPlugin *instance = [[AppsflyerSdkPlugin alloc] initWithMessenger:messenger];
     [registrar addMethodCallDelegate:instance channel:channel];
 }
 
@@ -101,15 +117,16 @@
                               @"data": data
                               };
     
-    [self performSelectorOnMainThread:@selector(handleCallback:) withObject:@[message,afValidatePurchaseChannel] waitUntilDone:NO];
+    [_streamHandler sendObject:message];
 }
 
 -(void)onValidateFail:(NSError*)error{
     NSDictionary* message = @{
+                              @"type": afValidatePurchase,
                               @"status": afSuccess,
                               @"error": @"error connecting"
                               };
-    
+    [_streamHandler sendObject:message];
     [self performSelectorOnMainThread:@selector(handleCallback:) withObject:@[message,afValidatePurchaseChannel] waitUntilDone:NO];
 }
 
@@ -177,8 +194,8 @@
         isConversionData = [(NSNumber*)isConversionDataValue boolValue];
     }
     
-    if(isConversionData == YES){
-        [AppsFlyerTracker sharedTracker].delegate = self;
+    if (isConversionData == YES) {
+        [[AppsFlyerTracker sharedTracker] setDelegate:_streamHandler];
     }
     
     [AppsFlyerTracker sharedTracker].appleAppID = appId;
@@ -210,57 +227,14 @@
     NSLog(@"App Did Become Active");
 }
 
--(void)onConversionDataReceived:(NSDictionary*) installData {
-    
-    NSDictionary* message = @{
-                              @"status": afSuccess,
-                              @"type": afOnInstallConversionDataLoaded,
-                              @"data": installData
-                              };
-    
-    [self performSelectorOnMainThread:@selector(handleCallback:) withObject:@[message,afEventChannel] waitUntilDone:NO];
-}
-
--(void)onConversionDataRequestFailure:(NSError *) _errorMessage {
-    
-    NSDictionary* errorMessage = @{
-                                   @"status": afFailure,
-                                   @"type": afOnInstallConversionFailure,
-                                   @"data": _errorMessage.localizedDescription
-                                   };
-    
-    [self performSelectorOnMainThread:@selector(handleCallback:) withObject:@[errorMessage,afEventChannel] waitUntilDone:NO];
-}
-
-
-- (void) onAppOpenAttribution:(NSDictionary*) attributionData {
-    
-    NSDictionary* message = @{
-                              @"status": afSuccess,
-                              @"type": afOnAppOpenAttribution,
-                              @"data": attributionData
-                              };
-    
-    [self performSelectorOnMainThread:@selector(handleCallback:) withObject:@[message,afEventChannel] waitUntilDone:NO];
-}
-
-- (void) onAppOpenAttributionFailure:(NSError *)_errorMessage {
-    
-    NSDictionary* errorMessage = @{
-                                   @"status": afFailure,
-                                   @"type": afOnAttributionFailure,
-                                   @"data": _errorMessage.localizedDescription
-                                   };
-    
-    [self performSelectorOnMainThread:@selector(handleCallback:) withObject:@[errorMessage,afEventChannel] waitUntilDone:NO];
-}
-
-
--(void) handleCallback:(NSArray *) objArray{
-    
++ (FlutterViewController*) getViewController{
     UIViewController *topMostViewControllerObj =  [[[UIApplication sharedApplication] delegate] window].rootViewController;
     FlutterViewController *flutterViewController = (FlutterViewController *)topMostViewControllerObj;
     
+    return flutterViewController;
+}
+
+-(void) handleCallback:(NSArray *) objArray{
     NSDictionary* message = [objArray objectAtIndex:0];
     NSString* channel = [objArray objectAtIndex:1];
     
@@ -268,14 +242,13 @@
     NSData *dataFromDict = [NSJSONSerialization dataWithJSONObject:message
                                                            options:NSJSONWritingPrettyPrinted
                                                              error:&error];
-    if(!error){
-        [flutterViewController sendOnChannel:channel message:dataFromDict binaryReply:^(NSData * _Nullable reply) {
-            //
-        }];
-    }
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"af-events" object:dataFromDict];
+//    if(!error){
+//        [flutterViewController sendOnChannel:channel message:dataFromDict binaryReply:^(NSData * _Nullable reply) {
+//            //
+//        }];
+//    }
 }
-
-
 
 
 @end
