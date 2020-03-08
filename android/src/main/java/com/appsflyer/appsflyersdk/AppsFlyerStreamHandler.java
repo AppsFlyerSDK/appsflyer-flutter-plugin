@@ -22,5 +22,6 @@ public class AppsFlyerStreamHandler implements EventChannel.StreamHandler {
     @Override
     public void onCancel(Object o) {
         mContext.unregisterReceiver(appsFlyerBroadcastReceiver);
+        appsFlyerBroadcastReceiver = null;
     }
 }

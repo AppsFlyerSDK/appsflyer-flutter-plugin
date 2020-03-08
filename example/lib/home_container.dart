@@ -1,43 +1,36 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import './app_constants.dart';
 import 'text_border.dart';
 import 'utils.dart';
 
-class HomeContainer extends StatelessWidget {
-  String gcdText;
-  String onAppOpenAttributionText;
-  String eventRequestText;
-  String eventResponseText;
-  Function onEventPress;
+class HomeContainer extends StatefulWidget {
+  Stream<Map> onData;
+  Stream<Map> onAttribution;
+  Future<bool> Function(String,Map) trackEvent;
 
-  var gcdTextField = TextEditingController();
-  var onAppOpenAttributionTextField = TextEditingController();
-  var eventRequestTextField = TextEditingController();
-  var eventResponseTextField = TextEditingController();
 
   HomeContainer(
-      {this.gcdText,
-      this.onAppOpenAttributionText,
-      this.eventResponseText,
-      this.onEventPress}) {
-    gcdTextField.text = gcdText;
-    onAppOpenAttributionTextField.text = onAppOpenAttributionText;
-    eventResponseTextField.text = eventResponseText;
-    _initEventRequestTextField();
-  }
+      {this.onData,
+      this.onAttribution,
+      this.trackEvent
+      });
 
-  String eventName = "my event";
-  Map eventValues = {
+  @override
+  _HomeContainerState createState() => _HomeContainerState();
+}
+
+class _HomeContainerState extends State<HomeContainer> {
+  final String eventName = "my event";
+
+  final Map eventValues = {
     "af_content_id": "id123",
     "af_currency": "USD",
     "af_revenue": "2"
   };
 
-  _initEventRequestTextField() {
-    String eventValuesStr = Utils.formatJson(eventValues);
-    eventRequestTextField.text =
-        "event name: ${eventName}\nevent values: ${eventValuesStr}";
-  }
+  String _trackEventResponse = "No event have been sent";
 
   @override
   Widget build(BuildContext context) {
@@ -54,17 +47,25 @@ class HomeContainer extends StatelessWidget {
               Padding(
                 padding: EdgeInsets.only(top: AppConstants.TOP_PADDING),
               ),
-              TextBorder(
-                controller: gcdTextField,
+              StreamBuilder<dynamic>(stream: widget.onData,  builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot)
+               {
+                    return  
+                    TextBorder(
+                controller: TextEditingController(text: snapshot.hasData? Utils.formatJson(snapshot.data): "No conversion data"),
                 labelText: "Conversion Data:",
-              ),
+              );
+               }),
               Padding(
                 padding: EdgeInsets.only(top: 12.0),
               ),
-              TextBorder(
-                controller: onAppOpenAttributionTextField,
-                labelText: "OnAppOpenAttribution: ",
-              ),
+              StreamBuilder<dynamic>(stream: widget.onAttribution,  builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot)
+               {
+                    return  
+                    TextBorder(
+                controller: TextEditingController(text: snapshot.hasData? Utils.formatJson(snapshot.data): "No attribution data"),
+                labelText: "Attribution Data:",
+              );
+               }),
               Padding(
                 padding: EdgeInsets.only(top: 12.0),
               ),
@@ -83,19 +84,24 @@ class HomeContainer extends StatelessWidget {
                     padding: EdgeInsets.only(top: 12.0),
                   ),
                   TextBorder(
-                    controller: eventRequestTextField,
+                    controller: TextEditingController(text: "event name: $eventName\nevent values: $eventValues"),
                     labelText: "Event Request",
                   ),
                   Padding(
                     padding: EdgeInsets.only(top: 12.0),
                   ),
-                  TextBorder(
-                    controller: eventResponseTextField,
-                    labelText: "Server Response",
-                  ),
+                  TextBorder( labelText: "Server response", controller: TextEditingController(text: _trackEventResponse)),
                   RaisedButton(
                     onPressed: () {
-                      onEventPress(eventName, eventValues);
+                     widget.trackEvent(eventName, eventValues).then((onValue){
+                       setState(() {
+                        _trackEventResponse = onValue.toString();
+                      });
+                     }).catchError((onError){
+                       setState(() {
+                        _trackEventResponse = onError.toString();
+                      });
+                     });
                     },
                     child: Text("Send event"),
                   ),

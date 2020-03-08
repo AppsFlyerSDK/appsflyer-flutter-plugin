@@ -8,6 +8,7 @@ void main() {
   group('AppsFlyerSdk', () {
     final List<MethodCall> log = <MethodCall>[];
     const MethodChannel methodChannel = MethodChannel('af-api');
+    const EventChannel eventChannel = EventChannel('af-events');
     // const AppsflyerSdk appsflyerSdk = AppsflyerSdk(options);
 
     setUp(() {
@@ -19,7 +20,7 @@ void main() {
       log.clear();
 
       //test map options way
-      instance = AppsflyerSdk.private(methodChannel,
+      instance = AppsflyerSdk.private(methodChannel,eventChannel,
           mapOptions: {'afDevKey': 'sdfhj2342cx'});
     });
 
@@ -30,9 +31,10 @@ void main() {
             return 'SUCCESS';
             break;
         }
+        return 'FAIL';
       });
 
-      dynamic res = await instance.initSdk();
+      dynamic res = await instance.initSdk(true,true);
       expect(res, 'SUCCESS');
     });
   });

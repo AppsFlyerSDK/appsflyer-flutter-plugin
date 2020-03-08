@@ -4,7 +4,8 @@ class AppsflyerSdk {
   StreamController _afGCDStreamController;
   StreamController _afOpenAttributionStreamController;
   StreamController _afValidtaPurchaseController;
-  final eventChannel = EventChannel(AppsflyerConstants.AF_EVENTS_CHANNEL);
+  //final eventChannel = EventChannel(AppsflyerConstants.AF_EVENTS_CHANNEL);
+  EventChannel _eventChannel;
   static AppsflyerSdk _instance;
   final MethodChannel _methodChannel;
 
@@ -18,18 +19,20 @@ class AppsflyerSdk {
       MethodChannel methodChannel =
           const MethodChannel(AppsflyerConstants.AF_METHOD_CHANNEL);
 
+      EventChannel eventChannel = EventChannel(AppsflyerConstants.AF_EVENTS_CHANNEL);
+
       //check if the option variable is AFOptions type or map type
       if (options is AppsFlyerOptions) {
-        _instance = AppsflyerSdk.private(methodChannel, afOptions: options);
+        _instance = AppsflyerSdk.private(methodChannel,eventChannel, afOptions: options);
       } else if (options is Map) {
-        _instance = AppsflyerSdk.private(methodChannel, mapOptions: options);
+        _instance = AppsflyerSdk.private(methodChannel,eventChannel, mapOptions: options);
       }
     }
     return _instance;
   }
 
   @visibleForTesting
-  AppsflyerSdk.private(this._methodChannel, {this.afOptions, this.mapOptions});
+  AppsflyerSdk.private(this._methodChannel,this._eventChannel, {this.afOptions, this.mapOptions});
 
   Map<String, dynamic> _validateAFOptions(AppsFlyerOptions options) {
     Map<String, dynamic> validatedOptions = {};
@@ -52,9 +55,9 @@ class AppsflyerSdk {
     validatedOptions[AppsflyerConstants.AF_IS_DEBUG] =
         (options.showDebug != null) ? options.showDebug : false;
 
-    if (_afGCDStreamController != null) {
+    if (_afGCDStreamController != null || _afOpenAttributionStreamController != null) {
       validatedOptions[AppsflyerConstants.AF_GCD] = true;
-      _registerGCDListener();
+      
     } else {
       validatedOptions[AppsflyerConstants.AF_GCD] = false;
     }
@@ -85,9 +88,8 @@ class AppsflyerSdk {
             ? options[AppsflyerConstants.AF_IS_DEBUG]
             : false;
 
-    if (_afGCDStreamController != null) {
+    if (_afGCDStreamController != null || _afOpenAttributionStreamController != null) {
       afOptions[AppsflyerConstants.AF_GCD] = true;
-      _registerGCDListener();
     } else {
       afOptions[AppsflyerConstants.AF_GCD] = false;
     }
@@ -95,25 +97,34 @@ class AppsflyerSdk {
     return afOptions;
   }
 
-  ///Returns `Stream`. Accessing AppsFlyer Conversion Data from the SDK
-  Stream<dynamic> registerConversionDataCallback() {
+  // Accessing AppsFlyer Conversion Data from the SDK
+  void _registerConversionDataCallback() {
     if (_afGCDStreamController == null) {
-      _afGCDStreamController = StreamController(onCancel: () {
+      _afGCDStreamController = StreamController<Map>(onCancel: () {
         _afGCDStreamController.close();
       });
     }
-    return _afGCDStreamController.stream;
   }
 
-  ///Returns `Stream`. Accessing AppsFlyer attribution, referred from deep linking
-  Stream<dynamic> registerOnAppOpenAttributionCallback() {
+  Stream<Map> get conversionDataStream
+  {
+    return _afGCDStreamController?.stream;
+  }
+
+  // Accessing AppsFlyer attribution, referred from deep linking
+  void _registerOnAppOpenAttributionCallback() {
     if (_afOpenAttributionStreamController == null) {
-      _afOpenAttributionStreamController = StreamController(onCancel: () {
+      _afOpenAttributionStreamController = StreamController<Map>(onCancel: () {
         _afOpenAttributionStreamController.close();
       });
-    }
-    return _afOpenAttributionStreamController.stream;
+    } 
   }
+
+  Stream<Map> get appOpenAttributionStream
+  {
+    return _afOpenAttributionStreamController?.stream;
+  }
+
 
   ///Returns `Stream`. Accessing AppsFlyer purchase validation data
   Stream<dynamic> _registerValidatePurchaseCallback() {
@@ -128,7 +139,17 @@ class AppsflyerSdk {
   }
 
   ///initialize the SDK, using the options initialized from the constructor|
-  Future<dynamic> initSdk() async {
+  Future<Map> initSdk(bool registerConversionDataCallback,bool registerOnAppOpenAttributionCallback) async {
+    sleep(const Duration(milliseconds: 4500));
+
+    if(registerConversionDataCallback)
+      _registerConversionDataCallback();
+    if (registerOnAppOpenAttributionCallback)
+      _registerOnAppOpenAttributionCallback();
+
+    if (registerConversionDataCallback || registerConversionDataCallback)
+      _registerGCDListener();
+
     Map<String, dynamic> validatedOptions;
     if (mapOptions != null) {
       validatedOptions = _validateMapOptions(mapOptions);
@@ -137,6 +158,12 @@ class AppsflyerSdk {
     }
 
     return _methodChannel.invokeMethod("initSdk", validatedOptions);
+  }
+
+
+
+  Future<String> getSDKVersion() async {
+    return _methodChannel.invokeMethod("getSDKVersion");
   }
 
   ///These in-app events help you track how loyal users discover your app, and attribute them to specific
@@ -260,27 +287,28 @@ class AppsflyerSdk {
   }
 
   void _registerGCDListener() {
-    eventChannel.receiveBroadcastStream().listen((data) {
+    _eventChannel.receiveBroadcastStream().listen((data) {
       var decodedJSON = jsonDecode(data);
       String type = decodedJSON['type'];
       switch (type) {
         case AppsflyerConstants.AF_GET_CONVERSION_DATA:
-          _afGCDStreamController.sink.add(decodedJSON);
+          if (_afGCDStreamController != null)_afGCDStreamController.sink.add(decodedJSON);
           break;
         case AppsflyerConstants.AF_ON_APP_OPEN_ATTRIBUTION:
-          _afOpenAttributionStreamController.sink.add(decodedJSON);
+          if (_afOpenAttributionStreamController != null)_afOpenAttributionStreamController.sink.add(decodedJSON);
           break;
       }
     });
   }
 
   void _registerPurchaseValidateListener() {
-    eventChannel.receiveBroadcastStream().listen((data) {
+    _eventChannel.receiveBroadcastStream().listen((data) {
       var decodedJSON = jsonDecode(data);
       String type = decodedJSON['type'];
       if (type == AppsflyerConstants.AF_VALIDATE_PURCHASE) {
         _afValidtaPurchaseController.sink.add(decodedJSON);
       }
+
     });
   }
 }
