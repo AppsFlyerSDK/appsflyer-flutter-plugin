@@ -1,4 +1,10 @@
 # Versions
+## 1.2.2
+- Updated AppsFlyer SDK version:
+    - Android: v5.1.1
+    - iOS: v5.1.0
+- Added `getSdkVersion` to the api
+
 ## 1.1.3
 - Added getAppsFlyerUID function to get a device unique user id
   
@@ -6,7 +12,6 @@
 - Updated appsflyer framework to 4.9.0
 
 ## 1.1.0
-
 - Added the following functions:
 
   - `Stream validateAndTrackInAppPurchase( String publicKey, String signature, String purchaseData, String price, String currency, Map<String, String> additionalParameters)`
