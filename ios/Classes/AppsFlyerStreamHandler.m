@@ -22,8 +22,7 @@
     return nil;
 }
 
-- (void)onConversionDataReceived:(NSDictionary *)installData {
-    
+- (void)onConversionDataSuccess:(NSDictionary *)installData { 
     NSDictionary *message = @{@"status":afSuccess,
                                 @"type":afOnInstallConversionDataLoaded,
                                 @"data":installData };
@@ -36,7 +35,7 @@
     _eventSink(JSONString);
 }
 
-- (void)onConversionDataRequestFailure:(NSError *)error {
+- (void)onConversionDataFail:(NSError *)error {
     
     NSDictionary *errorMessage = @{@"status":afFailure,
                                      @"type":afOnInstallConversionDataLoaded,
@@ -47,7 +46,6 @@
     }
     NSString *JSONString = [[NSString alloc] initWithData:JSON encoding:NSUTF8StringEncoding];
     _eventSink(JSONString);
-
 }
 
 

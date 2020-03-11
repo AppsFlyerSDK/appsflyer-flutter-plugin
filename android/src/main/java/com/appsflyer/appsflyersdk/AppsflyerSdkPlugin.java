@@ -1,11 +1,10 @@
 package com.appsflyer.appsflyersdk;
 
+import android.app.Activity;
 import android.app.Application;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.os.Build;
 
 import com.appsflyer.AFLogger;
 import com.appsflyer.AppsFlyerConversionListener;
@@ -16,18 +15,21 @@ import com.appsflyer.AppsFlyerProperties;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Observable;
 
+import io.flutter.embedding.engine.plugins.FlutterPlugin;
+import io.flutter.embedding.engine.plugins.activity.ActivityAware;
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.plugin.common.EventChannel;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
+import io.flutter.plugin.common.PluginRegistry;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
 import io.flutter.view.FlutterView;
 
@@ -41,37 +43,60 @@ import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_VALIDATE_PURCHASE
 /**
  * AppsflyerSdkPlugin
  */
-public class AppsflyerSdkPlugin implements MethodCallHandler {
-    private final EventChannel mEventChannel;
+public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
+    private  EventChannel mEventChannel;
     /**
      * Plugin registration.
      */
-    private FlutterView mFlutterView;
+    //private FlutterView mFlutterView;
     private Context mContext;
     private Application mApplication;
     private Intent mIntent;
-    private BroadcastReceiver mBroadcastReceiver;
+    //private BroadcastReceiver mBroonAttachToEngineadcastReceiver;
+    private MethodChannel mMethodChannel;
 
-    private static AppsflyerSdkPlugin instance = null;
+    //private static AppsflyerSdkPlugin instance = null;
 
-    AppsflyerSdkPlugin(Registrar registrar) {
-        this.mFlutterView = registrar.view();
-        this.mContext = registrar.activity().getApplicationContext();
-        this.mApplication = registrar.activity().getApplication();
-        this.mIntent = registrar.activity().getIntent();
-        this.mEventChannel = new EventChannel(registrar.messenger(), AF_EVENTS_CHANNEL);
-                mEventChannel.setStreamHandler(new AppsFlyerStreamHandler(mContext));
+//    AppsflyerSdkPlugin(Registrar registrar) {
+//        this.mFlutterView = registrar.view();
+//        this.mContext = registrar.activity().getApplicationContext();
+//        this.mApplication = registrar.activity().getApplication();
+//        this.mIntent = registrar.activity().getIntent();
+//        this.mEventChannel = new EventChannel(registrar.messenger(), AF_EVENTS_CHANNEL);
+//                mEventChannel.setStreamHandler(new AppsFlyerStreamHandler(mContext));
+//    }
+
+//    public static void registerWith(Registrar registrar) {
+//
+//        if (instance == null) {
+//            instance = new AppsflyerSdkPlugin(registrar);
+//        }
+//
+//        final MethodChannel channel = new MethodChannel(registrar.messenger(), AppsFlyerConstants.AF_METHOD_CHANNEL);
+//
+//        channel.setMethodCallHandler(instance);
+//    }
+
+    /** Plugin registration. */
+    public static void registerWith(PluginRegistry.Registrar registrar) {
+        final AppsflyerSdkPlugin instance = new AppsflyerSdkPlugin();
+
+        instance.onAttachedToEngine(registrar.activity(),registrar.context(), registrar.messenger());
     }
 
-    public static void registerWith(Registrar registrar) {
+    private void onAttachedToEngine(Activity activity, Context applicationContext, BinaryMessenger messenger) {
+        this.mContext = applicationContext;
+        this.mApplication = activity.getApplication();
+        this.mIntent = activity.getIntent();
+        onAttachedToEngine(applicationContext,messenger);
+    }
 
-        if (instance == null) {
-            instance = new AppsflyerSdkPlugin(registrar);
-        }
-
-        final MethodChannel channel = new MethodChannel(registrar.messenger(), AppsFlyerConstants.AF_METHOD_CHANNEL);
-
-        channel.setMethodCallHandler(instance);
+    private void onAttachedToEngine(Context applicationContext, BinaryMessenger messenger) {
+        this.mContext = applicationContext;
+        this.mEventChannel = new EventChannel(messenger, AF_EVENTS_CHANNEL);
+        mEventChannel.setStreamHandler(new AppsFlyerStreamHandler(mContext));
+        mMethodChannel = new MethodChannel(messenger, AppsFlyerConstants.AF_METHOD_CHANNEL);
+        mMethodChannel.setMethodCallHandler(this);
     }
 
     @Override
@@ -96,9 +121,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
             case "stopTracking":
                 stopTracking(call, result);
                 break;
-            case "enableUninstallTracking":
-                enableUninstallTracking(call, result);
-                break;
+            // case "enableUninstallTracking":
+            //     enableUninstallTracking(call, result);
+            //     break;
             case "updateServerUninstallToken":
                 updateServerUninstallToken(call, result);
                 break;
@@ -120,9 +145,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
             case "setAdditionalData":
                 setAdditionalData(call, result);
                 break;
-            case "setUserEmails":
-                setUserEmails(call, result);
-                break;
+            // case "setUserEmails":
+            //     setUserEmails(call, result);
+            //     break;
             case "setUserEmailsWithCryptType":
                 setUserEmailsWithCryptType(call, result);
             case "setCollectAndroidId":
@@ -145,6 +170,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
                 break;
             case "getAppsFlyerUID":
                 getAppsFlyerUID(result);
+                break;
+            case "getSDKVersion":
+                getSdkVersion(result);
                 break;
             default:
                 result.notImplemented();
@@ -220,6 +248,10 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
         result.success(AppsFlyerLib.getInstance().getHostPrefix());
     }
 
+    private void getSdkVersion(Result result) {
+        result.success(AppsFlyerLib.getInstance().getSdkVersion());
+    }
+
     private void getHostName(Result result) {
         result.success(AppsFlyerLib.getInstance().getHostName());
     }
@@ -286,11 +318,11 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
         result.success(null);
     }
 
-    private void enableUninstallTracking(MethodCall call, Result result) {
-        String senderId = (String) call.argument("senderId");
-        AppsFlyerLib.getInstance().enableUninstallTracking(senderId);
-        result.success(null);
-    }
+    // private void enableUninstallTracking(MethodCall call, Result result) {
+    //     String senderId = (String) call.argument("senderId");
+    //     AppsFlyerLib.getInstance().enableUninstallTracking(senderId);
+    //     result.success(null);
+    // }
 
     private void stopTracking(MethodCall call, Result result) {
         boolean isTrackingStopped = (boolean) call.argument("isTrackingStopped");
@@ -318,7 +350,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
     }
 
     private void initSdk(MethodCall call, MethodChannel.Result result) {
-
         AppsFlyerConversionListener gcdListener = null;
         AppsFlyerLib instance = AppsFlyerLib.getInstance();
 
@@ -368,18 +399,19 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
     private AppsFlyerConversionListener registerConversionListener(AppsFlyerLib instance) {
         return new AppsFlyerConversionListener() {
             @Override
-            public void onInstallConversionDataLoaded(Map<String, String> map) {
+            public void onConversionDataSuccess(Map<String, Object> map) {
                 handleSuccess(AF_ON_INSTALL_CONVERSION_DATA_LOADED, map, AF_EVENTS_CHANNEL);
             }
 
             @Override
-            public void onInstallConversionFailure(String errorMessage) {
-                handleError(AF_ON_INSTALL_CONVERSION_DATA_LOADED, errorMessage, AF_EVENTS_CHANNEL);
+            public void onConversionDataFail(String s) {
+                handleError(AF_ON_INSTALL_CONVERSION_DATA_LOADED, s, AF_EVENTS_CHANNEL);
             }
 
             @Override
             public void onAppOpenAttribution(Map<String, String> map) {
-                handleSuccess(AF_ON_APP_OPEN_ATTRIBUTION, map, AF_EVENTS_CHANNEL);
+                Map<String, Object> objMap = (Map)map;
+                handleSuccess(AF_ON_APP_OPEN_ATTRIBUTION,objMap, AF_EVENTS_CHANNEL);
             }
 
             @Override
@@ -389,18 +421,32 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
         };
     }
 
-    private void handleSuccess(String eventType, Map<String, String> data, String channel) {
+    private void handleSuccess(String eventType, Map<String, Object> data, String channel) {
         try {
             JSONObject obj = new JSONObject();
-
             obj.put("status", AF_SUCCESS);
             obj.put("type", eventType);
-            obj.put("data", new JSONObject(data));
+            obj.put("data", new JSONObject(replaceNullValues(data)));
 
             sendEventToDart(obj, channel);
         } catch (JSONException e) {
             e.printStackTrace();
         }
+    }
+
+    private Map<String,Object> replaceNullValues(Map<String,Object> map)
+    {
+        // cant use stream because of older versions of java
+        Map<String,Object> newMap = new HashMap<
+                >();
+        Iterator it = map.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<String,Object> pair = (Map.Entry)it.next();
+            newMap.put(pair.getKey(), pair.getValue() == null ?  JSONObject.NULL : pair.getValue());
+            it.remove(); // avoids a ConcurrentModificationException
+        }
+
+        return newMap;
     }
 
     private void handleError(String eventType, String errorMessage, String channel) {
@@ -424,5 +470,40 @@ public class AppsflyerSdkPlugin implements MethodCallHandler {
         intent.setAction(AppsFlyerConstants.AF_BROADCAST_ACTION_NAME);
         intent.putExtra("params",params.toString());
         mContext.sendBroadcast(intent);
+    }
+
+    @Override
+    public void onAttachedToEngine(FlutterPluginBinding binding) {
+        onAttachedToEngine(binding.getApplicationContext(),binding.getBinaryMessenger());
+    }
+
+    @Override
+    public void onDetachedFromEngine(FlutterPluginBinding binding) {
+        mContext = null;
+        mMethodChannel.setMethodCallHandler(null);
+        mMethodChannel = null;
+        mEventChannel.setStreamHandler(null);
+        mEventChannel = null;
+    }
+
+    @Override
+    public void onAttachedToActivity(ActivityPluginBinding binding) {
+       mIntent = binding.getActivity().getIntent();
+       mApplication = binding.getActivity().getApplication();
+    }
+
+    @Override
+    public void onDetachedFromActivityForConfigChanges() {
+
+    }
+
+    @Override
+    public void onReattachedToActivityForConfigChanges(ActivityPluginBinding binding) {
+
+    }
+
+    @Override
+    public void onDetachedFromActivity() {
+
     }
 }

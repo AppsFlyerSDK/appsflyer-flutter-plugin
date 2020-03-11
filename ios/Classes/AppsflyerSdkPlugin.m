@@ -31,7 +31,10 @@
     
     if([@"initSdk" isEqualToString:call.method]){
         [self initSdkWithCall:call result:result];
-    }else if([@"trackEvent" isEqualToString:call.method]){
+    }else if([@"getSDKVersion" isEqualToString:call.method]){
+        [self getSDKVersion:result];
+    }
+    else if([@"trackEvent" isEqualToString:call.method]){
         [self trackEventWithCall:call result:result];
     }else if([@"waitForCustomerUserId" isEqualToString:call.method]){
         [self waitForCustomerId:call result:result];
@@ -84,6 +87,10 @@
 
 - (void)getHostName:(FlutterResult)result{
     result([[AppsFlyerTracker sharedTracker] host]);
+}
+
+- (void)getSDKVersion:(FlutterResult)result{
+    result([[AppsFlyerTracker sharedTracker] getSDKVersion]);
 }
 
 - (void)setHost:(FlutterMethodCall*)call result:(FlutterResult)result{

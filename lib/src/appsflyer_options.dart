@@ -1,3 +1,4 @@
+
 part of appsflyer_sdk;
 
 class AppsFlyerOptions {
