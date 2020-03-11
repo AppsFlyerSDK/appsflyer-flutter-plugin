@@ -146,7 +146,7 @@ class AppsflyerSdk {
     if (registerOnAppOpenAttributionCallback)
       _registerOnAppOpenAttributionCallback();
 
-    if (registerConversionDataCallback || registerConversionDataCallback)
+    if (registerConversionDataCallback || registerOnAppOpenAttributionCallback)
       _registerGCDListener();
 
     Map<String, dynamic> validatedOptions;
