@@ -4,7 +4,6 @@ class AppsflyerSdk {
   StreamController _afGCDStreamController;
   StreamController _afOpenAttributionStreamController;
   StreamController _afValidtaPurchaseController;
-  //final eventChannel = EventChannel(AppsflyerConstants.AF_EVENTS_CHANNEL);
   EventChannel _eventChannel;
   static AppsflyerSdk _instance;
   final MethodChannel _methodChannel;
