@@ -21,8 +21,8 @@ When submitting an issue please specify your AppsFlyer sign-up (account) email ,
 
 ### This plugin is built for
 
-- iOS AppsFlyerSDK **v4.8.12**
-- Android AppsFlyerSDK **v4.8.20**
+- iOS AppsFlyerSDK **v5.1.0**
+- Android AppsFlyerSDK **v5.1.1**
 
 ##<a id="api-methods"> API Methods
 
