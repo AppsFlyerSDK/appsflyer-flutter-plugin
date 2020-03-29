@@ -220,6 +220,7 @@
     NSDictionary *eventValues = call.arguments[afEventValues];
     
     [[AppsFlyerTracker sharedTracker] trackEvent:eventName withValues:eventValues];
+    //TODO: Add callback handler
     result(@YES);
 }
 

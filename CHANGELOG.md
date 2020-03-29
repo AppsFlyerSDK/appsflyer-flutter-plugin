@@ -1,4 +1,8 @@
 # Versions
+## 1.2.5
+- `initSdk` now uses Future.delayed
+- Fixed iOS error in `initSdk` returned String instead of Map
+
 ## 1.2.3
 - Updated the README.
 - `initSdk` function now uses named parameters
