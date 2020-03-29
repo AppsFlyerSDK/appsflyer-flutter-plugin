@@ -212,7 +212,7 @@
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
     
-    result(@"OK");
+    result(@{@"status": @"OK"});
 }
 
 -(void)trackEventWithCall:(FlutterMethodCall*)call result:(FlutterResult)result{
