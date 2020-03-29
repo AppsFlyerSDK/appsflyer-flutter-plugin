@@ -138,7 +138,7 @@ class AppsflyerSdk {
   }
 
   ///initialize the SDK, using the options initialized from the constructor|
-  Future<Map> initSdk(bool registerConversionDataCallback,bool registerOnAppOpenAttributionCallback) async {
+  Future<Map> initSdk({bool registerConversionDataCallback,bool registerOnAppOpenAttributionCallback}) async {
     sleep(const Duration(milliseconds: 4500));
 
     if(registerConversionDataCallback)

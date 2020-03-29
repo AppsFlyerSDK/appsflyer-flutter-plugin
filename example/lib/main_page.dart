@@ -37,7 +37,7 @@ class MainPageState extends State<MainPage> {
         ),
       ),
       body: 
-      FutureBuilder<dynamic> ( future: _appsflyerSdk.initSdk(true,true), builder: (BuildContext context, AsyncSnapshot snapshot) {       
+      FutureBuilder<dynamic> ( future: _appsflyerSdk.initSdk(registerConversionDataCallback: true, registerOnAppOpenAttributionCallback: true), builder: (BuildContext context, AsyncSnapshot snapshot) {       
         if (snapshot.hasData)
             return HomeContainer(
             onData: _appsflyerSdk.conversionDataStream,

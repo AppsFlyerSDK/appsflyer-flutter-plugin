@@ -81,9 +81,11 @@ final AppsFlyerOptions options = AppsFlyerOptions(afDevKey: "af dev key",
 
 Once `AppsflyerSdk` object is created, you can call `initSdk` method.
 
-##### **`static Future<dynamic> initSdk() async`**
+##### **`static Future<Map<dynamic, dynamic>> initSdk({bool registerConversionDataCallback, bool registerOnAppOpenAttributionCallback}) async` (Changed in 1.2.2)**
 
 initialize the SDK, using the options initialized from the constructor|
+Return response object with the field `status`
+The user can access `conversionDataStream` and `appOpenAttributionStream` to listen for events
 
 _Example:_
 
@@ -91,14 +93,16 @@ _Example:_
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 //..
 
-AppsflyerSdk appsflyerSdk = AppsflyerSdk({...});
+AppsflyerSdk _appsflyerSdk = AppsflyerSdk({...});
 
-try {
-      result = await appsflyerSdk.initSdk();
-    } on Exception catch (e) {
-      print("error: " + e.toString());
-      return;
-    }
+FutureBuilder<dynamic> ( future: _appsflyerSdk.initSdk(registerConversionDataCallback: true, registerOnAppOpenAttributionCallback: true), builder: (BuildContext context, AsyncSnapshot snapshot) {
+  if (snapshot.hasData)
+    return  HomeContainer(
+      onData: _appsflyerSdk.conversionDataStream,
+      onAttribution: _appsflyerSdk.appOpenAttributionStream,
+      ...
+    )
+  ...
 
 ```
 

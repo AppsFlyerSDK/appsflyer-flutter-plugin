@@ -1,9 +1,14 @@
 # Versions
+## 1.2.3
+- Updated the README.
+- `initSdk` function now uses named parameters
+
 ## 1.2.2
 - Updated AppsFlyer SDK version:
     - Android: v5.1.1
     - iOS: v5.1.0
 - Added `getSdkVersion` to the api
+- Changed `initSdk` to return a dynamic map
 
 ## 1.1.3
 - Added getAppsFlyerUID function to get a device unique user id
