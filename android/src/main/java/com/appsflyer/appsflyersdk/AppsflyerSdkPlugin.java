@@ -52,44 +52,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private Context mContext;
     private Application mApplication;
     private Intent mIntent;
-    //private BroadcastReceiver mBroonAttachToEngineadcastReceiver;
     private MethodChannel mMethodChannel;
-
-    //private static AppsflyerSdkPlugin instance = null;
-
-//    AppsflyerSdkPlugin(Registrar registrar) {
-//        this.mFlutterView = registrar.view();
-//        this.mContext = registrar.activity().getApplicationContext();
-//        this.mApplication = registrar.activity().getApplication();
-//        this.mIntent = registrar.activity().getIntent();
-//        this.mEventChannel = new EventChannel(registrar.messenger(), AF_EVENTS_CHANNEL);
-//                mEventChannel.setStreamHandler(new AppsFlyerStreamHandler(mContext));
-//    }
-
-//    public static void registerWith(Registrar registrar) {
-//
-//        if (instance == null) {
-//            instance = new AppsflyerSdkPlugin(registrar);
-//        }
-//
-//        final MethodChannel channel = new MethodChannel(registrar.messenger(), AppsFlyerConstants.AF_METHOD_CHANNEL);
-//
-//        channel.setMethodCallHandler(instance);
-//    }
-
-    /** Plugin registration. */
-    public static void registerWith(PluginRegistry.Registrar registrar) {
-        final AppsflyerSdkPlugin instance = new AppsflyerSdkPlugin();
-
-        instance.onAttachedToEngine(registrar.activity(),registrar.context(), registrar.messenger());
-    }
-
-    private void onAttachedToEngine(Activity activity, Context applicationContext, BinaryMessenger messenger) {
-        this.mContext = applicationContext;
-        this.mApplication = activity.getApplication();
-        this.mIntent = activity.getIntent();
-        onAttachedToEngine(applicationContext,messenger);
-    }
 
     private void onAttachedToEngine(Context applicationContext, BinaryMessenger messenger) {
         this.mContext = applicationContext;
@@ -121,9 +84,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "stopTracking":
                 stopTracking(call, result);
                 break;
-            // case "enableUninstallTracking":
-            //     enableUninstallTracking(call, result);
-            //     break;
             case "updateServerUninstallToken":
                 updateServerUninstallToken(call, result);
                 break;
@@ -145,9 +105,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "setAdditionalData":
                 setAdditionalData(call, result);
                 break;
-            // case "setUserEmails":
-            //     setUserEmails(call, result);
-            //     break;
             case "setUserEmailsWithCryptType":
                 setUserEmailsWithCryptType(call, result);
             case "setCollectAndroidId":
