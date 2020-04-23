@@ -133,11 +133,10 @@ Future<bool> sendEvent(String eventName, Map eventValues) async {
 
 ---
 
-##### **Conversion Data and on app open attribution**
+### **Conversion Data and on app open attribution**
 
-Returns `Stream`. Accessing AppsFlyer Attribution / Conversion Data from the SDK (Deferred Deeplinking). Read more: [Android](http://support.appsflyer.com/entries/69796693-Accessing-AppsFlyer-Attribution-Conversion-Data-from-the-SDK-Deferred-Deep-linking-), [iOS](http://support.appsflyer.com/entries/22904293-Testing-AppsFlyer-iOS-SDK-Integration-Before-Submitting-to-the-App-Store-). AppsFlyer plugin will return attribution data as JSON `Map` in `Stream`.
-
-##### **`static Stream<dynamic> registerConversionDataCallback()`**
+##### **`static Stream<dynamic> registerConversionDataCallback()`**  
+Returns `Stream`. Accessing AppsFlyer Attribution / Conversion Data from the SDK (Deferred Deeplinking). Read more: [Android](http://support.appsflyer.com/entries/69796693-Accessing-AppsFlyer-Attribution-Conversion-Data-from-the-SDK-Deferred-Deep-linking-), [iOS](http://support.appsflyer.com/entries/22904293-Testing-AppsFlyer-iOS-SDK-Integration-Before-Submitting-to-the-App-Store-). AppsFlyer plugin will return attribution data as JSON `Map` in `Stream`.  
 
 _Example:_
 
@@ -173,10 +172,8 @@ _Example of failure response:_
   "data": "SOME_ERROR_MESSAGE"
 }
 ```
-#### Deep Link
-In case you want to use [deep links](https://en.wikipedia.org/wiki/Deep_linking) in your app, you will need to use `registerOnAppOpenAttributionCallback` on the `AppsflyerSdk` instance you've created. 
-##### **`static Stream<dynamic> registerOnAppOpenAttributionCallback()`**
-
+##### **`static Stream<dynamic> registerOnAppOpenAttributionCallback()`**  
+In case you want to use [deep links](https://en.wikipedia.org/wiki/Deep_linking) in your app, you will need to use `registerOnAppOpenAttributionCallback` on the `AppsflyerSdk` instance you've created.  
 _Example:_
 
 ```dart
@@ -201,7 +198,21 @@ _Example of response on deep-link "https://flutter.demo" :_
 ```
 
 ---
-#### Other functionalities:
+
+## Android Out of store
+Please make sure to go over [this guide](https://support.appsflyer.com/hc/en-us/articles/207447023-Attributing-out-of-store-Android-markets-guide) to get general understanding of how out of store attribution is set up in AppsFlyer. If the store you distribute the app through supports install referrer matching or requires the referrer in the postback, make sure to add the following to the AndroidManifest.xml:
+```
+<application>
+...
+	<receiver android:name="com.appsflyer.SingleInstallBroadcastReceiver" android:exported="true">
+		<intent-filter>
+			 <action android:name="com.android.vending.INSTALL_REFERRER" />
+		 </intent-filter>
+	</receiver>
+</application>
+```
+
+## Other functionalities:
 **`void setUserEmails(List<String> emails, [EmailCryptType cryptType]`**
 Set the user emails with the given encryption (`EmailCryptTypeNone, EmailCryptTypeSHA1, EmailCryptTypeMD5, EmailCryptTypeSHA256`). the default encryption is `EmailCryptTypeNone`.
 _Example:_
@@ -272,7 +283,8 @@ _Example:_
 ```dart
 appsFlyerSdk.setCollectAndroidId(true);
 ```
-**`void setCollectIMEI(bool isCollect)`**
+**`void setCollectIMEI(bool isCollect)`**  
+_NOTE:_ Make sure to add `<uses-permission android:name="android.permission.READ_PHONE_STATE" />` in the AndroidManifest and request these permissions in the runtime in order for the SDK to be able to collect IMEI
 _Example:_
 ```dart
 appsFlyerSdk.setCollectIMEI(false);
