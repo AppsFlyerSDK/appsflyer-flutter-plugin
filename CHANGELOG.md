@@ -1,4 +1,8 @@
 # Versions
+## 5.2.0
+- AppsFlyer sdk version is updated to v5.2.0
+- Switched `StreamController` to `BehaviourSubject` to fix bad state related to unclosed streams
+
 ## 1.2.5
 - `initSdk` now uses Future.delayed
 - Fixed iOS error in `initSdk` returned String instead of Map

@@ -8,14 +8,9 @@ import 'utils.dart';
 class HomeContainer extends StatefulWidget {
   Stream<Map> onData;
   Stream<Map> onAttribution;
-  Future<bool> Function(String,Map) trackEvent;
+  Future<bool> Function(String, Map) trackEvent;
 
-
-  HomeContainer(
-      {this.onData,
-      this.onAttribution,
-      this.trackEvent
-      });
+  HomeContainer({this.onData, this.onAttribution, this.trackEvent});
 
   @override
   _HomeContainerState createState() => _HomeContainerState();
@@ -47,25 +42,33 @@ class _HomeContainerState extends State<HomeContainer> {
               Padding(
                 padding: EdgeInsets.only(top: AppConstants.TOP_PADDING),
               ),
-              StreamBuilder<dynamic>(stream: widget.onData,  builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot)
-               {
-                    return  
-                    TextBorder(
-                controller: TextEditingController(text: snapshot.hasData? Utils.formatJson(snapshot.data): "No conversion data"),
-                labelText: "Conversion Data:",
-              );
-               }),
+              StreamBuilder<dynamic>(
+                  stream: widget.onData.asBroadcastStream(),
+                  builder:
+                      (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
+                    return TextBorder(
+                      controller: TextEditingController(
+                          text: snapshot.hasData
+                              ? Utils.formatJson(snapshot.data)
+                              : "No conversion data"),
+                      labelText: "Conversion Data:",
+                    );
+                  }),
               Padding(
                 padding: EdgeInsets.only(top: 12.0),
               ),
-              StreamBuilder<dynamic>(stream: widget.onAttribution,  builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot)
-               {
-                    return  
-                    TextBorder(
-                controller: TextEditingController(text: snapshot.hasData? Utils.formatJson(snapshot.data): "No attribution data"),
-                labelText: "Attribution Data:",
-              );
-               }),
+              StreamBuilder<dynamic>(
+                  stream: widget.onAttribution.asBroadcastStream(),
+                  builder:
+                      (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
+                    return TextBorder(
+                      controller: TextEditingController(
+                          text: snapshot.hasData
+                              ? Utils.formatJson(snapshot.data)
+                              : "No attribution data"),
+                      labelText: "Attribution Data:",
+                    );
+                  }),
               Padding(
                 padding: EdgeInsets.only(top: 12.0),
               ),
@@ -84,24 +87,29 @@ class _HomeContainerState extends State<HomeContainer> {
                     padding: EdgeInsets.only(top: 12.0),
                   ),
                   TextBorder(
-                    controller: TextEditingController(text: "event name: $eventName\nevent values: $eventValues"),
+                    controller: TextEditingController(
+                        text:
+                            "event name: $eventName\nevent values: $eventValues"),
                     labelText: "Event Request",
                   ),
                   Padding(
                     padding: EdgeInsets.only(top: 12.0),
                   ),
-                  TextBorder( labelText: "Server response", controller: TextEditingController(text: _trackEventResponse)),
+                  TextBorder(
+                      labelText: "Server response",
+                      controller:
+                          TextEditingController(text: _trackEventResponse)),
                   RaisedButton(
                     onPressed: () {
-                     widget.trackEvent(eventName, eventValues).then((onValue){
-                       setState(() {
-                        _trackEventResponse = onValue.toString();
+                      widget.trackEvent(eventName, eventValues).then((onValue) {
+                        setState(() {
+                          _trackEventResponse = onValue.toString();
+                        });
+                      }).catchError((onError) {
+                        setState(() {
+                          _trackEventResponse = onError.toString();
+                        });
                       });
-                     }).catchError((onError){
-                       setState(() {
-                        _trackEventResponse = onError.toString();
-                      });
-                     });
                     },
                     child: Text("Send event"),
                   ),

@@ -104,7 +104,7 @@ class AppsflyerSdk {
   // Accessing AppsFlyer Conversion Data from the SDK
   void _registerConversionDataCallback() {
     if (_afGCDStreamController == null) {
-      _afGCDStreamController = StreamController<Map>(onCancel: () {
+      _afGCDStreamController = BehaviorSubject<Map>(onCancel: () {
         _afGCDStreamController.close();
       });
     }
@@ -117,7 +117,7 @@ class AppsflyerSdk {
   // Accessing AppsFlyer attribution, referred from deep linking
   void _registerOnAppOpenAttributionCallback() {
     if (_afOpenAttributionStreamController == null) {
-      _afOpenAttributionStreamController = StreamController<Map>(onCancel: () {
+      _afOpenAttributionStreamController = BehaviorSubject<Map>(onCancel: () {
         _afOpenAttributionStreamController.close();
       });
     }
@@ -130,7 +130,7 @@ class AppsflyerSdk {
   ///Returns `Stream`. Accessing AppsFlyer purchase validation data
   Stream<dynamic> _registerValidatePurchaseCallback() {
     if (_afValidtaPurchaseController == null) {
-      _afValidtaPurchaseController = StreamController(onCancel: () {
+      _afValidtaPurchaseController = BehaviorSubject(onCancel: () {
         _afValidtaPurchaseController.close();
       });
 
@@ -237,9 +237,10 @@ class AppsflyerSdk {
     _methodChannel.invokeMethod("enableLocationCollection", {'flag': flag});
   }
 
+  ///Please use updateServerUninstallToken instead
+  @deprecated
   void enableUninstallTracking(String senderId) {
-    _methodChannel
-        .invokeMethod("enableUninstallTracking", {'senderId': senderId});
+    print("Please use updateServerUninstallToken instead");
   }
 
   void updateServerUninstallToken(String token) {
