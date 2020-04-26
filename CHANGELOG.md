@@ -1,4 +1,9 @@
 # Versions
+## 5.2.0+1
+- Removed the use of RxDart
+- Checked that the streams are not closed before sending events
+
+
 ## 5.2.0
 - AppsFlyer sdk version is updated to v5.2.0
 - Switched `StreamController` to `BehaviourSubject` to fix bad state related to unclosed streams

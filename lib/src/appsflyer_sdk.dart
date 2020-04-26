@@ -104,7 +104,7 @@ class AppsflyerSdk {
   // Accessing AppsFlyer Conversion Data from the SDK
   void _registerConversionDataCallback() {
     if (_afGCDStreamController == null) {
-      _afGCDStreamController = BehaviorSubject<Map>(onCancel: () {
+      _afGCDStreamController = StreamController<Map>(onCancel: () {
         _afGCDStreamController.close();
       });
     }
@@ -117,7 +117,7 @@ class AppsflyerSdk {
   // Accessing AppsFlyer attribution, referred from deep linking
   void _registerOnAppOpenAttributionCallback() {
     if (_afOpenAttributionStreamController == null) {
-      _afOpenAttributionStreamController = BehaviorSubject<Map>(onCancel: () {
+      _afOpenAttributionStreamController = StreamController<Map>(onCancel: () {
         _afOpenAttributionStreamController.close();
       });
     }
@@ -130,7 +130,7 @@ class AppsflyerSdk {
   ///Returns `Stream`. Accessing AppsFlyer purchase validation data
   Stream<dynamic> _registerValidatePurchaseCallback() {
     if (_afValidtaPurchaseController == null) {
-      _afValidtaPurchaseController = BehaviorSubject(onCancel: () {
+      _afValidtaPurchaseController = StreamController(onCancel: () {
         _afValidtaPurchaseController.close();
       });
 
@@ -295,12 +295,29 @@ class AppsflyerSdk {
       String type = decodedJSON['type'];
       switch (type) {
         case AppsflyerConstants.AF_GET_CONVERSION_DATA:
-          if (_afGCDStreamController != null)
+          if (_afGCDStreamController != null &&
+              !_afGCDStreamController.isClosed) {
             _afGCDStreamController.sink.add(decodedJSON);
+          } else {
+            if ((afOptions != null && afOptions.showDebug) ||
+                (mapOptions != null &&
+                    mapOptions[AppsflyerConstants.AF_IS_DEBUG])) {
+              print("GCD Stream controller is closed. the event wasn't sent");
+            }
+          }
           break;
         case AppsflyerConstants.AF_ON_APP_OPEN_ATTRIBUTION:
-          if (_afOpenAttributionStreamController != null)
+          if (_afOpenAttributionStreamController != null &&
+              !_afOpenAttributionStreamController.isClosed) {
             _afOpenAttributionStreamController.sink.add(decodedJSON);
+          } else {
+            if ((afOptions != null && afOptions.showDebug) ||
+                (mapOptions != null &&
+                    mapOptions[AppsflyerConstants.AF_IS_DEBUG])) {
+              print(
+                  "OnAppOpenAttribution stream is closed. the event wasn't sent");
+            }
+          }
           break;
       }
     });
