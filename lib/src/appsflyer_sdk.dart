@@ -141,8 +141,8 @@ class AppsflyerSdk {
 
   ///initialize the SDK, using the options initialized from the constructor|
   Future<dynamic> initSdk(
-      {bool registerConversionDataCallback,
-      bool registerOnAppOpenAttributionCallback}) async {
+      {bool registerConversionDataCallback = false,
+      bool registerOnAppOpenAttributionCallback = false}) async {
     return Future.delayed(Duration(seconds: 0)).then((_) {
       if (registerConversionDataCallback) _registerConversionDataCallback();
       if (registerOnAppOpenAttributionCallback)

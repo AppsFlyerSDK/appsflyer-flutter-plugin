@@ -43,7 +43,7 @@ class _HomeContainerState extends State<HomeContainer> {
                 padding: EdgeInsets.only(top: AppConstants.TOP_PADDING),
               ),
               StreamBuilder<dynamic>(
-                  stream: widget.onData.asBroadcastStream(),
+                  stream: widget.onData?.asBroadcastStream(),
                   builder:
                       (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
                     return TextBorder(
@@ -58,7 +58,7 @@ class _HomeContainerState extends State<HomeContainer> {
                 padding: EdgeInsets.only(top: 12.0),
               ),
               StreamBuilder<dynamic>(
-                  stream: widget.onAttribution.asBroadcastStream(),
+                  stream: widget.onAttribution?.asBroadcastStream(),
                   builder:
                       (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
                     return TextBorder(
