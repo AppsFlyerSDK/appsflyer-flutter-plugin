@@ -37,7 +37,9 @@ class MainPageState extends State<MainPage> {
           ),
         ),
         body: FutureBuilder<dynamic>(
-            future: _appsflyerSdk.initSdk(),
+            future: _appsflyerSdk.initSdk(
+                registerConversionDataCallback: true,
+                registerOnAppOpenAttributionCallback: true),
             builder: (BuildContext context, AsyncSnapshot snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return Center(child: CircularProgressIndicator());
