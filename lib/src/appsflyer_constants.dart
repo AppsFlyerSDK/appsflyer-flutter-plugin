@@ -20,5 +20,5 @@ class AppsflyerConstants {
   static const String AF_EVENTS_CHANNEL = "af-events";
   static const String AF_METHOD_CHANNEL = "af-api";
 
-  static const AF_VALIDATE_PURCHASE = "validePurchase";
+  static const AF_VALIDATE_PURCHASE = "validatePurchase";
 }
