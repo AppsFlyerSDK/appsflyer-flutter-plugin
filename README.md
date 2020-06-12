@@ -24,10 +24,11 @@ When submitting an issue please specify your AppsFlyer sign-up (account) email ,
 - iOS AppsFlyerSDK **v5.2.0**
 - Android AppsFlyerSDK **v5.2.0**
 
-##<a id="api-methods"> API Methods
+## <a id="api-methods"> API Methods
 
 ---
-## **Getting started**
+### **Getting started**
+
 In order to install the plugin, visit [this](https://pub.dartlang.org/packages/appsflyer_sdk#-installing-tab-) page.
 
 To start using AppsFlyer you first need to create an instance of `AppsflyerSdk` before using any other of our sdk functionalities.  
