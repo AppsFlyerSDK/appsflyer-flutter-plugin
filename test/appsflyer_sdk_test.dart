@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   AppsflyerSdk instance;
 
   group('AppsFlyerSdk', () {
@@ -20,7 +22,7 @@ void main() {
       log.clear();
 
       //test map options way
-      instance = AppsflyerSdk.private(methodChannel,eventChannel,
+      instance = AppsflyerSdk.private(methodChannel, eventChannel,
           mapOptions: {'afDevKey': 'sdfhj2342cx'});
     });
 
@@ -34,7 +36,10 @@ void main() {
         return 'FAIL';
       });
 
-      dynamic res = await instance.initSdk(true,true);
+      dynamic res = await instance.initSdk(
+        registerConversionDataCallback: true,
+        registerOnAppOpenAttributionCallback: true,
+      );
       expect(res, 'SUCCESS');
     });
   });
