@@ -208,11 +208,18 @@
     [AppsFlyerTracker sharedTracker].appleAppID = appId;
     [AppsFlyerTracker sharedTracker].appsFlyerDevKey = devKey;
     [AppsFlyerTracker sharedTracker].isDebug = isDebug;
-    [[AppsFlyerTracker sharedTracker] trackAppLaunch];
+    [[AppsFlyerTracker sharedTracker] trackAppLaunchWithCompletionHandler:^(NSDictionary<NSString *,id> *dictionary, NSError *error) {
+        if (error) {
+            result([FlutterError errorWithCode:error.description message:nil details:nil]);
+            return;
+        }
+        if (dictionary) {
+            result(@{@"status": @"OK"});
+            return;
+        }
+    }];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
-    
-    result(@{@"status": @"OK"});
 }
 
 -(void)trackEventWithCall:(FlutterMethodCall*)call result:(FlutterResult)result{
@@ -260,4 +267,3 @@
 
 
 @end
-

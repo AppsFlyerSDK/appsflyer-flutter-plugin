@@ -11,6 +11,7 @@ import com.appsflyer.AppsFlyerConversionListener;
 import com.appsflyer.AppsFlyerInAppPurchaseValidatorListener;
 import com.appsflyer.AppsFlyerLib;
 import com.appsflyer.AppsFlyerProperties;
+import com.appsflyer.AppsFlyerTrackingRequestListener;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -306,7 +307,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         AppsFlyerLib.getInstance().setHost(hostPrefix, hostName);
     }
 
-    private void initSdk(MethodCall call, MethodChannel.Result result) {
+    private void initSdk(MethodCall call, final MethodChannel.Result result) {
         AppsFlyerConversionListener gcdListener = null;
         AppsFlyerLib instance = AppsFlyerLib.getInstance();
 
@@ -332,12 +333,19 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
         instance.init(afDevKey, gcdListener, mContext);
         instance.trackEvent(mContext, null, null);
-        instance.startTracking(mApplication);
+        instance.startTracking(mApplication, afDevKey, new AppsFlyerTrackingRequestListener() {
+            @Override
+            public void onTrackingRequestSuccess() {
+                final Map<String, String> response = new HashMap<>();
+                response.put("status", "OK");
+                result.success(response);
+            }
 
-        final Map<String, String> response = new HashMap<>();
-        response.put("status", "OK");
-
-        result.success(response);
+            @Override
+            public void onTrackingRequestFailure(String s) {
+                result.error(s,null,null);
+            }
+        });
     }
 
     private void trackEvent(MethodCall call, MethodChannel.Result result) {

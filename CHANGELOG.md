@@ -1,40 +1,53 @@
 # Versions
 
+## 5.2.0+3
+
+- Add support for opt-in/ opt-out scenarios
+- Fix typo in constant AF_VALIDATE_PURCHASE
+
 ## 5.2.0+2
-- added default values to `initSdk` params 
+
+- added default values to `initSdk` params
 
 ## 5.2.0+1
+
 - Removed the use of RxDart
 - Checked that the streams are not closed before sending events
 
 ## 5.2.0
+
 - AppsFlyer sdk version is updated to v5.2.0
 - Switched `StreamController` to `BehaviourSubject` to fix bad state related to unclosed streams
 
 ## 1.2.5
+
 - `initSdk` now uses Future.delayed
 - Fixed iOS error in `initSdk` returned String instead of Map
 
 ## 1.2.3
-- Updated the README.
+
+- Updated the README
 - `initSdk` function now uses named parameters
 
 ## 1.2.2
+
 - Updated AppsFlyer SDK version:
-    - Android: v5.1.1
-    - iOS: v5.1.0
+  - Android: v5.1.1
+  - iOS: v5.1.0
 - Added `getSdkVersion` to the api
 - Changed `initSdk` to return a dynamic map
 
 ## 1.1.3
+
 - Added getAppsFlyerUID function to get a device unique user id
   
-## 1.1.2 
+## 1.1.2
+
 - Updated appsflyer framework to 4.9.0
 
 ## 1.1.0
-- Added the following functions:
 
+- Added the following functions:
   - `Stream validateAndTrackInAppPurchase( String publicKey, String signature, String purchaseData, String price, String currency, Map<String, String> additionalParameters)`
   - `void updateServerUninstallToken(String token)`
   - `Future<String> getHostPrefix()`
