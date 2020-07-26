@@ -2,7 +2,6 @@ library appsflyer_sdk;
 
 import 'dart:io';
 import 'package:flutter/services.dart';
-import 'package:meta/meta.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:core';
