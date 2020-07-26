@@ -132,10 +132,25 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "getSDKVersion":
                 getSdkVersion(result);
                 break;
+            case "setSharingFilter":
+                setSharingFilter(call, result);
+                break;
+            case "setSharingFilterForAllPartners":
+                setSharingFilterForAllPartners(result);
             default:
                 result.notImplemented();
                 break;
         }
+    }
+
+    private void setSharingFilterForAllPartners(Result result) {
+        AppsFlyerLib.getInstance().setSharingFilterForAllPartners();
+        result.success(null);
+    }
+
+    private void setSharingFilter(MethodCall call, Result result) {
+        AppsFlyerLib.getInstance().setSharingFilter();
+        result.success(null);
     }
 
     private void getAppsFlyerUID(Result result) {
@@ -276,12 +291,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         result.success(null);
     }
 
-    // private void enableUninstallTracking(MethodCall call, Result result) {
-    //     String senderId = (String) call.argument("senderId");
-    //     AppsFlyerLib.getInstance().enableUninstallTracking(senderId);
-    //     result.success(null);
-    // }
-
     private void stopTracking(MethodCall call, Result result) {
         boolean isTrackingStopped = (boolean) call.argument("isTrackingStopped");
         AppsFlyerLib.getInstance().stopTracking(isTrackingStopped, mContext);
@@ -316,6 +325,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
 
         String afDevKey = (String) call.argument(AppsFlyerConstants.AF_DEV_KEY);
+        if(afDevKey == null || afDevKey.equals("")){
+            result.error(null,"AF Dev Key is empty","AF dev key cannot be empty");
+        }
 
         boolean getGCD = (boolean) call.argument(AppsFlyerConstants.AF_GCD);
 
@@ -333,19 +345,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
         instance.init(afDevKey, gcdListener, mContext);
         instance.trackEvent(mContext, null, null);
-        instance.startTracking(mApplication, afDevKey, new AppsFlyerTrackingRequestListener() {
-            @Override
-            public void onTrackingRequestSuccess() {
-                final Map<String, String> response = new HashMap<>();
-                response.put("status", "OK");
-                result.success(response);
-            }
+        instance.startTracking(mApplication, afDevKey);
 
-            @Override
-            public void onTrackingRequestFailure(String s) {
-                result.error(s,null,null);
-            }
-        });
+        result.success("success");
     }
 
     private void trackEvent(MethodCall call, MethodChannel.Result result) {

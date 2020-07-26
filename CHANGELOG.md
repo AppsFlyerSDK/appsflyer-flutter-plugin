@@ -1,5 +1,10 @@
 # Versions
 
+## 5.4.1
+
+- Updated AppsFlyer SDK to v5.4.1
+- Added `sharedFilter` support 
+
 ## 5.2.0+3
 
 - Add support for opt-in/ opt-out scenarios

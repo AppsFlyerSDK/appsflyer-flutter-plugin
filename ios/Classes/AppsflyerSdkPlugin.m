@@ -71,10 +71,25 @@
         [self validateAndTrackInAppPurchase:call result:result];
     }else if([@"getAppsFlyerUID" isEqualToString:call.method]){
         [self getAppsFlyerUID:result];
+    }else if([@"setSharingFilter" isEqualToString:call.method]){
+        [self setSharingFilter:call result:result];
+    }else if([@"setSharingFilterForAllPartners" isEqualToString:call.method]){
+        [self setSharingFilterForAllPartners:result];
     }
     else{
         result(FlutterMethodNotImplemented);
     }
+}
+
+- (void)setSharingFilter:(FlutterMethodCall*)call result:(FlutterResult)result{
+    NSArray* filters = call.arguments;
+    [[AppsFlyerTracker sharedTracker] setSharingFilter:filters];
+    result(nil);
+}
+
+- (void)setSharingFilterForAllPartners:(FlutterResult)result{
+    [[AppsFlyerTracker sharedTracker] setSharingFilterForAllPartners];
+    result(nil);
 }
 
 - (void)getAppsFlyerUID:(FlutterResult)result{
@@ -208,18 +223,11 @@
     [AppsFlyerTracker sharedTracker].appleAppID = appId;
     [AppsFlyerTracker sharedTracker].appsFlyerDevKey = devKey;
     [AppsFlyerTracker sharedTracker].isDebug = isDebug;
-    [[AppsFlyerTracker sharedTracker] trackAppLaunchWithCompletionHandler:^(NSDictionary<NSString *,id> *dictionary, NSError *error) {
-        if (error) {
-            result([FlutterError errorWithCode:error.description message:nil details:nil]);
-            return;
-        }
-        if (dictionary) {
-            result(@{@"status": @"OK"});
-            return;
-        }
-    }];
+    [[AppsFlyerTracker sharedTracker] trackAppLaunch];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
+    
+    result(@{@"status": @"OK"});
 }
 
 -(void)trackEventWithCall:(FlutterMethodCall*)call result:(FlutterResult)result{

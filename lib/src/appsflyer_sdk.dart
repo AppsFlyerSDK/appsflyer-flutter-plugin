@@ -332,4 +332,12 @@ class AppsflyerSdk {
       }
     });
   }
+
+  void setSharingFilter(List<String> filters){
+    _methodChannel.invokeMethod("setSharingFilter", filters);
+  }
+
+  void setSharingFilterForAllPartners(){
+    _methodChannel.invokeMethod("setSharingFilterForAllPartners");
+  }
 }
