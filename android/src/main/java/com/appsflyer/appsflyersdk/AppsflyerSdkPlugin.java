@@ -137,6 +137,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                 break;
             case "setSharingFilterForAllPartners":
                 setSharingFilterForAllPartners(result);
+                break;
             default:
                 result.notImplemented();
                 break;
