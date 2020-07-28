@@ -106,8 +106,12 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "setAdditionalData":
                 setAdditionalData(call, result);
                 break;
+            case "setUserEmails":
+                setUserEmails(call, result);
+                break;
             case "setUserEmailsWithCryptType":
                 setUserEmailsWithCryptType(call, result);
+                break;
             case "setCollectAndroidId":
                 setCollectAndroidId(call, result);
                 break;
