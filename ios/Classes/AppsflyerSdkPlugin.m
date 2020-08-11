@@ -83,35 +83,35 @@
 
 - (void)setSharingFilter:(FlutterMethodCall*)call result:(FlutterResult)result{
     NSArray* filters = call.arguments;
-    [[AppsFlyerTracker sharedTracker] setSharingFilter:filters];
+    [[AppsFlyerLib shared] setSharingFilter:filters];
     result(nil);
 }
 
 - (void)setSharingFilterForAllPartners:(FlutterResult)result{
-    [[AppsFlyerTracker sharedTracker] setSharingFilterForAllPartners];
+    [[AppsFlyerLib shared] setSharingFilterForAllPartners];
     result(nil);
 }
 
 - (void)getAppsFlyerUID:(FlutterResult)result{
-    result([[AppsFlyerTracker sharedTracker] getAppsFlyerUID]);
+    result([[AppsFlyerLib shared] getAppsFlyerUID]);
 }
 
 - (void)getHostPrefix:(FlutterResult)result{
-    result([[AppsFlyerTracker sharedTracker] hostPrefix]);
+    result([[AppsFlyerLib shared] hostPrefix]);
 }
 
 - (void)getHostName:(FlutterResult)result{
-    result([[AppsFlyerTracker sharedTracker] host]);
+    result([[AppsFlyerLib shared] host]);
 }
 
 - (void)getSDKVersion:(FlutterResult)result{
-    result([[AppsFlyerTracker sharedTracker] getSDKVersion]);
+    result([[AppsFlyerLib shared] getSDKVersion]);
 }
 
 - (void)setHost:(FlutterMethodCall*)call result:(FlutterResult)result{
     NSString* hostName = call.arguments[@"hostName"];
     NSString* hostPrefix = call.arguments[@"hostPrefix"];
-    [[AppsFlyerTracker sharedTracker] setHost:hostName withHostPrefix:hostPrefix];
+    [[AppsFlyerLib shared] setHost:hostName withHostPrefix:hostPrefix];
     result(nil);
 }
 
@@ -121,7 +121,7 @@
     NSString* price = call.arguments[@"price"];
     NSString* currency = call.arguments[@"currency"];
     NSDictionary* additionalParameters = call.arguments[@"additionalParameters"];
-    [[AppsFlyerTracker sharedTracker] validateAndTrackInAppPurchase:publicKey price:price currency:currency transactionId:signature additionalParameters:additionalParameters
+    [[AppsFlyerLib shared] validateAndLogInAppPurchase:publicKey price:price currency:currency transactionId:signature additionalParameters:additionalParameters
                                                             success:^(NSDictionary *response) {
                                                                 NSLog(@"Success");
                                                                 [self onValidateSuccess:response];
@@ -154,19 +154,19 @@
 
 - (void)setAdditionalData:(FlutterMethodCall*)call result:(FlutterResult)result{
     NSDictionary* data = call.arguments[@"customData"];
-    [[AppsFlyerTracker sharedTracker] setAdditionalData:data];
+    [[AppsFlyerLib shared] setAdditionalData:data];
     result(nil);
 }
 
 - (void)setCustomerUserId:(FlutterMethodCall*)call result:(FlutterResult)result{
     NSString* userId = call.arguments[@"id"];
-    [[AppsFlyerTracker sharedTracker] setCustomerUserID:userId];
+    [[AppsFlyerLib shared] setCustomerUserID:userId];
     result(nil);
 }
 
 - (void)stopTracking:(FlutterMethodCall*)call result:(FlutterResult)result{
     BOOL stopTracking = call.arguments[@"isTrackingStopped"];
-    [[AppsFlyerTracker sharedTracker] setIsStopTracking:stopTracking];
+    [AppsFlyerLib shared].isStopped = stopTracking;
     result(nil);
 }
 
@@ -183,14 +183,14 @@
     NSArray *emaillsArray = [emails copy];
     NSNumber* cryptTypeInt = (id)call.arguments[@"cryptType"];
     EmailCryptType cryptType = (EmailCryptType)[cryptTypeInt integerValue];
-    [[AppsFlyerTracker sharedTracker] setUserEmails:emaillsArray withCryptType:cryptType];
+    [[AppsFlyerLib shared] setUserEmails:emaillsArray withCryptType:cryptType];
     result(nil);
 }
 
 - (void)setUserEmails:(FlutterMethodCall*)call result:(FlutterResult)result{
     NSMutableArray *emails = call.arguments[@"emails"];
     NSArray *emailsArray = [emails copy];
-    [[AppsFlyerTracker sharedTracker] setUserEmails:emailsArray withCryptType:EmailCryptTypeNone];
+    [[AppsFlyerLib shared] setUserEmails:emailsArray withCryptType:EmailCryptTypeNone];
     result(nil);
 }
 
@@ -217,13 +217,13 @@
     }
     
     if (isConversionData == YES) {
-        [[AppsFlyerTracker sharedTracker] setDelegate:_streamHandler];
+        [[AppsFlyerLib shared] setDelegate:_streamHandler];
     }
     
-    [AppsFlyerTracker sharedTracker].appleAppID = appId;
-    [AppsFlyerTracker sharedTracker].appsFlyerDevKey = devKey;
-    [AppsFlyerTracker sharedTracker].isDebug = isDebug;
-    [[AppsFlyerTracker sharedTracker] trackAppLaunch];
+    [AppsFlyerLib shared].appleAppID = appId;
+    [AppsFlyerLib shared].appsFlyerDevKey = devKey;
+    [AppsFlyerLib shared].isDebug = isDebug;
+    [[AppsFlyerLib shared] start];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
     
@@ -234,19 +234,19 @@
     NSString *eventName =  call.arguments[afEventName];
     NSDictionary *eventValues = call.arguments[afEventValues];
     
-    [[AppsFlyerTracker sharedTracker] trackEvent:eventName withValues:eventValues];
+    [[AppsFlyerLib shared] logEvent:eventName withValues:eventValues];
     //TODO: Add callback handler
     result(@YES);
 }
 
 - (void)setMinTimeBetweenSessions:(FlutterMethodCall*)call result:(FlutterResult)result{
     NSInteger seconds = [(id)call.arguments[@"seconds"] integerValue];
-    [AppsFlyerTracker sharedTracker].minTimeBetweenSessions = seconds;
+    [AppsFlyerLib shared].minTimeBetweenSessions = seconds;
     result(nil);
 }
 
 - (void)appDidBecomeActive {
-    [[AppsFlyerTracker sharedTracker] trackAppLaunch];
+    [[AppsFlyerLib shared] start];
     NSLog(@"App Did Become Active");
 }
 
@@ -259,18 +259,18 @@
 
 -(void) handleCallback:(NSArray *) objArray{
     NSDictionary* message = [objArray objectAtIndex:0];
-    NSString* channel = [objArray objectAtIndex:1];
+    //NSString* channel = [objArray objectAtIndex:1];
     
     NSError *error;
     NSData *dataFromDict = [NSJSONSerialization dataWithJSONObject:message
                                                            options:NSJSONWritingPrettyPrinted
                                                              error:&error];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"af-events" object:dataFromDict];
-//    if(!error){
-//        [flutterViewController sendOnChannel:channel message:dataFromDict binaryReply:^(NSData * _Nullable reply) {
-//            //
-//        }];
-//    }
+    //if(!error){
+        //[flutterViewController sendOnChannel:channel message:dataFromDict binaryReply:^(NSData * _Nullable reply) {
+            //
+        //}];
+    //}
 }
 
 

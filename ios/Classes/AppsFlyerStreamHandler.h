@@ -13,7 +13,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface AppsFlyerStreamHandler: NSObject<FlutterStreamHandler, AppsFlyerTrackerDelegate>
+@interface AppsFlyerStreamHandler: NSObject<FlutterStreamHandler, AppsFlyerLibDelegate>
 
 - (void) sendObject:(NSDictionary*) obj;
 
