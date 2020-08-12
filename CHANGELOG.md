@@ -1,5 +1,9 @@
 # Versions
 
+## 5.4.1+1
+- Added documentation
+- Added secured links to README
+
 ## 5.4.1
 
 - Updated AppsFlyer SDK to v5.4.1

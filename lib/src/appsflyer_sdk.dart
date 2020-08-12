@@ -184,10 +184,16 @@ class AppsflyerSdk {
         "setHost", {'hostPrefix': hostPrefix, 'hostName': hostName});
   }
 
+  /// Opt-out of collection of IMEI.
+  /// If the app does NOT contain Google Play Services, device IMEI is collected by the SDK.
+  /// However, apps with Google play services should avoid IMEI collection as this is in violation of the Google Play policy.
   void setCollectIMEI(bool isCollect) {
     _methodChannel.invokeMethod("setCollectIMEI", {'isCollect': isCollect});
   }
 
+  /// Opt-out of collection of Android ID.
+  /// If the app does NOT contain Google Play Services, Android ID is collected by the SDK.
+  /// However, apps with Google play services should avoid Android ID collection as this is in violation of the Google Play policy.
   void setCollectAndroidId(bool isCollect) {
     _methodChannel
         .invokeMethod("setCollectAndroidId", {'isCollect': isCollect});
@@ -215,11 +221,16 @@ class AppsflyerSdk {
     _methodChannel.invokeMethod("setImeiData", {'imei': imei});
   }
 
+  /// Setting user local currency code for in-app purchases.
+  /// The currency code should be a 3 character ISO 4217 code. (default is USD).
+  /// You can set the currency code for all events by calling the following method.
   void setCurrencyCode(String currencyCode) {
     _methodChannel
         .invokeMethod("setCurrencyCode", {'currencyCode': currencyCode});
   }
 
+  /// Setting your own customer ID enables you to cross-reference your own unique ID with AppsFlyer’s unique ID and the other devices’ IDs.
+  /// This ID is available in AppsFlyer CSV reports along with Postback APIs for cross-referencing with your internal IDs.
   void setCustomerUserId(String id) {
     _methodChannel.invokeMethod("setCustomerUserId", {'id': id});
   }
@@ -228,6 +239,9 @@ class AppsflyerSdk {
     _methodChannel.invokeMethod("setIsUpdate", {'isUpdate': isUpdate});
   }
 
+  /// Once this API is invoked, our SDK no longer communicates with our servers and stops functioning.
+  /// In some extreme cases you might want to shut down all SDK activity due to legal and privacy compliance.
+  /// This can be achieved with the stopTracking API.
   void stopTracking(bool isTrackingStopped) {
     _methodChannel
         .invokeMethod("stopTracking", {'isTrackingStopped': isTrackingStopped});
@@ -243,10 +257,12 @@ class AppsflyerSdk {
     print("Please use updateServerUninstallToken instead");
   }
 
+  ///Manually pass the Firebase / GCM Device Token for Uninstall measurement.
   void updateServerUninstallToken(String token) {
     _methodChannel.invokeMethod("updateServerUninstallToken", {'token': token});
   }
 
+  ///Set the user emails and encrypt them.
   void setUserEmails(List<String> emails, [EmailCryptType cryptType]) {
     if (cryptType != null) {
       int cryptTypeInt = EmailCryptType.values.indexOf(cryptType);
@@ -257,10 +273,12 @@ class AppsflyerSdk {
     }
   }
 
+  ///Get AppsFlyer's unique device ID is created for every new install of an app.
   Future<String> getAppsFlyerUID() async {
     return await _methodChannel.invokeMethod("getAppsFlyerUID");
   }
 
+  ///Set to true if you want to delay sdk init until CUID is set
   void waitForCustomerUserId(bool wait) {
     _methodChannel.invokeMethod("waitForCustomerUserId", {'wait': wait});
   }
@@ -284,6 +302,7 @@ class AppsflyerSdk {
     return _registerValidatePurchaseCallback();
   }
 
+  /// Set additional data to be sent to AppsFlyer.
   void setAdditionalData(Map<String, dynamic> customData) {
     _methodChannel
         .invokeMethod("setAdditionalData", {'customData': customData});
@@ -333,11 +352,13 @@ class AppsflyerSdk {
     });
   }
 
-  void setSharingFilter(List<String> filters){
+  ///The sharing filter blocks the sharing of S2S events via postbacks/API with integrated partners and other third-party integrations.
+  ///Use the filter to fulfill regulatory requirements like GDPR and CCPA, to comply with user opt-out mechanisms, and for other business logic reasons.
+  void setSharingFilter(List<String> filters) {
     _methodChannel.invokeMethod("setSharingFilter", filters);
   }
 
-  void setSharingFilterForAllPartners(){
+  void setSharingFilterForAllPartners() {
     _methodChannel.invokeMethod("setSharingFilterForAllPartners");
   }
 }
