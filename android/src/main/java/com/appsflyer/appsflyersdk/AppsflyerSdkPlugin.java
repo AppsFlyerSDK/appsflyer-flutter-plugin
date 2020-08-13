@@ -70,8 +70,8 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "initSdk":
                 initSdk(call, result);
                 break;
-            case "trackEvent":
-                trackEvent(call, result);
+            case "logEvent":
+                logEvent(call, result);
                 break;
             case "setHost":
                 setHost(call, result);
@@ -82,8 +82,8 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "setIsUpdate":
                 setIsUpdate(call, result);
                 break;
-            case "stopTracking":
-                stopTracking(call, result);
+            case "stop":
+                stop(call, result);
                 break;
             case "updateServerUninstallToken":
                 updateServerUninstallToken(call, result);
@@ -127,8 +127,8 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "setMinTimeBetweenSessions":
                 setMinTimeBetweenSessions(call, result);
                 break;
-            case "validateAndTrackInAppPurchase":
-                validateAndTrackInAppPurchase(call, result);
+            case "validateAndLogInAppPurchase":
+                validateAndLogInAppPurchase(call, result);
                 break;
             case "getAppsFlyerUID":
                 getAppsFlyerUID(result);
@@ -171,7 +171,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
     }
 
-    private void validateAndTrackInAppPurchase(MethodCall call, Result result) {
+    private void validateAndLogInAppPurchase(MethodCall call, Result result) {
         registerValidatorListener();
         String publicKey = (String) call.argument("publicKey");
         String signature = (String) call.argument("signature");
@@ -296,7 +296,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         result.success(null);
     }
 
-    private void stopTracking(MethodCall call, Result result) {
+    private void stop(MethodCall call, Result result) {
         boolean isTrackingStopped = (boolean) call.argument("isTrackingStopped");
         AppsFlyerLib.getInstance().stopTracking(isTrackingStopped, mContext);
         result.success(null);
@@ -355,7 +355,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         result.success("success");
     }
 
-    private void trackEvent(MethodCall call, MethodChannel.Result result) {
+    private void logEvent(MethodCall call, MethodChannel.Result result) {
 
         AppsFlyerLib instance = AppsFlyerLib.getInstance();
 

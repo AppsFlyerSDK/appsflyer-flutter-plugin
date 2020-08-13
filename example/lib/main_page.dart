@@ -48,7 +48,7 @@ class MainPageState extends State<MainPage> {
                   return HomeContainer(
                     onData: _appsflyerSdk.conversionDataStream,
                     onAttribution: _appsflyerSdk.appOpenAttributionStream,
-                    trackEvent: trackEvent,
+                    trackEvent: logEvent,
                   );
                 } else {
                   return Center(child: Text("Error initializing sdk"));
@@ -57,7 +57,7 @@ class MainPageState extends State<MainPage> {
             }));
   }
 
-  Future<bool> trackEvent(String eventName, Map eventValues) {
-    return _appsflyerSdk.trackEvent(eventName, eventValues);
+  Future<bool> logEvent(String eventName, Map eventValues) {
+    return _appsflyerSdk.logEvent(eventName, eventValues);
   }
 }

@@ -9,6 +9,7 @@
 #define afDevKey                        @"afDevKey"
 #define afAppId                         @"afAppId"
 #define afIsDebug                       @"isDebug"
+#define afTimeToWaitForAdvertiserID     @"timeToWaitForAdvertiserID	"
 #define afEventName                     @"eventName"
 #define afEventValues                   @"eventValues"
 #define afConversionData                @"GCD"

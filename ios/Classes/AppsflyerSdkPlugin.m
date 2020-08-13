@@ -34,8 +34,8 @@
     }else if([@"getSDKVersion" isEqualToString:call.method]){
         [self getSDKVersion:result];
     }
-    else if([@"trackEvent" isEqualToString:call.method]){
-        [self trackEventWithCall:call result:result];
+    else if([@"logEvent" isEqualToString:call.method]){
+        [self logEventWithCall:call result:result];
     }else if([@"waitForCustomerUserId" isEqualToString:call.method]){
         [self waitForCustomerId:call result:result];
     }else if([@"setUserEmails" isEqualToString:call.method]){
@@ -49,8 +49,8 @@
         //
     }else if([@"enableLocationCollection" isEqualToString:call.method]){
         //
-    }else if([@"stopTracking" isEqualToString:call.method]){
-        [self stopTracking:call result:result];
+    }else if([@"stop" isEqualToString:call.method]){
+        [self stop:call result:result];
     }else if([@"setIsUpdate" isEqualToString:call.method]){
         //
     }else if([@"setCustomerUserId" isEqualToString:call.method]){
@@ -67,8 +67,8 @@
         [self setHost:call result:result];
     }else if([@"setAdditionalData" isEqualToString:call.method]){
         [self setAdditionalData:call result:result];
-    }else if([@"validateAndTrackInAppPurchase" isEqualToString:call.method]){
-        [self validateAndTrackInAppPurchase:call result:result];
+    }else if([@"validateAndLogInAppPurchase" isEqualToString:call.method]){
+        [self validateAndLogInAppPurchase:call result:result];
     }else if([@"getAppsFlyerUID" isEqualToString:call.method]){
         [self getAppsFlyerUID:result];
     }else if([@"setSharingFilter" isEqualToString:call.method]){
@@ -115,7 +115,7 @@
     result(nil);
 }
 
-- (void)validateAndTrackInAppPurchase:(FlutterMethodCall*)call result:(FlutterResult)result{
+- (void)validateAndLogInAppPurchase:(FlutterMethodCall*)call result:(FlutterResult)result{
     NSString* publicKey = call.arguments[@"publicKey"];
     NSString* signature = call.arguments[@"signature"];
     NSString* price = call.arguments[@"price"];
@@ -164,7 +164,7 @@
     result(nil);
 }
 
-- (void)stopTracking:(FlutterMethodCall*)call result:(FlutterResult)result{
+- (void)stop:(FlutterMethodCall*)call result:(FlutterResult)result{
     BOOL stopTracking = call.arguments[@"isTrackingStopped"];
     [AppsFlyerLib shared].isStopped = stopTracking;
     result(nil);
@@ -195,17 +195,19 @@
 }
 
 - (void)initSdkWithCall:(FlutterMethodCall*)call result:(FlutterResult)result{
-    
     NSString* devKey = nil;
     NSString* appId = nil;
+    NSTimeInterval timeToWaitForAdvertiserID = 0;
     BOOL isDebug = NO;
     BOOL isConversionData = NO;
     
     id isDebugValue = nil;
     id isConversionDataValue = nil;
+
     devKey = call.arguments[afDevKey];
     appId = call.arguments[afAppId];
-    
+    timeToWaitForAdvertiserID = [(id)call.arguments[afTimeToWaitForAdvertiserID] doubleValue];
+
     isDebugValue = call.arguments[afIsDebug];
     if ([isDebugValue isKindOfClass:[NSNumber class]]) {
         // isDebug is a boolean that will come through as an NSNumber
@@ -223,6 +225,12 @@
     [AppsFlyerLib shared].appleAppID = appId;
     [AppsFlyerLib shared].appsFlyerDevKey = devKey;
     [AppsFlyerLib shared].isDebug = isDebug;
+    if(timeToWaitForAdvertiserID > 0){
+        if (@available(iOS 14, *)) {
+            [[AppsFlyerLib shared] waitForAdvertisingIdentifierWithTimeoutInterval:timeToWaitForAdvertiserID];
+        }
+    }
+
     [[AppsFlyerLib shared] start];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
@@ -230,7 +238,7 @@
     result(@{@"status": @"OK"});
 }
 
--(void)trackEventWithCall:(FlutterMethodCall*)call result:(FlutterResult)result{
+-(void)logEventWithCall:(FlutterMethodCall*)call result:(FlutterResult)result{
     NSString *eventName =  call.arguments[afEventName];
     NSDictionary *eventValues = call.arguments[afEventValues];
     

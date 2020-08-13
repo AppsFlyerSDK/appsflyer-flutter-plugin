@@ -11,6 +11,8 @@ class AppsflyerConstants {
   static const String AF_DEV_KEY = "afDevKey";
   static const String AF_APP_Id = "afAppId";
   static const String AF_IS_DEBUG = "isDebug";
+  static const String AF_TIME_TO_WAIT_FOR_ADVERTISER_ID =
+      "timeToWaitForAdvertiserID";
   static const String AF_GCD = "GCD";
   static const String AF_SUCCESS = "success";
   static const String AF_FAILURE = "failure";
