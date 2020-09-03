@@ -1,5 +1,9 @@
 # Versions
 
+## 6.0.2
+- iOS sdk version is now 6.0.2 and support AppTrackingTransparency framework
+- Android sdk version is 5.4.1
+
 ## 5.4.1+1
 - Added documentation
 - Added secured links to README

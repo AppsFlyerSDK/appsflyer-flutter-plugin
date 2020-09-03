@@ -21,8 +21,8 @@ When submitting an issue please specify your AppsFlyer sign-up (account) email ,
 
 ### This plugin is built for
 
-- iOS AppsFlyerSDK **v5.2.0**
-- Android AppsFlyerSDK **v5.2.0**
+- iOS AppsFlyerSDK **v6.0.2**
+- Android AppsFlyerSDK **v5.4.1**
 
 ## <a id="api-methods"> API Methods
 
@@ -335,3 +335,17 @@ appsFlyerSdk.validateAndTrackInAppPurchase(
          print(error);
        });
 ```
+
+## **Migration Guide to v6**
+[Integration guide](https://support.appsflyer.com//hc/en-us/articles/207032066#introduction)
+[Migration guide](https://support.appsflyer.com/hc/en-us/articles/360011571778)
+In v6 of AppsFlyer SDK there are some api breaking changes: 
+
+|Before v6   | v6  |
+|---|---|
+| trackEvent  | logEvent  |
+| stopTracking  | stop  |
+| validateAndTrackInAppPurchase  | validateAndLogInAppPurchase  |
+
+### iOS
+on iOS you need to implement IDFA request pop up and add AppTrackTransparency framework in order for the plugin to work

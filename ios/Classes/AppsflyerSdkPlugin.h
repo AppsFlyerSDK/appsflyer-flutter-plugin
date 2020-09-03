@@ -1,5 +1,5 @@
 #import <Flutter/Flutter.h>
-#import <AppsFlyerLib/AppsFlyerTracker.h>
+#import <AppsFlyerLib/AppsFlyerLib.h>
 
 @interface AppsflyerSdkPlugin: NSObject<FlutterPlugin>
 
@@ -9,6 +9,7 @@
 #define afDevKey                        @"afDevKey"
 #define afAppId                         @"afAppId"
 #define afIsDebug                       @"isDebug"
+#define afTimeToWaitForAdvertiserID     @"timeToWaitForAdvertiserID	"
 #define afEventName                     @"eventName"
 #define afEventValues                   @"eventValues"
 #define afConversionData                @"GCD"
