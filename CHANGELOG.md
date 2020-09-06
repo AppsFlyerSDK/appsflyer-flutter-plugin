@@ -1,5 +1,9 @@
 # Versions
 
+## 6.0.2+1
+- Fixed the issue in the example app on Android platform
+- Updated AppsFlyer SDK to v5.4.3
+
 ## 6.0.2
 - iOS sdk version is now 6.0.2 and support AppTrackingTransparency framework
 - Android sdk version is 5.4.1

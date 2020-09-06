@@ -108,16 +108,16 @@ FutureBuilder<dynamic> ( future: _appsflyerSdk.initSdk(registerConversionDataCal
 ```
 
 ---
-##### **`static Future<bool> logEvent(String eventName, Map eventValues) async`** (optional)
+##### **`static Future<bool> trackEvent(String eventName, Map eventValues) async`** (optional)
 
 - These in-app events help you track how loyal users discover your app, and attribute them to specific
   campaigns/media-sources. Please take the time define the event/s you want to measure to allow you
   to track ROI (Return on Investment) and LTV (Lifetime Value).
-- The `logEvent` method allows you to send in-app events to AppsFlyer analytics. This method allows you to add events dynamically by adding them directly to the application code.
+- The `trackEvent` method allows you to send in-app events to AppsFlyer analytics. This method allows you to add events dynamically by adding them directly to the application code.
 
 | parameter     | type     | description                                                                                                                                                                       |
 | ------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `eventName`   | `String` | custom event name, is presented in your dashboard. |
+| `eventName`   | `String` | custom event name, is presented in your dashboard. See the Event list [HERE](https://github.com/AppsFlyerSDK/cordova-plugin-appsflyer-sdk/blob/master/src/ios/AppsFlyerTracker.h) |
 | `eventValues` | `Map`    | event details                                                                                                                                                                     |
 
 _Example:_
@@ -226,11 +226,11 @@ You can set the minimum time between session (the default is 5 seconds)
 ```dart
 appsFlyerSdk.setMinTimeBetweenSessions(3)
 ```
-**`void stop(bool isTrackingStopped)`**
+**`void stopTracking(bool isTrackingStopped)`**
 You can stop sending events to Appsflyer by using this method.
 _Example:_
 ```dart
-widget.appsFlyerSdk.stop(true);
+widget.appsFlyerSdk.stopTracking(true);
 ```
 **`void setCurrencyCode(String currencyCode)`**
 _Example:_
@@ -242,7 +242,6 @@ _Example:_
 ```dart
 appsFlyerSdk.setIsUpdate(true);
 ```
-*Deprecated*
 **`void enableUninstallTracking(String senderId)`**
 _Example:_
 ```dart
@@ -316,7 +315,7 @@ _Example:_
 ```dart
 appsFlyerSdk.updateServerUninstallToken("token");
 ```
-**`Stream validateAndLogInAppPurchase( String publicKey,
+**`Stream validateAndTrackInAppPurchase( String publicKey,
       String signature,
       String purchaseData,
       String price,
@@ -324,7 +323,7 @@ appsFlyerSdk.updateServerUninstallToken("token");
       Map<String, String> additionalParameters)`**
 _Example:_
 ```dart
-appsFlyerSdk.validateAndLogInAppPurchase(
+appsFlyerSdk.validateAndTrackInAppPurchase(
            "publicKey",
            "signature",
            "purchaseData",

@@ -121,7 +121,7 @@ class AppsflyerSdk {
   }
 
   Stream<Map> get conversionDataStream {
-    return _afGCDStreamController?.stream;
+    return _afGCDStreamController?.stream?.asBroadcastStream();
   }
 
   // Accessing AppsFlyer attribution, referred from deep linking
@@ -134,7 +134,7 @@ class AppsflyerSdk {
   }
 
   Stream<Map> get appOpenAttributionStream {
-    return _afOpenAttributionStreamController?.stream;
+    return _afOpenAttributionStreamController?.stream?.asBroadcastStream();
   }
 
   ///Returns `Stream`. Accessing AppsFlyer purchase validation data
