@@ -297,8 +297,8 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     }
 
     private void stop(MethodCall call, Result result) {
-        boolean isTrackingStopped = (boolean) call.argument("isTrackingStopped");
-        AppsFlyerLib.getInstance().stopTracking(isTrackingStopped, mContext);
+        boolean isStopped = (boolean) call.argument("isStopped");
+        AppsFlyerLib.getInstance().stopTracking(isStopped, mContext);
         result.success(null);
     }
 

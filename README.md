@@ -33,6 +33,22 @@ In order to install the plugin, visit [this](https://pub.dartlang.org/packages/a
 
 To start using AppsFlyer you first need to create an instance of `AppsflyerSdk` before using any other of our sdk functionalities.  
 
+
+## **Migration Guide to v6**
+[Integration guide](https://support.appsflyer.com//hc/en-us/articles/207032066#introduction)
+[Migration guide](https://support.appsflyer.com/hc/en-us/articles/360011571778)
+In v6 of AppsFlyer SDK there are some api breaking changes: 
+
+|Before v6   | v6  |
+|---|---|
+| trackEvent  | logEvent  |
+| stopTracking  | stop  |
+| validateAndTrackInAppPurchase  | validateAndLogInAppPurchase  |
+
+### iOS
+on iOS you need to implement IDFA request pop up and add AppTrackTransparency framework in order for the plugin to work
+
+
 ##### **`AppsflyerSdk(Map options)`** 
 
 | parameter | type  | description       |
@@ -108,12 +124,12 @@ FutureBuilder<dynamic> ( future: _appsflyerSdk.initSdk(registerConversionDataCal
 ```
 
 ---
-##### **`static Future<bool> trackEvent(String eventName, Map eventValues) async`** (optional)
+##### **`static Future<bool> logEvent(String eventName, Map eventValues) async`** (optional)
 
 - These in-app events help you track how loyal users discover your app, and attribute them to specific
   campaigns/media-sources. Please take the time define the event/s you want to measure to allow you
   to track ROI (Return on Investment) and LTV (Lifetime Value).
-- The `trackEvent` method allows you to send in-app events to AppsFlyer analytics. This method allows you to add events dynamically by adding them directly to the application code.
+- The `logEvent` method allows you to send in-app events to AppsFlyer analytics. This method allows you to add events dynamically by adding them directly to the application code.
 
 | parameter     | type     | description                                                                                                                                                                       |
 | ------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -126,9 +142,9 @@ _Example:_
 Future<bool> sendEvent(String eventName, Map eventValues) async {
     bool result;
     try {
-      result = await appsflyerSdk.trackEvent(eventName, eventValues);
+      result = await appsflyerSdk.logEvent(eventName, eventValues);
     } on Exception catch (e) {}
-      print("Result trackEvent: ${result}");
+      print("Result logEvent: ${result}");
   }
 ```
 
@@ -226,11 +242,11 @@ You can set the minimum time between session (the default is 5 seconds)
 ```dart
 appsFlyerSdk.setMinTimeBetweenSessions(3)
 ```
-**`void stopTracking(bool isTrackingStopped)`**
+**`void stop(bool isStopped)`**
 You can stop sending events to Appsflyer by using this method.
 _Example:_
 ```dart
-widget.appsFlyerSdk.stopTracking(true);
+widget.appsFlyerSdk.stop(true);
 ```
 **`void setCurrencyCode(String currencyCode)`**
 _Example:_
@@ -335,17 +351,3 @@ appsFlyerSdk.validateAndTrackInAppPurchase(
          print(error);
        });
 ```
-
-## **Migration Guide to v6**
-[Integration guide](https://support.appsflyer.com//hc/en-us/articles/207032066#introduction)
-[Migration guide](https://support.appsflyer.com/hc/en-us/articles/360011571778)
-In v6 of AppsFlyer SDK there are some api breaking changes: 
-
-|Before v6   | v6  |
-|---|---|
-| trackEvent  | logEvent  |
-| stopTracking  | stop  |
-| validateAndTrackInAppPurchase  | validateAndLogInAppPurchase  |
-
-### iOS
-on iOS you need to implement IDFA request pop up and add AppTrackTransparency framework in order for the plugin to work

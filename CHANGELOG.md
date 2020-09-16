@@ -1,5 +1,8 @@
 # Versions
 
+## 6.0.3+1
+- Updated AppsFlyer iOS SDK to v6.0.3
+
 ## 6.0.2+1
 - Fixed the issue in the example app on Android platform
 - Updated AppsFlyer SDK to v5.4.3

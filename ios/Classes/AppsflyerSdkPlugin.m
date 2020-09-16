@@ -165,8 +165,8 @@
 }
 
 - (void)stop:(FlutterMethodCall*)call result:(FlutterResult)result{
-    BOOL stopTracking = call.arguments[@"isTrackingStopped"];
-    [AppsFlyerLib shared].isStopped = stopTracking;
+    BOOL stop = call.arguments[@"isStopped"];
+    [AppsFlyerLib shared].isStopped = stop;
     result(nil);
 }
 
@@ -197,7 +197,7 @@
 - (void)initSdkWithCall:(FlutterMethodCall*)call result:(FlutterResult)result{
     NSString* devKey = nil;
     NSString* appId = nil;
-    NSTimeInterval timeToWaitForAdvertiserID = 0;
+    NSTimeInterval timeToWaitForATTUserAuthorization = 0;
     BOOL isDebug = NO;
     BOOL isConversionData = NO;
     
@@ -206,7 +206,7 @@
 
     devKey = call.arguments[afDevKey];
     appId = call.arguments[afAppId];
-    timeToWaitForAdvertiserID = [(id)call.arguments[afTimeToWaitForAdvertiserID] doubleValue];
+    timeToWaitForATTUserAuthorization = [(id)call.arguments[afTimeToWaitForATTUserAuthorization] doubleValue];
 
     isDebugValue = call.arguments[afIsDebug];
     if ([isDebugValue isKindOfClass:[NSNumber class]]) {
@@ -225,9 +225,9 @@
     [AppsFlyerLib shared].appleAppID = appId;
     [AppsFlyerLib shared].appsFlyerDevKey = devKey;
     [AppsFlyerLib shared].isDebug = isDebug;
-    if(timeToWaitForAdvertiserID > 0){
+    if(timeToWaitForATTUserAuthorization > 0){
         if (@available(iOS 14, *)) {
-            [[AppsFlyerLib shared] waitForAdvertisingIdentifierWithTimeoutInterval:timeToWaitForAdvertiserID];
+            [[AppsFlyerLib shared] waitForATTUserAuthorizationWithTimeoutInterval:timeToWaitForATTUserAuthorization];
         }
     }
 
