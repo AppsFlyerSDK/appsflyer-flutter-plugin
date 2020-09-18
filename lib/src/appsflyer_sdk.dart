@@ -78,14 +78,14 @@ class AppsflyerSdk {
     afOptions[AppsflyerConstants.AF_DEV_KEY] = devKey;
 
     if (Platform.isIOS) {
-      if (options[AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ADVERTISER_ID] !=
+      if (options[AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION] !=
           null) {
-        dynamic timeToWaitForAdvertiserID =
-            options[AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ADVERTISER_ID];
-        assert(timeToWaitForAdvertiserID is double);
+        dynamic timeToWaitForATTUserAuthorization =
+            options[AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION];
+        assert(timeToWaitForATTUserAuthorization is double);
 
-        afOptions[AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ADVERTISER_ID] =
-            timeToWaitForAdvertiserID;
+        afOptions[AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION] =
+            timeToWaitForATTUserAuthorization;
       }
 
       dynamic appID = options[AppsflyerConstants.AF_APP_Id];
@@ -178,10 +178,10 @@ class AppsflyerSdk {
     return _methodChannel.invokeMethod("getSDKVersion");
   }
 
-  ///These in-app events help you track how loyal users discover your app, and attribute them to specific
+  ///These in-app events help you to log how loyal users discover your app, and attribute them to specific
   ///campaigns/media-sources. Please take the time define the event/s you want to measure to allow you
-  ///to track ROI (Return on Investment) and LTV (Lifetime Value).
-  ///- The `trackEvent` method allows you to send in-app events to AppsFlyer analytics. This method allows you to add events dynamically by adding them directly to the application code.
+  ///to send ROI (Return on Investment) and LTV (Lifetime Value).
+  ///- The `logEvent` method allows you to send in-app events to AppsFlyer analytics. This method allows you to add events dynamically by adding them directly to the application code.
   Future<bool> logEvent(String eventName, Map eventValues) async {
     assert(eventValues != null);
 
@@ -252,9 +252,9 @@ class AppsflyerSdk {
   /// Once this API is invoked, our SDK no longer communicates with our servers and stops functioning.
   /// In some extreme cases you might want to shut down all SDK activity due to legal and privacy compliance.
   /// This can be achieved with the stopTracking API.
-  void stop(bool isTrackingStopped) {
+  void stop(bool isStopped) {
     _methodChannel
-        .invokeMethod("stop", {'isTrackingStopped': isTrackingStopped});
+        .invokeMethod("stop", {'isStopped': isStopped});
   }
 
   void enableLocationCollection(bool flag) {

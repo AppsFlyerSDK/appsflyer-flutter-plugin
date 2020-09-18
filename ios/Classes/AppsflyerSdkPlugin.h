@@ -6,13 +6,13 @@
 @end
 
 // Appsflyer JS objects
-#define afDevKey                        @"afDevKey"
-#define afAppId                         @"afAppId"
-#define afIsDebug                       @"isDebug"
-#define afTimeToWaitForAdvertiserID     @"timeToWaitForAdvertiserID	"
-#define afEventName                     @"eventName"
-#define afEventValues                   @"eventValues"
-#define afConversionData                @"GCD"
+#define afDevKey                            @"afDevKey"
+#define afAppId                             @"afAppId"
+#define afIsDebug                           @"isDebug"
+#define afTimeToWaitForATTUserAuthorization @"timeToWaitForATTUserAuthorization"
+#define afEventName                         @"eventName"
+#define afEventValues                       @"eventValues"
+#define afConversionData                    @"GCD"
 
 // Appsflyer native objects
 #define afOnInstallConversionData       @"onInstallConversionData"
