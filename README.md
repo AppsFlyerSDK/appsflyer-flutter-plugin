@@ -5,6 +5,7 @@
 A Flutter plugin for AppsFlyer SDK.
 
 [![pub package](https://img.shields.io/pub/v/appsflyer_sdk.svg)](https://pub.dartlang.org/packages/appsflyer_sdk) 
+
 In order for us to provide optimal support, we would kindly ask you to submit any issues to support@appsflyer.com
 
 
