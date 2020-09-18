@@ -1,5 +1,8 @@
 # Versions
 
+## 6.0.3+2
+- Removed AppTrackingTransparency framework
+
 ## 6.0.3+1
 - Updated AppsFlyer iOS SDK to v6.0.3
 
