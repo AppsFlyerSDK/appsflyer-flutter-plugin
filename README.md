@@ -6,7 +6,7 @@ A Flutter plugin for AppsFlyer SDK.
 
 [![pub package](https://img.shields.io/pub/v/appsflyer_sdk.svg)](https://pub.dartlang.org/packages/appsflyer_sdk) 
 
-In order for us to provide optimal support, we would kindly ask you to submit any issues to support@appsflyer.com
+🛠 In order for us to provide optimal support, we would kindly ask you to submit any issues to support@appsflyer.com
 
 
 When submitting an issue please specify your AppsFlyer sign-up (account) email , your app ID , reproduction steps, logs, code snippets and any additional relevant information.
@@ -14,6 +14,14 @@ When submitting an issue please specify your AppsFlyer sign-up (account) email ,
 
 
 ---
+
+### Table of content
+
+- [v6 Breaking changes](#v6-breaking-changes)
+- [Getting started](#getting-started)
+- [Initializing the sdk](#init-sdk)
+- [Guides](#guides)
+- [API](#api)
 
 ### Supported Platforms
 
@@ -25,47 +33,28 @@ When submitting an issue please specify your AppsFlyer sign-up (account) email ,
 - iOS AppsFlyerSDK **v6.0.3**
 - Android AppsFlyerSDK **v5.4.1**
 
-## <a id="api-methods"> API Methods
-
 ---
-### **Getting started**
+## <a id="v6-breaking-changes"> **❗Migration Guide to v6**
+- [Integration guide](https://support.appsflyer.com//hc/en-us/articles/207032066#introduction)
+- [Migration guide](https://support.appsflyer.com/hc/en-us/articles/360011571778)
+
+In v6 of AppsFlyer SDK there are some api breaking changes: 
+
+|Before v6                      | v6                          |
+|-------------------------------|-----------------------------|
+| trackEvent                    | logEvent                    |
+| stopTracking                  | stop                        |
+| validateAndTrackInAppPurchase | validateAndLogInAppPurchase |
+
+## <a id="getting-started"> **📲 Getting started**
 
 In order to install the plugin, visit [this](https://pub.dartlang.org/packages/appsflyer_sdk#-installing-tab-) page.
 
 To start using AppsFlyer you first need to create an instance of `AppsflyerSdk` before using any other of our sdk functionalities.  
 
+`AppsflyerSdk` receives a map or `AppsFlyerOptions` object. This is how you can configure our `AppsflyerSdk` instance and connect it to your AppsFlyer account.
 
-## **Migration Guide to v6**
-[Integration guide](https://support.appsflyer.com//hc/en-us/articles/207032066#introduction)
-[Migration guide](https://support.appsflyer.com/hc/en-us/articles/360011571778)
-In v6 of AppsFlyer SDK there are some api breaking changes: 
-
-|Before v6   | v6  |
-|---|---|
-| trackEvent  | logEvent  |
-| stopTracking  | stop  |
-| validateAndTrackInAppPurchase  | validateAndLogInAppPurchase  |
-
-### iOS
-on iOS you need to implement IDFA request pop up and add AppTrackTransparency framework in order for the plugin to work
-
-
-##### **`AppsflyerSdk(Map options)`** 
-
-| parameter | type  | description       |
-| --------- | ----- | ----------------- |
-| `options` | `Map` | SDK configuration |
-
-**`options`**
-
-| name       | type      | default | description                                                                                                                    |
-| ---------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `afDevKey` | `string`  |         | [Appsflyer Dev key](https://support.appsflyer.com/hc/en-us/articles/207032126-AppsFlyer-SDK-Integration-Android)               |
-| `afAppId`  | `string`  |         | [Apple Application ID](https://support.appsflyer.com/hc/en-us/articles/207032066-AppsFlyer-SDK-Integration-iOS) (for iOS only) |
-| `isDebug`  | `boolean` | `false` | debug mode (optional)                                                                                                          |
-
-_Example:_
-
+*Example (using map):*
 ```dart
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 //..
@@ -75,280 +64,20 @@ Map options = { "afDevKey": afDevKey,
                 "isDebug": true};
 
 AppsflyerSdk appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
-
 ```
 
-**Or you can use `AppsFlyerOptions` class instead**
+The next step is to call `initSdk` which have the optional boolean parameters `egisterConversionDataCallback` and `registerOnAppOpenAttributionCallback` which are set to false as default.
 
-##### **`AppsflyerSdk(Map options)`**
+After we call `initSdk` we can use all of AppsFlyer SDK features.
 
-| parameter | type               | description       |
-| --------- | ------------------ | ----------------- |
-| `options` | `AppsFlyerOptions` | SDK configuration |
+## <a id="init-sdk"> **🚀 Initializing the SDK**
 
-_Example:_
+Initialize the SDK to enable AppsFlyer to detect installations, sessions (app opens) ,updates and use all of our features.
 
-```dart
-import 'package:appsflyer_sdk/appsflyer_sdk.dart';
-//..
+## <a id="guides"> **📖 Guides**
 
-final AppsFlyerOptions options = AppsFlyerOptions(afDevKey: "af dev key",
-                                                  showDebug: true,
-                                                  appId: "123456789");
-```
+Great installation and setup guides can be viewed [here](/Docs/Guides.md)
 
-Once `AppsflyerSdk` object is created, you can call `initSdk` method.
+## <a id="api"> **📑 API**
 
-##### **`static Future<Map<dynamic, dynamic>> initSdk({bool registerConversionDataCallback, bool registerOnAppOpenAttributionCallback}) async` (Changed in 1.2.2)**
-
-initialize the SDK, using the options initialized from the constructor|
-Return response object with the field `status`
-The user can access `conversionDataStream` and `appOpenAttributionStream` to listen for events
-
-_Example:_
-
-```dart
-import 'package:appsflyer_sdk/appsflyer_sdk.dart';
-//..
-
-AppsflyerSdk _appsflyerSdk = AppsflyerSdk({...});
-
-FutureBuilder<dynamic> ( future: _appsflyerSdk.initSdk(registerConversionDataCallback: true, registerOnAppOpenAttributionCallback: true), builder: (BuildContext context, AsyncSnapshot snapshot) {
-  if (snapshot.hasData)
-    return  HomeContainer(
-      onData: _appsflyerSdk.conversionDataStream,
-      onAttribution: _appsflyerSdk.appOpenAttributionStream,
-      ...
-    )
-  ...
-
-```
-
----
-##### **`static Future<bool> logEvent(String eventName, Map eventValues) async`** (optional)
-
-- These in-app events help you to understand how loyal users discover your app, and attribute them to specific
-  campaigns/media-sources. Please take the time define the event/s you want to measure to allow you
-  to send ROI (Return on Investment) and LTV (Lifetime Value).
-- The `logEvent` method allows you to send in-app events to AppsFlyer analytics. This method allows you to add events dynamically by adding them directly to the application code.
-
-| parameter     | type     | description                                                                                                                                                                       |
-| ------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `eventName`   | `String` | custom event name, is presented in your dashboard. See the Event list [HERE](https://github.com/AppsFlyerSDK/cordova-plugin-appsflyer-sdk/blob/master/src/ios/AppsFlyerTracker.h) |
-| `eventValues` | `Map`    | event details                                                                                                                                                                     |
-
-_Example:_
-
-```dart
-Future<bool> sendEvent(String eventName, Map eventValues) async {
-    bool result;
-    try {
-      result = await appsflyerSdk.logEvent(eventName, eventValues);
-    } on Exception catch (e) {}
-      print("Result logEvent: ${result}");
-  }
-```
-
----
-
-### **Conversion Data and on app open attribution**
-
-##### **`static Stream<dynamic> registerConversionDataCallback()`**  
-Returns `Stream`. Accessing AppsFlyer Attribution / Conversion Data from the SDK (Deferred Deeplinking). Read more: [Android](https://support.appsflyer.com/entries/69796693-Accessing-AppsFlyer-Attribution-Conversion-Data-from-the-SDK-Deferred-Deep-linking-), [iOS](https://support.appsflyer.com/entries/22904293-Testing-AppsFlyer-iOS-SDK-Integration-Before-Submitting-to-the-App-Store-). AppsFlyer plugin will return attribution data as JSON `Map` in `Stream`.
-
-_Example:_
-
-```dart
-appsflyerSdk.registerConversionDataCallback().listen((data) {
-      //print("GCD: " + data.toString());
-      //....
-    }).onError((handleError) {
-      print("error");
-    });
-```
-
-_Example of success Organic response:_
-
-```
-{
-  "status": "success",
-  "type": "onInstallConversionDataLoaded",
-  "data": {
-    "af_status": "Organic",
-    "af_message": "organic install",
-    "is_first_launch": "false"
-  }
-}
-```
-
-_Example of failure response:_
-
-```
-{
-  "status": "failure",
-  "type": "onInstallConversionDataLoaded",
-  "data": "SOME_ERROR_MESSAGE"
-}
-```
-##### **`static Stream<dynamic> registerOnAppOpenAttributionCallback()`**  
-In case you want to use [deep links](https://en.wikipedia.org/wiki/Deep_linking) in your app, you will need to use `registerOnAppOpenAttributionCallback` on the `AppsflyerSdk` instance you've created.  
-_Example:_
-
-```dart
-appsflyerSdk.registerOnAppOpenAttributionCallback().listen((data) {
-      //print("OnAppOpenAttribution: " + data.toString());
-      //....
-    }).onError((handleError) {
-      print("error");
-    });
-```
-
-_Example of response on deep-link "https://flutter.demo" :_
-
-```
-{
-  "status": "success",
-  "type": "onAppOpenAttribution",
-  "data": {
-    "link": "https://flutter.demo"
-  }
-}
-```
-
----
-
-## Android Out of store
-Please make sure to go over [this guide](https://support.appsflyer.com/hc/en-us/articles/207447023-Attributing-out-of-store-Android-markets-guide) to get general understanding of how out of store attribution is set up in AppsFlyer. If the store you distribute the app through supports install referrer matching or requires the referrer in the postback, make sure to add the following to the AndroidManifest.xml:
-```
-<application>
-...
-	<receiver android:name="com.appsflyer.SingleInstallBroadcastReceiver" android:exported="true">
-		<intent-filter>
-			 <action android:name="com.android.vending.INSTALL_REFERRER" />
-		 </intent-filter>
-	</receiver>
-</application>
-```
-
-## Other functionalities:
-**`void setUserEmails(List<String> emails, [EmailCryptType cryptType]`**
-Set the user emails with the given encryption (`EmailCryptTypeNone, EmailCryptTypeSHA1, EmailCryptTypeMD5, EmailCryptTypeSHA256`). the default encryption is `EmailCryptTypeNone`.
-_Example:_
-```dart
-appsFlyerSdk.setUserEmails(
-       ["a@a.com", "b@b.com"], EmailCryptType.EmailCryptTypeSHA1);
-```
-**`void setMinTimeBetweenSessions(int seconds)`**
-You can set the minimum time between session (the default is 5 seconds)
-```dart
-appsFlyerSdk.setMinTimeBetweenSessions(3)
-```
-**`void stop(bool isStopped)`**
-You can stop sending events to Appsflyer by using this method.
-_Example:_
-```dart
-widget.appsFlyerSdk.stop(true);
-```
-**`void setCurrencyCode(String currencyCode)`**
-_Example:_
-```dart
-appsFlyerSdk.setCurrencyCode("currencyCode");
-```
-**`void setIsUpdate(bool isUpdate)`**
-_Example:_
-```dart
-appsFlyerSdk.setIsUpdate(true);
-```
-**`void enableUninstallTracking(String senderId)`**
-_Example:_
-```dart
-appsFlyerSdk.enableUninstallTracking("senderId");
-```
-**`void setImeiData(String imei)`**
-_Example:_
-```dart
-appsFlyerSdk.setImeiData("imei");
-```
-**`void setAndroidIdData(String androidIdData)`**
-_Example:_
-```dart
-appsFlyerSdk.setAndroidIdData("androidId");
-```
-**`void enableLocationCollection(bool flag)`**
-_Example:_
-```dart
-appsFlyerSdk.enableLocationCollection(true);
-```
-**`void setCustomerUserId(String userId)`**
-[What is customer user id?](https://support.appsflyer.com/hc/en-us/articles/207032016-Customer-User-ID)
-_Example:_
-```dart
-appsFlyerSdk.setCustomerUserId("id");
-```
-**`void waitForCustomerUserId(bool wait)`**
-You can set this function to `true` if you don't want to track events without setting customer id first.
-_Example:_
-```dart
-appsFlyerSdk.waitForCustomerUserId(true);
-```
-**`void setAdditionalData(Map addionalData)`**
-_Example:_
-```dart
-appsFlyerSdk.setAdditionalData({"customData": "data"});
-```
-**`void setCollectAndroidId(bool isCollect)`**
-_Example:_
-```dart
-appsFlyerSdk.setCollectAndroidId(true);
-```
-**`void setCollectIMEI(bool isCollect)`**  
-_NOTE:_ Make sure to add `<uses-permission android:name="android.permission.READ_PHONE_STATE" />` in the AndroidManifest and request these permissions in the runtime in order for the SDK to be able to collect IMEI
-_Example:_
-```dart
-appsFlyerSdk.setCollectIMEI(false);
-```
-**`void setHost(String hostPrefix, String hostName)`**
-You can change the default host (appsflyer) by using this function
-_Example:_
-```dart
-appsFlyerSdk.setHost("pref", "my-host");
-```
-**`Future<String> getHostName()`**
-_Example:_
-```dart
-appsFlyerSdk.getHostName().then((name) {
-         print("Host name: ${name}");
-       });
-```
-**`Future<String> getHostPrefix()`**
-_Example:_
-```dart
-appsFlyerSdk.getHostPrefix().then((name) {
-         print("Host prefix: ${name}");
-       });
-```
-**`void updateServerUninstallToken(String token)`**
-_Example:_
-```dart
-appsFlyerSdk.updateServerUninstallToken("token");
-```
-**`Stream validateAndTrackInAppPurchase( String publicKey,
-      String signature,
-      String purchaseData,
-      String price,
-      String currency,
-      Map<String, String> additionalParameters)`**
-_Example:_
-```dart
-appsFlyerSdk.validateAndTrackInAppPurchase(
-           "publicKey",
-           "signature",
-           "purchaseData",
-           "price",
-           "currency",
-           {"fs": "fs"}).listen((data) {
-         print(data);
-       }).onError((error) {
-         print(error);
-       });
-```
+see the full [API](/Docs/API.md) available for this plugin.
