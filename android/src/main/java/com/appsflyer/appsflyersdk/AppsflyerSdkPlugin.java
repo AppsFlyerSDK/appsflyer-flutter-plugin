@@ -499,6 +499,12 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
 
         instance.init(afDevKey, gcdListener, mContext);
+
+        String appInviteOneLink = (String) call.argument(AppsFlyerConstants.AF_APP_INVITE_ONE_LINK);
+        if(appInviteOneLink != null){
+            instance.setAppInviteOneLink(appInviteOneLink);
+        }
+
         instance.trackEvent(mContext, null, null);
         instance.startTracking(mApplication, afDevKey);
 
