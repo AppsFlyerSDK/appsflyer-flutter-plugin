@@ -78,13 +78,15 @@ class AppsflyerSdk {
     afOptions[AppsflyerConstants.AF_DEV_KEY] = devKey;
 
     if (Platform.isIOS) {
-      if (options[AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION] !=
+      if (options[
+              AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION] !=
           null) {
-        dynamic timeToWaitForATTUserAuthorization =
-            options[AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION];
+        dynamic timeToWaitForATTUserAuthorization = options[
+            AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION];
         assert(timeToWaitForATTUserAuthorization is double);
 
-        afOptions[AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION] =
+        afOptions[
+                AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION] =
             timeToWaitForATTUserAuthorization;
       }
 
@@ -253,8 +255,7 @@ class AppsflyerSdk {
   /// In some extreme cases you might want to shut down all SDK activity due to legal and privacy compliance.
   /// This can be achieved with the stopTracking API.
   void stop(bool isStopped) {
-    _methodChannel
-        .invokeMethod("stop", {'isStopped': isStopped});
+    _methodChannel.invokeMethod("stop", {'isStopped': isStopped});
   }
 
   void enableLocationCollection(bool flag) {
@@ -370,5 +371,56 @@ class AppsflyerSdk {
 
   void setSharingFilterForAllPartners() {
     _methodChannel.invokeMethod("setSharingFilterForAllPartners");
+  }
+
+  void generateInviteLink(
+    AppsFlyerInviteLinkParams parameters,
+    Function success,
+    Function error,
+  ) {
+    Map<String, String> paramsMap = _translateInviteLinkParamsToMap(parameters);
+    startListening(success, "successGenerateInviteLink");
+    startListening(error, "errorGenerateInviteLink");
+    _methodChannel.invokeMethod("generateInviteLink", paramsMap);
+  }
+
+  Map<String, String> _translateInviteLinkParamsToMap(
+      AppsFlyerInviteLinkParams params) {
+    Map<String, String> inviteLinkParamsMap = Map<String, String>();
+    inviteLinkParamsMap['referrerImageUrl'] = params.referreImageUrl;
+    inviteLinkParamsMap['customerID'] = params.customerID;
+    inviteLinkParamsMap['brandDomain'] = params.brandDomain;
+    inviteLinkParamsMap['baseDeeplink'] = params.baseDeepLink;
+    inviteLinkParamsMap['referrerName'] = params.referrerName;
+    inviteLinkParamsMap['channel'] = params.channel;
+    inviteLinkParamsMap['campaign'] = params.campaign;
+
+    return inviteLinkParamsMap;
+  }
+
+  ///Set the OneLink ID that should be used for User-Invite-API.
+  ///The link that is generated for the user invite will use this OneLink ID as the base link ID
+  void setAppInviteOneLinkID(String oneLinkID, Function callback) {
+    startListening(callback, "successSetAppInviteOneLinkID");
+    _methodChannel.invokeMethod("setAppInviteOneLinkID", {
+      oneLinkID: oneLinkID,
+    });
+  }
+
+  ///To attribute an impression use the following API call.
+  ///Make sure to use the promoted App ID as it appears within the AppsFlyer dashboard.
+  void logCrossPromotionImpression(String appId, String campaign, Map data) {
+    _methodChannel.invokeMethod("logCrossPromotionImpression",
+        {appId: appId, campaign: campaign, data: data});
+  }
+
+  ///Use the following API to attribute the click and launch the app store's app page.
+  void logCrossPromotionAndOpenStore(
+      String appId, String campaign, Map params) {
+    _methodChannel.invokeMethod("logCrossPromotionAndOpenStore", {
+      appId: appId,
+      campaign: campaign,
+      params: params,
+    });
   }
 }
