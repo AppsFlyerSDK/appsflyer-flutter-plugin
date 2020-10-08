@@ -291,6 +291,7 @@
 - (void)initSdkWithCall:(FlutterMethodCall*)call result:(FlutterResult)result{
     NSString* devKey = nil;
     NSString* appId = nil;
+    NSString* appInviteOneLink = nil;
     NSTimeInterval timeToWaitForATTUserAuthorization = 0;
     BOOL isDebug = NO;
     BOOL isConversionData = NO;
@@ -316,7 +317,11 @@
         [[AppsFlyerLib shared] setDelegate:_streamHandler];
     }
     
-    [AppsFlyerLib shared].appInviteOneLinkID = @"TS12";
+    appInviteOneLink = call.arguments[afInviteOneLink];
+    if(appInviteOneLink != nil){
+        [AppsFlyerLib shared].appInviteOneLinkID = appInviteOneLink;
+    }
+    
     [AppsFlyerLib shared].appleAppID = appId;
     [AppsFlyerLib shared].appsFlyerDevKey = devKey;
     [AppsFlyerLib shared].isDebug = isDebug;

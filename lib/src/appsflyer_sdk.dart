@@ -39,12 +39,20 @@ class AppsflyerSdk {
 
   Map<String, dynamic> _validateAFOptions(AppsFlyerOptions options) {
     Map<String, dynamic> validatedOptions = {};
+
     //validations
     dynamic devKey = options.afDevKey;
     assert(devKey != null);
     assert(devKey is String);
 
     validatedOptions[AppsflyerConstants.AF_DEV_KEY] = devKey;
+
+    dynamic appInviteOneLink = options.appInviteOneLink;
+    if (appInviteOneLink != null) {
+      assert(appInviteOneLink is String);
+    }
+
+    validatedOptions[AppsflyerConstants.APP_INVITE_ONE_LINK] = appInviteOneLink;
 
     if (Platform.isIOS) {
       dynamic appID = options.appId;
@@ -76,6 +84,13 @@ class AppsflyerSdk {
     assert(devKey is String);
 
     afOptions[AppsflyerConstants.AF_DEV_KEY] = devKey;
+
+    dynamic appInviteOneLink = options[AppsflyerConstants.APP_INVITE_ONE_LINK];
+    if (appInviteOneLink != null) {
+      assert(appInviteOneLink is String);
+    }
+
+    afOptions[AppsflyerConstants.APP_INVITE_ONE_LINK] = appInviteOneLink;
 
     if (Platform.isIOS) {
       if (options[
