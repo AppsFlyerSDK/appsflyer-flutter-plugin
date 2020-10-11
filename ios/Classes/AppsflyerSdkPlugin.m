@@ -3,7 +3,10 @@
 
 @implementation AppsflyerSdkPlugin {
     FlutterEventChannel *_eventChannel;
+    FlutterMethodChannel *_callbackChannel;
     AppsFlyerStreamHandler *_streamHandler;
+    // Callbacks
+    NSMutableArray* callbackById;
 }
 
 - (instancetype)initWithMessenger:(nonnull NSObject<FlutterBinaryMessenger> *)messenger {
@@ -11,7 +14,7 @@
     if (self) {
         
         _streamHandler = [[AppsFlyerStreamHandler alloc] init];
-        
+        _callbackChannel = [FlutterMethodChannel methodChannelWithName:afCallbacksMethodChannel binaryMessenger:messenger];
         _eventChannel = [FlutterEventChannel eventChannelWithName:afEventChannel binaryMessenger:messenger];
         [_eventChannel setStreamHandler:_streamHandler];
     }
@@ -19,12 +22,13 @@
 }
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
-    
     id<FlutterBinaryMessenger> messenger = [registrar messenger];
     
     FlutterMethodChannel *channel = [FlutterMethodChannel methodChannelWithName:afMethodChannel binaryMessenger:messenger];
+    FlutterMethodChannel *callbackChannel = [FlutterMethodChannel methodChannelWithName:afCallbacksMethodChannel binaryMessenger:messenger];
     AppsflyerSdkPlugin *instance = [[AppsflyerSdkPlugin alloc] initWithMessenger:messenger];
     [registrar addMethodCallDelegate:instance channel:channel];
+    [registrar addMethodCallDelegate:instance channel:callbackChannel];
 }
 
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
@@ -75,10 +79,108 @@
         [self setSharingFilter:call result:result];
     }else if([@"setSharingFilterForAllPartners" isEqualToString:call.method]){
         [self setSharingFilterForAllPartners:result];
+    }else if([@"generateInviteLink" isEqualToString:call.method]){
+        [self generateInviteLink:call result:result];
+    }else if([@"setAppInviteOneLinkID" isEqualToString:call.method]){
+        [self setAppInviteOneLinkID:call result:result];
+    }else if([@"logCrossPromotionImpression" isEqualToString:call.method]){
+        [self logCrossPromotionImpression:call result:result];
+    }else if([@"logCrossPromotionAndOpenStore" isEqualToString:call.method]){
+        [self logCrossPromotionAndOpenStore:call result:result];
+    }else if([@"startListening" isEqualToString:call.method]){
+        [self startListening:call result:result];
+    }else if([@"setOneLinkCustomDomain" isEqualToString:call.method]){
+        [self setOneLinkCustomDomain:call result:result];
     }
     else{
         result(FlutterMethodNotImplemented);
     }
+}
+
+- (void)setOneLinkCustomDomain:(FlutterMethodCall*)call result:(FlutterResult)result{
+    NSArray* brandDomains = call.arguments;
+    [[AppsFlyerLib shared] setOneLinkCustomDomains:brandDomains];
+    result(nil);
+}
+
+- (void)startListening:(FlutterMethodCall*)call result:(FlutterResult)result{
+    // Prepare callback dictionary
+    if (self->callbackById == nil) self->callbackById = [NSMutableArray array];
+
+    NSString* callbackId = call.arguments;
+    [self->callbackById addObject:callbackId];
+}
+
+- (void)generateInviteLink:(FlutterMethodCall*)call result:(FlutterResult)result{
+    NSString* customerID = call.arguments[@"customerID"];
+    NSString* referrerImageUrl = call.arguments[@"referrerImageUrl"];
+    NSString* brandDomain = call.arguments[@"brandDomain"];
+    NSString* baseDeeplink = call.arguments[@"baseDeeplink"];
+    NSString* referrerName = call.arguments[@"referrerName"];
+    NSString* channel = call.arguments[@"channel"];
+    NSString* campaign = call.arguments[@"campaign"];
+    
+    [AppsFlyerShareInviteHelper generateInviteUrlWithLinkGenerator:^AppsFlyerLinkGenerator * _Nonnull(AppsFlyerLinkGenerator * _Nonnull generator) {
+        [generator setChannel:channel];
+        [generator setCampaign:campaign];
+        [generator setBrandDomain:brandDomain];
+        [generator setBaseDeeplink:baseDeeplink];
+        [generator setReferrerName:referrerName];
+        [generator setReferrerImageURL:referrerImageUrl];
+        [generator setReferrerCustomerId:customerID];
+        
+        return generator;
+    } completionHandler:^(NSURL * _Nullable url) {
+        NSString * resultURL = url.absoluteString;
+                    if(resultURL != nil){
+                        if([self->callbackById containsObject:@"successGenerateInviteLink"]){
+                        [self->_callbackChannel invokeMethod:@"callListener" arguments:@{
+                            @"id": @"successGenerateInviteLink",
+                            @"data":resultURL
+                        }];
+                        }
+                    }
+    }];
+    
+    result(nil);
+}
+
+- (void)setAppInviteOneLinkID:(FlutterMethodCall*)call result:(FlutterResult)result{
+    NSString* oneLinkID = call.arguments[@"oneLinkID"];
+    [AppsFlyerLib shared].appInviteOneLinkID = oneLinkID;
+    result(nil);
+}
+
+- (void)logCrossPromotionImpression:(FlutterMethodCall*)call result:(FlutterResult)result{
+    NSString* appId = call.arguments[@"appId"];
+    NSString* campaign = call.arguments[@"campaign"];
+    NSDictionary* parameters = call.arguments[@"data"];
+    
+    [AppsFlyerCrossPromotionHelper logCrossPromoteImpression:appId campaign:campaign parameters:parameters];
+}
+
+- (void)logCrossPromotionAndOpenStore:(FlutterMethodCall*)call result:(FlutterResult)result{
+    NSString* campaign = call.arguments[@"campaign"];
+    NSDictionary* customParams = call.arguments[@"params"];
+    
+    [AppsFlyerShareInviteHelper generateInviteUrlWithLinkGenerator:^AppsFlyerLinkGenerator * _Nonnull(AppsFlyerLinkGenerator * _Nonnull generator) {
+                if (campaign != nil && ![campaign isEqualToString:@""]) {
+                    [generator setCampaign:campaign];
+                }
+                if (![customParams isKindOfClass:[NSNull class]]) {
+                    [generator addParameters:customParams];
+                }
+
+                return generator;
+            } completionHandler: ^(NSURL * _Nullable url) {
+                NSString *appLink = url.absoluteString;
+                if (@available(iOS 10.0, *)) {
+                    [[UIApplication sharedApplication] openURL:[NSURL URLWithString:appLink] options:@{} completionHandler:^(BOOL success) {
+                    }];
+                } else {
+                    // Fallback on earlier versions
+                }
+            }];
 }
 
 - (void)setSharingFilter:(FlutterMethodCall*)call result:(FlutterResult)result{
@@ -197,6 +299,7 @@
 - (void)initSdkWithCall:(FlutterMethodCall*)call result:(FlutterResult)result{
     NSString* devKey = nil;
     NSString* appId = nil;
+    NSString* appInviteOneLink = nil;
     NSTimeInterval timeToWaitForATTUserAuthorization = 0;
     BOOL isDebug = NO;
     BOOL isConversionData = NO;
@@ -220,6 +323,11 @@
     
     if (isConversionData == YES) {
         [[AppsFlyerLib shared] setDelegate:_streamHandler];
+    }
+    
+    appInviteOneLink = call.arguments[afInviteOneLink];
+    if(appInviteOneLink != nil){
+        [AppsFlyerLib shared].appInviteOneLinkID = appInviteOneLink;
     }
     
     [AppsFlyerLib shared].appleAppID = appId;

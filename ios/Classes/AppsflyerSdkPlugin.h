@@ -13,6 +13,7 @@
 #define afEventName                         @"eventName"
 #define afEventValues                       @"eventValues"
 #define afConversionData                    @"GCD"
+#define afInviteOneLink                     @"appInviteOneLink"
 
 // Appsflyer native objects
 #define afOnInstallConversionData       @"onInstallConversionData"
@@ -26,5 +27,6 @@
 
 // Stream Channels
 #define afMethodChannel                 @"af-api"
+#define afCallbacksMethodChannel        @"callbacks"
 #define afEventChannel                  @"af-events"
 #define afValidatePurchaseChannel       @"af-validate-purchase"

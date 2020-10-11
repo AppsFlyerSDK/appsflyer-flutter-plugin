@@ -1,6 +1,7 @@
 package com.appsflyer.appsflyersdk;
 
 public class AppsFlyerConstants {
+    final static String AF_APP_INVITE_ONE_LINK                  = "appInviteOneLink";
     final static String AF_HOST_PREFIX                          = "hostPrefix";
     final static String AF_HOST_NAME                            = "hostName";
     final static String AF_IS_DEBUG                             = "isDebug";
@@ -16,6 +17,7 @@ public class AppsFlyerConstants {
 
     final static String AF_EVENTS_CHANNEL                       = "af-events";
     final static String AF_METHOD_CHANNEL                       = "af-api";
+    final static String AF_CALLBACK_CHANNEL                     = "callbacks";
 
     final static String AF_BROADCAST_ACTION_NAME                = "com.appsflyer.appsflyersdk";
 }

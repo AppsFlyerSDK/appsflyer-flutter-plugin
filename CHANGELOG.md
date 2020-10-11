@@ -1,5 +1,12 @@
 # Versions
 
+## 6.0.3+3
+- Added the functions: 
+`logCrossPromotionAndOpenStore` 
+`logCrossPromotionImpression` 
+`setAppInviteOneLinkID` 
+`generateInviteLink`
+
 ## 6.0.3+2
 - Removed AppTrackingTransparency framework
 
