@@ -89,10 +89,18 @@
         [self logCrossPromotionAndOpenStore:call result:result];
     }else if([@"startListening" isEqualToString:call.method]){
         [self startListening:call result:result];
+    }else if([@"setOneLinkCustomDomain" isEqualToString:call.method]){
+        [self setOneLinkCustomDomain:call result:result];
     }
     else{
         result(FlutterMethodNotImplemented);
     }
+}
+
+- (void)setOneLinkCustomDomain:(FlutterMethodCall*)call result:(FlutterResult)result{
+    NSArray* brandDomains = call.arguments;
+    [[AppsFlyerLib shared] setOneLinkCustomDomains:brandDomains];
+    result(nil);
 }
 
 - (void)startListening:(FlutterMethodCall*)call result:(FlutterResult)result{

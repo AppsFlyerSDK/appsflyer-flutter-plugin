@@ -24,6 +24,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -187,12 +188,24 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                 break;
             case "logCrossPromotionImpression":
                 logCrossPromotionImpression(call, result);
+                break;
             case "logCrossPromotionAndOpenStore":
                 logCrossPromotionAndOpenStore(call, result);
+                break;
+            case "setOneLinkCustomDomain":
+                setOneLinkCustomDomain(call, result);
+                break;
             default:
                 result.notImplemented();
                 break;
         }
+    }
+
+    private void setOneLinkCustomDomain(MethodCall call, Result result) {
+        ArrayList<String> brandDomains = (ArrayList<String>) call.arguments;
+        String[] brandDomainsArray = brandDomains.toArray(new String[brandDomains.size()]);
+        AppsFlyerLib.getInstance().setOneLinkCustomDomain(brandDomainsArray);
+        result.success(null);
     }
 
     private void logCrossPromotionAndOpenStore(MethodCall call, Result result) {

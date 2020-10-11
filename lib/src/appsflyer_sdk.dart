@@ -438,4 +438,8 @@ class AppsflyerSdk {
       params: params,
     });
   }
+
+  void setOneLinkCustomDomain(List<String> brandDomains) {
+    _methodChannel.invokeMethod("setOneLinkCustomDomain", brandDomains);
+  }
 }
