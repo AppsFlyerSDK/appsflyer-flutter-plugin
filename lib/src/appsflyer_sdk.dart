@@ -415,9 +415,10 @@ class AppsflyerSdk {
 
   ///Set the OneLink ID that should be used for User-Invite-API.
   ///The link that is generated for the user invite will use this OneLink ID as the base link ID
-  void setAppInviteOneLinkID(String oneLinkID, Function callback) {
+  Future<void> setAppInviteOneLinkID(
+      String oneLinkID, Function callback) async {
     startListening(callback, "successSetAppInviteOneLinkID");
-    _methodChannel.invokeMethod("setAppInviteOneLinkID", {
+    await _methodChannel.invokeMethod("setAppInviteOneLinkID", {
       oneLinkID: oneLinkID,
     });
   }

@@ -135,7 +135,7 @@
                     if(resultURL != nil){
                         if([self->callbackById containsObject:@"successGenerateInviteLink"]){
                         [self->_callbackChannel invokeMethod:@"callListener" arguments:@{
-                            @"id": @"generateInviteUrl",
+                            @"id": @"successGenerateInviteLink",
                             @"data":resultURL
                         }];
                         }
