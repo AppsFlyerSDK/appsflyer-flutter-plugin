@@ -1,5 +1,8 @@
 # Versions
 
+## 6.0.3+4 
+- Fixed bug with sending arguments with methodChannel 
+
 ## 6.0.3+3
 - Added the functions: 
 `logCrossPromotionAndOpenStore` 

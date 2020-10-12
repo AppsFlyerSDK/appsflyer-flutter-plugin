@@ -419,7 +419,7 @@ class AppsflyerSdk {
       String oneLinkID, Function callback) async {
     startListening(callback, "successSetAppInviteOneLinkID");
     await _methodChannel.invokeMethod("setAppInviteOneLinkID", {
-      oneLinkID: oneLinkID,
+      'oneLinkID': oneLinkID,
     });
   }
 
@@ -427,16 +427,16 @@ class AppsflyerSdk {
   ///Make sure to use the promoted App ID as it appears within the AppsFlyer dashboard.
   void logCrossPromotionImpression(String appId, String campaign, Map data) {
     _methodChannel.invokeMethod("logCrossPromotionImpression",
-        {appId: appId, campaign: campaign, data: data});
+        {'appId': appId, 'campaign': campaign, 'data': data});
   }
 
   ///Use the following API to attribute the click and launch the app store's app page.
   void logCrossPromotionAndOpenStore(
       String appId, String campaign, Map params) {
     _methodChannel.invokeMethod("logCrossPromotionAndOpenStore", {
-      appId: appId,
-      campaign: campaign,
-      params: params,
+      'appId': appId,
+      'campaign': campaign,
+      'params': params,
     });
   }
 
