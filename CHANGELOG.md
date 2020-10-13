@@ -1,5 +1,8 @@
 # Versions
 
+## 6.0.3+5 
+- Add null check for context in Android
+
 ## 6.0.3+4 
 - Fixed bug with sending arguments with methodChannel 
 
