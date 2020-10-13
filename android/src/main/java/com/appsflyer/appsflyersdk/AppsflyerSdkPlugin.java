@@ -609,7 +609,10 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         intent.addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES);
         intent.setAction(AppsFlyerConstants.AF_BROADCAST_ACTION_NAME);
         intent.putExtra("params", params.toString());
-        mContext.sendBroadcast(intent);
+
+        if(mContext != null){
+           mContext.sendBroadcast(intent);
+        }
     }
 
     @Override
