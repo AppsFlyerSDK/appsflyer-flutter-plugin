@@ -393,7 +393,10 @@ class AppsflyerSdk {
     Function success,
     Function error,
   ) {
-    Map<String, String> paramsMap = _translateInviteLinkParamsToMap(parameters);
+    Map<String, String> paramsMap;
+    if (parameters != null) {
+      paramsMap = _translateInviteLinkParamsToMap(parameters);
+    }
     startListening(success, "successGenerateInviteLink");
     startListening(error, "errorGenerateInviteLink");
     _methodChannel.invokeMethod("generateInviteLink", paramsMap);
