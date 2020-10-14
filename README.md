@@ -5,7 +5,7 @@
 A Flutter plugin for AppsFlyer SDK.
 
 [![pub package](https://img.shields.io/pub/v/appsflyer_sdk.svg)](https://pub.dartlang.org/packages/appsflyer_sdk) 
-![Coverage](https://raw.githubusercontent.com/AppsFlyerSDK/appsflyer-flutter-plugin/master/coverage_badge.svg?sanitize=true)
+![Coverage](https://raw.githubusercontent.com/AppsFlyerSDK/appsflyer-flutter-plugin/master/coverage_badge.svg)
 
 
 🛠 In order for us to provide optimal support, we would kindly ask you to submit any issues to support@appsflyer.com
