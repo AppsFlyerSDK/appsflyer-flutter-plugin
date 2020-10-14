@@ -1,0 +1,11 @@
+{
+  "name": "flutter_appsflyer_sdk",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/AppsFlyerSDK/flutter_appsflyer_sdk.git",
+  "author": "ShaharAF <shahar.cohen@appsflyer.com>",
+  "license": "MIT",
+  "dependencies": {
+    "lcov2badge": "^0.1.2"
+  }
+}
