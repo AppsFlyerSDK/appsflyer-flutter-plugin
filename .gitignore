@@ -102,3 +102,6 @@ example/ios/Runner.xcodeproj/project.pbxproj
 example/.flutter-plugins-dependencies
 
 node_modules/
+
+covBadgeGen.js
+coverage/
