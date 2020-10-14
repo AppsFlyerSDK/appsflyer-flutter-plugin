@@ -13,7 +13,9 @@ before_install:
 install:
 - flutter pub get
 script:
-- flutter test test
+- flutter test test --coverage
+after_success:
+- node covBadgeGen.js
 cache:
   directories:
   - "$HOME/.pub-cache"

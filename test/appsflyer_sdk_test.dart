@@ -7,13 +7,45 @@ void main() {
 
   AppsflyerSdk instance;
   String selectedMethod = "";
+  const MethodChannel methodChannel = MethodChannel('af-api');
+  const EventChannel eventChannel = EventChannel('af-events');
+  const MethodChannel eventMethodChannel = MethodChannel('af-events');
+
+  setUp(() {
+    //test map options way
+    instance = AppsflyerSdk.private(methodChannel, eventChannel,
+        mapOptions: {'afDevKey': 'sdfhj2342cx'});
+
+    methodChannel.setMockMethodCallHandler((MethodCall methodCall) async {
+      String method = methodCall.method;
+      if (method == 'initSdk') {
+        selectedMethod = method;
+      }
+    });
+
+    eventMethodChannel.setMockMethodCallHandler((MethodCall methodCall) async {
+      String method = methodCall.method;
+      if (method == 'listen') {
+        selectedMethod = method;
+      }
+    });
+  });
+
+  test('check initSdk call', () async {
+    await instance.initSdk(
+      registerConversionDataCallback: true,
+      registerOnAppOpenAttributionCallback: true,
+    );
+
+    expect('initSdk', selectedMethod);
+  });
 
   group('AppsFlyerSdk', () {
-    const MethodChannel methodChannel = MethodChannel('af-api');
-    const EventChannel eventChannel = EventChannel('af-events');
-    // const AppsflyerSdk appsflyerSdk = AppsflyerSdk(options);
-
     setUp(() {
+      //test map options way
+      instance = AppsflyerSdk.private(methodChannel, eventChannel,
+          mapOptions: {'afDevKey': 'sdfhj2342cx'});
+
       methodChannel.setMockMethodCallHandler((MethodCall methodCall) async {
         String method = methodCall.method;
         switch (method) {
@@ -51,23 +83,10 @@ void main() {
             break;
         }
       });
-
-      //test map options way
-      instance = AppsflyerSdk.private(methodChannel, eventChannel,
-          mapOptions: {'afDevKey': 'sdfhj2342cx'});
     });
 
     tearDown(() {
       methodChannel.setMockMethodCallHandler(null);
-    });
-
-    test('check initSdk call', () async {
-      dynamic res = await instance.initSdk(
-        registerConversionDataCallback: true,
-        registerOnAppOpenAttributionCallback: true,
-      );
-
-      expect('initSdk', selectedMethod);
     });
 
     test('check logEvent call', () async {
