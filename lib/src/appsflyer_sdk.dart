@@ -317,7 +317,7 @@ class AppsflyerSdk {
       String price,
       String currency,
       Map<String, String> additionalParameters) {
-    _methodChannel.invokeMethod("validateAndLoginInAppPurchase", {
+    _methodChannel.invokeMethod("validateAndLogInAppPurchase", {
       'publicKey': publicKey,
       'signature': signature,
       'purchaseData': purchaseData,
