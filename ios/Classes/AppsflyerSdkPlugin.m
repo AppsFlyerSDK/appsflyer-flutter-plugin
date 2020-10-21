@@ -300,12 +300,16 @@
     NSString* devKey = nil;
     NSString* appId = nil;
     NSString* appInviteOneLink = nil;
+    BOOL disableCollectASA = NO;
+    BOOL disableAdvertisingIdentifier = NO;
     NSTimeInterval timeToWaitForATTUserAuthorization = 0;
     BOOL isDebug = NO;
     BOOL isConversionData = NO;
     
     id isDebugValue = nil;
     id isConversionDataValue = nil;
+    id isDisableCollectASA = nil;
+    id isDisableAdvertisingIdentifier = nil;
 
     devKey = call.arguments[afDevKey];
     appId = call.arguments[afAppId];
@@ -330,6 +334,19 @@
         [AppsFlyerLib shared].appInviteOneLinkID = appInviteOneLink;
     }
     
+    isDisableCollectASA = call.arguments[afDisableCollectASA];
+    if ([isDisableCollectASA isKindOfClass:[NSNumber class]]) {
+        // isDebug is a boolean that will come through as an NSNumber
+        disableCollectASA = [(NSNumber*)isDisableCollectASA boolValue];
+    }
+    isDisableAdvertisingIdentifier = call.arguments[afDisableAdvertisingIdentifier];
+    if ([isDisableAdvertisingIdentifier isKindOfClass:[NSNumber class]]) {
+        // isDebug is a boolean that will come through as an NSNumber
+        disableAdvertisingIdentifier = [(NSNumber*)isDisableAdvertisingIdentifier boolValue];
+    }
+    
+    [AppsFlyerLib shared].disableCollectASA = disableCollectASA;
+    [AppsFlyerLib shared].disableAdvertisingIdentifier = disableAdvertisingIdentifier;
     [AppsFlyerLib shared].appleAppID = appId;
     [AppsFlyerLib shared].appsFlyerDevKey = devKey;
     [AppsFlyerLib shared].isDebug = isDebug;

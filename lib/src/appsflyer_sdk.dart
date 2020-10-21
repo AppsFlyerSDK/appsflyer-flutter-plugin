@@ -54,6 +54,16 @@ class AppsflyerSdk {
 
     validatedOptions[AppsflyerConstants.APP_INVITE_ONE_LINK] = appInviteOneLink;
 
+    if (options.disableCollectASA != null) {
+      validatedOptions[AppsflyerConstants.DISABLE_COLLECT_ASA] =
+          options.disableCollectASA;
+    }
+
+    if (options.disableAdvertisingIdentifier != null) {
+      validatedOptions[AppsflyerConstants.DISABLE_ADVERTISING_IDENTIFIER] =
+          options.disableAdvertisingIdentifier;
+    }
+
     if (Platform.isIOS) {
       dynamic appID = options.appId;
       assert(appID != null, "appleAppId is required for iOS apps");
@@ -91,6 +101,16 @@ class AppsflyerSdk {
     }
 
     afOptions[AppsflyerConstants.APP_INVITE_ONE_LINK] = appInviteOneLink;
+
+    if (options[AppsflyerConstants.DISABLE_COLLECT_ASA] != null) {
+      afOptions[AppsflyerConstants.DISABLE_COLLECT_ASA] =
+          options[AppsflyerConstants.DISABLE_COLLECT_ASA];
+    }
+
+    if (options[AppsflyerConstants.DISABLE_ADVERTISING_IDENTIFIER] != null) {
+      afOptions[AppsflyerConstants.DISABLE_ADVERTISING_IDENTIFIER] =
+          options[AppsflyerConstants.DISABLE_ADVERTISING_IDENTIFIER];
+    }
 
     if (Platform.isIOS) {
       if (options[
