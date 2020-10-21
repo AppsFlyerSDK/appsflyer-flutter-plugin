@@ -6,11 +6,16 @@ class AppsFlyerOptions {
   final String appId;
   final double timeToWaitForATTUserAuthorization;
   final String appInviteOneLink;
+  final bool disableAdvertisingIdentifier;
+  final bool disableCollectASA;
 
-  AppsFlyerOptions(
-      {@required this.afDevKey,
-      this.showDebug = false,
-      this.appId = "",
-      this.timeToWaitForATTUserAuthorization,
-      this.appInviteOneLink});
+  AppsFlyerOptions({
+    @required this.afDevKey,
+    this.showDebug = false,
+    this.appId = "",
+    this.timeToWaitForATTUserAuthorization,
+    this.appInviteOneLink,
+    this.disableAdvertisingIdentifier,
+    this.disableCollectASA,
+  });
 }

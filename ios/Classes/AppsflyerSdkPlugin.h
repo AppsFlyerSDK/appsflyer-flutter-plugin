@@ -14,6 +14,8 @@
 #define afEventValues                       @"eventValues"
 #define afConversionData                    @"GCD"
 #define afInviteOneLink                     @"appInviteOneLink"
+#define afDisableCollectASA                 @"disableCollectASA"
+#define afDisableAdvertisingIdentifier      @"disableAdvertisingIdentifier"
 
 // Appsflyer native objects
 #define afOnInstallConversionData       @"onInstallConversionData"

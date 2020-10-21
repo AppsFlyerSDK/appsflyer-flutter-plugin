@@ -22,7 +22,10 @@ class AppsflyerConstants {
   static const String AF_EVENTS_CHANNEL = "af-events";
   static const String AF_METHOD_CHANNEL = "af-api";
 
-  static const AF_VALIDATE_PURCHASE = "validatePurchase";
-
+  static const String AF_VALIDATE_PURCHASE = "validatePurchase";
   static const String APP_INVITE_ONE_LINK = "appInviteOneLink";
+
+  static const String DISABLE_COLLECT_ASA = "disableCollectASA";
+  static const String DISABLE_ADVERTISING_IDENTIFIER =
+      "disableAdvertisingIdentifier";
 }
