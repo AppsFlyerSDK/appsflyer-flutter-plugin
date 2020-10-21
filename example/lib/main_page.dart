@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 import 'home_container.dart';
 
 class MainPage extends StatefulWidget {
@@ -17,7 +19,9 @@ class MainPageState extends State<MainPage> {
   void initState() {
     super.initState();
     final AppsFlyerOptions options = AppsFlyerOptions(
-        afDevKey: "afDevKey", appId: "123456789", showDebug: true);
+        afDevKey: DotEnv().env["DEV_KEY"],
+        appId: DotEnv().env["APP_ID"],
+        showDebug: true);
     _appsflyerSdk = AppsflyerSdk(options);
   }
 

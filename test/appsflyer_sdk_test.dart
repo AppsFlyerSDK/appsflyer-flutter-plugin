@@ -188,7 +188,7 @@ void main() {
     });
 
     test('check validateAndLogInAppPurchase call', () async {
-      instance.validateAndLoginInAppPurchase(
+      instance.validateAndLogInAppPurchase(
           "publicKey", "signature", "purchaseData", "price", "currency", null);
 
       expect(selectedMethod, 'listen');

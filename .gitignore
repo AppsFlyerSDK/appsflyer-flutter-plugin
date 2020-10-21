@@ -105,3 +105,4 @@ node_modules/
 
 covBadgeGen.js
 coverage/
+.env
