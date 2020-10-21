@@ -4,6 +4,9 @@
 - Update SDK version to:
     - Android: 5.4.5
     - iOS: 6.0.5
+- Update Google install referrer to 2.1
+- Added support for: https://support.appsflyer.com/hc/en-us/articles/207032066#additional-apis-kids-apps
+- Fixed typo in `validateAndLogInAppPurchase`
 
 ## 6.0.3+5 
 - Add null check for context in Android

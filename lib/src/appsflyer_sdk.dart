@@ -310,7 +310,7 @@ class AppsflyerSdk {
   }
 
   ///Returns `Stream`. Accessing AppsFlyer purchase validation data
-  Stream<dynamic> validateAndLoginInAppPurchase(
+  Stream<dynamic> validateAndLogInAppPurchase(
       String publicKey,
       String signature,
       String purchaseData,
