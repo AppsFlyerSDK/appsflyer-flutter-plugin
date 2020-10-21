@@ -3,7 +3,7 @@
 ## 6.0.6
 - Update SDK version to:
     - Android: 5.4.5
-    - iOS: 6.0.6
+    - iOS: 6.0.5
 
 ## 6.0.3+5 
 - Add null check for context in Android
