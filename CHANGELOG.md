@@ -1,6 +1,6 @@
 # Versions
 
-## 6.0.6
+## 6.0.5
 - Update SDK version to:
     - Android: 5.4.5
     - iOS: 6.0.5
