@@ -46,7 +46,6 @@ unlinked.ds
 unlinked_spec.ds
 
 # Android related
-**/android/**/gradle-wrapper.jar
 **/android/.gradle
 **/android/captures/
 **/android/gradlew.bat
@@ -87,8 +86,6 @@ unlinked_spec.ds
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
 
 android/\.settings/
-
-android/gradle/
 
 android/\.project
 
