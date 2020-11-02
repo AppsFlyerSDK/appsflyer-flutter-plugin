@@ -78,8 +78,8 @@ Initialize the SDK to enable AppsFlyer to detect installations, sessions (app op
 
 ## <a id="guides"> **📖 Guides**
 
-Great installation and setup guides can be viewed [here](/docs/Guides.md)
+Great installation and setup guides can be viewed [here](/doc/Guides.md)
 
 ## <a id="api"> **📑 API**
 
-see the full [API](/docs/API.md) available for this plugin.
+see the full [API](/doc/API.md) available for this plugin.
