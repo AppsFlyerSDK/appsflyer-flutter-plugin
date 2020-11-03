@@ -59,4 +59,5 @@ dependencies {
     implementation 'com.android.installreferrer:installreferrer:2.1'
     androidTestImplementation 'androidx.test:runner:1.1.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0'
+    implementation 'com.appsflyer:af-android-sdk:5.4.5'
 }
