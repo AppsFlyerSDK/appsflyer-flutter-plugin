@@ -68,7 +68,7 @@ Map options = { "afDevKey": afDevKey,
 AppsflyerSdk appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
 ```
 
-The next step is to call `initSdk` which have the optional boolean parameters `egisterConversionDataCallback` and `registerOnAppOpenAttributionCallback` which are set to false as default.
+The next step is to call `initSdk` which have the optional boolean parameters `registerConversionDataCallback` and `registerOnAppOpenAttributionCallback` which are set to false as default.
 
 After we call `initSdk` we can use all of AppsFlyer SDK features.
 
