@@ -65,6 +65,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private MethodChannel mMethodChannel;
     private MethodChannel mCallbackChannel;
     final Handler uiThreadHandler = new Handler(Looper.getMainLooper());
+    private Activity activity;
 
     private void onAttachedToEngine(Context applicationContext, BinaryMessenger messenger) {
         this.mContext = applicationContext;
@@ -518,8 +519,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             instance.setAppInviteOneLink(appInviteOneLink);
         }
 
-        instance.trackEvent(mContext, null, null);
-        instance.startTracking(mApplication, afDevKey);
+        instance.startTracking(activity);
 
         result.success("success");
     }
@@ -609,10 +609,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         intent.addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES);
         intent.setAction(AppsFlyerConstants.AF_BROADCAST_ACTION_NAME);
         intent.putExtra("params", params.toString());
-
-        if(mContext != null){
-           mContext.sendBroadcast(intent);
-        }
+        mContext.sendBroadcast(intent);
     }
 
     @Override
@@ -622,7 +619,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onDetachedFromEngine(FlutterPluginBinding binding) {
-        mContext = null;
         mMethodChannel.setMethodCallHandler(null);
         mMethodChannel = null;
         mEventChannel.setStreamHandler(null);
@@ -631,6 +627,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onAttachedToActivity(ActivityPluginBinding binding) {
+        activity = binding.getActivity();
         mIntent = binding.getActivity().getIntent();
         mApplication = binding.getActivity().getApplication();
     }
@@ -647,7 +644,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onDetachedFromActivity() {
-
+        activity = null;
     }
 
     private static class MethodResultWrapper implements MethodChannel.Result {
