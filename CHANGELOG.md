@@ -1,5 +1,8 @@
 # Versions
 
+## 6.0.5+1
+- Fixed `updateServerUninstallToken` on iOS
+
 ## 6.0.5
 - Update SDK version to:
     - Android: 5.4.5
