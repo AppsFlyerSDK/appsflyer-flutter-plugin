@@ -148,6 +148,11 @@
 - (void)setAppInviteOneLinkID:(FlutterMethodCall*)call result:(FlutterResult)result{
     NSString* oneLinkID = call.arguments[@"oneLinkID"];
     [AppsFlyerLib shared].appInviteOneLinkID = oneLinkID;
+    if([self->callbackById containsObject:@"successSetAppInviteOneLinkID"]){
+        [self->_callbackChannel invokeMethod:@"callListener" arguments:@{
+            @"id": @"successSetAppInviteOneLinkID"
+        }];
+    }
     result(nil);
 }
 
