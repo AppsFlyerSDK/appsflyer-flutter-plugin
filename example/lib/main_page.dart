@@ -23,6 +23,8 @@ class MainPageState extends State<MainPage> {
         appId: DotEnv().env["APP_ID"],
         showDebug: true);
     _appsflyerSdk = AppsflyerSdk(options);
+    // _appsflyerSdk.onAppOpenAttribution((res) => {});
+    // _appsflyerSdk.onInstallConversionData((res) => {});
   }
 
   @override
