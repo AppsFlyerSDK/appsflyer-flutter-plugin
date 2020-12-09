@@ -14,6 +14,8 @@ class MainPage extends StatefulWidget {
 
 class MainPageState extends State<MainPage> {
   AppsflyerSdk _appsflyerSdk;
+  Map _oaoa;
+  Map _gcd;
 
   @override
   void initState() {
@@ -23,8 +25,18 @@ class MainPageState extends State<MainPage> {
         appId: DotEnv().env["APP_ID"],
         showDebug: true);
     _appsflyerSdk = AppsflyerSdk(options);
-    // _appsflyerSdk.onAppOpenAttribution((res) => {});
-    // _appsflyerSdk.onInstallConversionData((res) => {});
+    _appsflyerSdk.onAppOpenAttribution((res) {
+      print("res: " + res.toString());
+      setState(() {
+        _oaoa = res;
+      });
+    });
+    _appsflyerSdk.onInstallConversionData((res) {
+      print("res: " + res.toString());
+      setState(() {
+        _gcd = res;
+      });
+    });
   }
 
   @override
@@ -52,8 +64,8 @@ class MainPageState extends State<MainPage> {
               } else {
                 if (snapshot.hasData) {
                   return HomeContainer(
-                    onData: _appsflyerSdk.conversionDataStream,
-                    onAttribution: _appsflyerSdk.appOpenAttributionStream,
+                    onAttribution: _oaoa,
+                    onData: _gcd,
                     trackEvent: logEvent,
                   );
                 } else {

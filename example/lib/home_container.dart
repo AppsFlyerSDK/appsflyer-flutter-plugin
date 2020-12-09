@@ -6,8 +6,8 @@ import 'text_border.dart';
 import 'utils.dart';
 
 class HomeContainer extends StatefulWidget {
-  Stream<Map> onData;
-  Stream<Map> onAttribution;
+  final Map onData;
+  final Map onAttribution;
   Future<bool> Function(String, Map) trackEvent;
 
   HomeContainer({this.onData, this.onAttribution, this.trackEvent});
@@ -42,33 +42,23 @@ class _HomeContainerState extends State<HomeContainer> {
               Padding(
                 padding: EdgeInsets.only(top: AppConstants.TOP_PADDING),
               ),
-              StreamBuilder<dynamic>(
-                  stream: widget.onData?.asBroadcastStream(),
-                  builder:
-                      (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
-                    return TextBorder(
-                      controller: TextEditingController(
-                          text: snapshot.hasData
-                              ? Utils.formatJson(snapshot.data)
-                              : "No conversion data"),
-                      labelText: "Conversion Data:",
-                    );
-                  }),
+              TextBorder(
+                controller: TextEditingController(
+                    text: widget.onData != null
+                        ? Utils.formatJson(widget.onData)
+                        : "No conversion data"),
+                labelText: "Conversion Data:",
+              ),
               Padding(
                 padding: EdgeInsets.only(top: 12.0),
               ),
-              StreamBuilder<dynamic>(
-                  stream: widget.onAttribution?.asBroadcastStream(),
-                  builder:
-                      (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
-                    return TextBorder(
-                      controller: TextEditingController(
-                          text: snapshot.hasData
-                              ? Utils.formatJson(snapshot.data)
-                              : "No attribution data"),
-                      labelText: "Attribution Data:",
-                    );
-                  }),
+              TextBorder(
+                controller: TextEditingController(
+                    text: widget.onAttribution != null
+                        ? Utils.formatJson(widget.onAttribution)
+                        : "No Attribution data"),
+                labelText: "Attribution Data:",
+              ),
               Padding(
                 padding: EdgeInsets.only(top: 12.0),
               ),
@@ -101,6 +91,7 @@ class _HomeContainerState extends State<HomeContainer> {
                           TextEditingController(text: _trackEventResponse)),
                   RaisedButton(
                     onPressed: () {
+                      print("Pressed");
                       widget.trackEvent(eventName, eventValues).then((onValue) {
                         setState(() {
                           _trackEventResponse = onValue.toString();

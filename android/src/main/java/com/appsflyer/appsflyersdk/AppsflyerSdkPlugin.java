@@ -238,7 +238,8 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         }else{
             AppsFlyerLib.getInstance().setAppInviteOneLink(oneLinkId);
             if(mCallbacks.containsKey("successSetAppInviteOneLinkID")){
-                runOnUIThread("success", "successSetAppInviteOneLinkID");
+                JSONObject obj = buildJsonResponse("success", AF_SUCCESS);
+                runOnUIThread(obj, "successSetAppInviteOneLinkID", AF_SUCCESS);
             }
         }
     }
@@ -280,14 +281,14 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             @Override
             public void onResponse(final String oneLinkUrl) {
                 if (mCallbacks.containsKey("successGenerateInviteLink")) {
-                    runOnUIThread(oneLinkUrl, "successGenerateInviteLink");
+//                    runOnUIThread(oneLinkUrl, "successGenerateInviteLink", AF_SUCCESS);
                 }
             }
 
             @Override
             public void onResponseError(final String error) {
                 if (mCallbacks.containsKey("errorGenerateInviteLink")) {
-                    runOnUIThread(error, "errorGenerateInviteLink");
+//                    runOnUIThread(error, "errorGenerateInviteLink", AF_FAILURE);
                 }
             }
         };
@@ -297,16 +298,21 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         rawResult.success(null);
     }
 
-    private void runOnUIThread(final String data, final String callbackName) {
+    private void runOnUIThread(final JSONObject data, final String callbackName, final String status) {
         uiThreadHandler.post(
                 new Runnable() {
                     @Override
                     public void run() {
                         Log.d("Callbacks","Calling invokeMethod with: " + data);
-                        Map<String, Object> args = new HashMap<>();
-                        args.put("id", callbackName);
-                        args.put("data", data);
-                        mCallbackChannel.invokeMethod("callListener", args);
+                        JSONObject args = new JSONObject();
+                        try {
+                            args.put("id", callbackName);
+                            args.put("status", status);
+                            args.put("data", data.toString());
+                        }catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                        mCallbackChannel.invokeMethod("callListener", args.toString());
                     }
                 }
         );
@@ -501,7 +507,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         boolean getGCD = (boolean) call.argument(AppsFlyerConstants.AF_GCD);
 
         if (getGCD) {
-            gcdListener = registerConversionListener(instance);
+            gcdListener = registerConversionListener();
         }
 
         boolean isDebug = (boolean) call.argument(AppsFlyerConstants.AF_IS_DEBUG);
@@ -537,42 +543,52 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         result.success(true);
     }
 
-    private AppsFlyerConversionListener registerConversionListener(AppsFlyerLib instance) {
+    private AppsFlyerConversionListener registerConversionListener() {
         return new AppsFlyerConversionListener() {
             @Override
             public void onConversionDataSuccess(Map<String, Object> map) {
-                handleSuccess(AF_ON_INSTALL_CONVERSION_DATA_LOADED, map, AF_EVENTS_CHANNEL);
+                if(mCallbacks.containsKey(AppsFlyerConstants.AF_GCD_CALLBACK)){
+                    JSONObject dataObj = new JSONObject(replaceNullValues(map));
+                    runOnUIThread(dataObj, AppsFlyerConstants.AF_GCD_CALLBACK, AF_SUCCESS);
+                }
             }
 
             @Override
             public void onConversionDataFail(String s) {
-                handleError(AF_ON_INSTALL_CONVERSION_DATA_LOADED, s, AF_EVENTS_CHANNEL);
+                if(mCallbacks.containsKey(AppsFlyerConstants.AF_GCD_CALLBACK)){
+                    JSONObject obj = buildJsonResponse(s, AF_FAILURE);
+                    runOnUIThread(obj, AppsFlyerConstants.AF_GCD_CALLBACK, AF_FAILURE);
+                }
             }
 
             @Override
             public void onAppOpenAttribution(Map<String, String> map) {
                 Map<String, Object> objMap = (Map) map;
-                handleSuccess(AF_ON_APP_OPEN_ATTRIBUTION, objMap, AF_EVENTS_CHANNEL);
+                if(mCallbacks.containsKey(AppsFlyerConstants.AF_OAOA_CALLBACK)){
+                    JSONObject obj = new JSONObject(replaceNullValues(objMap));
+                    runOnUIThread(obj, AppsFlyerConstants.AF_OAOA_CALLBACK, AF_SUCCESS);
+                }
             }
 
             @Override
             public void onAttributionFailure(String errorMessage) {
-                handleError(AF_ON_APP_OPEN_ATTRIBUTION, errorMessage, AF_EVENTS_CHANNEL);
+                if(mCallbacks.containsKey(AppsFlyerConstants.AF_OAOA_CALLBACK)){
+                    JSONObject obj = buildJsonResponse(errorMessage, AF_FAILURE);
+                    runOnUIThread(obj, AppsFlyerConstants.AF_OAOA_CALLBACK, AF_FAILURE);
+                }
             }
         };
     }
 
-    private void handleSuccess(String eventType, Map<String, Object> data, String channel) {
+    private JSONObject buildJsonResponse(Object data, String status) {
+        JSONObject obj = new JSONObject();
         try {
-            JSONObject obj = new JSONObject();
-            obj.put("status", AF_SUCCESS);
-            obj.put("type", eventType);
-            obj.put("data", new JSONObject(replaceNullValues(data)));
-
-            sendEventToDart(obj, channel);
+            obj.put("status", status);
+            obj.put("data", data.toString());
         } catch (JSONException e) {
             e.printStackTrace();
         }
+        return obj;
     }
 
     private Map<String, Object> replaceNullValues(Map<String, Object> map) {
@@ -587,21 +603,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
 
         return newMap;
-    }
-
-    private void handleError(String eventType, String errorMessage, String channel) {
-
-        try {
-            JSONObject obj = new JSONObject();
-
-            obj.put("status", AF_FAILURE);
-            obj.put("type", eventType);
-            obj.put("data", errorMessage);
-
-            sendEventToDart(obj, channel);
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
     }
 
     private void sendEventToDart(final JSONObject params, String channel) {
@@ -645,49 +646,5 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     @Override
     public void onDetachedFromActivity() {
         activity = null;
-    }
-
-    private static class MethodResultWrapper implements MethodChannel.Result {
-        private MethodChannel.Result methodResult;
-        private Handler handler;
-
-        MethodResultWrapper(MethodChannel.Result result) {
-            methodResult = result;
-            handler = new Handler(Looper.getMainLooper());
-        }
-
-        @Override
-        public void success(final Object result) {
-            handler.post(
-                    new Runnable() {
-                        @Override
-                        public void run() {
-                            methodResult.success(result);
-                        }
-                    });
-        }
-
-        @Override
-        public void error(
-                final String errorCode, final String errorMessage, final Object errorDetails) {
-            handler.post(
-                    new Runnable() {
-                        @Override
-                        public void run() {
-                            methodResult.error(errorCode, errorMessage, errorDetails);
-                        }
-                    });
-        }
-
-        @Override
-        public void notImplemented() {
-            handler.post(
-                    new Runnable() {
-                        @Override
-                        public void run() {
-                            methodResult.notImplemented();
-                        }
-                    });
-        }
     }
 }

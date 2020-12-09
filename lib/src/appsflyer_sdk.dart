@@ -467,13 +467,11 @@ class AppsflyerSdk {
     _methodChannel.invokeMethod("setOneLinkCustomDomain", brandDomains);
   }
 
-  Future<void> onInstallConversionData(Function callback) async {
+  void onInstallConversionData(Function callback) async {
     startListening(callback, "onInstallConversionData");
-    await _methodChannel.invokeMethod("onInstallConversionData");
   }
 
-  Future<void> onAppOpenAttribution(Function callback) async {
+  void onAppOpenAttribution(Function callback) async {
     startListening(callback, "onAppOpenAttribution");
-    await _methodChannel.invokeMethod("onAppOpenAttribution");
   }
 }
