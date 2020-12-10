@@ -3,6 +3,9 @@
 
 @interface AppsflyerSdkPlugin: NSObject<FlutterPlugin>
 
++ (NSMutableArray*)callbackById;
++ (FlutterMethodChannel*)callbackChannel;
+
 @end
 
 // Appsflyer JS objects
@@ -26,6 +29,8 @@
 #define afOnAppOpenAttribution          @"onAppOpenAttribution"
 #define afOnInstallConversionFailure    @"onInstallConversionFailure"
 #define afOnInstallConversionDataLoaded @"onInstallConversionDataLoaded"
+#define afGCDCallback                   @"onInstallConversionData"
+#define afOAOACallback                  @"onAppOpenAttribution"
 
 // Stream Channels
 #define afMethodChannel                 @"af-api"

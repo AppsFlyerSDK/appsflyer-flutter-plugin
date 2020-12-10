@@ -3,16 +3,22 @@
 
 @implementation AppsflyerSdkPlugin {
     FlutterEventChannel *_eventChannel;
-    FlutterMethodChannel *_callbackChannel;
     AppsFlyerStreamHandler *_streamHandler;
-    // Callbacks
-    NSMutableArray* callbackById;
+}
+static NSMutableArray* _callbackById;
+static FlutterMethodChannel* _callbackChannel;
+
++ (NSMutableArray*)callbackById{
+    return _callbackById;
+}
+
++ (FlutterMethodChannel*)callbackChannel{
+    return _callbackChannel;
 }
 
 - (instancetype)initWithMessenger:(nonnull NSObject<FlutterBinaryMessenger> *)messenger {
     self = [super init];
     if (self) {
-        
         _streamHandler = [[AppsFlyerStreamHandler alloc] init];
         _callbackChannel = [FlutterMethodChannel methodChannelWithName:afCallbacksMethodChannel binaryMessenger:messenger];
         _eventChannel = [FlutterEventChannel eventChannelWithName:afEventChannel binaryMessenger:messenger];
@@ -105,10 +111,10 @@
 
 - (void)startListening:(FlutterMethodCall*)call result:(FlutterResult)result{
     // Prepare callback dictionary
-    if (self->callbackById == nil) self->callbackById = [NSMutableArray array];
+    if (_callbackById == nil) _callbackById = [NSMutableArray array];
 
     NSString* callbackId = call.arguments;
-    [self->callbackById addObject:callbackId];
+    [_callbackById addObject:callbackId];
 }
 
 - (void)generateInviteLink:(FlutterMethodCall*)call result:(FlutterResult)result{
@@ -133,8 +139,8 @@
     } completionHandler:^(NSURL * _Nullable url) {
         NSString * resultURL = url.absoluteString;
                     if(resultURL != nil){
-                        if([self->callbackById containsObject:@"successGenerateInviteLink"]){
-                        [self->_callbackChannel invokeMethod:@"callListener" arguments:@{
+                        if([_callbackById containsObject:@"successGenerateInviteLink"]){
+                        [_callbackChannel invokeMethod:@"callListener" arguments:@{
                             @"id": @"successGenerateInviteLink",
                             @"data":resultURL
                         }];
@@ -148,8 +154,8 @@
 - (void)setAppInviteOneLinkID:(FlutterMethodCall*)call result:(FlutterResult)result{
     NSString* oneLinkID = call.arguments[@"oneLinkID"];
     [AppsFlyerLib shared].appInviteOneLinkID = oneLinkID;
-    if([self->callbackById containsObject:@"successSetAppInviteOneLinkID"]){
-        [self->_callbackChannel invokeMethod:@"callListener" arguments:@{
+    if([_callbackById containsObject:@"successSetAppInviteOneLinkID"]){
+        [_callbackChannel invokeMethod:@"callListener" arguments:@{
             @"id": @"successSetAppInviteOneLinkID"
         }];
     }
