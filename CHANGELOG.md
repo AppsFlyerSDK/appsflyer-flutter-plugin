@@ -1,4 +1,6 @@
 # Versions
+## 6.0.5+2
+- Switch to callbacks for `onAppOpenAttribution` and `getConversionData`
 
 ## 6.0.5+1
 - Fixed `updateServerUninstallToken` on iOS
