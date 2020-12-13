@@ -26,6 +26,7 @@ Future<void> _methodCallHandler(MethodCall call) async {
             _callbacksById[callMap["id"]](fullResponse);
             break;
           default:
+            _callbacksById[call.arguments["id"]](call.arguments["data"]);
             break;
         }
       } catch (e) {

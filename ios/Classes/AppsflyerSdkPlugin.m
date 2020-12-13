@@ -7,13 +7,19 @@
 }
 static NSMutableArray* _callbackById;
 static FlutterMethodChannel* _callbackChannel;
-
-+ (NSMutableArray*)callbackById{
-    return _callbackById;
-}
+static BOOL _gcdCallback = false;
+static BOOL _oaoaCallback = false;
 
 + (FlutterMethodChannel*)callbackChannel{
     return _callbackChannel;
+}
+
++ (BOOL)gcdCallback{
+    return _gcdCallback;
+}
+
++ (BOOL)oaoaCallback{
+    return _oaoaCallback;
 }
 
 - (instancetype)initWithMessenger:(nonnull NSObject<FlutterBinaryMessenger> *)messenger {
@@ -114,6 +120,12 @@ static FlutterMethodChannel* _callbackChannel;
     if (_callbackById == nil) _callbackById = [NSMutableArray array];
 
     NSString* callbackId = call.arguments;
+    if ([callbackId isEqualToString:afGCDCallback]){
+        _gcdCallback = true;
+    }
+    if ([callbackId isEqualToString:afOAOACallback]){
+        _oaoaCallback = true;
+    }
     [_callbackById addObject:callbackId];
 }
 

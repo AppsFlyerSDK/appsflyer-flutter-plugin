@@ -3,8 +3,9 @@
 
 @interface AppsflyerSdkPlugin: NSObject<FlutterPlugin>
 
-+ (NSMutableArray*)callbackById;
 + (FlutterMethodChannel*)callbackChannel;
++ (BOOL)gcdCallback;
++ (BOOL)oaoaCallback;
 
 @end
 

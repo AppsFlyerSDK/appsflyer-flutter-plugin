@@ -17,6 +17,7 @@ class MainPageState extends State<MainPage> {
   Map _oaoa;
   Map _gcd;
 
+  // called on every foreground
   @override
   void initState() {
     super.initState();

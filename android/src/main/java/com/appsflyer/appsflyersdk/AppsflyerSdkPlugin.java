@@ -66,6 +66,8 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private MethodChannel mCallbackChannel;
     final Handler uiThreadHandler = new Handler(Looper.getMainLooper());
     private Activity activity;
+    private Boolean gcdCallback = false;
+    private Boolean oaoaCallback = false;
 
     private void onAttachedToEngine(Context applicationContext, BinaryMessenger messenger) {
         this.mContext = applicationContext;
@@ -94,6 +96,12 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private void startListening(Object arguments, Result rawResult) {
         // Get callback id
         String callbackName = (String) arguments;
+        if(callbackName.equals(AppsFlyerConstants.AF_GCD_CALLBACK)){
+            gcdCallback = true;
+        }
+        if (callbackName.equals(AppsFlyerConstants.AF_OAOA_CALLBACK)){
+            oaoaCallback = true;
+        }
 
         Map<String, Object> args = new HashMap<>();
         args.put("id", callbackName);
@@ -547,37 +555,73 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         return new AppsFlyerConversionListener() {
             @Override
             public void onConversionDataSuccess(Map<String, Object> map) {
-                if(mCallbacks.containsKey(AppsFlyerConstants.AF_GCD_CALLBACK)){
+                if(gcdCallback){
                     JSONObject dataObj = new JSONObject(replaceNullValues(map));
                     runOnUIThread(dataObj, AppsFlyerConstants.AF_GCD_CALLBACK, AF_SUCCESS);
+                }else{
+                    handleSuccess(AF_ON_INSTALL_CONVERSION_DATA_LOADED,map,AF_EVENTS_CHANNEL);
                 }
             }
 
             @Override
             public void onConversionDataFail(String s) {
-                if(mCallbacks.containsKey(AppsFlyerConstants.AF_GCD_CALLBACK)){
+                if(gcdCallback){
                     JSONObject obj = buildJsonResponse(s, AF_FAILURE);
                     runOnUIThread(obj, AppsFlyerConstants.AF_GCD_CALLBACK, AF_FAILURE);
+                }else{
+                    handleError(AF_ON_INSTALL_CONVERSION_DATA_LOADED, s, AF_EVENTS_CHANNEL);
                 }
             }
 
             @Override
             public void onAppOpenAttribution(Map<String, String> map) {
                 Map<String, Object> objMap = (Map) map;
-                if(mCallbacks.containsKey(AppsFlyerConstants.AF_OAOA_CALLBACK)){
+                if(oaoaCallback){
                     JSONObject obj = new JSONObject(replaceNullValues(objMap));
                     runOnUIThread(obj, AppsFlyerConstants.AF_OAOA_CALLBACK, AF_SUCCESS);
+                }else{
+                    handleSuccess(AF_ON_APP_OPEN_ATTRIBUTION, objMap, AF_EVENTS_CHANNEL);
                 }
             }
 
             @Override
             public void onAttributionFailure(String errorMessage) {
-                if(mCallbacks.containsKey(AppsFlyerConstants.AF_OAOA_CALLBACK)){
+                if(oaoaCallback){
                     JSONObject obj = buildJsonResponse(errorMessage, AF_FAILURE);
                     runOnUIThread(obj, AppsFlyerConstants.AF_OAOA_CALLBACK, AF_FAILURE);
+                }else{
+                    handleError(AF_ON_APP_OPEN_ATTRIBUTION, errorMessage, AF_EVENTS_CHANNEL);
                 }
             }
         };
+    }
+
+    private void handleSuccess(String eventType, Map<String, Object> data, String channel) {
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("status", AF_SUCCESS);
+            obj.put("type", eventType);
+            obj.put("data", new JSONObject(replaceNullValues(data)));
+
+            sendEventToDart(obj, channel);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void handleError(String eventType, String errorMessage, String channel) {
+
+        try {
+            JSONObject obj = new JSONObject();
+
+            obj.put("status", AF_FAILURE);
+            obj.put("type", eventType);
+            obj.put("data", errorMessage);
+
+            sendEventToDart(obj, channel);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
     }
 
     private JSONObject buildJsonResponse(Object data, String status) {

@@ -30,7 +30,7 @@
     NSString *JSONString = [self mapToJson:message withError:error];
     
     //use callbacks
-    if([AppsflyerSdkPlugin.callbackById containsObject:afGCDCallback]){
+    if([AppsflyerSdkPlugin gcdCallback]){
         NSString *installDataJson = [self mapToJson:installData withError:error];
         NSDictionary *fullResponse = @{
             @"id": afGCDCallback,
@@ -59,7 +59,7 @@
     NSString *JSONString = [self mapToJson:errorMessage withError:error];
     
     //use callbacks
-    if([AppsflyerSdkPlugin.callbackById containsObject:afGCDCallback]){
+    if([AppsflyerSdkPlugin gcdCallback]){
         NSDictionary *fullResponse = @{
             @"id": afGCDCallback,
             @"data": error.localizedDescription,
@@ -86,7 +86,7 @@
     NSError *error;
     NSString *JSONString = [self mapToJson:message withError:error];
     //use callbacks
-    if([AppsflyerSdkPlugin.callbackById containsObject:afOAOACallback]){
+    if([AppsflyerSdkPlugin oaoaCallback]){
         NSString* attributionDataJson = [self mapToJson:attributionData withError:error];
         NSDictionary *fullResponse = @{
             @"id": afOAOACallback,
@@ -113,7 +113,7 @@
     };
     NSError *error;
     NSString *JSONString = [self mapToJson:errorMessage withError:error];
-    if([AppsflyerSdkPlugin.callbackById containsObject:afOAOACallback]){
+    if([AppsflyerSdkPlugin oaoaCallback]){
         NSDictionary *fullResponse = @{
             @"id": afOAOACallback,
             @"data": error.localizedDescription,
