@@ -1,22 +1,23 @@
 import 'dart:async';
 
+import 'package:appsflyer_sdk_example/text_border.dart';
+import 'package:appsflyer_sdk_example/utils.dart';
 import 'package:flutter/material.dart';
-import './app_constants.dart';
-import 'text_border.dart';
-import 'utils.dart';
 
-class HomeContainer extends StatefulWidget {
-  final Map onData;
-  final Map onAttribution;
-  Future<bool> Function(String, Map) trackEvent;
+import 'app_constants.dart';
 
-  HomeContainer({this.onData, this.onAttribution, this.trackEvent});
+class HomeContainerStreams extends StatefulWidget {
+  final Stream<Map> onData;
+  final Stream<Map> onAttribution;
+  final Future<bool> Function(String, Map) logEvent;
+
+  HomeContainerStreams({this.onData, this.onAttribution, this.logEvent});
 
   @override
-  _HomeContainerState createState() => _HomeContainerState();
+  _HomeContainerStreamsState createState() => _HomeContainerStreamsState();
 }
 
-class _HomeContainerState extends State<HomeContainer> {
+class _HomeContainerStreamsState extends State<HomeContainerStreams> {
   final String eventName = "my event";
 
   final Map eventValues = {
@@ -42,23 +43,33 @@ class _HomeContainerState extends State<HomeContainer> {
               Padding(
                 padding: EdgeInsets.only(top: AppConstants.TOP_PADDING),
               ),
-              TextBorder(
-                controller: TextEditingController(
-                    text: widget.onData != null
-                        ? Utils.formatJson(widget.onData)
-                        : "No conversion data"),
-                labelText: "Conversion Data:",
-              ),
+              StreamBuilder<dynamic>(
+                  stream: widget.onData?.asBroadcastStream(),
+                  builder:
+                      (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
+                    return TextBorder(
+                      controller: TextEditingController(
+                          text: snapshot.hasData
+                              ? Utils.formatJson(snapshot.data)
+                              : "No conversion data"),
+                      labelText: "Conversion Data:",
+                    );
+                  }),
               Padding(
                 padding: EdgeInsets.only(top: 12.0),
               ),
-              TextBorder(
-                controller: TextEditingController(
-                    text: widget.onAttribution != null
-                        ? Utils.formatJson(widget.onAttribution)
-                        : "No Attribution data"),
-                labelText: "Attribution Data:",
-              ),
+              StreamBuilder<dynamic>(
+                  stream: widget.onAttribution?.asBroadcastStream(),
+                  builder:
+                      (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
+                    return TextBorder(
+                      controller: TextEditingController(
+                          text: snapshot.hasData
+                              ? Utils.formatJson(snapshot.data)
+                              : "No attribution data"),
+                      labelText: "Attribution Data:",
+                    );
+                  }),
               Padding(
                 padding: EdgeInsets.only(top: 12.0),
               ),
@@ -91,8 +102,7 @@ class _HomeContainerState extends State<HomeContainer> {
                           TextEditingController(text: _trackEventResponse)),
                   RaisedButton(
                     onPressed: () {
-                      print("Pressed");
-                      widget.trackEvent(eventName, eventValues).then((onValue) {
+                      widget.logEvent(eventName, eventValues).then((onValue) {
                         setState(() {
                           _trackEventResponse = onValue.toString();
                         });

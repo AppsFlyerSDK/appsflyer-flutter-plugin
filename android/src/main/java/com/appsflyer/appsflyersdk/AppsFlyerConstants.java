@@ -14,6 +14,8 @@ public class AppsFlyerConstants {
     final static String AF_FAILURE                              = "failure";
     final static String AF_GCD                                  = "GCD";
     final static String AF_VALIDATE_PURCHASE                    = "validatePurchase";
+    final static String AF_GCD_CALLBACK                         = "onInstallConversionData";
+    final static String AF_OAOA_CALLBACK                        = "onAppOpenAttribution";
 
     final static String AF_EVENTS_CHANNEL                       = "af-events";
     final static String AF_METHOD_CHANNEL                       = "af-api";

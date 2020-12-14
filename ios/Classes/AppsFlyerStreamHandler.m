@@ -27,53 +27,103 @@
                                 @"type":afOnInstallConversionDataLoaded,
                                 @"data":installData };
     NSError *error;
-    NSData *JSON = [NSJSONSerialization dataWithJSONObject:message options:0 error:&error];
-    if (error) {
+    NSString *JSONString = [self mapToJson:message withError:error];
+    
+    //use callbacks
+    if([AppsflyerSdkPlugin gcdCallback]){
+        NSString *installDataJson = [self mapToJson:installData withError:error];
+        NSDictionary *fullResponse = @{
+            @"id": afGCDCallback,
+            @"data": installDataJson,
+            @"status": afSuccess
+        };
+        JSONString = [self mapToJson:fullResponse withError:error];
+        [AppsflyerSdkPlugin.callbackChannel invokeMethod:@"callListener" arguments:JSONString];
+        return;
+    }else if (error) {
         _eventSink([error localizedDescription]);
     }
-    NSString *JSONString = [[NSString alloc] initWithData:JSON encoding:NSUTF8StringEncoding];
     _eventSink(JSONString);
 }
 
+- (NSString *)mapToJson:(NSDictionary *)data withError:(NSError *)error{
+    NSData *JSON = [NSJSONSerialization dataWithJSONObject:data options:0 error:&error];
+    NSString *JSONString = [[NSString alloc] initWithData:JSON encoding:NSUTF8StringEncoding];
+    return JSONString;
+}
+
 - (void)onConversionDataFail:(NSError *)error {
-    
     NSDictionary *errorMessage = @{@"status":afFailure,
                                      @"type":afOnInstallConversionDataLoaded,
                                      @"data":error.localizedDescription};
-    NSData *JSON = [NSJSONSerialization dataWithJSONObject:errorMessage options:0 error:&error];
+    NSString *JSONString = [self mapToJson:errorMessage withError:error];
+    
+    //use callbacks
+    if([AppsflyerSdkPlugin gcdCallback]){
+        NSDictionary *fullResponse = @{
+            @"id": afGCDCallback,
+            @"data": error.localizedDescription,
+            @"status": afSuccess
+        };
+        JSONString = [self mapToJson:fullResponse withError:error];
+        [AppsflyerSdkPlugin.callbackChannel invokeMethod:@"callListener" arguments:JSONString];
+        return;
+    }
+    
     if (error) {
         _eventSink([error localizedDescription]);
     }
-    NSString *JSONString = [[NSString alloc] initWithData:JSON encoding:NSUTF8StringEncoding];
     _eventSink(JSONString);
 }
 
 
 - (void)onAppOpenAttribution:(NSDictionary *)attributionData {
-    
     NSDictionary* message = @{
                               @"status": afSuccess,
                               @"type": afOnAppOpenAttribution, 
                               @"data": attributionData
                               };
     NSError *error;
-    NSData *JSON = [NSJSONSerialization dataWithJSONObject:message options:0 error:&error];
+    NSString *JSONString = [self mapToJson:message withError:error];
+    //use callbacks
+    if([AppsflyerSdkPlugin oaoaCallback]){
+        NSString* attributionDataJson = [self mapToJson:attributionData withError:error];
+        NSDictionary *fullResponse = @{
+            @"id": afOAOACallback,
+            @"data": attributionDataJson,
+            @"status": afSuccess
+        };
+        JSONString = [self mapToJson:fullResponse withError:error];
+        [AppsflyerSdkPlugin.callbackChannel invokeMethod:@"callListener" arguments:JSONString];
+        return;
+    }
+    
     if (error) {
         _eventSink([error localizedDescription]);
     }
-    NSString *JSONString = [[NSString alloc] initWithData:JSON encoding:NSUTF8StringEncoding];
     _eventSink(JSONString);
 }
 
 - (void)onAppOpenAttributionFailure:(NSError *)_errorMessage {
-    
     NSDictionary* errorMessage = @{
                                    @"status": afFailure,
                                    @"type": afOnAppOpenAttribution,
                                    @"data": _errorMessage.localizedDescription
-                                   };
-    NSData *JSON = [NSJSONSerialization dataWithJSONObject:errorMessage options:0 error:nil];
-    NSString *JSONString = [[NSString alloc] initWithData:JSON encoding:NSUTF8StringEncoding];
+     
+    };
+    NSError *error;
+    NSString *JSONString = [self mapToJson:errorMessage withError:error];
+    if([AppsflyerSdkPlugin oaoaCallback]){
+        NSDictionary *fullResponse = @{
+            @"id": afOAOACallback,
+            @"data": error.localizedDescription,
+            @"status": afSuccess
+        };
+        JSONString = [self mapToJson:fullResponse withError:error];
+        [AppsflyerSdkPlugin.callbackChannel invokeMethod:@"callListener" arguments:JSONString];
+        return;
+    }
+    
     _eventSink(JSONString);
 }
 

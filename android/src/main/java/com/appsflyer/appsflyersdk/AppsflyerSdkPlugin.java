@@ -66,6 +66,8 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private MethodChannel mCallbackChannel;
     final Handler uiThreadHandler = new Handler(Looper.getMainLooper());
     private Activity activity;
+    private Boolean gcdCallback = false;
+    private Boolean oaoaCallback = false;
 
     private void onAttachedToEngine(Context applicationContext, BinaryMessenger messenger) {
         this.mContext = applicationContext;
@@ -94,6 +96,12 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private void startListening(Object arguments, Result rawResult) {
         // Get callback id
         String callbackName = (String) arguments;
+        if(callbackName.equals(AppsFlyerConstants.AF_GCD_CALLBACK)){
+            gcdCallback = true;
+        }
+        if (callbackName.equals(AppsFlyerConstants.AF_OAOA_CALLBACK)){
+            oaoaCallback = true;
+        }
 
         Map<String, Object> args = new HashMap<>();
         args.put("id", callbackName);
@@ -238,7 +246,8 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         }else{
             AppsFlyerLib.getInstance().setAppInviteOneLink(oneLinkId);
             if(mCallbacks.containsKey("successSetAppInviteOneLinkID")){
-                runOnUIThread("success", "successSetAppInviteOneLinkID");
+                JSONObject obj = buildJsonResponse("success", AF_SUCCESS);
+                runOnUIThread(obj, "successSetAppInviteOneLinkID", AF_SUCCESS);
             }
         }
     }
@@ -280,14 +289,14 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             @Override
             public void onResponse(final String oneLinkUrl) {
                 if (mCallbacks.containsKey("successGenerateInviteLink")) {
-                    runOnUIThread(oneLinkUrl, "successGenerateInviteLink");
+//                    runOnUIThread(oneLinkUrl, "successGenerateInviteLink", AF_SUCCESS);
                 }
             }
 
             @Override
             public void onResponseError(final String error) {
                 if (mCallbacks.containsKey("errorGenerateInviteLink")) {
-                    runOnUIThread(error, "errorGenerateInviteLink");
+//                    runOnUIThread(error, "errorGenerateInviteLink", AF_FAILURE);
                 }
             }
         };
@@ -297,16 +306,21 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         rawResult.success(null);
     }
 
-    private void runOnUIThread(final String data, final String callbackName) {
+    private void runOnUIThread(final JSONObject data, final String callbackName, final String status) {
         uiThreadHandler.post(
                 new Runnable() {
                     @Override
                     public void run() {
                         Log.d("Callbacks","Calling invokeMethod with: " + data);
-                        Map<String, Object> args = new HashMap<>();
-                        args.put("id", callbackName);
-                        args.put("data", data);
-                        mCallbackChannel.invokeMethod("callListener", args);
+                        JSONObject args = new JSONObject();
+                        try {
+                            args.put("id", callbackName);
+                            args.put("status", status);
+                            args.put("data", data.toString());
+                        }catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                        mCallbackChannel.invokeMethod("callListener", args.toString());
                     }
                 }
         );
@@ -501,7 +515,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         boolean getGCD = (boolean) call.argument(AppsFlyerConstants.AF_GCD);
 
         if (getGCD) {
-            gcdListener = registerConversionListener(instance);
+            gcdListener = registerConversionListener();
         }
 
         boolean isDebug = (boolean) call.argument(AppsFlyerConstants.AF_IS_DEBUG);
@@ -537,27 +551,47 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         result.success(true);
     }
 
-    private AppsFlyerConversionListener registerConversionListener(AppsFlyerLib instance) {
+    private AppsFlyerConversionListener registerConversionListener() {
         return new AppsFlyerConversionListener() {
             @Override
             public void onConversionDataSuccess(Map<String, Object> map) {
-                handleSuccess(AF_ON_INSTALL_CONVERSION_DATA_LOADED, map, AF_EVENTS_CHANNEL);
+                if(gcdCallback){
+                    JSONObject dataObj = new JSONObject(replaceNullValues(map));
+                    runOnUIThread(dataObj, AppsFlyerConstants.AF_GCD_CALLBACK, AF_SUCCESS);
+                }else{
+                    handleSuccess(AF_ON_INSTALL_CONVERSION_DATA_LOADED,map,AF_EVENTS_CHANNEL);
+                }
             }
 
             @Override
             public void onConversionDataFail(String s) {
-                handleError(AF_ON_INSTALL_CONVERSION_DATA_LOADED, s, AF_EVENTS_CHANNEL);
+                if(gcdCallback){
+                    JSONObject obj = buildJsonResponse(s, AF_FAILURE);
+                    runOnUIThread(obj, AppsFlyerConstants.AF_GCD_CALLBACK, AF_FAILURE);
+                }else{
+                    handleError(AF_ON_INSTALL_CONVERSION_DATA_LOADED, s, AF_EVENTS_CHANNEL);
+                }
             }
 
             @Override
             public void onAppOpenAttribution(Map<String, String> map) {
                 Map<String, Object> objMap = (Map) map;
-                handleSuccess(AF_ON_APP_OPEN_ATTRIBUTION, objMap, AF_EVENTS_CHANNEL);
+                if(oaoaCallback){
+                    JSONObject obj = new JSONObject(replaceNullValues(objMap));
+                    runOnUIThread(obj, AppsFlyerConstants.AF_OAOA_CALLBACK, AF_SUCCESS);
+                }else{
+                    handleSuccess(AF_ON_APP_OPEN_ATTRIBUTION, objMap, AF_EVENTS_CHANNEL);
+                }
             }
 
             @Override
             public void onAttributionFailure(String errorMessage) {
-                handleError(AF_ON_APP_OPEN_ATTRIBUTION, errorMessage, AF_EVENTS_CHANNEL);
+                if(oaoaCallback){
+                    JSONObject obj = buildJsonResponse(errorMessage, AF_FAILURE);
+                    runOnUIThread(obj, AppsFlyerConstants.AF_OAOA_CALLBACK, AF_FAILURE);
+                }else{
+                    handleError(AF_ON_APP_OPEN_ATTRIBUTION, errorMessage, AF_EVENTS_CHANNEL);
+                }
             }
         };
     }
@@ -575,20 +609,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
     }
 
-    private Map<String, Object> replaceNullValues(Map<String, Object> map) {
-        // cant use stream because of older versions of java
-        Map<String, Object> newMap = new HashMap<
-                >();
-        Iterator it = map.entrySet().iterator();
-        while (it.hasNext()) {
-            Map.Entry<String, Object> pair = (Map.Entry) it.next();
-            newMap.put(pair.getKey(), pair.getValue() == null ? JSONObject.NULL : pair.getValue());
-            it.remove(); // avoids a ConcurrentModificationException
-        }
-
-        return newMap;
-    }
-
     private void handleError(String eventType, String errorMessage, String channel) {
 
         try {
@@ -602,6 +622,31 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         } catch (JSONException e) {
             e.printStackTrace();
         }
+    }
+
+    private JSONObject buildJsonResponse(Object data, String status) {
+        JSONObject obj = new JSONObject();
+        try {
+            obj.put("status", status);
+            obj.put("data", data.toString());
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return obj;
+    }
+
+    private Map<String, Object> replaceNullValues(Map<String, Object> map) {
+        // cant use stream because of older versions of java
+        Map<String, Object> newMap = new HashMap<
+                >();
+        Iterator it = map.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<String, Object> pair = (Map.Entry) it.next();
+            newMap.put(pair.getKey(), pair.getValue() == null ? JSONObject.NULL : pair.getValue());
+            it.remove(); // avoids a ConcurrentModificationException
+        }
+
+        return newMap;
     }
 
     private void sendEventToDart(final JSONObject params, String channel) {
@@ -645,49 +690,5 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     @Override
     public void onDetachedFromActivity() {
         activity = null;
-    }
-
-    private static class MethodResultWrapper implements MethodChannel.Result {
-        private MethodChannel.Result methodResult;
-        private Handler handler;
-
-        MethodResultWrapper(MethodChannel.Result result) {
-            methodResult = result;
-            handler = new Handler(Looper.getMainLooper());
-        }
-
-        @Override
-        public void success(final Object result) {
-            handler.post(
-                    new Runnable() {
-                        @Override
-                        public void run() {
-                            methodResult.success(result);
-                        }
-                    });
-        }
-
-        @Override
-        public void error(
-                final String errorCode, final String errorMessage, final Object errorDetails) {
-            handler.post(
-                    new Runnable() {
-                        @Override
-                        public void run() {
-                            methodResult.error(errorCode, errorMessage, errorDetails);
-                        }
-                    });
-        }
-
-        @Override
-        public void notImplemented() {
-            handler.post(
-                    new Runnable() {
-                        @Override
-                        public void run() {
-                            methodResult.notImplemented();
-                        }
-                    });
-        }
     }
 }

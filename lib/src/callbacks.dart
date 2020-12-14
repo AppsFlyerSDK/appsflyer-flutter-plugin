@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/services.dart';
 
 const _channel = const MethodChannel('callbacks');
@@ -11,7 +12,26 @@ Map<String, MultiUseCallback> _callbacksById = new Map();
 Future<void> _methodCallHandler(MethodCall call) async {
   switch (call.method) {
     case 'callListener':
-      _callbacksById[call.arguments["id"]](call.arguments["data"]);
+      try {
+        dynamic callMap = jsonDecode(call.arguments);
+        switch (callMap["id"]) {
+          case "onAppOpenAttribution":
+          case "onInstallConversionData":
+            String data = callMap["data"];
+            Map decodedData = jsonDecode(data);
+            Map fullResponse = {
+              "status": callMap['status'],
+              "payload": decodedData
+            };
+            _callbacksById[callMap["id"]](fullResponse);
+            break;
+          default:
+            _callbacksById[call.arguments["id"]](call.arguments["data"]);
+            break;
+        }
+      } catch (e) {
+        print(e);
+      }
       break;
     default:
       print('Ignoring invoke from native. This normally shouldn\'t happen.');
