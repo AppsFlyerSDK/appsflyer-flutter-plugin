@@ -7,6 +7,8 @@
 
 ## Methods
 - [initSdk](#initSdk)
+- [onAppOpenAttribution](#onAppOpenAttribution)
+- [onInstallConversionData](#onInstallConversionData)
 - [logEvent](#logEvent)
 - [conversionDataStream](#gcd)
 - [appOpenAttributionStream](#oaoa)
@@ -106,6 +108,35 @@ FutureBuilder<dynamic> ( future: _appsflyerSdk.initSdk(registerConversionDataCal
     )
   ...
 
+```
+
+---
+#### <a id="onAppOpenAttribution"> **`onAppOpenAttribution(Func)`
+- Trigger callback when onAppOpenAttribution is activated on the native side
+
+_Example:_
+
+```dart
+_appsflyerSdk.onAppOpenAttribution((res) {
+      print("res: " + res.toString());
+      setState(() {
+        _oaoa = res;
+      });
+    });
+```
+
+#### <a id="onInstallConversionData"> **`onInstallConversionData(Func)`
+- Trigger callback when onInstallConversionData is activated on the native side
+
+_Example:_
+
+```dart
+    _appsflyerSdk.onInstallConversionData((res) {
+      print("res: " + res.toString());
+      setState(() {
+        _gcd = res;
+      });
+    });
 ```
 
 ---

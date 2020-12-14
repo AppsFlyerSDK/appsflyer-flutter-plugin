@@ -48,6 +48,9 @@ In v6 of AppsFlyer SDK there are some api breaking changes:
 | stopTracking                  | stop                        |
 | validateAndTrackInAppPurchase | validateAndLogInAppPurchase |
 
+### Important notice
+- Switch `ConversionData` and `OnAppOpenAttribution` to be based on callbacks instead of streams since plugin version `6.0.5+2`
+
 ## <a id="getting-started"> **📲 Getting started**
 
 In order to install the plugin, visit [this](https://pub.dartlang.org/packages/appsflyer_sdk#-installing-tab-) page.
