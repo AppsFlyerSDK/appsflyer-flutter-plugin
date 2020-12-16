@@ -41,7 +41,7 @@
         [AppsflyerSdkPlugin.callbackChannel invokeMethod:@"callListener" arguments:JSONString];
         return;
     }else if (error) {
-        _eventSink([error localizedDescription]);
+        return;
     }
     _eventSink(JSONString);
 }
@@ -71,7 +71,7 @@
     }
     
     if (error) {
-        _eventSink([error localizedDescription]);
+        return;
     }
     _eventSink(JSONString);
 }
@@ -99,7 +99,7 @@
     }
     
     if (error) {
-        _eventSink([error localizedDescription]);
+        return;
     }
     _eventSink(JSONString);
 }
@@ -131,7 +131,7 @@
     NSError *error;
     NSData *JSON = [NSJSONSerialization dataWithJSONObject:message options:0 error:&error];
     if (error) {
-        _eventSink([error localizedDescription]);
+        return;
     }
     NSString *JSONString = [[NSString alloc] initWithData:JSON encoding:NSUTF8StringEncoding];
     _eventSink(JSONString);
