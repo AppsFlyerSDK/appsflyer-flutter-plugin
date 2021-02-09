@@ -14,7 +14,7 @@ import com.appsflyer.AppsFlyerConversionListener;
 import com.appsflyer.AppsFlyerInAppPurchaseValidatorListener;
 import com.appsflyer.AppsFlyerLib;
 import com.appsflyer.AppsFlyerProperties;
-import com.appsflyer.AppsFlyerTrackingRequestListener;
+import com.appsflyer.attribution.AppsFlyerRequestListener;
 import com.appsflyer.CreateOneLinkHttpTask;
 import com.appsflyer.share.CrossPromotionHelper;
 import com.appsflyer.share.LinkGenerator;
@@ -223,7 +223,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         Map data = (Map)call.argument("params");
 
         if (appId != null && !appId.equals("")) {
-            CrossPromotionHelper.trackAndOpenStore(mContext, appId, campaign, data);
+            CrossPromotionHelper.logAndOpenStore(mContext, appId, campaign, data);
         }
         result.success(null);
     }
@@ -234,7 +234,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         Map data = (Map)call.argument("data");
 
         if (appId != null && !appId.equals("")) {
-            CrossPromotionHelper.trackCrossPromoteImpression(mContext, appId, campaign, data);
+            CrossPromotionHelper.logCrossPromoteImpression(mContext, appId, campaign, data);
         }
         result.success(null);
     }
@@ -357,7 +357,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         String price = (String) call.argument("price");
         String currency = (String) call.argument("currency");
         Map<String, String> additionalParameters = (Map<String, String>) call.argument("additionalParameters");
-        AppsFlyerLib.getInstance().validateAndTrackInAppPurchase(mContext, publicKey, signature, purchaseData, price,
+        AppsFlyerLib.getInstance().validateAndLogInAppPurchase(mContext, publicKey, signature, purchaseData, price,
                 currency, additionalParameters);
         result.success(null);
     }
@@ -476,7 +476,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     private void stop(MethodCall call, Result result) {
         boolean isStopped = (boolean) call.argument("isStopped");
-        AppsFlyerLib.getInstance().stopTracking(isStopped, mContext);
+        AppsFlyerLib.getInstance().stop(isStopped, mContext);
         result.success(null);
     }
 
@@ -502,10 +502,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private void initSdk(MethodCall call, final MethodChannel.Result result) {
         AppsFlyerConversionListener gcdListener = null;
         AppsFlyerLib instance = AppsFlyerLib.getInstance();
-
-        if (mIntent.getData() != null) {
-            instance.setPluginDeepLinkData(mIntent);
-        }
 
         String afDevKey = (String) call.argument(AppsFlyerConstants.AF_DEV_KEY);
         if (afDevKey == null || afDevKey.equals("")) {
@@ -533,7 +529,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             instance.setAppInviteOneLink(appInviteOneLink);
         }
 
-        instance.startTracking(activity);
+        instance.start(activity);
 
         result.success("success");
     }
@@ -546,7 +542,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         final Map<String, Object> eventValues = call.argument(AppsFlyerConstants.AF_EVENT_VALUES);
 
         // Send event data through appsflyer sdk
-        instance.trackEvent(mContext, eventName, eventValues);
+        instance.logEvent(mContext, eventName, eventValues);
 
         result.success(true);
     }

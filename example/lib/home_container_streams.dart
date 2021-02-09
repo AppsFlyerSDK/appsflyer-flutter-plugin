@@ -26,7 +26,7 @@ class _HomeContainerStreamsState extends State<HomeContainerStreams> {
     "af_revenue": "2"
   };
 
-  String _trackEventResponse = "No event have been sent";
+  String _logEventResponse = "No event have been sent";
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +82,7 @@ class _HomeContainerStreamsState extends State<HomeContainerStreams> {
                 ),
                 child: Column(children: <Widget>[
                   Center(
-                    child: Text("Track event"),
+                    child: Text("Log event"),
                   ),
                   Padding(
                     padding: EdgeInsets.only(top: 12.0),
@@ -99,16 +99,16 @@ class _HomeContainerStreamsState extends State<HomeContainerStreams> {
                   TextBorder(
                       labelText: "Server response",
                       controller:
-                          TextEditingController(text: _trackEventResponse)),
+                          TextEditingController(text: _logEventResponse)),
                   RaisedButton(
                     onPressed: () {
                       widget.logEvent(eventName, eventValues).then((onValue) {
                         setState(() {
-                          _trackEventResponse = onValue.toString();
+                          _logEventResponse = onValue.toString();
                         });
                       }).catchError((onError) {
                         setState(() {
-                          _trackEventResponse = onError.toString();
+                          _logEventResponse = onError.toString();
                         });
                       });
                     },

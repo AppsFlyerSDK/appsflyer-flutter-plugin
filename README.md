@@ -33,7 +33,7 @@ When submitting an issue please specify your AppsFlyer sign-up (account) email ,
 ### This plugin is built for
 
 - iOS AppsFlyerSDK **v6.0.5**
-- Android AppsFlyerSDK **v5.4.5**
+- Android AppsFlyerSDK **v6.2.0**
 
 ---
 ## <a id="v6-breaking-changes"> **❗Migration Guide to v6**
