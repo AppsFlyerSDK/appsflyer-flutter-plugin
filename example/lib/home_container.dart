@@ -8,9 +8,9 @@ import 'utils.dart';
 class HomeContainer extends StatefulWidget {
   final Map onData;
   final Map onAttribution;
-  Future<bool> Function(String, Map) trackEvent;
+  Future<bool> Function(String, Map) logEvent;
 
-  HomeContainer({this.onData, this.onAttribution, this.trackEvent});
+  HomeContainer({this.onData, this.onAttribution, this.logEvent});
 
   @override
   _HomeContainerState createState() => _HomeContainerState();
@@ -25,7 +25,7 @@ class _HomeContainerState extends State<HomeContainer> {
     "af_revenue": "2"
   };
 
-  String _trackEventResponse = "No event have been sent";
+  String _logEventResponse = "No event have been sent";
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +71,7 @@ class _HomeContainerState extends State<HomeContainer> {
                 ),
                 child: Column(children: <Widget>[
                   Center(
-                    child: Text("Track event"),
+                    child: Text("Log event"),
                   ),
                   Padding(
                     padding: EdgeInsets.only(top: 12.0),
@@ -88,17 +88,17 @@ class _HomeContainerState extends State<HomeContainer> {
                   TextBorder(
                       labelText: "Server response",
                       controller:
-                          TextEditingController(text: _trackEventResponse)),
+                          TextEditingController(text: _logEventResponse)),
                   RaisedButton(
                     onPressed: () {
                       print("Pressed");
-                      widget.trackEvent(eventName, eventValues).then((onValue) {
+                      widget.logEvent(eventName, eventValues).then((onValue) {
                         setState(() {
-                          _trackEventResponse = onValue.toString();
+                          _logEventResponse = onValue.toString();
                         });
                       }).catchError((onError) {
                         setState(() {
-                          _trackEventResponse = onError.toString();
+                          _logEventResponse = onError.toString();
                         });
                       });
                     },

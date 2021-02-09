@@ -288,7 +288,7 @@ class AppsflyerSdk {
 
   /// Once this API is invoked, our SDK no longer communicates with our servers and stops functioning.
   /// In some extreme cases you might want to shut down all SDK activity due to legal and privacy compliance.
-  /// This can be achieved with the stopTracking API.
+  /// This can be achieved with the stop API.
   void stop(bool isStopped) {
     _methodChannel.invokeMethod("stop", {'isStopped': isStopped});
   }
@@ -353,6 +353,8 @@ class AppsflyerSdk {
     _methodChannel
         .invokeMethod("setAdditionalData", {'customData': customData});
   }
+
+  // TODO: void registerDDLListener();
 
   void _registerGCDListener() {
     _eventChannel.receiveBroadcastStream().listen((data) {

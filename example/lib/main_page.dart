@@ -67,7 +67,7 @@ class MainPageState extends State<MainPage> {
                   return HomeContainer(
                     onAttribution: _oaoa,
                     onData: _gcd,
-                    trackEvent: logEvent,
+                    logEvent: logEvent,
                   );
                 } else {
                   return Center(child: Text("Error initializing sdk"));
