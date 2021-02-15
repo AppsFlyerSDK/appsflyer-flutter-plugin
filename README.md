@@ -82,8 +82,8 @@ After we call `initSdk` we can use all of AppsFlyer SDK features.
 
 Initialize the SDK to enable AppsFlyer to detect installations, sessions (app opens) ,updates and use all of our features.
 
-```javascript
-appsFlyer.initSdk(
+```dart
+appsflyerSdk.initSdk(
     registerConversionDataCallback: true,
     registerOnAppOpenAttributionCallback: true,
     registerOnDeepLinkingCallback: true
