@@ -36,6 +36,7 @@ void main() {
     await instance.initSdk(
       registerConversionDataCallback: true,
       registerOnAppOpenAttributionCallback: true,
+      registerOnDeepLinkingCallback: false
     );
 
     expect('initSdk', selectedMethod);

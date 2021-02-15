@@ -9,6 +9,7 @@
 - [Deep Linking](#deeplinking)
     - [Deferred Deep Linking (Get Conversion Data)](#deferred-deep-linking)
     - [Direct Deep Linking](#direct-deep-linking)
+    - [Unified deep linking](#Unified-deep-linking)
     - [iOS Deeplink Setup](#iosdeeplinks)
     - [Android Deeplink Setup](#android-deeplinks)
 
@@ -32,10 +33,19 @@ Map options = { "afDevKey": afDevKey,
 AppsflyerSdk appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
 ```
 
-The next step is to call `initSdk` which have the optional boolean parameters `egisterConversionDataCallback` and `registerOnAppOpenAttributionCallback` which are set to false as default.
+The next step is to call `initSdk` which have the optional boolean parameters `registerConversionDataCallback` and the deeplink callbacks: `registerOnAppOpenAttributionCallback` 
+`registerOnDeepLinkingCallback`
+All callbacks are set to true as default.
 
 After we call `initSdk` we can use all of AppsFlyer SDK features.
 
+```javascript
+appsFlyer.initSdk(
+    registerConversionDataCallback: true,
+    registerOnAppOpenAttributionCallback: true,
+    registerOnDeepLinkingCallback: true
+);
+```
 ---
 
 ## <a id="out-of-store"> Android Out of store
@@ -57,21 +67,48 @@ Please make sure to go over [this guide](https://support.appsflyer.com/hc/en-us/
 <img src="https://massets.appsflyer.com/wp-content/uploads/2018/03/21101417/app-installed-Recovered.png" width="350">
 
 
-#### The 2 Deep Linking Types:
+#### The 3 Deep Linking Types:
 Since users may or may not have the mobile app installed, there are 2 types of deep linking:
 
 1. Deferred Deep Linking - Serving personalized content to new or former users, directly after the installation. 
 2. Direct Deep Linking - Directly serving personalized content to existing users, which already have the mobile app installed.
+3. Unified deep linking - Unified deep linking sends new and existing users to a specific in-app activity as soon as the app is opened.
 
 For more info please check out the [OneLink™ Deep Linking Guide](https://support.appsflyer.com/hc/en-us/articles/208874366-OneLink-Deep-Linking-Guide#Intro).
 
 ###  <a id="deferred-deep-linking"> 1. Deferred Deep Linking (Get Conversion Data)
+In order to use the unified deep link you need to send the `registerConversionDataCallback: true` flag inside the object that sent to the sdk.
+
+```javascript
+appsFlyer.onInstallConversionData((res){
+    print("res: " + res.toString());
+});
+```
 
 Check out the deferred deeplinkg guide from the AppFlyer knowledge base [here](https://support.appsflyer.com/hc/en-us/articles/207032096-Accessing-AppsFlyer-Attribution-Conversion-Data-from-the-SDK-Deferred-Deeplinking-#Introduction)
 
 ###  <a id="handle-deeplinking"> 2. Direct Deeplinking
-    
+In order to use the unified deep link you need to send the `registerOnAppOpenAttributionCallback: true` flag inside the object that sent to the sdk.
+
+```javascript
+appsFlyer.onAppOpenAttribution((res){
+    print("res: " + res.toString());
+});
+```
+
 When a deeplink is clicked on the device the AppsFlyer SDK will return the link in the [onAppOpenAttribution](https://support.appsflyer.com/hc/en-us/articles/208874366-OneLink-Deep-Linking-Guide#deep-linking-data-the-onappopenattribution-method-) method.
+
+###  <a id="Unified-deep-linking"> 3. Unified deep linking
+In order to use the unified deep link you need to send the `registerOnDeepLinkingCallback: true` flag inside the object that sent to the sdk.
+**NOTE:** when sending this flag, the sdk will ignore `onAppOpenAttribution`!
+
+```javascript
+appsFlyer.onDeepLinking((res){
+    print("res: " + res.toString());
+});
+```
+
+For more information about this api, please check [OneLink Guide Here](https://dev.appsflyer.com/docs/android-unified-deep-linking)
 
 ###  <a id="android-deeplink"> Android Deeplink Setup
     
@@ -88,6 +125,15 @@ In your app’s manifest add the following intent-filter to your relevant activi
 </intent-filter>
 ```
 
+**NOTE:** On Android, AppsFlyer SDK inspects activity intent object during onResume(). Because of that, for each activity that may be configured or launched with any [non-standard launch mode](https://developer.android.com/guide/topics/manifest/activity-element#lmode) the following code was added to `MainActivity.java` in `android/app/src/main/java/com...`
+
+```
+@Override
+    public void onNewIntent(Intent intent) {
+         super.onNewIntent(intent);
+         setIntent(intent);
+    }
+```
 
 #### App Links
 For more on App Links check out the guide [here](https://support.appsflyer.com/hc/en-us/articles/115005314223-Deep-Linking-Users-with-Android-App-Links#what-are-android-app-links).

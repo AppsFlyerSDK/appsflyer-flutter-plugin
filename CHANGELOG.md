@@ -1,4 +1,11 @@
 # Versions
+
+## 6.2.0+1
+- Added Unified Deeplinking for Android
+
+## 6.2.0
+- Update both iOS & Android to v6.2.0
+
 ## 6.0.5+3
 - Fixed `FormatException` caused by iOS side
 

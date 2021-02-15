@@ -19,6 +19,8 @@ import com.appsflyer.CreateOneLinkHttpTask;
 import com.appsflyer.share.CrossPromotionHelper;
 import com.appsflyer.share.LinkGenerator;
 import com.appsflyer.share.ShareInviteHelper;
+import com.appsflyer.deeplink.DeepLinkListener;
+import com.appsflyer.deeplink.DeepLinkResult;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -68,6 +70,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private Activity activity;
     private Boolean gcdCallback = false;
     private Boolean oaoaCallback = false;
+    private Boolean udlCallback = false;
 
     private void onAttachedToEngine(Context applicationContext, BinaryMessenger messenger) {
         this.mContext = applicationContext;
@@ -102,7 +105,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         if (callbackName.equals(AppsFlyerConstants.AF_OAOA_CALLBACK)){
             oaoaCallback = true;
         }
-
+        if (callbackName.equals(AppsFlyerConstants.AF_UDL_CALLBACK)){
+            udlCallback = true;
+        }
         Map<String, Object> args = new HashMap<>();
         args.put("id", callbackName);
         mCallbacks.put(callbackName, args);
@@ -306,7 +311,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         rawResult.success(null);
     }
 
-    private void runOnUIThread(final JSONObject data, final String callbackName, final String status) {
+    private void runOnUIThread(final Object data, final String callbackName, final String status) {
         uiThreadHandler.post(
                 new Runnable() {
                     @Override
@@ -501,6 +506,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     private void initSdk(MethodCall call, final MethodChannel.Result result) {
         AppsFlyerConversionListener gcdListener = null;
+        DeepLinkListener udlListener = null;
         AppsFlyerLib instance = AppsFlyerLib.getInstance();
 
         String afDevKey = (String) call.argument(AppsFlyerConstants.AF_DEV_KEY);
@@ -509,9 +515,14 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
 
         boolean getGCD = (boolean) call.argument(AppsFlyerConstants.AF_GCD);
-
         if (getGCD) {
             gcdListener = registerConversionListener();
+        }
+        // added Unified deeplink 
+        boolean getUdl = (boolean) call.argument(AppsFlyerConstants.AF_UDL);
+        if (getUdl) {
+            udlListener = registerOnDeeplinkingListener();
+            instance.subscribeForDeepLink(udlListener);
         }
 
         boolean isDebug = (boolean) call.argument(AppsFlyerConstants.AF_IS_DEBUG);
@@ -545,6 +556,28 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         instance.logEvent(mContext, eventName, eventValues);
 
         result.success(true);
+    }
+
+    private DeepLinkListener registerOnDeeplinkingListener() {
+        return new DeepLinkListener() {
+            @Override
+            public void onDeepLinking(DeepLinkResult deepLinkResult) {
+                if(udlCallback){
+                    runOnUIThread(deepLinkResult, AppsFlyerConstants.AF_UDL_CALLBACK, AF_SUCCESS);
+                }else{
+                    try {
+                        JSONObject obj = new JSONObject();
+                        obj.put("status", AF_SUCCESS);
+                        obj.put("type", AppsFlyerConstants.AF_UDL_CALLBACK);
+                        obj.put("data", deepLinkResult.getDeepLink().getClickEvent());
+
+                        sendEventToDart(obj, AF_EVENTS_CHANNEL);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        };
     }
 
     private AppsFlyerConversionListener registerConversionListener() {
@@ -604,7 +637,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             e.printStackTrace();
         }
     }
-
     private void handleError(String eventType, String errorMessage, String channel) {
 
         try {
