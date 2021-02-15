@@ -7,10 +7,10 @@ import 'utils.dart';
 
 class HomeContainer extends StatefulWidget {
   final Map onData;
-  final Map onAttribution;
   Future<bool> Function(String, Map) logEvent;
+  Object deepLinkData;
 
-  HomeContainer({this.onData, this.onAttribution, this.logEvent});
+  HomeContainer({this.onData, this.deepLinkData, this.logEvent});
 
   @override
   _HomeContainerState createState() => _HomeContainerState();
@@ -54,9 +54,9 @@ class _HomeContainerState extends State<HomeContainer> {
               ),
               TextBorder(
                 controller: TextEditingController(
-                    text: widget.onAttribution != null
-                        ? Utils.formatJson(widget.onAttribution)
-                        : "No Attribution data"),
+                     text: widget.deepLinkData != null ? 
+                            Utils.formatJson(widget.deepLinkData) : 
+                            "No Attribution data"),
                 labelText: "Attribution Data:",
               ),
               Padding(

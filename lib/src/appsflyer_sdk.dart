@@ -2,6 +2,7 @@ part of appsflyer_sdk;
 
 class AppsflyerSdk {
   StreamController _afGCDStreamController;
+  StreamController _afUDLStreamController;
   StreamController _afOpenAttributionStreamController;
   StreamController _afValidtaPurchaseController;
   EventChannel _eventChannel;
@@ -83,6 +84,11 @@ class AppsflyerSdk {
       validatedOptions[AppsflyerConstants.AF_GCD] = false;
     }
 
+    if (_afUDLStreamController != null ) {
+      validatedOptions[AppsflyerConstants.AF_UDL] = true;
+    } else {
+      validatedOptions[AppsflyerConstants.AF_UDL] = false;
+    }
     return validatedOptions;
   }
 
@@ -145,6 +151,12 @@ class AppsflyerSdk {
       afOptions[AppsflyerConstants.AF_GCD] = false;
     }
 
+    if (_afUDLStreamController != null ) {
+      afOptions[AppsflyerConstants.AF_UDL] = true;
+    } else {
+      afOptions[AppsflyerConstants.AF_UDL] = false;
+    }
+
     return afOptions;
   }
 
@@ -170,8 +182,23 @@ class AppsflyerSdk {
     }
   }
 
+
   Stream<Map> get appOpenAttributionStream {
     return _afOpenAttributionStreamController?.stream?.asBroadcastStream();
+  }
+
+  // Unified deeplink: Accessing AppsFlyer deeplink attributes
+  void _registerUDLCallback() {
+    if (_afUDLStreamController == null) {
+      _afUDLStreamController = StreamController<Map>(onCancel: () {
+        _afUDLStreamController.close();
+      });
+      _registerUDLListener();
+    }
+  }
+
+  Stream<Map> get onDeepLinkingStream {
+    return _afUDLStreamController?.stream?.asBroadcastStream();
   }
 
   ///Returns `Stream`. Accessing AppsFlyer purchase validation data
@@ -189,7 +216,8 @@ class AppsflyerSdk {
   ///initialize the SDK, using the options initialized from the constructor|
   Future<dynamic> initSdk(
       {bool registerConversionDataCallback = false,
-      bool registerOnAppOpenAttributionCallback = false}) async {
+      bool registerOnAppOpenAttributionCallback = false,
+      bool registerOnDeepLinkingCallback = false}) async {
     return Future.delayed(Duration(seconds: 0)).then((_) {
       if (registerConversionDataCallback) _registerConversionDataCallback();
       if (registerOnAppOpenAttributionCallback)
@@ -199,6 +227,10 @@ class AppsflyerSdk {
           registerOnAppOpenAttributionCallback) {
         _registerGCDListener();
       }
+
+      if (registerOnDeepLinkingCallback) {
+        _registerUDLCallback();
+      }      
 
       Map<String, dynamic> validatedOptions;
       if (mapOptions != null) {
@@ -354,7 +386,24 @@ class AppsflyerSdk {
         .invokeMethod("setAdditionalData", {'customData': customData});
   }
 
-  // TODO: void registerDDLListener();
+  void _registerUDLListener() {
+    _eventChannel.receiveBroadcastStream().listen((data) { 
+      var decodedJSON = jsonDecode(data);
+      String type = decodedJSON['type'];
+      if(type == AppsflyerConstants.AF_ON_DEEP_LINK){
+        if (_afUDLStreamController != null &&
+              !_afUDLStreamController.isClosed) {
+            _afUDLStreamController.sink.add(decodedJSON);
+        } else {
+          if ((afOptions != null && afOptions.showDebug) ||
+              (mapOptions != null &&
+                  mapOptions[AppsflyerConstants.AF_IS_DEBUG])) {
+            print("UDL Stream controller is closed. the event wasn't sent");
+          }
+        }
+      }
+    });
+  }
 
   void _registerGCDListener() {
     _eventChannel.receiveBroadcastStream().listen((data) {
@@ -475,5 +524,9 @@ class AppsflyerSdk {
 
   void onAppOpenAttribution(Function callback) async {
     startListening(callback, "onAppOpenAttribution");
+  }
+
+  void onDeepLinking(Function callback) async {
+    startListening(callback, "onDeepLinking");
   }
 }
