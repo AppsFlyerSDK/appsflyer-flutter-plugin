@@ -26,7 +26,7 @@ To start using AppsFlyer you first need to create an instance of `AppsflyerSdk` 
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 //..
 
-Map options = { "afDevKey": afDevKey,
+Map appsFlyerOptions = { "afDevKey": afDevKey,
                 "afAppId": appId,
                 "isDebug": true};
 
@@ -39,8 +39,8 @@ All callbacks are set to true as default.
 
 After we call `initSdk` we can use all of AppsFlyer SDK features.
 
-```javascript
-appsFlyer.initSdk(
+```dart
+appsflyerSdk.initSdk(
     registerConversionDataCallback: true,
     registerOnAppOpenAttributionCallback: true,
     registerOnDeepLinkingCallback: true
@@ -79,8 +79,8 @@ For more info please check out the [OneLink™ Deep Linking Guide](https://suppo
 ###  <a id="deferred-deep-linking"> 1. Deferred Deep Linking (Get Conversion Data)
 In order to use the unified deep link you need to send the `registerConversionDataCallback: true` flag inside the object that sent to the sdk.
 
-```javascript
-appsFlyer.onInstallConversionData((res){
+```dart
+appsflyerSdk.onInstallConversionData((res){
     print("res: " + res.toString());
 });
 ```
@@ -90,8 +90,8 @@ Check out the deferred deeplinkg guide from the AppFlyer knowledge base [here](h
 ###  <a id="handle-deeplinking"> 2. Direct Deeplinking
 In order to use the unified deep link you need to send the `registerOnAppOpenAttributionCallback: true` flag inside the object that sent to the sdk.
 
-```javascript
-appsFlyer.onAppOpenAttribution((res){
+```dart
+appsflyerSdk.onAppOpenAttribution((res){
     print("res: " + res.toString());
 });
 ```
@@ -102,8 +102,8 @@ When a deeplink is clicked on the device the AppsFlyer SDK will return the link 
 In order to use the unified deep link you need to send the `registerOnDeepLinkingCallback: true` flag inside the object that sent to the sdk.
 **NOTE:** when sending this flag, the sdk will ignore `onAppOpenAttribution`!
 
-```javascript
-appsFlyer.onDeepLinking((res){
+```dart
+appsflyerSdk.onDeepLinking((res){
     print("res: " + res.toString());
 });
 ```
