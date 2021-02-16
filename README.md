@@ -21,7 +21,8 @@ When submitting an issue please specify your AppsFlyer sign-up (account) email ,
 
 - [v6 Breaking changes](#v6-breaking-changes)
 - [Getting started](#getting-started)
-- [Initializing the sdk](#init-sdk)
+- [Setting AppsFlyer options](#appsFlyer-options)
+- [Initializing the SDK](#init-sdk)
 - [Guides](#guides)
 - [API](#api)
 
@@ -32,7 +33,7 @@ When submitting an issue please specify your AppsFlyer sign-up (account) email ,
 
 ### This plugin is built for
 
-- iOS AppsFlyerSDK **v6.0.5**
+- iOS AppsFlyerSDK **v6.2.0**
 - Android AppsFlyerSDK **v6.2.0**
 
 ---
@@ -55,6 +56,8 @@ In v6 of AppsFlyer SDK there are some api breaking changes:
 
 In order to install the plugin, visit [this](https://pub.dartlang.org/packages/appsflyer_sdk#-installing-tab-) page.
 
+### <a id="appsFlyer-options"> ⚙️  AppsFlyerOptions
+
 To start using AppsFlyer you first need to create an instance of `AppsflyerSdk` before using any other of our sdk functionalities.  
 
 `AppsflyerSdk` receives a map or `AppsFlyerOptions` object. This is how you can configure our `AppsflyerSdk` instance and connect it to your AppsFlyer account.
@@ -71,13 +74,24 @@ Map options = { "afDevKey": afDevKey,
 AppsflyerSdk appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
 ```
 
-The next step is to call `initSdk` which have the optional boolean parameters `registerConversionDataCallback` and `registerOnAppOpenAttributionCallback` which are set to false as default.
+### <a id="init-sdk"> 🚀  Initializing the SDK
+
+The next step is to call `initSdk` which have the optional boolean parameters 
+`registerConversionDataCallback`, 
+`registerOnAppOpenAttributionCallback` and 
+`registerOnDeepLinkingCallback` which are set to true as default.
 
 After we call `initSdk` we can use all of AppsFlyer SDK features.
 
-## <a id="init-sdk"> **🚀 Initializing the SDK**
-
 Initialize the SDK to enable AppsFlyer to detect installations, sessions (app opens) ,updates and use all of our features.
+
+```javascript
+appsFlyer.initSdk(
+    registerConversionDataCallback: true,
+    registerOnAppOpenAttributionCallback: true,
+    registerOnDeepLinkingCallback: true
+);
+```
 
 ## <a id="guides"> **📖 Guides**
 

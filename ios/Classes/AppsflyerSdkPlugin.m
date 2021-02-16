@@ -9,6 +9,7 @@ static NSMutableArray* _callbackById;
 static FlutterMethodChannel* _callbackChannel;
 static BOOL _gcdCallback = false;
 static BOOL _oaoaCallback = false;
+static BOOL _udpCallback = false;
 
 + (FlutterMethodChannel*)callbackChannel{
     return _callbackChannel;
@@ -20,6 +21,10 @@ static BOOL _oaoaCallback = false;
 
 + (BOOL)oaoaCallback{
     return _oaoaCallback;
+}
+
++ (BOOL)udpCallback{
+    return _udpCallback;
 }
 
 - (instancetype)initWithMessenger:(nonnull NSObject<FlutterBinaryMessenger> *)messenger {
@@ -125,6 +130,9 @@ static BOOL _oaoaCallback = false;
     }
     if ([callbackId isEqualToString:afOAOACallback]){
         _oaoaCallback = true;
+    }
+    if ([callbackId isEqualToString:afUDPCallback]){
+        _udpCallback = true;
     }
     [_callbackById addObject:callbackId];
 }
@@ -341,9 +349,11 @@ static BOOL _oaoaCallback = false;
     NSTimeInterval timeToWaitForATTUserAuthorization = 0;
     BOOL isDebug = NO;
     BOOL isConversionData = NO;
+    BOOL isUDP = NO;
     
     id isDebugValue = nil;
     id isConversionDataValue = nil;
+    id isUDPValue = nil;
     id isDisableCollectASA = nil;
     id isDisableAdvertisingIdentifier = nil;
 
@@ -364,7 +374,15 @@ static BOOL _oaoaCallback = false;
     if (isConversionData == YES) {
         [[AppsFlyerLib shared] setDelegate:_streamHandler];
     }
-    
+
+    isUDPValue = call.arguments[afOnDeepLinking];
+    if ([isUDPValue isKindOfClass:[NSNumber class]]) {
+        isUDP = [(NSNumber*)isUDPValue boolValue];
+        if(isUDP){
+            [AppsFlyerLib shared].deepLinkDelegate = self;
+        }
+    }
+
     appInviteOneLink = call.arguments[afInviteOneLink];
     if(appInviteOneLink != nil){
         [AppsFlyerLib shared].appInviteOneLinkID = appInviteOneLink;
@@ -380,6 +398,7 @@ static BOOL _oaoaCallback = false;
         // isDebug is a boolean that will come through as an NSNumber
         disableAdvertisingIdentifier = [(NSNumber*)isDisableAdvertisingIdentifier boolValue];
     }
+
     
     [AppsFlyerLib shared].disableCollectASA = disableCollectASA;
     [AppsFlyerLib shared].disableAdvertisingIdentifier = disableAdvertisingIdentifier;

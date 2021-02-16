@@ -127,6 +127,33 @@
     _eventSink(JSONString);
 }
 
+- (void)didResolveDeepLink:(AppsFlyerDeepLinkResult *) deepLinkResult {
+    NSDictionary* message = @{
+                              @"status": afSuccess,
+                              @"type": afOnDeepLinking, 
+                              @"data": deepLinkResult
+                              };
+    NSError *error;
+    NSString *JSONString = [self mapToJson:message withError:error];
+    //use callbacks
+    if([AppsflyerSdkPlugin udpCallback]){
+        // NSString* attributionDataJson = [self mapToJson:attributionData withError:error];
+        NSDictionary *fullResponse = @{
+            @"id": afUDPCallback,
+            @"data": deepLinkResult,
+            @"status": afSuccess
+        };
+        JSONString = [self mapToJson:fullResponse withError:error];
+        [AppsflyerSdkPlugin.callbackChannel invokeMethod:@"callListener" arguments:JSONString];
+        return;
+    }
+    
+    if (error) {
+        return;
+    }
+    _eventSink(JSONString);
+}
+
 - (void)sendObject:(NSDictionary *)message{
     NSError *error;
     NSData *JSON = [NSJSONSerialization dataWithJSONObject:message options:0 error:&error];

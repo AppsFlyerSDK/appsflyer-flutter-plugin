@@ -6,6 +6,7 @@
 + (FlutterMethodChannel*)callbackChannel;
 + (BOOL)gcdCallback;
 + (BOOL)oaoaCallback;
++ (BOOL)udpCallback;
 
 @end
 
@@ -28,10 +29,12 @@
 #define afOnAttributionFailure          @"onAttributionFailure"
 #define afValidatePurchase              @"validatePurchase"
 #define afOnAppOpenAttribution          @"onAppOpenAttribution"
+#define afOnDeepLinking                 @"onDeepLinking"
 #define afOnInstallConversionFailure    @"onInstallConversionFailure"
 #define afOnInstallConversionDataLoaded @"onInstallConversionDataLoaded"
 #define afGCDCallback                   @"onInstallConversionData"
 #define afOAOACallback                  @"onAppOpenAttribution"
+#define afUDPCallback                   @"onDeepLinking"
 
 // Stream Channels
 #define afMethodChannel                 @"af-api"
