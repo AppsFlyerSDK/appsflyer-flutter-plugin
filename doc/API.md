@@ -9,6 +9,7 @@
 - [initSdk](#initSdk)
 - [onAppOpenAttribution](#onAppOpenAttribution)
 - [onInstallConversionData](#onInstallConversionData)
+- [onDeepLinking](#onDeepLinking)
 - [logEvent](#logEvent)
 - [conversionDataStream](#gcd)
 - [appOpenAttributionStream](#oaoa)
@@ -89,7 +90,7 @@ Once `AppsflyerSdk` object is created, you can call `initSdk` method.
 
 initialize the SDK, using the options initialized from the constructor|
 Return response object with the field `status`
-The user can access `conversionDataStream` and `appOpenAttributionStream` to listen for events (see example app)
+The user can access `conversionDataStream`, `appOpenAttributionStream` and `onDeepLinkingStream` to listen for events (see example app)
 
 _Example:_
 
@@ -99,11 +100,15 @@ import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 
 AppsflyerSdk _appsflyerSdk = AppsflyerSdk({...});
 
-FutureBuilder<dynamic> ( future: _appsflyerSdk.initSdk(registerConversionDataCallback: true, registerOnAppOpenAttributionCallback: true), builder: (BuildContext context, AsyncSnapshot snapshot) {
+FutureBuilder<dynamic> ( future: _appsflyerSdk.initSdk(   
+                        registerConversionDataCallback: true, 
+                        registerOnAppOpenAttributionCallback: true, 
+                        registerOnDeepLinkingCallback: true), 
+builder: (BuildContext context, AsyncSnapshot snapshot) {
   if (snapshot.hasData)
     return  HomeContainer(
       onData: _appsflyerSdk.conversionDataStream,
-      onAttribution: _appsflyerSdk.appOpenAttributionStream,
+      deepLinkData: _appsflyerSdk.onDeepLinkingStream,
       ...
     )
   ...
@@ -119,9 +124,6 @@ _Example:_
 ```dart
 _appsflyerSdk.onAppOpenAttribution((res) {
       print("res: " + res.toString());
-      setState(() {
-        _oaoa = res;
-      });
     });
 ```
 
@@ -133,9 +135,17 @@ _Example:_
 ```dart
     _appsflyerSdk.onInstallConversionData((res) {
       print("res: " + res.toString());
-      setState(() {
-        _gcd = res;
-      });
+    });
+```
+
+#### <a id="onDeepLinking"> **`onDeepLinking(Func)`
+- Trigger callback when onDeepLinking is activated on the native side
+
+_Example:_
+
+```dart
+    _appsflyerSdk.onDeepLinking((res) {
+      print("res: " + res.toString());
     });
 ```
 
@@ -229,7 +239,35 @@ _Example of response on deep-link "https://flutter.demo" :_
   }
 }
 ```
+##### <a id="udl"> **onDeepLinkingStream**  (field of `AppsflyerSdk` instance)
+In case you want to use [deep links](https://en.wikipedia.org/wiki/Deep_linking) in your app, you will need to use `registerOnDeepLinkingCallback` on the `AppsflyerSdk` instance you've created.  
+_Example:_
 
+```dart
+StreamBuilder<dynamic>(
+    stream: _appsflyerSdk.onDeepLinkingStream?.asBroadcastStream(),
+    builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
+        ...
+    }
+)
+```
+
+_Example of response on deep-link "https://flutter.demo" :_
+
+```json
+{
+  "status": "success",
+  "type": "onDeepLinking",
+  "data": {
+    "deepLink":{
+      "media_source": "test",
+      "campaign": "None",
+      "is_deferred": false
+    },
+    "status": "FOUND"
+  }
+}
+```
 ---
 
 ## Other functionalities:

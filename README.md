@@ -32,7 +32,7 @@ When submitting an issue please specify your AppsFlyer sign-up (account) email ,
 
 ### This plugin is built for
 
-- iOS AppsFlyerSDK **v6.0.5**
+- iOS AppsFlyerSDK **v6.2.0**
 - Android AppsFlyerSDK **v6.2.0**
 
 ---
@@ -71,13 +71,24 @@ Map options = { "afDevKey": afDevKey,
 AppsflyerSdk appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
 ```
 
-The next step is to call `initSdk` which have the optional boolean parameters `registerConversionDataCallback` and `registerOnAppOpenAttributionCallback` which are set to false as default.
+## <a id="init-sdk"> **🚀 Initializing the SDK**
+
+The next step is to call `initSdk` which have the optional boolean parameters 
+`registerConversionDataCallback`, 
+`registerOnAppOpenAttributionCallback` and 
+`registerOnDeepLinkingCallback` which are set to true as default.
 
 After we call `initSdk` we can use all of AppsFlyer SDK features.
 
-## <a id="init-sdk"> **🚀 Initializing the SDK**
-
 Initialize the SDK to enable AppsFlyer to detect installations, sessions (app opens) ,updates and use all of our features.
+
+```dart
+appsflyerSdk.initSdk(
+    registerConversionDataCallback: true,
+    registerOnAppOpenAttributionCallback: true,
+    registerOnDeepLinkingCallback: true
+);
+```
 
 ## <a id="guides"> **📖 Guides**
 

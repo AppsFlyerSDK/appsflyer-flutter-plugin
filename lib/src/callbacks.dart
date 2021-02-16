@@ -17,6 +17,7 @@ Future<void> _methodCallHandler(MethodCall call) async {
         switch (callMap["id"]) {
           case "onAppOpenAttribution":
           case "onInstallConversionData":
+          case "onDeepLinking":
             String data = callMap["data"];
             Map decodedData = jsonDecode(data);
             Map fullResponse = {
