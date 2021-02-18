@@ -38,7 +38,7 @@
 
 | parameter | type  | description       |
 | --------- | ----- | ----------------- |
-| `options` | `Map` | SDK configuration |
+| `appsFlyerOptions` | `Map` | SDK configuration |
 
 **`options`**
 
