@@ -146,6 +146,7 @@ For more on App Links check out the guide [here](https://support.appsflyer.com/h
 
 In order for the callback to be called:
 1. Import AppsFlyer SDK:
+    
     a. For AppsFlyer SDK V6.2.0 and above add: ```#import #import "AppsflyerSdkPlugin.h"```
    
     b. For AppsFlyer SDK V6.1.0 and below add: ```#import <AppsFlyerLib/AppsFlyerLib.h>```
@@ -154,7 +155,7 @@ In order for the callback to be called:
 
 #### URI Scheme
 
-``` objective-c
+```
 //   Reports app open from deep link from apps which do not support Universal Links (Twitter) and for iOS8 and below
     - (BOOL)application:(UIApplication *)application openURL:(NSURL *)url sourceApplication:(NSString*)sourceApplication annotation:(id)annotation {
         // AppsFlyer SDK version 6.2.0 and above 
@@ -181,7 +182,7 @@ For more on URI-schemes check out the guide [here](https://support.appsflyer.com
 
 
 ### Universal Links
-    ``` objective-c
+    ```
     // Reports app open from a Universal Link for iOS 9 or above
     - (BOOL) application:(UIApplication *)application continueUserActivity:(NSUserActivity *)userActivity restorationHandler:(void (^)(NSArray<id<UIUserActivityRestoring>> *restorableObjects))restorationHandler {
         // AppsFlyer SDK version 6.2.0 and above 
