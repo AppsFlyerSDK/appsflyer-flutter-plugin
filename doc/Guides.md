@@ -26,7 +26,7 @@ To start using AppsFlyer you first need to create an instance of `AppsflyerSdk` 
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 //..
 
-Map options = { "afDevKey": afDevKey,
+Map appsFlyerOptions = { "afDevKey": afDevKey,
                 "afAppId": appId,
                 "isDebug": true};
 
@@ -146,9 +146,9 @@ For more on App Links check out the guide [here](https://support.appsflyer.com/h
 
 In order for the callback to be called:
 1. Import AppsFlyer SDK:
-    a. For AppsFlyer SDK V6.2.0 and above add: #import #import "AppsflyerSdkPlugin.h"
+    a. For AppsFlyer SDK V6.2.0 and above add: ```#import #import "AppsflyerSdkPlugin.h"```
    
-    b. For AppsFlyer SDK V6.1.0 and below add: #import <AppsFlyerLib/AppsFlyerLib.h>
+    b. For AppsFlyer SDK V6.1.0 and below add: ```#import <AppsFlyerLib/AppsFlyerLib.h>```
 
 2. Set-up the following AppsFlyer API:
 
