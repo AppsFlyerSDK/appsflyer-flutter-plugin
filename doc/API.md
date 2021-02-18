@@ -11,8 +11,7 @@
 - [onInstallConversionData](#onInstallConversionData)
 - [onDeepLinking](#onDeepLinking)
 - [logEvent](#logEvent)
-- [conversionDataStream](#gcd)
-- [appOpenAttributionStream](#oaoa)
+
 - [setUserEmails](#setUserEmails)
 - [setMinTimeBetweenSessions](#setMinTimeBetweenSessions)
 - [stop](#stop)
@@ -32,7 +31,7 @@
 - [getHostPrefix](#getHostPrefix)
 - [updateServerUninstallToken](#updateServerUninstallToken)
 - [validateAndTrackInAppPurchase](#validateAndTrackInAppPurchase)
-
+- [stream](#streams)
 ---
 
 ##### <a id="appsflyer-options"> **`AppsflyerSdk(Map options)`** 
@@ -90,7 +89,6 @@ Once `AppsflyerSdk` object is created, you can call `initSdk` method.
 
 initialize the SDK, using the options initialized from the constructor|
 Return response object with the field `status`
-The user can access `conversionDataStream`, `appOpenAttributionStream` and `onDeepLinkingStream` to listen for events (see example app)
 
 _Example:_
 
@@ -100,19 +98,10 @@ import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 
 AppsflyerSdk _appsflyerSdk = AppsflyerSdk({...});
 
-FutureBuilder<dynamic> ( future: _appsflyerSdk.initSdk(   
-                        registerConversionDataCallback: true, 
-                        registerOnAppOpenAttributionCallback: true, 
-                        registerOnDeepLinkingCallback: true), 
-builder: (BuildContext context, AsyncSnapshot snapshot) {
-  if (snapshot.hasData)
-    return  HomeContainer(
-      onData: _appsflyerSdk.conversionDataStream,
-      deepLinkData: _appsflyerSdk.onDeepLinkingStream,
-      ...
-    )
-  ...
-
+_appsflyerSdk.initSdk(   
+  registerConversionDataCallback: true, 
+  registerOnAppOpenAttributionCallback: true, 
+  registerOnDeepLinkingCallback: true)
 ```
 
 ---
@@ -174,100 +163,6 @@ Future<bool> logEvent(String eventName, Map eventValues) async {
   }
 ```
 
----
-
-### **Conversion Data and on app open attribution**
-
-##### <a id="gcd"> **conversionDataStream** (field of `AppsflyerSdk` instance)
-Returns `Stream`. Accessing AppsFlyer Attribution / Conversion Data from the SDK (Deferred Deeplinking). Read more: [Android](https://support.appsflyer.com/entries/69796693-Accessing-AppsFlyer-Attribution-Conversion-Data-from-the-SDK-Deferred-Deep-linking-), [iOS](https://support.appsflyer.com/entries/22904293-Testing-AppsFlyer-iOS-SDK-Integration-Before-Submitting-to-the-App-Store-). AppsFlyer plugin will return attribution data as JSON `Map` in `Stream`.
-
-_Example:_
-
-```dart
-StreamBuilder<dynamic>(
-    stream: _appsflyerSdk.conversionDataStream?.asBroadcastStream(),
-    builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
-        ...
-    }
-)
-```
-
-_Example of success Organic response:_
-
-```json
-{
-  "status": "success",
-  "type": "onInstallConversionDataLoaded",
-  "data": {
-    "af_status": "Organic",
-    "af_message": "organic install",
-    "is_first_launch": "false"
-  }
-}
-```
-
-_Example of failure response:_
-
-```json
-{
-  "status": "failure",
-  "type": "onInstallConversionDataLoaded",
-  "data": "SOME_ERROR_MESSAGE"
-}
-```
-##### <a id="oaoa"> **appOpenAttributionStream**  (field of `AppsflyerSdk` instance)
-In case you want to use [deep links](https://en.wikipedia.org/wiki/Deep_linking) in your app, you will need to use `registerOnAppOpenAttributionCallback` on the `AppsflyerSdk` instance you've created.  
-_Example:_
-
-```dart
-StreamBuilder<dynamic>(
-    stream: _appsflyerSdk.appOpenAttributionStream?.asBroadcastStream(),
-    builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
-        ...
-    }
-)
-```
-
-_Example of response on deep-link "https://flutter.demo" :_
-
-```json
-{
-  "status": "success",
-  "type": "onAppOpenAttribution",
-  "data": {
-    "link": "https://flutter.demo"
-  }
-}
-```
-##### <a id="udl"> **onDeepLinkingStream**  (field of `AppsflyerSdk` instance)
-In case you want to use [deep links](https://en.wikipedia.org/wiki/Deep_linking) in your app, you will need to use `registerOnDeepLinkingCallback` on the `AppsflyerSdk` instance you've created.  
-_Example:_
-
-```dart
-StreamBuilder<dynamic>(
-    stream: _appsflyerSdk.onDeepLinkingStream?.asBroadcastStream(),
-    builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
-        ...
-    }
-)
-```
-
-_Example of response on deep-link "https://flutter.demo" :_
-
-```json
-{
-  "status": "success",
-  "type": "onDeepLinking",
-  "data": {
-    "deepLink":{
-      "media_source": "test",
-      "campaign": "None",
-      "is_deferred": false
-    },
-    "status": "FOUND"
-  }
-}
-```
 ---
 
 ## Other functionalities:
@@ -429,3 +324,99 @@ appsFlyerSdk.validateAndTrackInAppPurchase(
          print(error);
        });
 ```
+---
+
+### **Conversion Data and on app open attribution for older versions**
+For plugin version `6.0.5+2` and below the user can access `conversionDataStream`, `appOpenAttributionStream` and `onDeepLinkingStream` to listen for events (see example app)
+
+##### <a id="streams"> **conversionDataStream** (field of `AppsflyerSdk` instance)
+Returns `Stream`. Accessing AppsFlyer Attribution / Conversion Data from the SDK (Deferred Deeplinking). Read more: [Android](https://support.appsflyer.com/entries/69796693-Accessing-AppsFlyer-Attribution-Conversion-Data-from-the-SDK-Deferred-Deep-linking-), [iOS](https://support.appsflyer.com/entries/22904293-Testing-AppsFlyer-iOS-SDK-Integration-Before-Submitting-to-the-App-Store-). AppsFlyer plugin will return attribution data as JSON `Map` in `Stream`.
+
+_Example:_
+
+```dart
+StreamBuilder<dynamic>(
+    stream: _appsflyerSdk.conversionDataStream?.asBroadcastStream(),
+    builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
+        ...
+    }
+)
+```
+
+_Example of success Organic response:_
+
+```json
+{
+  "status": "success",
+  "type": "onInstallConversionDataLoaded",
+  "data": {
+    "af_status": "Organic",
+    "af_message": "organic install",
+    "is_first_launch": "false"
+  }
+}
+```
+
+_Example of failure response:_
+
+```json
+{
+  "status": "failure",
+  "type": "onInstallConversionDataLoaded",
+  "data": "SOME_ERROR_MESSAGE"
+}
+```
+##### <a id="oaoa"> **appOpenAttributionStream**  (field of `AppsflyerSdk` instance)
+In case you want to use [deep links](https://en.wikipedia.org/wiki/Deep_linking) in your app, you will need to use `registerOnAppOpenAttributionCallback` on the `AppsflyerSdk` instance you've created.  
+_Example:_
+
+```dart
+StreamBuilder<dynamic>(
+    stream: _appsflyerSdk.appOpenAttributionStream?.asBroadcastStream(),
+    builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
+        ...
+    }
+)
+```
+
+_Example of response on deep-link "https://flutter.demo" :_
+
+```json
+{
+  "status": "success",
+  "type": "onAppOpenAttribution",
+  "data": {
+    "link": "https://flutter.demo"
+  }
+}
+```
+##### <a id="udl"> **onDeepLinkingStream**  (field of `AppsflyerSdk` instance)
+In case you want to use [deep links](https://en.wikipedia.org/wiki/Deep_linking) in your app, you will need to use `registerOnDeepLinkingCallback` on the `AppsflyerSdk` instance you've created.  
+_Example:_
+
+```dart
+StreamBuilder<dynamic>(
+    stream: _appsflyerSdk.onDeepLinkingStream?.asBroadcastStream(),
+    builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
+        ...
+    }
+)
+```
+
+_Example of response on deep-link "https://flutter.demo" :_
+
+```json
+{
+  "status": "success",
+  "type": "onDeepLinking",
+  "data": {
+    "deepLink":{
+      "media_source": "test",
+      "campaign": "None",
+      "is_deferred": false
+    },
+    "status": "FOUND"
+  }
+}
+```
+---

@@ -39,7 +39,7 @@ All callbacks are set to true as default.
 
 After we call `initSdk` we can use all of AppsFlyer SDK features.
 
-```javascript
+```dart
 appsFlyer.initSdk(
     registerConversionDataCallback: true,
     registerOnAppOpenAttributionCallback: true,
@@ -79,7 +79,8 @@ For more info please check out the [OneLink™ Deep Linking Guide](https://suppo
 ###  <a id="deferred-deep-linking"> 1. Deferred Deep Linking (Get Conversion Data)
 In order to use the unified deep link you need to send the `registerConversionDataCallback: true` flag inside the object that sent to the sdk.
 
-```javascript
+Handle the Deferred deeplink in the following callback:
+```dart
 appsFlyer.onInstallConversionData((res){
     print("res: " + res.toString());
 });
@@ -90,7 +91,8 @@ Check out the deferred deeplinkg guide from the AppFlyer knowledge base [here](h
 ###  <a id="handle-deeplinking"> 2. Direct Deeplinking
 In order to use the unified deep link you need to send the `registerOnAppOpenAttributionCallback: true` flag inside the object that sent to the sdk.
 
-```javascript
+Handle the Direct deeplink in the following callback:
+```dart
 appsFlyer.onAppOpenAttribution((res){
     print("res: " + res.toString());
 });
@@ -102,7 +104,8 @@ When a deeplink is clicked on the device the AppsFlyer SDK will return the link 
 In order to use the unified deep link you need to send the `registerOnDeepLinkingCallback: true` flag inside the object that sent to the sdk.
 **NOTE:** when sending this flag, the sdk will ignore `onAppOpenAttribution`!
 
-```javascript
+Handle both the Direct & the deferred deeplink in the following callback:
+```dart
 appsFlyer.onDeepLinking((res){
     print("res: " + res.toString());
 });
@@ -127,7 +130,7 @@ In your app’s manifest add the following intent-filter to your relevant activi
 
 **NOTE:** On Android, AppsFlyer SDK inspects activity intent object during onResume(). Because of that, for each activity that may be configured or launched with any [non-standard launch mode](https://developer.android.com/guide/topics/manifest/activity-element#lmode) the following code was added to `MainActivity.java` in `android/app/src/main/java/com...`
 
-```
+```java
 @Override
     public void onNewIntent(Intent intent) {
          super.onNewIntent(intent);
@@ -138,30 +141,76 @@ In your app’s manifest add the following intent-filter to your relevant activi
 #### App Links
 For more on App Links check out the guide [here](https://support.appsflyer.com/hc/en-us/articles/115005314223-Deep-Linking-Users-with-Android-App-Links#what-are-android-app-links).
 
+
 ###  <a id="ios-deeplink"> iOS Deeplink Setup
+
+In order for the callback to be called:
+1. Import AppsFlyer SDK:
+    a. For AppsFlyer SDK V6.2.0 and above add: #import #import "AppsflyerSdkPlugin.h"
+   
+    b. For AppsFlyer SDK V6.1.0 and below add: #import <AppsFlyerLib/AppsFlyerLib.h>
+
+2. Set-up the following AppsFlyer API:
 
 #### URI Scheme
 
+``` objective-c
+//   Reports app open from deep link from apps which do not support Universal Links (Twitter) and for iOS8 and below
+    - (BOOL)application:(UIApplication *)application openURL:(NSURL *)url sourceApplication:(NSString*)sourceApplication annotation:(id)annotation {
+        // AppsFlyer SDK version 6.2.0 and above 
+        [[AppsFlyerAttribution shared] handleOpenUrl:url sourceApplication:sourceApplication annotation:annotation];
+        
+        // AppsFlyer SDK version 6.1.0 and below 
+        [[AppsFlyerLib shared] handleOpenURL:url sourceApplication:sourceApplication withAnnotation:annotation];
+        return YES;
+    }
+
+    // Reports app open from deep link for iOS 10
+    - (BOOL)application:(UIApplication *)application openURL:(NSURL *)url options:(NSDictionary *) options {
+        
+        // AppsFlyer SDK version 6.2.0 and above 
+        [[AppsFlyerAttribution shared] handleOpenUrl:url options:options];
+        
+        // AppsFlyer SDK version 6.1.0 and below 
+        [[AppsFlyerLib shared] handleOpenUrl:url options:options];
+        return YES;
+    }
+```
+
 For more on URI-schemes check out the guide [here](https://support.appsflyer.com/hc/en-us/articles/208874366-OneLink-deep-linking-guide#setups-uri-scheme-for-ios-8-and-below)
 
-### Universal Links
-    
-For more on Universal Links check out the guide [here](https://support.appsflyer.com/hc/en-us/articles/208874366-OneLink-Deep-Linking-Guide#setups-universal-links).
-    
-Essentially, the Universal Links method links between an iOS mobile app and an associate website/domain, such as AppsFlyer’s OneLink domain (xxx.onelink.me). To do so, it is required to:
 
+### Universal Links
+    ``` objective-c
+    // Reports app open from a Universal Link for iOS 9 or above
+    - (BOOL) application:(UIApplication *)application continueUserActivity:(NSUserActivity *)userActivity restorationHandler:(void (^)(NSArray<id<UIUserActivityRestoring>> *restorableObjects))restorationHandler {
+        // AppsFlyer SDK version 6.2.0 and above 
+        [[AppsFlyerAttribution shared] continueUserActivity:userActivity restorationHandler:restorationHandler];
+        
+        // AppsFlyer SDK version 6.1.0 and below 
+        [[AppsFlyerLib shared] continueUserActivity:userActivity restorationHandler:restorationHandler];
+        return YES;
+    }
+    ```
+    
+
+More on Universal Links:
+
+Essentially, the Universal Links method links between an iOS mobile app and an associate website/domain, such as AppsFlyer’s OneLink domain (xxx.onelink.me). To do so, it is required to:
 1. Configure OneLink sub-domain and link to mobile app (by hosting the ‘apple-app-site-association’ file - AppsFlyer takes care of this part in the onelink setup on your dashboard)
 2. Configure the mobile app to register approved domains:
 
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-    <dict>
-        <key>com.apple.developer.associated-domains</key>
-        <array>
-            <string>applinks:test.onelink.me</string>
-        </array>
-    </dict>
-</plist>
-```
+    ```xml
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+    <plist version="1.0">
+        <dict>
+            <key>com.apple.developer.associated-domains</key>
+            <array>
+                <string>applinks:test.onelink.me</string>
+            </array>
+        </dict>
+    </plist>
+    ```
+
+For more on Universal Links check out the guide [here](https://support.appsflyer.com/hc/en-us/articles/208874366-OneLink-Deep-Linking-Guide#setups-universal-links).
