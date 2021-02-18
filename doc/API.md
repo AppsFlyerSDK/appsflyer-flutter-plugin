@@ -54,7 +54,7 @@ _Example:_
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 //..
 
-Map options = { "afDevKey": afDevKey,
+Map appsFlyerOptions = { "afDevKey": afDevKey,
                 "afAppId": appId,
                 "isDebug": true};
 
@@ -68,7 +68,7 @@ AppsflyerSdk appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
 
 | parameter | type               | description       |
 | --------- | ------------------ | ----------------- |
-| `options` | `AppsFlyerOptions` | SDK configuration |
+| `appsFlyerOptions` | `AppsFlyerOptions` | SDK configuration |
 
 _Example:_
 
