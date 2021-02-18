@@ -1,5 +1,6 @@
 #import <Flutter/Flutter.h>
 #import <AppsFlyerLib/AppsFlyerLib.h>
+#import "AppsFlyerAttribution.h"
 
 @interface AppsflyerSdkPlugin: NSObject<FlutterPlugin>
 
@@ -18,6 +19,7 @@
 #define afEventName                         @"eventName"
 #define afEventValues                       @"eventValues"
 #define afConversionData                    @"GCD"
+#define afUDL                               @"UDL"
 #define afInviteOneLink                     @"appInviteOneLink"
 #define afDisableCollectASA                 @"disableCollectASA"
 #define afDisableAdvertisingIdentifier      @"disableAdvertisingIdentifier"

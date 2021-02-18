@@ -370,19 +370,18 @@ static BOOL _udpCallback = false;
     if ([isConversionDataValue isKindOfClass:[NSNumber class]]) {
         isConversionData = [(NSNumber*)isConversionDataValue boolValue];
     }
-    
     if (isConversionData == YES) {
         [[AppsFlyerLib shared] setDelegate:_streamHandler];
     }
 
-    isUDPValue = call.arguments[afOnDeepLinking];
+    isUDPValue = call.arguments[afUDL];
     if ([isUDPValue isKindOfClass:[NSNumber class]]) {
         isUDP = [(NSNumber*)isUDPValue boolValue];
-        if(isUDP){
-            [AppsFlyerLib shared].deepLinkDelegate = self;
+        if(isUDP == YES){
+            [AppsFlyerLib shared].deepLinkDelegate = _streamHandler;
         }
     }
-
+    
     appInviteOneLink = call.arguments[afInviteOneLink];
     if(appInviteOneLink != nil){
         [AppsFlyerLib shared].appInviteOneLinkID = appInviteOneLink;
@@ -406,6 +405,10 @@ static BOOL _udpCallback = false;
     [AppsFlyerLib shared].appsFlyerDevKey = devKey;
     [AppsFlyerLib shared].isDebug = isDebug;
     [[AppsFlyerLib shared] start];
+
+    //post notification for the deep link object that the bridge is set and he can handle deep link
+    [AppsFlyerAttribution shared].isBridgeReady = YES;
+   [[NSNotificationCenter defaultCenter] postNotificationName:AF_BRIDGE_SET object:self];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
     

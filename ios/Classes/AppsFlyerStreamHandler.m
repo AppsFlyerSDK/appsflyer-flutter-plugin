@@ -127,20 +127,19 @@
     _eventSink(JSONString);
 }
 
-- (void)didResolveDeepLink:(AppsFlyerDeepLinkResult *) deepLinkResult {
+- (void)didResolveDeepLink:(AppsFlyerDeepLinkResult* _Nonnull) deepLinkResult {
     NSDictionary* message = @{
                               @"status": afSuccess,
-                              @"type": afOnDeepLinking, 
-                              @"data": deepLinkResult
+                              @"type": afOnDeepLinking,
+                              @"data": deepLinkResult.deepLink.toString
                               };
     NSError *error;
     NSString *JSONString = [self mapToJson:message withError:error];
     //use callbacks
     if([AppsflyerSdkPlugin udpCallback]){
-        // NSString* attributionDataJson = [self mapToJson:attributionData withError:error];
         NSDictionary *fullResponse = @{
             @"id": afUDPCallback,
-            @"data": deepLinkResult,
+            @"data": deepLinkResult.deepLink.toString,
             @"status": afSuccess
         };
         JSONString = [self mapToJson:fullResponse withError:error];

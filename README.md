@@ -33,7 +33,7 @@ When submitting an issue please specify your AppsFlyer sign-up (account) email ,
 
 ### This plugin is built for
 
-- iOS AppsFlyerSDK **v6.2.0**
+- iOS AppsFlyerSDK **v6.2.1**
 - Android AppsFlyerSDK **v6.2.0**
 
 ---
@@ -85,7 +85,7 @@ After we call `initSdk` we can use all of AppsFlyer SDK features.
 
 Initialize the SDK to enable AppsFlyer to detect installations, sessions (app opens) ,updates and use all of our features.
 
-```javascript
+```dart
 appsFlyer.initSdk(
     registerConversionDataCallback: true,
     registerOnAppOpenAttributionCallback: true,
