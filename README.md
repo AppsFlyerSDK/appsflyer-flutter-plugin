@@ -68,7 +68,7 @@ To start using AppsFlyer you first need to create an instance of `AppsflyerSdk` 
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 //..
 
-Map options = { "afDevKey": afDevKey,
+Map appsFlyerOptions = { "afDevKey": afDevKey,
                 "afAppId": appId,
                 "isDebug": true};
 
