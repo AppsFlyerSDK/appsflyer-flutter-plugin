@@ -40,7 +40,7 @@ All callbacks are set to true as default.
 After we call `initSdk` we can use all of AppsFlyer SDK features.
 
 ```dart
-appsFlyer.initSdk(
+appsflyerSdk.initSdk(
     registerConversionDataCallback: true,
     registerOnAppOpenAttributionCallback: true,
     registerOnDeepLinkingCallback: true
@@ -79,9 +79,10 @@ For more info please check out the [OneLink™ Deep Linking Guide](https://suppo
 ###  <a id="deferred-deep-linking"> 1. Deferred Deep Linking (Get Conversion Data)
 In order to use the unified deep link you need to send the `registerConversionDataCallback: true` flag inside the object that sent to the sdk.
 
+=======
 Handle the Deferred deeplink in the following callback:
 ```dart
-appsFlyer.onInstallConversionData((res){
+appsflyerSdk.onInstallConversionData((res){
     print("res: " + res.toString());
 });
 ```
@@ -92,8 +93,9 @@ Check out the deferred deeplinkg guide from the AppFlyer knowledge base [here](h
 In order to use the unified deep link you need to send the `registerOnAppOpenAttributionCallback: true` flag inside the object that sent to the sdk.
 
 Handle the Direct deeplink in the following callback:
+
 ```dart
-appsFlyer.onAppOpenAttribution((res){
+appsflyerSdk.onAppOpenAttribution((res){
     print("res: " + res.toString());
 });
 ```
@@ -105,8 +107,9 @@ In order to use the unified deep link you need to send the `registerOnDeepLinkin
 **NOTE:** when sending this flag, the sdk will ignore `onAppOpenAttribution`!
 
 Handle both the Direct & the deferred deeplink in the following callback:
+
 ```dart
-appsFlyer.onDeepLinking((res){
+appsflyerSdk.onDeepLinking((res){
     print("res: " + res.toString());
 });
 ```
