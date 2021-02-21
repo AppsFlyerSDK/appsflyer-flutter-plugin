@@ -1,5 +1,13 @@
 # Versions
 
+## 6.2.1
+- Update iOS to v6.2.1
+- Added support for Unified Deeplink
+- Fixed deeplinks issues both for Android & iOS
+
+## 6.2.0+2
+- Revert back to version 6.2.0
+
 ## 6.2.0+1
 - Added Unified Deeplinking for Android
 

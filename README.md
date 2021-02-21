@@ -21,7 +21,8 @@ When submitting an issue please specify your AppsFlyer sign-up (account) email ,
 
 - [v6 Breaking changes](#v6-breaking-changes)
 - [Getting started](#getting-started)
-- [Initializing the sdk](#init-sdk)
+- [Setting AppsFlyer options](#appsFlyer-options)
+- [Initializing the SDK](#init-sdk)
 - [Guides](#guides)
 - [API](#api)
 
@@ -32,7 +33,8 @@ When submitting an issue please specify your AppsFlyer sign-up (account) email ,
 
 ### This plugin is built for
 
-- iOS AppsFlyerSDK **v6.2.0**
+- iOS AppsFlyerSDK **v6.2.1**
+
 - Android AppsFlyerSDK **v6.2.0**
 
 ---
@@ -55,6 +57,8 @@ In v6 of AppsFlyer SDK there are some api breaking changes:
 
 In order to install the plugin, visit [this](https://pub.dartlang.org/packages/appsflyer_sdk#-installing-tab-) page.
 
+### <a id="appsFlyer-options"> ⚙️  AppsFlyerOptions
+
 To start using AppsFlyer you first need to create an instance of `AppsflyerSdk` before using any other of our sdk functionalities.  
 
 `AppsflyerSdk` receives a map or `AppsFlyerOptions` object. This is how you can configure our `AppsflyerSdk` instance and connect it to your AppsFlyer account.
@@ -64,14 +68,14 @@ To start using AppsFlyer you first need to create an instance of `AppsflyerSdk` 
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 //..
 
-Map options = { "afDevKey": afDevKey,
+Map appsFlyerOptions = { "afDevKey": afDevKey,
                 "afAppId": appId,
                 "isDebug": true};
 
 AppsflyerSdk appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
 ```
 
-## <a id="init-sdk"> **🚀 Initializing the SDK**
+### <a id="init-sdk"> 🚀  Initializing the SDK
 
 The next step is to call `initSdk` which have the optional boolean parameters 
 `registerConversionDataCallback`, 
@@ -82,8 +86,8 @@ After we call `initSdk` we can use all of AppsFlyer SDK features.
 
 Initialize the SDK to enable AppsFlyer to detect installations, sessions (app opens) ,updates and use all of our features.
 
-```javascript
-appsFlyer.initSdk(
+```dart
+appsflyerSdk.initSdk(
     registerConversionDataCallback: true,
     registerOnAppOpenAttributionCallback: true,
     registerOnDeepLinkingCallback: true
