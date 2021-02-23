@@ -209,10 +209,18 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "setOneLinkCustomDomain":
                 setOneLinkCustomDomain(call, result);
                 break;
+            case "setPushNotification":
+                sendPushNotificationData(call, result);
+                break;
             default:
                 result.notImplemented();
                 break;
         }
+    }
+
+    private void sendPushNotificationData(MethodCall call, Result result) {
+        AppsFlyerLib.getInstance().sendPushNotificationData(activity);
+        result.success(null);
     }
 
     private void setOneLinkCustomDomain(MethodCall call, Result result) {

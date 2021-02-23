@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import './app_constants.dart';
 import 'text_border.dart';

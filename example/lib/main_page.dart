@@ -86,4 +86,5 @@ class MainPageState extends State<MainPage> {
   Future<bool> logEvent(String eventName, Map eventValues) {
     return _appsflyerSdk.logEvent(eventName, eventValues);
   }
+
 }

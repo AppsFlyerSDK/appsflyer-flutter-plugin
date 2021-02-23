@@ -31,6 +31,7 @@
 - [getHostPrefix](#getHostPrefix)
 - [updateServerUninstallToken](#updateServerUninstallToken)
 - [validateAndTrackInAppPurchase](#validateAndTrackInAppPurchase)
+- [setPushNotification](#setPushNotification)
 - [stream](#streams)
 ---
 
@@ -325,7 +326,18 @@ appsFlyerSdk.validateAndTrackInAppPurchase(
        });
 ```
 ---
+**<a id="setPushNotification"> `void setPushNotification(bool isEnabled)`**
+_NOTE:_ 
+For Android: Make sure to call this API inside the page of every activity that is launched after clicking the notification.
+For iOS: This API can be called once at the initalization phase.
+Please check the following guide in order to understand the relevant payload needed for AppsFlyer to attribute the push notification:
+https://support.appsflyer.com/hc/en-us/articles/207364076-Measuring-push-notification-re-engagement-campaigns
 
+_Example:_
+```dart
+appsFlyerSdk.setPushNotification(true);
+```
+---
 ### **Conversion Data and on app open attribution for older versions**
 For plugin version `6.0.5+2` and below the user can access `conversionDataStream`, `appOpenAttributionStream` and `onDeepLinkingStream` to listen for events (see example app)
 
