@@ -219,6 +219,7 @@ class AppsflyerSdk {
       bool registerOnAppOpenAttributionCallback = false,
       bool registerOnDeepLinkingCallback = false}) async {
     return Future.delayed(Duration(seconds: 0)).then((_) {
+
       if (registerConversionDataCallback) _registerConversionDataCallback();
       if (registerOnAppOpenAttributionCallback)
         _registerOnAppOpenAttributionCallback();
@@ -516,6 +517,10 @@ class AppsflyerSdk {
 
   void setOneLinkCustomDomain(List<String> brandDomains) {
     _methodChannel.invokeMethod("setOneLinkCustomDomain", brandDomains);
+  }
+
+  void setPushNotification(bool isEnabled) {
+    _methodChannel.invokeMethod("setPushNotification", isEnabled);
   }
 
   void onInstallConversionData(Function callback) async {

@@ -1,5 +1,8 @@
 # Versions
 
+## 6.2.1+1
+- Added support for push notification API
+
 ## 6.2.1
 - Update iOS to v6.2.1
 - Added support for Unified Deeplink

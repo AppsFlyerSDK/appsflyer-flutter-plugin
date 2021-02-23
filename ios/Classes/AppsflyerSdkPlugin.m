@@ -10,6 +10,7 @@ static FlutterMethodChannel* _callbackChannel;
 static BOOL _gcdCallback = false;
 static BOOL _oaoaCallback = false;
 static BOOL _udpCallback = false;
+static BOOL _isPushNotificationEnabled = false;
 
 + (FlutterMethodChannel*)callbackChannel{
     return _callbackChannel;
@@ -108,9 +109,23 @@ static BOOL _udpCallback = false;
         [self startListening:call result:result];
     }else if([@"setOneLinkCustomDomain" isEqualToString:call.method]){
         [self setOneLinkCustomDomain:call result:result];
+    }else if([@"setPushNotification" isEqualToString:call.method]){
+        [self setPushNotification:call result:result];
     }
     else{
         result(FlutterMethodNotImplemented);
+    }
+}
+
+- (void)setPushNotification:(FlutterMethodCall*)call result:(FlutterResult)result{
+    bool isPushNotificationEnabled = call.arguments;
+    _isPushNotificationEnabled = isPushNotificationEnabled;
+    result(nil);
+}
+
+- (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
+    if(_isPushNotificationEnabled){
+        [[AppsFlyerLib shared] handlePushNotification:userInfo];
     }
 }
 
