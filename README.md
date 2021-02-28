@@ -96,8 +96,8 @@ appsflyerSdk.initSdk(
 
 ## <a id="guides"> **📖 Guides**
 
-Great installation and setup guides can be viewed [here](/doc/Guides.md)
+Great installation and setup guides can be viewed [here](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/blob/master/doc/Guides.md)
 
 ## <a id="api"> **📑 API**
 
-see the full [API](/doc/API.md) available for this plugin.
+see the full [API](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/blob/master/doc/API.md) available for this plugin.
