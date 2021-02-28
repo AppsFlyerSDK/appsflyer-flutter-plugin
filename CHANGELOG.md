@@ -1,4 +1,6 @@
 # Versions
+## 6.2.1+2
+- Hot Fix
 ## 6.0.5+4
 ## 6.0.5+3
 - Fixed `FormatException` caused by iOS side
