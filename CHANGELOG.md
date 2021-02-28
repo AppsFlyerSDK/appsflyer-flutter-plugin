@@ -1,5 +1,8 @@
 # Versions
 
+## 6.2.1+2
+- Hot Fix
+
 ## 6.2.1+1
 - Added support for push notification API
 
