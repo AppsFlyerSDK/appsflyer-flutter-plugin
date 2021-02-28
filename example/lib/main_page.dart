@@ -14,7 +14,7 @@ class MainPage extends StatefulWidget {
 
 class MainPageState extends State<MainPage> {
   AppsflyerSdk _appsflyerSdk;
-  Map _oaoa;
+  Map _deepLinkData;
   Map _gcd;
 
   // called on every foreground
@@ -29,13 +29,19 @@ class MainPageState extends State<MainPage> {
     _appsflyerSdk.onAppOpenAttribution((res) {
       print("res: " + res.toString());
       setState(() {
-        _oaoa = res;
+        _deepLinkData = res;
       });
     });
     _appsflyerSdk.onInstallConversionData((res) {
       print("res: " + res.toString());
       setState(() {
         _gcd = res;
+      });
+    });
+    _appsflyerSdk.onDeepLinking((res){
+      print("res: " + res.toString());
+      setState(() {
+        _deepLinkData = res;
       });
     });
   }
@@ -58,16 +64,17 @@ class MainPageState extends State<MainPage> {
         body: FutureBuilder<dynamic>(
             future: _appsflyerSdk.initSdk(
                 registerConversionDataCallback: true,
-                registerOnAppOpenAttributionCallback: true),
+                registerOnAppOpenAttributionCallback: true,
+                registerOnDeepLinkingCallback: true),
             builder: (BuildContext context, AsyncSnapshot snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return Center(child: CircularProgressIndicator());
               } else {
                 if (snapshot.hasData) {
                   return HomeContainer(
-                    onAttribution: _oaoa,
                     onData: _gcd,
-                    trackEvent: logEvent,
+                    deepLinkData: _deepLinkData,
+                    logEvent: logEvent,
                   );
                 } else {
                   return Center(child: Text("Error initializing sdk"));
@@ -79,4 +86,5 @@ class MainPageState extends State<MainPage> {
   Future<bool> logEvent(String eventName, Map eventValues) {
     return _appsflyerSdk.logEvent(eventName, eventValues);
   }
+
 }

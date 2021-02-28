@@ -9,6 +9,8 @@ static NSMutableArray* _callbackById;
 static FlutterMethodChannel* _callbackChannel;
 static BOOL _gcdCallback = false;
 static BOOL _oaoaCallback = false;
+static BOOL _udpCallback = false;
+static BOOL _isPushNotificationEnabled = false;
 
 + (FlutterMethodChannel*)callbackChannel{
     return _callbackChannel;
@@ -20,6 +22,10 @@ static BOOL _oaoaCallback = false;
 
 + (BOOL)oaoaCallback{
     return _oaoaCallback;
+}
+
++ (BOOL)udpCallback{
+    return _udpCallback;
 }
 
 - (instancetype)initWithMessenger:(nonnull NSObject<FlutterBinaryMessenger> *)messenger {
@@ -103,9 +109,23 @@ static BOOL _oaoaCallback = false;
         [self startListening:call result:result];
     }else if([@"setOneLinkCustomDomain" isEqualToString:call.method]){
         [self setOneLinkCustomDomain:call result:result];
+    }else if([@"setPushNotification" isEqualToString:call.method]){
+        [self setPushNotification:call result:result];
     }
     else{
         result(FlutterMethodNotImplemented);
+    }
+}
+
+- (void)setPushNotification:(FlutterMethodCall*)call result:(FlutterResult)result{
+    bool isPushNotificationEnabled = call.arguments;
+    _isPushNotificationEnabled = isPushNotificationEnabled;
+    result(nil);
+}
+
+- (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
+    if(_isPushNotificationEnabled){
+        [[AppsFlyerLib shared] handlePushNotification:userInfo];
     }
 }
 
@@ -125,6 +145,9 @@ static BOOL _oaoaCallback = false;
     }
     if ([callbackId isEqualToString:afOAOACallback]){
         _oaoaCallback = true;
+    }
+    if ([callbackId isEqualToString:afUDPCallback]){
+        _udpCallback = true;
     }
     [_callbackById addObject:callbackId];
 }
@@ -341,9 +364,11 @@ static BOOL _oaoaCallback = false;
     NSTimeInterval timeToWaitForATTUserAuthorization = 0;
     BOOL isDebug = NO;
     BOOL isConversionData = NO;
+    BOOL isUDP = NO;
     
     id isDebugValue = nil;
     id isConversionDataValue = nil;
+    id isUDPValue = nil;
     id isDisableCollectASA = nil;
     id isDisableAdvertisingIdentifier = nil;
 
@@ -360,9 +385,16 @@ static BOOL _oaoaCallback = false;
     if ([isConversionDataValue isKindOfClass:[NSNumber class]]) {
         isConversionData = [(NSNumber*)isConversionDataValue boolValue];
     }
-    
     if (isConversionData == YES) {
         [[AppsFlyerLib shared] setDelegate:_streamHandler];
+    }
+
+    isUDPValue = call.arguments[afUDL];
+    if ([isUDPValue isKindOfClass:[NSNumber class]]) {
+        isUDP = [(NSNumber*)isUDPValue boolValue];
+        if(isUDP == YES){
+            [AppsFlyerLib shared].deepLinkDelegate = _streamHandler;
+        }
     }
     
     appInviteOneLink = call.arguments[afInviteOneLink];
@@ -380,6 +412,7 @@ static BOOL _oaoaCallback = false;
         // isDebug is a boolean that will come through as an NSNumber
         disableAdvertisingIdentifier = [(NSNumber*)isDisableAdvertisingIdentifier boolValue];
     }
+
     
     [AppsFlyerLib shared].disableCollectASA = disableCollectASA;
     [AppsFlyerLib shared].disableAdvertisingIdentifier = disableAdvertisingIdentifier;
@@ -387,6 +420,10 @@ static BOOL _oaoaCallback = false;
     [AppsFlyerLib shared].appsFlyerDevKey = devKey;
     [AppsFlyerLib shared].isDebug = isDebug;
     [[AppsFlyerLib shared] start];
+
+    //post notification for the deep link object that the bridge is set and he can handle deep link
+    [AppsFlyerAttribution shared].isBridgeReady = YES;
+   [[NSNotificationCenter defaultCenter] postNotificationName:AF_BRIDGE_SET object:self];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
     
