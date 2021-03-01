@@ -30,7 +30,8 @@
 - [getHostName](#getHostName)
 - [getHostPrefix](#getHostPrefix)
 - [updateServerUninstallToken](#updateServerUninstallToken)
-- [validateAndTrackInAppPurchase](#validateAndTrackInAppPurchase)
+- [validateAndLogInAppAndroidPurchase](#validateAndLogInAppAndroidPurchase)
+- [validateAndLogInAppIosPurchase](#validateAndLogInAppIosPurchase)
 - [setPushNotification](#setPushNotification)
 - [stream](#streams)
 ---
@@ -242,7 +243,7 @@ appsFlyerSdk.setCustomerUserId("id");
 ```
 ---
 **<a id="waitForCustomerUserId"> `void waitForCustomerUserId(bool wait)`**
-You can set this function to `true` if you don't want to track events without setting customer id first.
+You can set this function to `true` if you don't want to log events without setting customer id first.
 
 _Example:_
 ```dart
@@ -304,7 +305,8 @@ _Example:_
 appsFlyerSdk.updateServerUninstallToken("token");
 ```
 ---
-**<a id="validateAndTrackInAppPurchase"> `Stream validateAndTrackInAppPurchase( String publicKey,
+**<a id="validateAndLogInAppAndroidPurchase"> `Stream validateAndLogInAppAndroidPurchase( 
+      String publicKey,
       String signature,
       String purchaseData,
       String price,
@@ -313,7 +315,7 @@ appsFlyerSdk.updateServerUninstallToken("token");
 
 _Example:_
 ```dart
-appsFlyerSdk.validateAndTrackInAppPurchase(
+appsFlyerSdk.validateAndLogInAppAndroidPurchase(
            "publicKey",
            "signature",
            "purchaseData",
@@ -326,15 +328,36 @@ appsFlyerSdk.validateAndTrackInAppPurchase(
        });
 ```
 ---
+**<a id="validateAndLogInAppIosPurchase"> `Stream validateAndLogInAppIosPurchase( 
+      String productIdentifier,
+      String price,
+      String currency,
+      String transactionId,
+      Map<String, String> additionalParameters)`**
+
+_Example:_
+```dart
+appsFlyerSdk.validateAndLogInAppIosPurchase(
+           "productIdentifier",
+           "price",
+           "currency",
+           "transactionId",
+           "additionalParameters").listen((data) {
+         print(data);
+       }).onError((error) {
+         print(error);
+       });
+```
+---
 **<a id="setPushNotification"> `void setPushNotification(bool isEnabled)`**
-  
+
 _Example:_
 ```dart
 appsFlyerSdk.setPushNotification(true);
 ```
 
 _NOTE:_ 
-  
+
 For Android: Make sure to call this API inside the page of every activity that is launched after clicking the notification.
 
 For iOS: This API can be called once at the initalization phase.

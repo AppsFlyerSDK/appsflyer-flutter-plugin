@@ -202,7 +202,7 @@ class AppsflyerSdk {
   }
 
   ///Returns `Stream`. Accessing AppsFlyer purchase validation data
-  Stream<dynamic> _registerValidatePurchaseCallback() {
+  void _registerValidatePurchaseCallback() {
     if (_afValidtaPurchaseController == null) {
       _afValidtaPurchaseController = StreamController(onCancel: () {
         _afValidtaPurchaseController.close();
@@ -210,7 +210,6 @@ class AppsflyerSdk {
 
       _registerPurchaseValidateListener();
     }
-    return _afValidtaPurchaseController.stream;
   }
 
   ///initialize the SDK, using the options initialized from the constructor|
@@ -219,7 +218,7 @@ class AppsflyerSdk {
       bool registerOnAppOpenAttributionCallback = false,
       bool registerOnDeepLinkingCallback = false}) async {
     return Future.delayed(Duration(seconds: 0)).then((_) {
-
+      
       if (registerConversionDataCallback) _registerConversionDataCallback();
       if (registerOnAppOpenAttributionCallback)
         _registerOnAppOpenAttributionCallback();
@@ -362,15 +361,16 @@ class AppsflyerSdk {
     _methodChannel.invokeMethod("waitForCustomerUserId", {'wait': wait});
   }
 
-  ///Returns `Stream`. Accessing AppsFlyer purchase validation data
-  Stream<dynamic> validateAndLogInAppPurchase(
+  Future<dynamic> validateAndLogInAppAndroidPurchase (
       String publicKey,
       String signature,
       String purchaseData,
       String price,
       String currency,
       Map<String, String> additionalParameters) {
-    _methodChannel.invokeMethod("validateAndLogInAppPurchase", {
+         
+    _registerValidatePurchaseCallback();
+    return _methodChannel.invokeMethod("validateAndLogInAppAndroidPurchase", {
       'publicKey': publicKey,
       'signature': signature,
       'purchaseData': purchaseData,
@@ -378,7 +378,24 @@ class AppsflyerSdk {
       'currency': currency,
       'additionalParameters': additionalParameters
     });
-    return _registerValidatePurchaseCallback();
+  }
+
+  ///Returns `Stream`. Accessing AppsFlyer purchase validation data
+  Future<dynamic> validateAndLogInAppIosPurchase(
+      String productIdentifier,
+      String price,
+      String currency,
+      String transactionId,
+      Map<String, String> additionalParameters) async {
+      await Future.delayed(Duration(seconds: 10));
+      _registerValidatePurchaseCallback();
+      return await _methodChannel.invokeMethod("validateAndLogInAppIosPurchase", {
+        'productIdentifier': productIdentifier,
+        'price': price,
+        'currency': currency,
+        'transactionId': transactionId,
+        'additionalParameters': additionalParameters
+      });
   }
 
   /// Set additional data to be sent to AppsFlyer.
@@ -533,5 +550,9 @@ class AppsflyerSdk {
 
   void onDeepLinking(Function callback) async {
     startListening(callback, "onDeepLinking");
+  }
+
+  void onPurchaseValidation(Function callback) async {
+    startListening(callback, "validatePurchase");
   }
 }
