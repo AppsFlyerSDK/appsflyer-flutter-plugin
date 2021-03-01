@@ -1,5 +1,8 @@
 # Versions
 
+## 6.2.1+3
+- Fixed Unified deeplink crush on first launch
+
 ## 6.2.1+2
 - Hot Fix
 
