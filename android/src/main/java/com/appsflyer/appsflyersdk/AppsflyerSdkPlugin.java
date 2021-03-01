@@ -179,7 +179,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "setMinTimeBetweenSessions":
                 setMinTimeBetweenSessions(call, result);
                 break;
-            case "validateAndLogInAppPurchase":
+            case "validateAndLogInAppAndroidPurchase":
                 validateAndLogInAppPurchase(call, result);
                 break;
             case "getAppsFlyerUID":

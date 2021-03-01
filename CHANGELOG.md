@@ -1,5 +1,8 @@
 # Versions
 
+## 6.2.1+4
+- Seperated purchase validation API to iOS/Android
+
 ## 6.2.1+3
 - Fixed Unified deeplink crush on first launch
 

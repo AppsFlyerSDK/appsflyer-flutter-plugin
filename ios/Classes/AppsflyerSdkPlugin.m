@@ -89,7 +89,7 @@ static BOOL _isPushNotificationEnabled = false;
         [self setHost:call result:result];
     }else if([@"setAdditionalData" isEqualToString:call.method]){
         [self setAdditionalData:call result:result];
-    }else if([@"validateAndLogInAppPurchase" isEqualToString:call.method]){
+    }else if([@"validateAndLogInAppIosPurchase" isEqualToString:call.method]){
         [self validateAndLogInAppPurchase:call result:result];
     }else if([@"getAppsFlyerUID" isEqualToString:call.method]){
         [self getAppsFlyerUID:result];
@@ -264,20 +264,22 @@ static BOOL _isPushNotificationEnabled = false;
 }
 
 - (void)validateAndLogInAppPurchase:(FlutterMethodCall*)call result:(FlutterResult)result{
-    NSString* publicKey = call.arguments[@"publicKey"];
-    NSString* signature = call.arguments[@"signature"];
+    NSString* productIdentifier = call.arguments[@"productIdentifier"];
     NSString* price = call.arguments[@"price"];
     NSString* currency = call.arguments[@"currency"];
+    NSString* transactionId = call.arguments[@"transactionId"];
     NSDictionary* additionalParameters = call.arguments[@"additionalParameters"];
-    [[AppsFlyerLib shared] validateAndLogInAppPurchase:publicKey price:price currency:currency transactionId:signature additionalParameters:additionalParameters
+    
+    [[AppsFlyerLib shared] validateAndLogInAppPurchase:productIdentifier price:price currency:currency transactionId:transactionId additionalParameters:additionalParameters
                                                             success:^(NSDictionary *response) {
-                                                                NSLog(@"Success");
+                                                                NSLog(@"AppsFlyer Debug: validateAndLogInAppIosPurchase Success!");
                                                                 [self onValidateSuccess:response];
                                                             }
                                                             failure:^(NSError *error, id reponse) {
-                                                                NSLog(@"Fail");
+                                                                NSLog(@"AppsFlyer Debug: validateAndLogInAppIosPurchase failed with Error: %@", error);
                                                                 [self onValidateFail:error];
                                                             }];
+    
     result(nil);
 }
 
