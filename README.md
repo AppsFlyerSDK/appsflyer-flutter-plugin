@@ -50,6 +50,10 @@ In v6 of AppsFlyer SDK there are some api breaking changes:
 | stopTracking                  | stop                        |
 | validateAndTrackInAppPurchase | validateAndLogInAppPurchase |
 
+|Before v6.1.2+4                | v6.1.2+4                    |
+|-------------------------------|-----------------------------|
+| validateAndTrackInAppPurchase | validateAndTrackInAppIosPurchase/validateAndTrackInAppAndroidPurchase |
+
 ### Important notice
 - Switch `ConversionData` and `OnAppOpenAttribution` to be based on callbacks instead of streams since plugin version `6.0.5+2`
 
