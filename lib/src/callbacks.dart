@@ -13,7 +13,12 @@ Future<void> _methodCallHandler(MethodCall call) async {
   switch (call.method) {
     case 'callListener':
       try {
-        dynamic callMap = jsonDecode(call.arguments);
+        dynamic callMap;
+        if (call.arguments is String) {
+          callMap = jsonDecode(call.arguments);
+        } else {
+          callMap = call.arguments;
+        }
         switch (callMap["id"]) {
           case "onAppOpenAttribution":
           case "onInstallConversionData":
@@ -27,7 +32,7 @@ Future<void> _methodCallHandler(MethodCall call) async {
             _callbacksById[callMap["id"]](fullResponse);
             break;
           default:
-            _callbacksById[call.arguments["id"]](call.arguments["data"]);
+            _callbacksById[callMap["id"]](callMap["data"]);
             break;
         }
       } catch (e) {

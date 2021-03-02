@@ -302,14 +302,14 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             @Override
             public void onResponse(final String oneLinkUrl) {
                 if (mCallbacks.containsKey("successGenerateInviteLink")) {
-//                    runOnUIThread(oneLinkUrl, "successGenerateInviteLink", AF_SUCCESS);
+                   runOnUIThread(oneLinkUrl, "successGenerateInviteLink", AF_SUCCESS);
                 }
             }
 
             @Override
             public void onResponseError(final String error) {
                 if (mCallbacks.containsKey("errorGenerateInviteLink")) {
-//                    runOnUIThread(error, "errorGenerateInviteLink", AF_FAILURE);
+                   runOnUIThread(error, "errorGenerateInviteLink", AF_FAILURE);
                 }
             }
         };
