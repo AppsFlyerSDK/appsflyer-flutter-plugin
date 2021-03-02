@@ -11,6 +11,7 @@ static BOOL _gcdCallback = false;
 static BOOL _oaoaCallback = false;
 static BOOL _udpCallback = false;
 static BOOL _isPushNotificationEnabled = false;
+static BOOL _isSandboxEnabled = false;
 
 + (FlutterMethodChannel*)callbackChannel{
     return _callbackChannel;
@@ -111,10 +112,19 @@ static BOOL _isPushNotificationEnabled = false;
         [self setOneLinkCustomDomain:call result:result];
     }else if([@"setPushNotification" isEqualToString:call.method]){
         [self setPushNotification:call result:result];
+    }else if([@"useReceiptValidationSandbox" isEqualToString:call.method]){
+        [self useReceiptValidationSandbox:call result:result];
     }
     else{
         result(FlutterMethodNotImplemented);
     }
+}
+
+- (void)useReceiptValidationSandbox:(FlutterMethodCall*)call result:(FlutterResult)result{
+    bool isSandboxEnabled = call.arguments;
+    _isSandboxEnabled = isSandboxEnabled;
+    [AppsFlyerLib shared].useReceiptValidationSandbox = _isSandboxEnabled;
+    result(nil);
 }
 
 - (void)setPushNotification:(FlutterMethodCall*)call result:(FlutterResult)result{
