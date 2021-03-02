@@ -1,5 +1,8 @@
 # Versions
 
+## 6.2.1+5
+- Added support for useReceiptValidationSandbox API
+
 ## 6.2.1+4
 - Seperated purchase validation API to iOS/Android
 

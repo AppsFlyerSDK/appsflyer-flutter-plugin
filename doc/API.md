@@ -305,7 +305,7 @@ _Example:_
 appsFlyerSdk.updateServerUninstallToken("token");
 ```
 ---
-**<a id="validateAndLogInAppAndroidPurchase"> `Stream validateAndLogInAppAndroidPurchase( 
+**<a id="validateAndLogInAppAndroidPurchase"> `Future<dynamic> validateAndLogInAppAndroidPurchase( 
       String publicKey,
       String signature,
       String purchaseData,
@@ -321,14 +321,10 @@ appsFlyerSdk.validateAndLogInAppAndroidPurchase(
            "purchaseData",
            "price",
            "currency",
-           {"fs": "fs"}).listen((data) {
-         print(data);
-       }).onError((error) {
-         print(error);
-       });
+           {"fs": "fs"});
 ```
 ---
-**<a id="validateAndLogInAppIosPurchase"> `Stream validateAndLogInAppIosPurchase( 
+**<a id="validateAndLogInAppIosPurchase"> `Future<dynamic> validateAndLogInAppIosPurchase( 
       String productIdentifier,
       String price,
       String currency,
@@ -342,11 +338,17 @@ appsFlyerSdk.validateAndLogInAppIosPurchase(
            "price",
            "currency",
            "transactionId",
-           "additionalParameters").listen((data) {
-         print(data);
-       }).onError((error) {
-         print(error);
-       });
+           "additionalParameters");
+```
+
+
+***To use the purchase validation feature in sandbox mode call the follow API:***
+
+`void useReceiptValidationSandbox(bool isSandboxEnabled)`
+
+_Example:_
+```dart
+appsFlyerSdk.useReceiptValidationSandbox(true);
 ```
 ---
 **<a id="setPushNotification"> `void setPushNotification(bool isEnabled)`**

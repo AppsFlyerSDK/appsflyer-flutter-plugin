@@ -380,7 +380,7 @@ class AppsflyerSdk {
     });
   }
 
-  ///Returns `Stream`. Accessing AppsFlyer purchase validation data
+  ///Accessing AppsFlyer purchase validation data
   Future<dynamic> validateAndLogInAppIosPurchase(
       String productIdentifier,
       String price,
@@ -396,6 +396,11 @@ class AppsflyerSdk {
         'transactionId': transactionId,
         'additionalParameters': additionalParameters
       });
+  }
+
+  /// set sandbox for iOS purchase validation
+  void useReceiptValidationSandbox(bool isSandboxEnabled) {
+    _methodChannel.invokeMethod("useReceiptValidationSandbox", isSandboxEnabled);
   }
 
   /// Set additional data to be sent to AppsFlyer.
