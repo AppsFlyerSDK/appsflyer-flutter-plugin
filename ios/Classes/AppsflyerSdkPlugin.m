@@ -299,16 +299,15 @@ static BOOL _isSandboxEnabled = false;
                               @"data": data
                               };
     
-    [_streamHandler sendObject:message];
+    [_streamHandler sendValidatePurchaseResponseToFlutter:message];
 }
 
 -(void)onValidateFail:(NSError*)error{
     NSDictionary* message = @{
-                              @"type": afValidatePurchase,
-                              @"status": afSuccess,
+                              @"status": afFailure,
                               @"error": @"error connecting"
                               };
-    [_streamHandler sendObject:message];
+    [_streamHandler sendValidatePurchaseResponseToFlutter:message];
     [self performSelectorOnMainThread:@selector(handleCallback:) withObject:@[message,afValidatePurchaseChannel] waitUntilDone:NO];
 }
 

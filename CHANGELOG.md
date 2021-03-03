@@ -1,5 +1,8 @@
 # Versions
 
+## 6.2.1+6
+- Added callbacks support for purchase validation API
+
 ## 6.2.1+5
 - Added support for useReceiptValidationSandbox API
 

@@ -202,7 +202,7 @@ class AppsflyerSdk {
   }
 
   ///Returns `Stream`. Accessing AppsFlyer purchase validation data
-  void _registerValidatePurchaseCallback() {
+   Stream<dynamic> _registerValidatePurchaseStream() {
     if (_afValidtaPurchaseController == null) {
       _afValidtaPurchaseController = StreamController(onCancel: () {
         _afValidtaPurchaseController.close();
@@ -210,6 +210,7 @@ class AppsflyerSdk {
 
       _registerPurchaseValidateListener();
     }
+    return _afValidtaPurchaseController.stream;
   }
 
   ///initialize the SDK, using the options initialized from the constructor|
@@ -368,16 +369,15 @@ class AppsflyerSdk {
       String price,
       String currency,
       Map<String, String> additionalParameters) {
-         
-    _registerValidatePurchaseCallback();
-    return _methodChannel.invokeMethod("validateAndLogInAppAndroidPurchase", {
-      'publicKey': publicKey,
-      'signature': signature,
-      'purchaseData': purchaseData,
-      'price': price,
-      'currency': currency,
-      'additionalParameters': additionalParameters
-    });
+
+      return _methodChannel.invokeMethod("validateAndLogInAppAndroidPurchase", {
+        'publicKey': publicKey,
+        'signature': signature,
+        'purchaseData': purchaseData,
+        'price': price,
+        'currency': currency,
+        'additionalParameters': additionalParameters
+      });
   }
 
   ///Accessing AppsFlyer purchase validation data
@@ -386,9 +386,7 @@ class AppsflyerSdk {
       String price,
       String currency,
       String transactionId,
-      Map<String, String> additionalParameters) async {
-      await Future.delayed(Duration(seconds: 10));
-      _registerValidatePurchaseCallback();
+      Map<String, String> additionalParameters)async{
       return await _methodChannel.invokeMethod("validateAndLogInAppIosPurchase", {
         'productIdentifier': productIdentifier,
         'price': price,

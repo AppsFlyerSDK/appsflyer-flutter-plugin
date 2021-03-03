@@ -30,8 +30,7 @@
 - [getHostName](#getHostName)
 - [getHostPrefix](#getHostPrefix)
 - [updateServerUninstallToken](#updateServerUninstallToken)
-- [validateAndLogInAppAndroidPurchase](#validateAndLogInAppAndroidPurchase)
-- [validateAndLogInAppIosPurchase](#validateAndLogInAppIosPurchase)
+- [Validate Purchase](#validatePurchase)
 - [setPushNotification](#setPushNotification)
 - [stream](#streams)
 ---
@@ -305,13 +304,18 @@ _Example:_
 appsFlyerSdk.updateServerUninstallToken("token");
 ```
 ---
-**<a id="validateAndLogInAppAndroidPurchase"> `Future<dynamic> validateAndLogInAppAndroidPurchase( 
+**<a id="validatePurchase"> Validate Purchase**
+
+
+***Android:***
+
+`Future<dynamic> validateAndLogInAppAndroidPurchase( 
       String publicKey,
       String signature,
       String purchaseData,
       String price,
       String currency,
-      Map<String, String> additionalParameters)`**
+      Map<String, String> additionalParameters)`
 
 _Example:_
 ```dart
@@ -323,8 +327,10 @@ appsFlyerSdk.validateAndLogInAppAndroidPurchase(
            "currency",
            {"fs": "fs"});
 ```
----
-**<a id="validateAndLogInAppIosPurchase"> `Future<dynamic> validateAndLogInAppIosPurchase( 
+
+***iOS:***
+
+**`Future<dynamic> validateAndLogInAppIosPurchase( 
       String productIdentifier,
       String price,
       String currency,
@@ -341,8 +347,7 @@ appsFlyerSdk.validateAndLogInAppIosPurchase(
            "additionalParameters");
 ```
 
-
-***To use the purchase validation feature in sandbox mode call the follow API:***
+***Purchase validation sandbox mode for iOS:***
 
 `void useReceiptValidationSandbox(bool isSandboxEnabled)`
 
@@ -350,6 +355,18 @@ _Example:_
 ```dart
 appsFlyerSdk.useReceiptValidationSandbox(true);
 ```
+
+***Purchase validation callback***
+
+`void onPurchaseValidation(Function callback)`
+
+_Example:_
+```dart
+appsflyerSdk.onPurchaseValidation((res){
+  print("res: " + res.toString());
+});
+```
+
 ---
 **<a id="setPushNotification"> `void setPushNotification(bool isEnabled)`**
 
