@@ -71,6 +71,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private Boolean gcdCallback = false;
     private Boolean oaoaCallback = false;
     private Boolean udlCallback = false;
+    private Boolean validatePurchaseCallback = false;
 
     private void onAttachedToEngine(Context applicationContext, BinaryMessenger messenger) {
         this.mContext = applicationContext;
@@ -107,6 +108,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
         if (callbackName.equals(AppsFlyerConstants.AF_UDL_CALLBACK)){
             udlCallback = true;
+        }
+        if (callbackName.equals(AppsFlyerConstants.AF_VALIDATE_PURCHASE)){
+            validatePurchaseCallback = true;
         }
         Map<String, Object> args = new HashMap<>();
         args.put("id", callbackName);
@@ -379,12 +383,14 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         AppsFlyerInAppPurchaseValidatorListener validatorListener = new AppsFlyerInAppPurchaseValidatorListener() {
             @Override
             public void onValidateInApp() {
-                JSONObject obj = new JSONObject();
-
                 try {
-                    obj.put("status", AF_SUCCESS);
-                    obj.put("type", AF_VALIDATE_PURCHASE);
-                    sendEventToDart(obj, AF_EVENTS_CHANNEL);
+                    JSONObject obj = new JSONObject();
+                    if(validatePurchaseCallback){
+                        runOnUIThread(obj, AppsFlyerConstants.AF_VALIDATE_PURCHASE, AF_SUCCESS);
+                    }else{
+                        obj.put("status", AF_SUCCESS);
+                        sendEventToDart(obj, AF_EVENTS_CHANNEL);
+                    }
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -393,12 +399,15 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
             @Override
             public void onValidateInAppFailure(String s) {
-                JSONObject obj = new JSONObject();
                 try {
-                    obj.put("status", AF_FAILURE);
-                    obj.put("type", AF_VALIDATE_PURCHASE);
+                    JSONObject obj = new JSONObject();
                     obj.put("error", s);
-                    sendEventToDart(obj, AF_EVENTS_CHANNEL);
+                    if(validatePurchaseCallback){
+                        runOnUIThread(obj, AppsFlyerConstants.AF_VALIDATE_PURCHASE, AF_FAILURE);
+                    }else{
+                        obj.put("status", AF_FAILURE);
+                        sendEventToDart(obj, AF_EVENTS_CHANNEL);
+                    }
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }

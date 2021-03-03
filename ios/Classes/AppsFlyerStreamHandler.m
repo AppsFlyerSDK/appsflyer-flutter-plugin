@@ -155,14 +155,20 @@
     }
 }
 
-- (void)sendObject:(NSDictionary *)message{
+- (void)sendValidatePurchaseResponseToFlutter:(NSDictionary *)message{
     NSError *error;
-    NSData *JSON = [NSJSONSerialization dataWithJSONObject:message options:0 error:&error];
+    // NSData *JSON = [NSJSONSerialization dataWithJSONObject:message options:0 error:&error];
+    NSString *JSONString = [self mapToJson:message withError:error];
     if (error) {
         return;
     }
-    NSString *JSONString = [[NSString alloc] initWithData:JSON encoding:NSUTF8StringEncoding];
-    _eventSink(JSONString);
+    NSDictionary *fullResponse = @{
+                @"id": afValidatePurchase,
+                @"data": JSONString,
+                @"status": afSuccess
+            };
+    JSONString = [self mapToJson:fullResponse withError:error];
+    [AppsflyerSdkPlugin.callbackChannel invokeMethod:@"callListener" arguments:JSONString];
 }
 
 @end
