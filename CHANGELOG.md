@@ -1,5 +1,8 @@
 # Versions
 
+## 6.2.1+7
+- Refactor for user invite feature
+
 ## 6.2.1+6
 - Added callbacks support for purchase validation API
 
