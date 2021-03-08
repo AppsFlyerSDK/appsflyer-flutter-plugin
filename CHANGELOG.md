@@ -1,5 +1,8 @@
 # Versions
 
+## 6.2.1+8
+- Update to iOS SDK V6.2.3
+
 ## 6.2.1+7
 - Refactor for user invite feature
 
