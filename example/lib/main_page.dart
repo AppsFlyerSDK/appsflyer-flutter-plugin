@@ -57,7 +57,7 @@ class MainPageState extends State<MainPage> {
                   future: _appsflyerSdk.getSDKVersion(),
                   builder: (BuildContext context, AsyncSnapshot snapshot) {
                     return Text(snapshot.hasData ? snapshot.data : "");
-                  })
+                  }), 
             ],
           ),
         ),

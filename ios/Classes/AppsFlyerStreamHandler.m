@@ -155,20 +155,25 @@
     }
 }
 
-- (void)sendValidatePurchaseResponseToFlutter:(NSDictionary *)message{
+- (void)sendResponseToFlutter:(NSString *)responseID status:(NSString *)status data:(NSDictionary *)data{
     NSError *error;
-    // NSData *JSON = [NSJSONSerialization dataWithJSONObject:message options:0 error:&error];
-    NSString *JSONString = [self mapToJson:message withError:error];
+    NSString *JSONdata;
+
+    if(data != nil){
+        JSONdata = [self mapToJson:data withError:error];
+    }else{
+        JSONdata = @"empty data";
+    }
     if (error) {
         return;
     }
     NSDictionary *fullResponse = @{
-                @"id": afValidatePurchase,
-                @"data": JSONString,
-                @"status": afSuccess
+                @"id": responseID,
+                @"data": JSONdata,
+                @"status": status
             };
-    JSONString = [self mapToJson:fullResponse withError:error];
-    [AppsflyerSdkPlugin.callbackChannel invokeMethod:@"callListener" arguments:JSONString];
+    JSONdata = [self mapToJson:fullResponse withError:error];
+    [AppsflyerSdkPlugin.callbackChannel invokeMethod:@"callListener" arguments:JSONdata];
 }
 
 @end

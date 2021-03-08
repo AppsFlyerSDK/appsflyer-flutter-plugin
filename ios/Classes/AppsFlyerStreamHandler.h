@@ -16,7 +16,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface AppsFlyerStreamHandler: NSObject<FlutterStreamHandler, AppsFlyerLibDelegate, AppsFlyerDeepLinkDelegate>
 
-- (void) sendValidatePurchaseResponseToFlutter:(NSDictionary*) obj;
+- (void)sendResponseToFlutter:(NSString *)responseID status:(NSString *)status data:(NSDictionary *)data;
 
 @end
 

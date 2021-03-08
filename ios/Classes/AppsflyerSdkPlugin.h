@@ -37,6 +37,9 @@
 #define afGCDCallback                   @"onInstallConversionData"
 #define afOAOACallback                  @"onAppOpenAttribution"
 #define afUDPCallback                   @"onDeepLinking"
+#define afGenerateInviteLinkSuccess     @"generateInviteLinkSuccess"
+#define afGenerateInviteLinkFailure     @"generateInviteLinkFailure"
+#define afAppInviteOneLinkID            @"appInviteOneLinkID"
 
 // Stream Channels
 #define afMethodChannel                 @"af-api"
