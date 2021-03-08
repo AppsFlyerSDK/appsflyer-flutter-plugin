@@ -262,9 +262,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             result.success(null);
         }else{
             AppsFlyerLib.getInstance().setAppInviteOneLink(oneLinkId);
-            if(mCallbacks.containsKey("successSetAppInviteOneLinkID")){
+            if(mCallbacks.containsKey("setAppInviteOneLinkIDCallback")){
                 JSONObject obj = buildJsonResponse("success", AF_SUCCESS);
-                runOnUIThread(obj, "successSetAppInviteOneLinkID", AF_SUCCESS);
+                runOnUIThread(obj, "setAppInviteOneLinkIDCallback", AF_SUCCESS);
             }
         }
     }
@@ -303,17 +303,29 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
 
         CreateOneLinkHttpTask.ResponseListener listener = new CreateOneLinkHttpTask.ResponseListener() {
+            JSONObject obj = new JSONObject();
+
             @Override
             public void onResponse(final String oneLinkUrl) {
-                if (mCallbacks.containsKey("successGenerateInviteLink")) {
-//                    runOnUIThread(oneLinkUrl, "successGenerateInviteLink", AF_SUCCESS);
+                if (mCallbacks.containsKey("generateInviteLinkSuccess")) {
+                    try {
+                        obj.put("userInviteUrl", oneLinkUrl);
+                        runOnUIThread(obj, "generateInviteLinkSuccess", AF_SUCCESS);
+                    }catch (JSONException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
 
             @Override
             public void onResponseError(final String error) {
-                if (mCallbacks.containsKey("errorGenerateInviteLink")) {
-//                    runOnUIThread(error, "errorGenerateInviteLink", AF_FAILURE);
+                if (mCallbacks.containsKey("generateInviteLinkFailure")) {
+                    try {
+                        obj.put("error", error);
+                        runOnUIThread(error, "generateInviteLinkFailure", AF_FAILURE);
+                    }catch (JSONException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
         };

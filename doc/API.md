@@ -32,6 +32,7 @@
 - [updateServerUninstallToken](#updateServerUninstallToken)
 - [Validate Purchase](#validatePurchase)
 - [setPushNotification](#setPushNotification)
+- [User Invite](#userInvite)
 - [stream](#streams)
 ---
 
@@ -385,6 +386,58 @@ Please check the following guide in order to understand the relevant payload nee
 
 https://support.appsflyer.com/hc/en-us/articles/207364076-Measuring-push-notification-re-engagement-campaigns
 
+---
+**<a id="userInvite"> User Invite**
+
+1. First define the Onelink ID (find it in the AppsFlyer dashboard in the onelink section:
+
+  **`Future<void> setAppInviteOneLinkID(String oneLinkID, Function callback)`**
+
+2. Set the AppsFlyerInviteLinkParams class to set the query params in the user invite link:
+
+```dart
+class AppsFlyerInviteLinkParams {
+  final String channel;
+  final String campaign;
+  final String referrerName;
+  final String referreImageUrl;
+  final String customerID;
+  final String baseDeepLink;
+  final String brandDomain;
+}
+```
+
+3. Call the generateInviteLink API to generate the user invite link. Use the success and error callbacks for handling.
+
+  **`void generateInviteLink(AppsFlyerInviteLinkParams parameters, Function success, Function error)`**
+
+
+_Example:_
+```dart
+appsFlyerSdk.setAppInviteOneLinkID('OnelinkID', 
+(res){ 
+  print("setAppInviteOneLinkID callback: $res"); 
+});
+
+AppsFlyerInviteLinkParams inviteLinkParams = new AppsFlyerInviteLinkParams(
+      channel: "",
+      referrerName: "",
+      baseDeepLink: "",
+      brandDomain: "",
+      customerID: "",
+      referreImageUrl: "",
+      campaign: ""
+);
+
+appsFlyerSdk.generateInviteLink(inviteLinkParams, 
+  (result){ 
+    print(result); 
+  }, 
+  (error){ 
+    print(error);
+  }
+);
+```
 ---
 ### **Conversion Data and on app open attribution for older versions**
 For plugin version `6.0.5+2` and below the user can access `conversionDataStream`, `appOpenAttributionStream` and `onDeepLinkingStream` to listen for events (see example app)

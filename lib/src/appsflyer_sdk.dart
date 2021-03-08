@@ -489,8 +489,8 @@ class AppsflyerSdk {
     if (parameters != null) {
       paramsMap = _translateInviteLinkParamsToMap(parameters);
     }
-    startListening(success, "successGenerateInviteLink");
-    startListening(error, "errorGenerateInviteLink");
+    startListening(success, "generateInviteLinkSuccess");
+    startListening(error, "generateInviteLinkFailure");
     _methodChannel.invokeMethod("generateInviteLink", paramsMap);
   }
 
@@ -512,7 +512,7 @@ class AppsflyerSdk {
   ///The link that is generated for the user invite will use this OneLink ID as the base link ID
   Future<void> setAppInviteOneLinkID(
       String oneLinkID, Function callback) async {
-    startListening(callback, "successSetAppInviteOneLinkID");
+    startListening(callback, "setAppInviteOneLinkIDCallback");
     await _methodChannel.invokeMethod("setAppInviteOneLinkID", {
       'oneLinkID': oneLinkID,
     });

@@ -183,12 +183,20 @@ static BOOL _isSandboxEnabled = false;
         return generator;
     } completionHandler:^(NSURL * _Nullable url) {
         NSString * resultURL = url.absoluteString;
+        NSDictionary* resultURLObject;
                     if(resultURL != nil){
-                        if([_callbackById containsObject:@"successGenerateInviteLink"]){
-                        [_callbackChannel invokeMethod:@"callListener" arguments:@{
-                            @"id": @"successGenerateInviteLink",
-                            @"data":resultURL
-                        }];
+                        resultURLObject = @{
+                            @"userInviteURL": resultURL
+                        };
+                        if([_callbackById containsObject:afGenerateInviteLinkSuccess]){
+                            [_streamHandler sendResponseToFlutter:afGenerateInviteLinkSuccess status:afSuccess data:resultURLObject];
+                        }
+                    }else{
+                        resultURLObject = @{
+                            @"error": @"The URL wasn't generated!"
+                        };
+                        if([_callbackById containsObject:afGenerateInviteLinkFailure]){
+                            [_streamHandler sendResponseToFlutter:afGenerateInviteLinkFailure status:afFailure data:resultURLObject];
                         }
                     }
     }];
@@ -199,10 +207,11 @@ static BOOL _isSandboxEnabled = false;
 - (void)setAppInviteOneLinkID:(FlutterMethodCall*)call result:(FlutterResult)result{
     NSString* oneLinkID = call.arguments[@"oneLinkID"];
     [AppsFlyerLib shared].appInviteOneLinkID = oneLinkID;
-    if([_callbackById containsObject:@"successSetAppInviteOneLinkID"]){
-        [_callbackChannel invokeMethod:@"callListener" arguments:@{
-            @"id": @"successSetAppInviteOneLinkID"
-        }];
+    if([_callbackById containsObject:@"setAppInviteOneLinkIDCallback"]){
+        NSDictionary* message = @{
+          @"status": afSuccess
+        };
+        [_streamHandler sendResponseToFlutter:afAppInviteOneLinkID status:afSuccess data:message];
     }
     result(nil);
 }
@@ -294,21 +303,15 @@ static BOOL _isSandboxEnabled = false;
 }
 
 - (void)onValidateSuccess: (NSDictionary*) data{
-    NSDictionary* message = @{
-                              @"status": afSuccess,
-                              @"data": data
-                              };
-    
-    [_streamHandler sendValidatePurchaseResponseToFlutter:message];
+    [_streamHandler sendResponseToFlutter:afValidatePurchase status:afSuccess data:data];
 }
 
 -(void)onValidateFail:(NSError*)error{
-    NSDictionary* message = @{
-                              @"status": afFailure,
-                              @"error": @"error connecting"
-                              };
-    [_streamHandler sendValidatePurchaseResponseToFlutter:message];
-    [self performSelectorOnMainThread:@selector(handleCallback:) withObject:@[message,afValidatePurchaseChannel] waitUntilDone:NO];
+    NSDictionary* errorObject = @{
+                @"error": error.description
+                };
+    [_streamHandler sendResponseToFlutter:afValidatePurchase status:afFailure data:errorObject];
+    [self performSelectorOnMainThread:@selector(handleCallback:) withObject:@[errorObject,afValidatePurchaseChannel] waitUntilDone:NO];
 }
 
 - (void)setAdditionalData:(FlutterMethodCall*)call result:(FlutterResult)result{
