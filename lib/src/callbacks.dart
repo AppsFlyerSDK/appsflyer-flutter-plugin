@@ -17,6 +17,9 @@ Future<void> _methodCallHandler(MethodCall call) async {
         switch (callMap["id"]) {
           case "onAppOpenAttribution":
           case "onInstallConversionData":
+          case "onDeepLinking":
+          case "validatePurchase":
+          case "generateInviteLinkSuccess":
             String data = callMap["data"];
             Map decodedData = jsonDecode(data);
             Map fullResponse = {
@@ -26,7 +29,7 @@ Future<void> _methodCallHandler(MethodCall call) async {
             _callbacksById[callMap["id"]](fullResponse);
             break;
           default:
-            _callbacksById[call.arguments["id"]](call.arguments["data"]);
+            _callbacksById[callMap["id"]](callMap["data"]);
             break;
         }
       } catch (e) {

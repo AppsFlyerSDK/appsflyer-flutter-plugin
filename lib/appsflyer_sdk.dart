@@ -1,7 +1,6 @@
 library appsflyer_sdk;
 
 import 'dart:io';
-import 'dart:ui';
 import 'package:appsflyer_sdk/src/callbacks.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';

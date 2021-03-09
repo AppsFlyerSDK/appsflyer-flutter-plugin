@@ -9,6 +9,9 @@ static NSMutableArray* _callbackById;
 static FlutterMethodChannel* _callbackChannel;
 static BOOL _gcdCallback = false;
 static BOOL _oaoaCallback = false;
+static BOOL _udpCallback = false;
+static BOOL _isPushNotificationEnabled = false;
+static BOOL _isSandboxEnabled = false;
 
 + (FlutterMethodChannel*)callbackChannel{
     return _callbackChannel;
@@ -20,6 +23,10 @@ static BOOL _oaoaCallback = false;
 
 + (BOOL)oaoaCallback{
     return _oaoaCallback;
+}
+
++ (BOOL)udpCallback{
+    return _udpCallback;
 }
 
 - (instancetype)initWithMessenger:(nonnull NSObject<FlutterBinaryMessenger> *)messenger {
@@ -83,7 +90,7 @@ static BOOL _oaoaCallback = false;
         [self setHost:call result:result];
     }else if([@"setAdditionalData" isEqualToString:call.method]){
         [self setAdditionalData:call result:result];
-    }else if([@"validateAndLogInAppPurchase" isEqualToString:call.method]){
+    }else if([@"validateAndLogInAppIosPurchase" isEqualToString:call.method]){
         [self validateAndLogInAppPurchase:call result:result];
     }else if([@"getAppsFlyerUID" isEqualToString:call.method]){
         [self getAppsFlyerUID:result];
@@ -103,9 +110,32 @@ static BOOL _oaoaCallback = false;
         [self startListening:call result:result];
     }else if([@"setOneLinkCustomDomain" isEqualToString:call.method]){
         [self setOneLinkCustomDomain:call result:result];
+    }else if([@"setPushNotification" isEqualToString:call.method]){
+        [self setPushNotification:call result:result];
+    }else if([@"useReceiptValidationSandbox" isEqualToString:call.method]){
+        [self useReceiptValidationSandbox:call result:result];
     }
     else{
         result(FlutterMethodNotImplemented);
+    }
+}
+
+- (void)useReceiptValidationSandbox:(FlutterMethodCall*)call result:(FlutterResult)result{
+    bool isSandboxEnabled = call.arguments;
+    _isSandboxEnabled = isSandboxEnabled;
+    [AppsFlyerLib shared].useReceiptValidationSandbox = _isSandboxEnabled;
+    result(nil);
+}
+
+- (void)setPushNotification:(FlutterMethodCall*)call result:(FlutterResult)result{
+    bool isPushNotificationEnabled = call.arguments;
+    _isPushNotificationEnabled = isPushNotificationEnabled;
+    result(nil);
+}
+
+- (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
+    if(_isPushNotificationEnabled){
+        [[AppsFlyerLib shared] handlePushNotification:userInfo];
     }
 }
 
@@ -125,6 +155,9 @@ static BOOL _oaoaCallback = false;
     }
     if ([callbackId isEqualToString:afOAOACallback]){
         _oaoaCallback = true;
+    }
+    if ([callbackId isEqualToString:afUDPCallback]){
+        _udpCallback = true;
     }
     [_callbackById addObject:callbackId];
 }
@@ -150,12 +183,20 @@ static BOOL _oaoaCallback = false;
         return generator;
     } completionHandler:^(NSURL * _Nullable url) {
         NSString * resultURL = url.absoluteString;
+        NSDictionary* resultURLObject;
                     if(resultURL != nil){
-                        if([_callbackById containsObject:@"successGenerateInviteLink"]){
-                        [_callbackChannel invokeMethod:@"callListener" arguments:@{
-                            @"id": @"successGenerateInviteLink",
-                            @"data":resultURL
-                        }];
+                        resultURLObject = @{
+                            @"userInviteURL": resultURL
+                        };
+                        if([_callbackById containsObject:afGenerateInviteLinkSuccess]){
+                            [_streamHandler sendResponseToFlutter:afGenerateInviteLinkSuccess status:afSuccess data:resultURLObject];
+                        }
+                    }else{
+                        resultURLObject = @{
+                            @"error": @"The URL wasn't generated!"
+                        };
+                        if([_callbackById containsObject:afGenerateInviteLinkFailure]){
+                            [_streamHandler sendResponseToFlutter:afGenerateInviteLinkFailure status:afFailure data:resultURLObject];
                         }
                     }
     }];
@@ -166,10 +207,11 @@ static BOOL _oaoaCallback = false;
 - (void)setAppInviteOneLinkID:(FlutterMethodCall*)call result:(FlutterResult)result{
     NSString* oneLinkID = call.arguments[@"oneLinkID"];
     [AppsFlyerLib shared].appInviteOneLinkID = oneLinkID;
-    if([_callbackById containsObject:@"successSetAppInviteOneLinkID"]){
-        [_callbackChannel invokeMethod:@"callListener" arguments:@{
-            @"id": @"successSetAppInviteOneLinkID"
-        }];
+    if([_callbackById containsObject:@"setAppInviteOneLinkIDCallback"]){
+        NSDictionary* message = @{
+          @"status": afSuccess
+        };
+        [_streamHandler sendResponseToFlutter:afAppInviteOneLinkID status:afSuccess data:message];
     }
     result(nil);
 }
@@ -241,40 +283,35 @@ static BOOL _oaoaCallback = false;
 }
 
 - (void)validateAndLogInAppPurchase:(FlutterMethodCall*)call result:(FlutterResult)result{
-    NSString* publicKey = call.arguments[@"publicKey"];
-    NSString* signature = call.arguments[@"signature"];
+    NSString* productIdentifier = call.arguments[@"productIdentifier"];
     NSString* price = call.arguments[@"price"];
     NSString* currency = call.arguments[@"currency"];
+    NSString* transactionId = call.arguments[@"transactionId"];
     NSDictionary* additionalParameters = call.arguments[@"additionalParameters"];
-    [[AppsFlyerLib shared] validateAndLogInAppPurchase:publicKey price:price currency:currency transactionId:signature additionalParameters:additionalParameters
+    
+    [[AppsFlyerLib shared] validateAndLogInAppPurchase:productIdentifier price:price currency:currency transactionId:transactionId additionalParameters:additionalParameters
                                                             success:^(NSDictionary *response) {
-                                                                NSLog(@"Success");
+                                                                NSLog(@"AppsFlyer Debug: validateAndLogInAppIosPurchase Success!");
                                                                 [self onValidateSuccess:response];
                                                             }
                                                             failure:^(NSError *error, id reponse) {
-                                                                NSLog(@"Fail");
+                                                                NSLog(@"AppsFlyer Debug: validateAndLogInAppIosPurchase failed with Error: %@", error);
                                                                 [self onValidateFail:error];
                                                             }];
+    
     result(nil);
 }
 
 - (void)onValidateSuccess: (NSDictionary*) data{
-    NSDictionary* message = @{
-                              @"status": afSuccess,
-                              @"data": data
-                              };
-    
-    [_streamHandler sendObject:message];
+    [_streamHandler sendResponseToFlutter:afValidatePurchase status:afSuccess data:data];
 }
 
 -(void)onValidateFail:(NSError*)error{
-    NSDictionary* message = @{
-                              @"type": afValidatePurchase,
-                              @"status": afSuccess,
-                              @"error": @"error connecting"
-                              };
-    [_streamHandler sendObject:message];
-    [self performSelectorOnMainThread:@selector(handleCallback:) withObject:@[message,afValidatePurchaseChannel] waitUntilDone:NO];
+    NSDictionary* errorObject = @{
+                @"error": error.description
+                };
+    [_streamHandler sendResponseToFlutter:afValidatePurchase status:afFailure data:errorObject];
+    [self performSelectorOnMainThread:@selector(handleCallback:) withObject:@[errorObject,afValidatePurchaseChannel] waitUntilDone:NO];
 }
 
 - (void)setAdditionalData:(FlutterMethodCall*)call result:(FlutterResult)result{
@@ -341,9 +378,11 @@ static BOOL _oaoaCallback = false;
     NSTimeInterval timeToWaitForATTUserAuthorization = 0;
     BOOL isDebug = NO;
     BOOL isConversionData = NO;
+    BOOL isUDP = NO;
     
     id isDebugValue = nil;
     id isConversionDataValue = nil;
+    id isUDPValue = nil;
     id isDisableCollectASA = nil;
     id isDisableAdvertisingIdentifier = nil;
 
@@ -360,9 +399,16 @@ static BOOL _oaoaCallback = false;
     if ([isConversionDataValue isKindOfClass:[NSNumber class]]) {
         isConversionData = [(NSNumber*)isConversionDataValue boolValue];
     }
-    
     if (isConversionData == YES) {
         [[AppsFlyerLib shared] setDelegate:_streamHandler];
+    }
+
+    isUDPValue = call.arguments[afUDL];
+    if ([isUDPValue isKindOfClass:[NSNumber class]]) {
+        isUDP = [(NSNumber*)isUDPValue boolValue];
+        if(isUDP == YES){
+            [AppsFlyerLib shared].deepLinkDelegate = _streamHandler;
+        }
     }
     
     appInviteOneLink = call.arguments[afInviteOneLink];
@@ -380,6 +426,7 @@ static BOOL _oaoaCallback = false;
         // isDebug is a boolean that will come through as an NSNumber
         disableAdvertisingIdentifier = [(NSNumber*)isDisableAdvertisingIdentifier boolValue];
     }
+
     
     [AppsFlyerLib shared].disableCollectASA = disableCollectASA;
     [AppsFlyerLib shared].disableAdvertisingIdentifier = disableAdvertisingIdentifier;
@@ -387,6 +434,10 @@ static BOOL _oaoaCallback = false;
     [AppsFlyerLib shared].appsFlyerDevKey = devKey;
     [AppsFlyerLib shared].isDebug = isDebug;
     [[AppsFlyerLib shared] start];
+
+    //post notification for the deep link object that the bridge is set and he can handle deep link
+    [AppsFlyerAttribution shared].isBridgeReady = YES;
+   [[NSNotificationCenter defaultCenter] postNotificationName:AF_BRIDGE_SET object:self];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
     

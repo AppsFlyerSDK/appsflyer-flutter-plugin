@@ -36,6 +36,7 @@ void main() {
     await instance.initSdk(
       registerConversionDataCallback: true,
       registerOnAppOpenAttributionCallback: true,
+      registerOnDeepLinkingCallback: false
     );
 
     expect('initSdk', selectedMethod);
@@ -66,7 +67,7 @@ void main() {
           case 'setSharingFilter':
           case 'getSDKVersion':
           case 'getAppsFlyerUID':
-          case 'validateAndLogInAppPurchase':
+          case 'validateAndLogInAppAndroidPurchase':
           case 'setMinTimeBetweenSessions':
           case 'getHostPrefix':
           case 'getHostName':
@@ -188,7 +189,7 @@ void main() {
     });
 
     test('check validateAndLogInAppPurchase call', () async {
-      instance.validateAndLogInAppPurchase(
+      instance.validateAndLogInAppAndroidPurchase(
           "publicKey", "signature", "purchaseData", "price", "currency", null);
 
       expect(selectedMethod, 'validateAndLogInAppAndroidPurchase');

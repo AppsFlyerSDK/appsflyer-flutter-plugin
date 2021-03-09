@@ -9,9 +9,9 @@
 - [initSdk](#initSdk)
 - [onAppOpenAttribution](#onAppOpenAttribution)
 - [onInstallConversionData](#onInstallConversionData)
+- [onDeepLinking](#onDeepLinking)
 - [logEvent](#logEvent)
-- [conversionDataStream](#gcd)
-- [appOpenAttributionStream](#oaoa)
+
 - [setUserEmails](#setUserEmails)
 - [setMinTimeBetweenSessions](#setMinTimeBetweenSessions)
 - [stop](#stop)
@@ -30,15 +30,17 @@
 - [getHostName](#getHostName)
 - [getHostPrefix](#getHostPrefix)
 - [updateServerUninstallToken](#updateServerUninstallToken)
-- [validateAndTrackInAppPurchase](#validateAndTrackInAppPurchase)
-
+- [Validate Purchase](#validatePurchase)
+- [setPushNotification](#setPushNotification)
+- [User Invite](#userInvite)
+- [stream](#streams)
 ---
 
 ##### <a id="appsflyer-options"> **`AppsflyerSdk(Map options)`** 
 
 | parameter | type  | description       |
 | --------- | ----- | ----------------- |
-| `options` | `Map` | SDK configuration |
+| `appsFlyerOptions` | `Map` | SDK configuration |
 
 **`options`**
 
@@ -54,7 +56,7 @@ _Example:_
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 //..
 
-Map options = { "afDevKey": afDevKey,
+Map appsFlyerOptions = { "afDevKey": afDevKey,
                 "afAppId": appId,
                 "isDebug": true};
 
@@ -68,7 +70,7 @@ AppsflyerSdk appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
 
 | parameter | type               | description       |
 | --------- | ------------------ | ----------------- |
-| `options` | `AppsFlyerOptions` | SDK configuration |
+| `appsFlyerOptions` | `AppsFlyerOptions` | SDK configuration |
 
 _Example:_
 
@@ -89,7 +91,6 @@ Once `AppsflyerSdk` object is created, you can call `initSdk` method.
 
 initialize the SDK, using the options initialized from the constructor|
 Return response object with the field `status`
-The user can access `conversionDataStream` and `appOpenAttributionStream` to listen for events (see example app)
 
 _Example:_
 
@@ -99,15 +100,10 @@ import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 
 AppsflyerSdk _appsflyerSdk = AppsflyerSdk({...});
 
-FutureBuilder<dynamic> ( future: _appsflyerSdk.initSdk(registerConversionDataCallback: true, registerOnAppOpenAttributionCallback: true), builder: (BuildContext context, AsyncSnapshot snapshot) {
-  if (snapshot.hasData)
-    return  HomeContainer(
-      onData: _appsflyerSdk.conversionDataStream,
-      onAttribution: _appsflyerSdk.appOpenAttributionStream,
-      ...
-    )
-  ...
-
+_appsflyerSdk.initSdk(   
+  registerConversionDataCallback: true, 
+  registerOnAppOpenAttributionCallback: true, 
+  registerOnDeepLinkingCallback: true)
 ```
 
 ---
@@ -119,9 +115,6 @@ _Example:_
 ```dart
 _appsflyerSdk.onAppOpenAttribution((res) {
       print("res: " + res.toString());
-      setState(() {
-        _oaoa = res;
-      });
     });
 ```
 
@@ -133,9 +126,17 @@ _Example:_
 ```dart
     _appsflyerSdk.onInstallConversionData((res) {
       print("res: " + res.toString());
-      setState(() {
-        _gcd = res;
-      });
+    });
+```
+
+#### <a id="onDeepLinking"> **`onDeepLinking(Func)`
+- Trigger callback when onDeepLinking is activated on the native side
+
+_Example:_
+
+```dart
+    _appsflyerSdk.onDeepLinking((res) {
+      print("res: " + res.toString());
     });
 ```
 
@@ -162,72 +163,6 @@ Future<bool> logEvent(String eventName, Map eventValues) async {
     } on Exception catch (e) {}
       print("Result logEvent: ${result}");
   }
-```
-
----
-
-### **Conversion Data and on app open attribution**
-
-##### <a id="gcd"> **conversionDataStream** (field of `AppsflyerSdk` instance)
-Returns `Stream`. Accessing AppsFlyer Attribution / Conversion Data from the SDK (Deferred Deeplinking). Read more: [Android](https://support.appsflyer.com/entries/69796693-Accessing-AppsFlyer-Attribution-Conversion-Data-from-the-SDK-Deferred-Deep-linking-), [iOS](https://support.appsflyer.com/entries/22904293-Testing-AppsFlyer-iOS-SDK-Integration-Before-Submitting-to-the-App-Store-). AppsFlyer plugin will return attribution data as JSON `Map` in `Stream`.
-
-_Example:_
-
-```dart
-StreamBuilder<dynamic>(
-    stream: _appsflyerSdk.conversionDataStream?.asBroadcastStream(),
-    builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
-        ...
-    }
-)
-```
-
-_Example of success Organic response:_
-
-```json
-{
-  "status": "success",
-  "type": "onInstallConversionDataLoaded",
-  "data": {
-    "af_status": "Organic",
-    "af_message": "organic install",
-    "is_first_launch": "false"
-  }
-}
-```
-
-_Example of failure response:_
-
-```json
-{
-  "status": "failure",
-  "type": "onInstallConversionDataLoaded",
-  "data": "SOME_ERROR_MESSAGE"
-}
-```
-##### <a id="oaoa"> **appOpenAttributionStream**  (field of `AppsflyerSdk` instance)
-In case you want to use [deep links](https://en.wikipedia.org/wiki/Deep_linking) in your app, you will need to use `registerOnAppOpenAttributionCallback` on the `AppsflyerSdk` instance you've created.  
-_Example:_
-
-```dart
-StreamBuilder<dynamic>(
-    stream: _appsflyerSdk.appOpenAttributionStream?.asBroadcastStream(),
-    builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
-        ...
-    }
-)
-```
-
-_Example of response on deep-link "https://flutter.demo" :_
-
-```json
-{
-  "status": "success",
-  "type": "onAppOpenAttribution",
-  "data": {
-    "link": "https://flutter.demo"
-  }
-}
 ```
 
 ---
@@ -308,7 +243,7 @@ appsFlyerSdk.setCustomerUserId("id");
 ```
 ---
 **<a id="waitForCustomerUserId"> `void waitForCustomerUserId(bool wait)`**
-You can set this function to `true` if you don't want to track events without setting customer id first.
+You can set this function to `true` if you don't want to log events without setting customer id first.
 
 _Example:_
 ```dart
@@ -370,24 +305,231 @@ _Example:_
 appsFlyerSdk.updateServerUninstallToken("token");
 ```
 ---
-**<a id="validateAndTrackInAppPurchase"> `Stream validateAndTrackInAppPurchase( String publicKey,
+**<a id="validatePurchase"> Validate Purchase**
+
+
+***Android:***
+
+`Future<dynamic> validateAndLogInAppAndroidPurchase( 
+      String publicKey,
       String signature,
       String purchaseData,
       String price,
       String currency,
-      Map<String, String> additionalParameters)`**
+      Map<String, String> additionalParameters)`
 
 _Example:_
 ```dart
-appsFlyerSdk.validateAndTrackInAppPurchase(
+appsFlyerSdk.validateAndLogInAppAndroidPurchase(
            "publicKey",
            "signature",
            "purchaseData",
            "price",
            "currency",
-           {"fs": "fs"}).listen((data) {
-         print(data);
-       }).onError((error) {
-         print(error);
-       });
+           {"fs": "fs"});
 ```
+
+***iOS:***
+
+**`Future<dynamic> validateAndLogInAppIosPurchase( 
+      String productIdentifier,
+      String price,
+      String currency,
+      String transactionId,
+      Map<String, String> additionalParameters)`**
+
+_Example:_
+```dart
+appsFlyerSdk.validateAndLogInAppIosPurchase(
+           "productIdentifier",
+           "price",
+           "currency",
+           "transactionId",
+           "additionalParameters");
+```
+
+***Purchase validation sandbox mode for iOS:***
+
+`void useReceiptValidationSandbox(bool isSandboxEnabled)`
+
+_Example:_
+```dart
+appsFlyerSdk.useReceiptValidationSandbox(true);
+```
+
+***Purchase validation callback***
+
+`void onPurchaseValidation(Function callback)`
+
+_Example:_
+```dart
+appsflyerSdk.onPurchaseValidation((res){
+  print("res: " + res.toString());
+});
+```
+
+---
+**<a id="setPushNotification"> `void setPushNotification(bool isEnabled)`**
+
+_Example:_
+```dart
+appsFlyerSdk.setPushNotification(true);
+```
+
+_NOTE:_ 
+
+For Android: Make sure to call this API inside the page of every activity that is launched after clicking the notification.
+
+For iOS: This API can be called once at the initalization phase.
+
+Please check the following guide in order to understand the relevant payload needed for AppsFlyer to attribute the push notification:
+
+https://support.appsflyer.com/hc/en-us/articles/207364076-Measuring-push-notification-re-engagement-campaigns
+
+---
+**<a id="userInvite"> User Invite**
+
+1. First define the Onelink ID (find it in the AppsFlyer dashboard in the onelink section:
+
+  **`Future<void> setAppInviteOneLinkID(String oneLinkID, Function callback)`**
+
+2. Set the AppsFlyerInviteLinkParams class to set the query params in the user invite link:
+
+```dart
+class AppsFlyerInviteLinkParams {
+  final String channel;
+  final String campaign;
+  final String referrerName;
+  final String referreImageUrl;
+  final String customerID;
+  final String baseDeepLink;
+  final String brandDomain;
+}
+```
+
+3. Call the generateInviteLink API to generate the user invite link. Use the success and error callbacks for handling.
+
+  **`void generateInviteLink(AppsFlyerInviteLinkParams parameters, Function success, Function error)`**
+
+
+_Example:_
+```dart
+appsFlyerSdk.setAppInviteOneLinkID('OnelinkID', 
+(res){ 
+  print("setAppInviteOneLinkID callback: $res"); 
+});
+
+AppsFlyerInviteLinkParams inviteLinkParams = new AppsFlyerInviteLinkParams(
+      channel: "",
+      referrerName: "",
+      baseDeepLink: "",
+      brandDomain: "",
+      customerID: "",
+      referreImageUrl: "",
+      campaign: ""
+);
+
+appsFlyerSdk.generateInviteLink(inviteLinkParams, 
+  (result){ 
+    print(result); 
+  }, 
+  (error){ 
+    print(error);
+  }
+);
+```
+---
+### **Conversion Data and on app open attribution for older versions**
+For plugin version `6.0.5+2` and below the user can access `conversionDataStream`, `appOpenAttributionStream` and `onDeepLinkingStream` to listen for events (see example app)
+
+##### <a id="streams"> **conversionDataStream** (field of `AppsflyerSdk` instance)
+Returns `Stream`. Accessing AppsFlyer Attribution / Conversion Data from the SDK (Deferred Deeplinking). Read more: [Android](https://support.appsflyer.com/entries/69796693-Accessing-AppsFlyer-Attribution-Conversion-Data-from-the-SDK-Deferred-Deep-linking-), [iOS](https://support.appsflyer.com/entries/22904293-Testing-AppsFlyer-iOS-SDK-Integration-Before-Submitting-to-the-App-Store-). AppsFlyer plugin will return attribution data as JSON `Map` in `Stream`.
+
+_Example:_
+
+```dart
+StreamBuilder<dynamic>(
+    stream: _appsflyerSdk.conversionDataStream?.asBroadcastStream(),
+    builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
+        ...
+    }
+)
+```
+
+_Example of success Organic response:_
+
+```json
+{
+  "status": "success",
+  "type": "onInstallConversionDataLoaded",
+  "data": {
+    "af_status": "Organic",
+    "af_message": "organic install",
+    "is_first_launch": "false"
+  }
+}
+```
+
+_Example of failure response:_
+
+```json
+{
+  "status": "failure",
+  "type": "onInstallConversionDataLoaded",
+  "data": "SOME_ERROR_MESSAGE"
+}
+```
+##### <a id="oaoa"> **appOpenAttributionStream**  (field of `AppsflyerSdk` instance)
+In case you want to use [deep links](https://en.wikipedia.org/wiki/Deep_linking) in your app, you will need to use `registerOnAppOpenAttributionCallback` on the `AppsflyerSdk` instance you've created.  
+_Example:_
+
+```dart
+StreamBuilder<dynamic>(
+    stream: _appsflyerSdk.appOpenAttributionStream?.asBroadcastStream(),
+    builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
+        ...
+    }
+)
+```
+
+_Example of response on deep-link "https://flutter.demo" :_
+
+```json
+{
+  "status": "success",
+  "type": "onAppOpenAttribution",
+  "data": {
+    "link": "https://flutter.demo"
+  }
+}
+```
+##### <a id="udl"> **onDeepLinkingStream**  (field of `AppsflyerSdk` instance)
+In case you want to use [deep links](https://en.wikipedia.org/wiki/Deep_linking) in your app, you will need to use `registerOnDeepLinkingCallback` on the `AppsflyerSdk` instance you've created.  
+_Example:_
+
+```dart
+StreamBuilder<dynamic>(
+    stream: _appsflyerSdk.onDeepLinkingStream?.asBroadcastStream(),
+    builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
+        ...
+    }
+)
+```
+
+_Example of response on deep-link "https://flutter.demo" :_
+
+```json
+{
+  "status": "success",
+  "type": "onDeepLinking",
+  "data": {
+    "deepLink":{
+      "media_source": "test",
+      "campaign": "None",
+      "is_deferred": false
+    },
+    "status": "FOUND"
+  }
+}
+```
+---

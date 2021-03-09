@@ -1,4 +1,43 @@
 # Versions
+
+## 6.2.1+8
+- Update to iOS SDK V6.2.3
+
+## 6.2.1+7
+- Refactor for user invite feature
+
+## 6.2.1+6
+- Added callbacks support for purchase validation API
+
+## 6.2.1+5
+- Added support for useReceiptValidationSandbox API
+
+## 6.2.1+4
+- Seperated purchase validation API to iOS/Android
+
+## 6.2.1+3
+- Fixed Unified deeplink crush on first launch
+
+## 6.2.1+2
+- Hot Fix
+
+## 6.2.1+1
+- Added support for push notification API
+
+## 6.2.1
+- Update iOS to v6.2.1
+- Added support for Unified Deeplink
+- Fixed deeplinks issues both for Android & iOS
+
+## 6.2.0+2
+- Revert back to version 6.2.0
+
+## 6.2.0+1
+- Added Unified Deeplinking for Android
+
+## 6.2.0
+- Update both iOS & Android to v6.2.0
+
 ## 6.0.5+3
 - Fixed `FormatException` caused by iOS side
 

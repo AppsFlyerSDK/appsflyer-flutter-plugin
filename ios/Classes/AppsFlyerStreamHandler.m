@@ -127,14 +127,53 @@
     _eventSink(JSONString);
 }
 
-- (void)sendObject:(NSDictionary *)message{
+- (void)didResolveDeepLink:(AppsFlyerDeepLinkResult* _Nonnull) deepLinkResult {
+    if(deepLinkResult.deepLink){
+        NSDictionary* message = @{
+                                @"status": afSuccess,
+                                @"type": afOnDeepLinking,
+                                @"data": deepLinkResult.deepLink.toString
+                                };
+        NSError *error;
+        NSString *JSONString = [self mapToJson:message withError:error];
+        //use callbacks
+        if([AppsflyerSdkPlugin udpCallback]){
+            NSDictionary *fullResponse = @{
+                @"id": afUDPCallback,
+                @"data": deepLinkResult.deepLink.toString,
+                @"status": afSuccess
+            };
+            JSONString = [self mapToJson:fullResponse withError:error];
+            [AppsflyerSdkPlugin.callbackChannel invokeMethod:@"callListener" arguments:JSONString];
+            return;
+        }
+        
+        if (error) {
+            return;
+        }
+        _eventSink(JSONString);
+    }
+}
+
+- (void)sendResponseToFlutter:(NSString *)responseID status:(NSString *)status data:(NSDictionary *)data{
     NSError *error;
-    NSData *JSON = [NSJSONSerialization dataWithJSONObject:message options:0 error:&error];
+    NSString *JSONdata;
+
+    if(data != nil){
+        JSONdata = [self mapToJson:data withError:error];
+    }else{
+        JSONdata = @"empty data";
+    }
     if (error) {
         return;
     }
-    NSString *JSONString = [[NSString alloc] initWithData:JSON encoding:NSUTF8StringEncoding];
-    _eventSink(JSONString);
+    NSDictionary *fullResponse = @{
+                @"id": responseID,
+                @"data": JSONdata,
+                @"status": status
+            };
+    JSONdata = [self mapToJson:fullResponse withError:error];
+    [AppsflyerSdkPlugin.callbackChannel invokeMethod:@"callListener" arguments:JSONdata];
 }
 
 @end

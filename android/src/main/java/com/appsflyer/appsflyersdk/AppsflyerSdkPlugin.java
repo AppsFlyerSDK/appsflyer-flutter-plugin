@@ -14,11 +14,13 @@ import com.appsflyer.AppsFlyerConversionListener;
 import com.appsflyer.AppsFlyerInAppPurchaseValidatorListener;
 import com.appsflyer.AppsFlyerLib;
 import com.appsflyer.AppsFlyerProperties;
-import com.appsflyer.AppsFlyerTrackingRequestListener;
+import com.appsflyer.attribution.AppsFlyerRequestListener;
 import com.appsflyer.CreateOneLinkHttpTask;
 import com.appsflyer.share.CrossPromotionHelper;
 import com.appsflyer.share.LinkGenerator;
 import com.appsflyer.share.ShareInviteHelper;
+import com.appsflyer.deeplink.DeepLinkListener;
+import com.appsflyer.deeplink.DeepLinkResult;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -68,6 +70,8 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private Activity activity;
     private Boolean gcdCallback = false;
     private Boolean oaoaCallback = false;
+    private Boolean udlCallback = false;
+    private Boolean validatePurchaseCallback = false;
 
     private void onAttachedToEngine(Context applicationContext, BinaryMessenger messenger) {
         this.mContext = applicationContext;
@@ -102,7 +106,12 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         if (callbackName.equals(AppsFlyerConstants.AF_OAOA_CALLBACK)){
             oaoaCallback = true;
         }
-
+        if (callbackName.equals(AppsFlyerConstants.AF_UDL_CALLBACK)){
+            udlCallback = true;
+        }
+        if (callbackName.equals(AppsFlyerConstants.AF_VALIDATE_PURCHASE)){
+            validatePurchaseCallback = true;
+        }
         Map<String, Object> args = new HashMap<>();
         args.put("id", callbackName);
         mCallbacks.put(callbackName, args);
@@ -174,7 +183,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "setMinTimeBetweenSessions":
                 setMinTimeBetweenSessions(call, result);
                 break;
-            case "validateAndLogInAppPurchase":
+            case "validateAndLogInAppAndroidPurchase":
                 validateAndLogInAppPurchase(call, result);
                 break;
             case "getAppsFlyerUID":
@@ -204,10 +213,18 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "setOneLinkCustomDomain":
                 setOneLinkCustomDomain(call, result);
                 break;
+            case "setPushNotification":
+                sendPushNotificationData(call, result);
+                break;
             default:
                 result.notImplemented();
                 break;
         }
+    }
+
+    private void sendPushNotificationData(MethodCall call, Result result) {
+        AppsFlyerLib.getInstance().sendPushNotificationData(activity);
+        result.success(null);
     }
 
     private void setOneLinkCustomDomain(MethodCall call, Result result) {
@@ -223,7 +240,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         Map data = (Map)call.argument("params");
 
         if (appId != null && !appId.equals("")) {
-            CrossPromotionHelper.trackAndOpenStore(mContext, appId, campaign, data);
+            CrossPromotionHelper.logAndOpenStore(mContext, appId, campaign, data);
         }
         result.success(null);
     }
@@ -234,7 +251,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         Map data = (Map)call.argument("data");
 
         if (appId != null && !appId.equals("")) {
-            CrossPromotionHelper.trackCrossPromoteImpression(mContext, appId, campaign, data);
+            CrossPromotionHelper.logCrossPromoteImpression(mContext, appId, campaign, data);
         }
         result.success(null);
     }
@@ -245,9 +262,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             result.success(null);
         }else{
             AppsFlyerLib.getInstance().setAppInviteOneLink(oneLinkId);
-            if(mCallbacks.containsKey("successSetAppInviteOneLinkID")){
+            if(mCallbacks.containsKey("setAppInviteOneLinkIDCallback")){
                 JSONObject obj = buildJsonResponse("success", AF_SUCCESS);
-                runOnUIThread(obj, "successSetAppInviteOneLinkID", AF_SUCCESS);
+                runOnUIThread(obj, "setAppInviteOneLinkIDCallback", AF_SUCCESS);
             }
         }
     }
@@ -286,17 +303,29 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
 
         CreateOneLinkHttpTask.ResponseListener listener = new CreateOneLinkHttpTask.ResponseListener() {
+            JSONObject obj = new JSONObject();
+
             @Override
             public void onResponse(final String oneLinkUrl) {
-                if (mCallbacks.containsKey("successGenerateInviteLink")) {
-//                    runOnUIThread(oneLinkUrl, "successGenerateInviteLink", AF_SUCCESS);
+                if (mCallbacks.containsKey("generateInviteLinkSuccess")) {
+                    try {
+                        obj.put("userInviteUrl", oneLinkUrl);
+                        runOnUIThread(obj, "generateInviteLinkSuccess", AF_SUCCESS);
+                    }catch (JSONException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
 
             @Override
             public void onResponseError(final String error) {
-                if (mCallbacks.containsKey("errorGenerateInviteLink")) {
-//                    runOnUIThread(error, "errorGenerateInviteLink", AF_FAILURE);
+                if (mCallbacks.containsKey("generateInviteLinkFailure")) {
+                    try {
+                        obj.put("error", error);
+                        runOnUIThread(error, "generateInviteLinkFailure", AF_FAILURE);
+                    }catch (JSONException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
         };
@@ -306,7 +335,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         rawResult.success(null);
     }
 
-    private void runOnUIThread(final JSONObject data, final String callbackName, final String status) {
+    private void runOnUIThread(final Object data, final String callbackName, final String status) {
         uiThreadHandler.post(
                 new Runnable() {
                     @Override
@@ -357,7 +386,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         String price = (String) call.argument("price");
         String currency = (String) call.argument("currency");
         Map<String, String> additionalParameters = (Map<String, String>) call.argument("additionalParameters");
-        AppsFlyerLib.getInstance().validateAndTrackInAppPurchase(mContext, publicKey, signature, purchaseData, price,
+        AppsFlyerLib.getInstance().validateAndLogInAppPurchase(mContext, publicKey, signature, purchaseData, price,
                 currency, additionalParameters);
         result.success(null);
     }
@@ -366,12 +395,14 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         AppsFlyerInAppPurchaseValidatorListener validatorListener = new AppsFlyerInAppPurchaseValidatorListener() {
             @Override
             public void onValidateInApp() {
-                JSONObject obj = new JSONObject();
-
                 try {
-                    obj.put("status", AF_SUCCESS);
-                    obj.put("type", AF_VALIDATE_PURCHASE);
-                    sendEventToDart(obj, AF_EVENTS_CHANNEL);
+                    JSONObject obj = new JSONObject();
+                    if(validatePurchaseCallback){
+                        runOnUIThread(obj, AppsFlyerConstants.AF_VALIDATE_PURCHASE, AF_SUCCESS);
+                    }else{
+                        obj.put("status", AF_SUCCESS);
+                        sendEventToDart(obj, AF_EVENTS_CHANNEL);
+                    }
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -380,12 +411,15 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
             @Override
             public void onValidateInAppFailure(String s) {
-                JSONObject obj = new JSONObject();
                 try {
-                    obj.put("status", AF_FAILURE);
-                    obj.put("type", AF_VALIDATE_PURCHASE);
+                    JSONObject obj = new JSONObject();
                     obj.put("error", s);
-                    sendEventToDart(obj, AF_EVENTS_CHANNEL);
+                    if(validatePurchaseCallback){
+                        runOnUIThread(obj, AppsFlyerConstants.AF_VALIDATE_PURCHASE, AF_FAILURE);
+                    }else{
+                        obj.put("status", AF_FAILURE);
+                        sendEventToDart(obj, AF_EVENTS_CHANNEL);
+                    }
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -476,7 +510,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     private void stop(MethodCall call, Result result) {
         boolean isStopped = (boolean) call.argument("isStopped");
-        AppsFlyerLib.getInstance().stopTracking(isStopped, mContext);
+        AppsFlyerLib.getInstance().stop(isStopped, mContext);
         result.success(null);
     }
 
@@ -501,11 +535,8 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     private void initSdk(MethodCall call, final MethodChannel.Result result) {
         AppsFlyerConversionListener gcdListener = null;
+        DeepLinkListener udlListener = null;
         AppsFlyerLib instance = AppsFlyerLib.getInstance();
-
-        if (mIntent.getData() != null) {
-            instance.setPluginDeepLinkData(mIntent);
-        }
 
         String afDevKey = (String) call.argument(AppsFlyerConstants.AF_DEV_KEY);
         if (afDevKey == null || afDevKey.equals("")) {
@@ -513,9 +544,14 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
 
         boolean getGCD = (boolean) call.argument(AppsFlyerConstants.AF_GCD);
-
         if (getGCD) {
             gcdListener = registerConversionListener();
+        }
+        // added Unified deeplink 
+        boolean getUdl = (boolean) call.argument(AppsFlyerConstants.AF_UDL);
+        if (getUdl) {
+            udlListener = registerOnDeeplinkingListener();
+            instance.subscribeForDeepLink(udlListener);
         }
 
         boolean isDebug = (boolean) call.argument(AppsFlyerConstants.AF_IS_DEBUG);
@@ -533,7 +569,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             instance.setAppInviteOneLink(appInviteOneLink);
         }
 
-        instance.startTracking(activity);
+        instance.start(activity);
 
         result.success("success");
     }
@@ -546,9 +582,31 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         final Map<String, Object> eventValues = call.argument(AppsFlyerConstants.AF_EVENT_VALUES);
 
         // Send event data through appsflyer sdk
-        instance.trackEvent(mContext, eventName, eventValues);
+        instance.logEvent(mContext, eventName, eventValues);
 
         result.success(true);
+    }
+
+    private DeepLinkListener registerOnDeeplinkingListener() {
+        return new DeepLinkListener() {
+            @Override
+            public void onDeepLinking(DeepLinkResult deepLinkResult) {
+                if(udlCallback){
+                    runOnUIThread(deepLinkResult, AppsFlyerConstants.AF_UDL_CALLBACK, AF_SUCCESS);
+                }else{
+                    try {
+                        JSONObject obj = new JSONObject();
+                        obj.put("status", AF_SUCCESS);
+                        obj.put("type", AppsFlyerConstants.AF_UDL_CALLBACK);
+                        obj.put("data", deepLinkResult.getDeepLink().getClickEvent());
+
+                        sendEventToDart(obj, AF_EVENTS_CHANNEL);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        };
     }
 
     private AppsFlyerConversionListener registerConversionListener() {
@@ -608,7 +666,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             e.printStackTrace();
         }
     }
-
     private void handleError(String eventType, String errorMessage, String channel) {
 
         try {
