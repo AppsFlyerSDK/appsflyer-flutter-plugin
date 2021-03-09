@@ -191,7 +191,7 @@ void main() {
       instance.validateAndLogInAppPurchase(
           "publicKey", "signature", "purchaseData", "price", "currency", null);
 
-      expect(selectedMethod, 'listen');
+      expect(selectedMethod, 'validateAndLogInAppAndroidPurchase');
     });
 
     test('check setMinTimeBetweenSessions call', () async {
