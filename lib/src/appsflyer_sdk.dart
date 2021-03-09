@@ -543,6 +543,10 @@ class AppsflyerSdk {
     _methodChannel.invokeMethod("setPushNotification", isEnabled);
   }
 
+  void enableFacebookDeferredApplinks(bool isEnabled) {
+    _methodChannel.invokeMethod("enableFacebookDeferredApplinks", { 'isFacebookDeferredApplinksEnabled': isEnabled });
+  }
+
   void onInstallConversionData(Function callback) async {
     startListening(callback, "onInstallConversionData");
   }

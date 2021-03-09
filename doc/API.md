@@ -33,6 +33,7 @@
 - [Validate Purchase](#validatePurchase)
 - [setPushNotification](#setPushNotification)
 - [User Invite](#userInvite)
+- [enableFacebookDeferredApplinks](#enableFacebookDeferredApplinks)
 - [stream](#streams)
 ---
 
@@ -437,6 +438,13 @@ appsFlyerSdk.generateInviteLink(inviteLinkParams,
     print(error);
   }
 );
+```
+---
+**<a id="enableFacebookDeferredApplinks"> `void enableFacebookDeferredApplinks(bool isEnabled)`**
+
+_Example:_
+```dart
+appsFlyerSdk.enableFacebookDeferredApplinks(true);
 ```
 ---
 ### **Conversion Data and on app open attribution for older versions**

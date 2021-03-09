@@ -72,6 +72,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private Boolean oaoaCallback = false;
     private Boolean udlCallback = false;
     private Boolean validatePurchaseCallback = false;
+    private Boolean isFacebookDeferredApplinksEnabled = false;
 
     private void onAttachedToEngine(Context applicationContext, BinaryMessenger messenger) {
         this.mContext = applicationContext;
@@ -216,10 +217,23 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "setPushNotification":
                 sendPushNotificationData(call, result);
                 break;
+            case "enableFacebookDeferredApplinks":
+                enableFacebookDeferredApplinks(call, result);
+                break;
             default:
                 result.notImplemented();
                 break;
         }
+    }
+
+    private void enableFacebookDeferredApplinks(MethodCall call, Result result) {
+        isFacebookDeferredApplinksEnabled = (boolean)call.argument("isFacebookDeferredApplinksEnabled");;
+        if(isFacebookDeferredApplinksEnabled){
+            AppsFlyerLib.getInstance().enableFacebookDeferredApplinks(true);
+        }else{
+            AppsFlyerLib.getInstance().enableFacebookDeferredApplinks(false);
+        }
+        result.success(null);
     }
 
     private void sendPushNotificationData(MethodCall call, Result result) {
