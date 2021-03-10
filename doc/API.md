@@ -442,6 +442,8 @@ appsFlyerSdk.generateInviteLink(inviteLinkParams,
 ---
 **<a id="enableFacebookDeferredApplinks"> `void enableFacebookDeferredApplinks(bool isEnabled)`**
 
+Please make sure the relevant Facebook dependecies are added to the project!
+ 
 _Example:_
 ```dart
 appsFlyerSdk.enableFacebookDeferredApplinks(true);
