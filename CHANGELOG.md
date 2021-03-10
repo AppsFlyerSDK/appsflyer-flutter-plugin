@@ -2,7 +2,7 @@
 ## 6.2.3+1
 - Added enableFacebookDeferredApplinks API
 
-## 6.2.1+8
+## 6.2.3
 - Update to iOS SDK V6.2.3
 
 ## 6.2.1+7
