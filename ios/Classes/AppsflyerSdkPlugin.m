@@ -114,6 +114,8 @@ static BOOL _isSandboxEnabled = false;
         [self setPushNotification:call result:result];
     }else if([@"useReceiptValidationSandbox" isEqualToString:call.method]){
         [self useReceiptValidationSandbox:call result:result];
+    }else if([@"enableFacebookDeferredApplinks" isEqualToString:call.method]){
+        [self enableFacebookDeferredApplinks:call result:result];
     }
     else{
         result(FlutterMethodNotImplemented);
@@ -124,6 +126,14 @@ static BOOL _isSandboxEnabled = false;
     bool isSandboxEnabled = call.arguments;
     _isSandboxEnabled = isSandboxEnabled;
     [AppsFlyerLib shared].useReceiptValidationSandbox = _isSandboxEnabled;
+    result(nil);
+}
+
+- (void)enableFacebookDeferredApplinks:(FlutterMethodCall*)call result:(FlutterResult)result{
+    bool isFacebookDeferredApplinksEnabled = call.arguments[@"isFacebookDeferredApplinksEnabled"];
+    if(isFacebookDeferredApplinksEnabled){
+       [[AppsFlyerLib shared] enableFacebookDeferredApplinksWithClass:NSClassFromString(@"FBSDKAppLinkUtility")];
+    }
     result(nil);
 }
 
