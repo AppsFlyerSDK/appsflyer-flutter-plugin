@@ -21,15 +21,15 @@ Future<void> _methodCallHandler(MethodCall call) async {
           case "validatePurchase":
           case "generateInviteLinkSuccess":
             String data = callMap["data"];
-            Map decodedData = jsonDecode(data);
+            Map? decodedData = jsonDecode(data);
             Map fullResponse = {
               "status": callMap['status'],
               "payload": decodedData
             };
-            _callbacksById[callMap["id"]](fullResponse);
+            _callbacksById[callMap["id"]]!(fullResponse);
             break;
           default:
-            _callbacksById[callMap["id"]](callMap["data"]);
+            _callbacksById[callMap["id"]]!(callMap["data"]);
             break;
         }
       } catch (e) {
