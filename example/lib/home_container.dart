@@ -6,7 +6,7 @@ import 'utils.dart';
 
 class HomeContainer extends StatefulWidget {
   final Map onData;
-  Future<bool> Function(String, Map) logEvent;
+  final Future<bool> Function(String, Map) logEvent;
   Object deepLinkData;
 
   HomeContainer({this.onData, this.deepLinkData, this.logEvent});
@@ -88,7 +88,7 @@ class _HomeContainerState extends State<HomeContainer> {
                       labelText: "Server response",
                       controller:
                           TextEditingController(text: _logEventResponse)),
-                  RaisedButton(
+                  ElevatedButton(
                     onPressed: () {
                       print("Pressed");
                       widget.logEvent(eventName, eventValues).then((onValue) {

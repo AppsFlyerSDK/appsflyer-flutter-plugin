@@ -1,9 +1,13 @@
 part of appsflyer_sdk;
 
 class AppsflyerSdk {
+  // ignore: close_sinks
   StreamController? _afGCDStreamController;
+  // ignore: close_sinks
   StreamController? _afUDLStreamController;
+  // ignore: close_sinks
   StreamController? _afOpenAttributionStreamController;
+  // ignore: close_sinks
   StreamController? _afValidtaPurchaseController;
   EventChannel _eventChannel;
   static AppsflyerSdk? _instance;
@@ -75,6 +79,7 @@ class AppsflyerSdk {
     }
 
     validatedOptions[AppsflyerConstants.AF_IS_DEBUG] =
+        // ignore: unnecessary_null_comparison
         (options.showDebug != null) ? options.showDebug : false;
 
     if (_afGCDStreamController != null ||
@@ -170,7 +175,7 @@ class AppsflyerSdk {
   }
 
   Stream<Map>? get conversionDataStream {
-    return _afGCDStreamController?.stream?.asBroadcastStream() as Stream<Map<dynamic, dynamic>>?;
+    return _afGCDStreamController?.stream.asBroadcastStream() as Stream<Map<dynamic, dynamic>>?;
   }
 
   // Accessing AppsFlyer attribution, referred from deep linking
@@ -184,7 +189,7 @@ class AppsflyerSdk {
 
 
   Stream<Map>? get appOpenAttributionStream {
-    return _afOpenAttributionStreamController?.stream?.asBroadcastStream() as Stream<Map<dynamic, dynamic>>?;
+    return _afOpenAttributionStreamController?.stream.asBroadcastStream() as Stream<Map<dynamic, dynamic>>?;
   }
 
   // Unified deeplink: Accessing AppsFlyer deeplink attributes
@@ -198,10 +203,11 @@ class AppsflyerSdk {
   }
 
   Stream<Map>? get onDeepLinkingStream {
-    return _afUDLStreamController?.stream?.asBroadcastStream() as Stream<Map<dynamic, dynamic>>?;
+    return _afUDLStreamController?.stream.asBroadcastStream() as Stream<Map<dynamic, dynamic>>?;
   }
 
   ///Returns `Stream`. Accessing AppsFlyer purchase validation data
+   // ignore: unused_element
    Stream<dynamic> _registerValidatePurchaseStream() {
     if (_afValidtaPurchaseController == null) {
       _afValidtaPurchaseController = StreamController(onCancel: () {
@@ -253,6 +259,7 @@ class AppsflyerSdk {
   ///to send ROI (Return on Investment) and LTV (Lifetime Value).
   ///- The `logEvent` method allows you to send in-app events to AppsFlyer analytics. This method allows you to add events dynamically by adding them directly to the application code.
   Future<bool?> logEvent(String eventName, Map eventValues) async {
+    // ignore: unnecessary_null_comparison
     assert(eventValues != null);
 
     return await _methodChannel.invokeMethod(
