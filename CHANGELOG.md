@@ -1,4 +1,8 @@
 # Versions
+
+## 6.2.4
+- Update to iOS SDK v6.2.4
+
 ## 6.2.3+2
 - Flutter 2.0 update including null safety support
 
