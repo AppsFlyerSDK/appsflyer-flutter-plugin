@@ -1,6 +1,10 @@
 # Versions
 ## 6.2.3+2
+- Flutter 2.0 update including null safety support
+
 ## 6.2.3+2-beta
+- Flutter 2.0 update including null safety support
+
 ## 6.2.3+1
 - Added enableFacebookDeferredApplinks API
 
