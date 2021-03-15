@@ -100,7 +100,7 @@ class _HomeContainerStreamsState extends State<HomeContainerStreams> {
                       labelText: "Server response",
                       controller:
                           TextEditingController(text: _logEventResponse)),
-                  RaisedButton(
+                  ElevatedButton(
                     onPressed: () {
                       widget.logEvent(eventName, eventValues).then((onValue) {
                         setState(() {
