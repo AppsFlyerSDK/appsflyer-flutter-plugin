@@ -1,4 +1,8 @@
 # Versions
+
+## 6.2.4-flutterV1
+- Update to iOS SDK V6.2.4
+
 ## 6.2.3+1
 - Added enableFacebookDeferredApplinks API
 
