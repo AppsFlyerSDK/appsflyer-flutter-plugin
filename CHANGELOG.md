@@ -1,5 +1,8 @@
 # Versions
 
+## 6.2.4+3-nullsafety
+- Small fix for enableFacebookDeferredApplinks, useReceiptValidationSandbox, disableSKAdNetwork, setPushNotification APIs in iOS
+
 ## 6.2.4+2-nullsafety
 - Added disable SKAD API
 
