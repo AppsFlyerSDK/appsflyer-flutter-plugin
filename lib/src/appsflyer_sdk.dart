@@ -245,7 +245,7 @@ class AppsflyerSdk {
       } else if (afOptions != null) {
         validatedOptions = _validateAFOptions(afOptions!);
       }
-
+      
       return _methodChannel.invokeMethod("initSdk", validatedOptions);
     });
   }
