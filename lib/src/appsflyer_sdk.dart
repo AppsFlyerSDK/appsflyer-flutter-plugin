@@ -245,7 +245,7 @@ class AppsflyerSdk {
       } else if (afOptions != null) {
         validatedOptions = _validateAFOptions(afOptions!);
       }
-      
+
       return _methodChannel.invokeMethod("initSdk", validatedOptions);
     });
   }
@@ -552,6 +552,10 @@ class AppsflyerSdk {
 
   void enableFacebookDeferredApplinks(bool isEnabled) {
     _methodChannel.invokeMethod("enableFacebookDeferredApplinks", { 'isFacebookDeferredApplinksEnabled': isEnabled });
+  }
+
+ void disableSKAdNetwork(bool isEnabled) {
+    _methodChannel.invokeMethod("disableSKAdNetwork", isEnabled);
   }
 
   void onInstallConversionData(Function callback) async {

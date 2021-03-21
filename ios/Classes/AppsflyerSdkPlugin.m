@@ -14,6 +14,7 @@ static BOOL _oaoaCallback = false;
 static BOOL _udpCallback = false;
 static BOOL _isPushNotificationEnabled = false;
 static BOOL _isSandboxEnabled = false;
+static BOOL _isSKADEnabled = false;
 
 + (FlutterMethodChannel*)callbackChannel{
     return _callbackChannel;
@@ -118,10 +119,20 @@ static BOOL _isSandboxEnabled = false;
         [self useReceiptValidationSandbox:call result:result];
     }else if([@"enableFacebookDeferredApplinks" isEqualToString:call.method]){
         [self enableFacebookDeferredApplinks:call result:result];
+    }else if([@"disableSKAdNetwork" isEqualToString:call.method]){
+        [self disableSKAdNetwork:call result:result];
     }
     else{
         result(FlutterMethodNotImplemented);
     }
+}
+
+- (void)disableSKAdNetwork:(FlutterMethodCall*)call result:(FlutterResult)result{
+    bool isSKADEnabled = call.arguments;
+    _isSKADEnabled = isSKADEnabled;
+    [AppsFlyerLib shared].disableSKAdNetwork = _isSKADEnabled;
+
+    result(nil);
 }
 
 - (void)useReceiptValidationSandbox:(FlutterMethodCall*)call result:(FlutterResult)result{
@@ -445,6 +456,7 @@ static BOOL _isSandboxEnabled = false;
     [AppsFlyerLib shared].appleAppID = appId;
     [AppsFlyerLib shared].appsFlyerDevKey = devKey;
     [AppsFlyerLib shared].isDebug = isDebug;
+
     // Load SKAD rules
     SEL SKSel = NSSelectorFromString(@"__willResolveSKRules:");
     id AppsFlyer = [AppsFlyerLib shared];
