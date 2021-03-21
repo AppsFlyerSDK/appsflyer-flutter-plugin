@@ -101,7 +101,7 @@ class _HomeContainerState extends State<HomeContainer> {
                         });
                       });
                     },
-                    child: Text("Send event"),
+                    child: Text("Send purchase event"),
                   ),
                 ]),
               )

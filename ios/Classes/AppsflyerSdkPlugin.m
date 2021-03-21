@@ -128,31 +128,39 @@ static BOOL _isSKADEnabled = false;
 }
 
 - (void)disableSKAdNetwork:(FlutterMethodCall*)call result:(FlutterResult)result{
-    bool isSKADEnabled = call.arguments;
-    _isSKADEnabled = isSKADEnabled;
-    [AppsFlyerLib shared].disableSKAdNetwork = _isSKADEnabled;
-
-    result(nil);
-}
-
-- (void)useReceiptValidationSandbox:(FlutterMethodCall*)call result:(FlutterResult)result{
-    bool isSandboxEnabled = call.arguments;
-    _isSandboxEnabled = isSandboxEnabled;
-    [AppsFlyerLib shared].useReceiptValidationSandbox = _isSandboxEnabled;
-    result(nil);
-}
-
-- (void)enableFacebookDeferredApplinks:(FlutterMethodCall*)call result:(FlutterResult)result{
-    bool isFacebookDeferredApplinksEnabled = call.arguments[@"isFacebookDeferredApplinksEnabled"];
-    if(isFacebookDeferredApplinksEnabled){
-       [[AppsFlyerLib shared] enableFacebookDeferredApplinksWithClass:NSClassFromString(@"FBSDKAppLinkUtility")];
+    id isSKADEnabled = call.arguments;
+    if ([isSKADEnabled isKindOfClass:[NSNumber class]]) {
+        _isSKADEnabled = [(NSNumber*)isSKADEnabled boolValue];
+        [AppsFlyerLib shared].disableSKAdNetwork = _isSKADEnabled;
     }
     result(nil);
 }
 
+- (void)useReceiptValidationSandbox:(FlutterMethodCall*)call result:(FlutterResult)result{
+    id isSandboxEnabled = call.arguments;
+    if ([isSandboxEnabled isKindOfClass:[NSNumber class]]) {
+        _isSandboxEnabled = [(NSNumber*)isSandboxEnabled boolValue];
+        [AppsFlyerLib shared].useReceiptValidationSandbox = _isSandboxEnabled;
+    }
+    result(nil);
+}
+
+- (void)enableFacebookDeferredApplinks:(FlutterMethodCall*)call result:(FlutterResult)result{
+    id isFacebookDeferredApplinksEnabled = call.arguments[@"isFacebookDeferredApplinksEnabled"];
+    if ([isFacebookDeferredApplinksEnabled isKindOfClass:[NSNumber class]]) {
+        if([(NSNumber*)isFacebookDeferredApplinksEnabled boolValue]){
+           [[AppsFlyerLib shared] enableFacebookDeferredApplinksWithClass:NSClassFromString(@"FBSDKAppLinkUtility")];
+        }
+    }
+    
+    result(nil);
+}
+
 - (void)setPushNotification:(FlutterMethodCall*)call result:(FlutterResult)result{
-    bool isPushNotificationEnabled = call.arguments;
-    _isPushNotificationEnabled = isPushNotificationEnabled;
+    id isPushNotificationEnabled = call.arguments;
+    if ([isPushNotificationEnabled isKindOfClass:[NSNumber class]]) {
+        _isPushNotificationEnabled = [(NSNumber*)isPushNotificationEnabled boolValue];
+    }
     result(nil);
 }
 
