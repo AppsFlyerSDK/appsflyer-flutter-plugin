@@ -1,4 +1,5 @@
 # Versions
+## 6.2.4+1-beta
 
 ## 6.2.4
 - Update to iOS SDK v6.2.4
