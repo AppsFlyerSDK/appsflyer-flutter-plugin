@@ -1,5 +1,11 @@
 # Versions
 
+## 6.2.4+2-nullsafety
+- Added disable SKAD API
+
+## 6.2.4+1-nullsafety
+- Fix for SKAD
+
 ## 6.2.4
 - Update to iOS SDK v6.2.4
 
