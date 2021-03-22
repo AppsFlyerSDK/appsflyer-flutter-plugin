@@ -37,6 +37,7 @@ When submitting an issue please specify your AppsFlyer sign-up (account) email ,
 
 - Android AppsFlyerSDK **v6.2.0**
 
+
 - Flutter V1 (for Flutter V2 please use nullsafety versions)
 
 ---

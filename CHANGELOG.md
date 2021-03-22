@@ -6,6 +6,15 @@
 ## 6.2.4-flutterV1
 - Update to iOS SDK V6.2.4
 
+## 6.2.4
+- Update to iOS SDK v6.2.4
+
+## 6.2.3+2
+- Flutter 2.0 update including null safety support
+
+## 6.2.3+2-beta
+- Flutter 2.0 update including null safety support
+
 ## 6.2.3+1
 - Added enableFacebookDeferredApplinks API
 

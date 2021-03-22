@@ -24,7 +24,7 @@ class MainPageState extends State<MainPage> {
     final AppsFlyerOptions options = AppsFlyerOptions(
     afDevKey: DotEnv().env["DEV_KEY"], 
     appId: DotEnv().env["APP_ID"],
-    showDebug: true);
+    showDebug: true); 
     _appsflyerSdk = AppsflyerSdk(options);
     _appsflyerSdk.onAppOpenAttribution((res) {
       print("res: " + res.toString());
