@@ -34,6 +34,7 @@
 - [setPushNotification](#setPushNotification)
 - [User Invite](#userInvite)
 - [enableFacebookDeferredApplinks](#enableFacebookDeferredApplinks)
+- [disableSKAdNetwork](#disableSKAdNetwork)
 - [stream](#streams)
 ---
 
@@ -450,6 +451,15 @@ https://support.appsflyer.com/hc/en-us/articles/207033826-Facebook-Ads-setup-gui
 _Example:_
 ```dart
 appsFlyerSdk.enableFacebookDeferredApplinks(true);
+```
+---
+**<a id="disableSKAdNetwork"> `void disableSKAdNetwork(bool isEnabled)`**
+
+Use this API in order to disable the SK Ad network (request will be sent but the rules won't be returned).
+
+_Example:_
+```dart
+appsFlyerSdk.disableSKAdNetwork(true);
 ```
 ---
 ### **Conversion Data and on app open attribution for older versions**

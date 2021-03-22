@@ -16,12 +16,12 @@ class HomeContainer extends StatefulWidget {
 }
 
 class _HomeContainerState extends State<HomeContainer> {
-  final String eventName = "my event";
+  final String eventName = "purchase";
 
   final Map eventValues = {
     "af_content_id": "id123",
     "af_currency": "USD",
-    "af_revenue": "2"
+    "af_revenue": "20"
   };
 
   String _logEventResponse = "No event have been sent";

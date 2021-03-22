@@ -1,5 +1,7 @@
 #import "AppsflyerSdkPlugin.h"
 #import "AppsFlyerStreamHandler.h"
+#import <objc/message.h>
+typedef void (*bypassDidFinishLaunchingWithOption)(id, SEL, NSInteger);
 
 @implementation AppsflyerSdkPlugin {
     FlutterEventChannel *_eventChannel;
@@ -12,6 +14,7 @@ static BOOL _oaoaCallback = false;
 static BOOL _udpCallback = false;
 static BOOL _isPushNotificationEnabled = false;
 static BOOL _isSandboxEnabled = false;
+static BOOL _isSKADEnabled = false;
 
 + (FlutterMethodChannel*)callbackChannel{
     return _callbackChannel;
@@ -116,30 +119,48 @@ static BOOL _isSandboxEnabled = false;
         [self useReceiptValidationSandbox:call result:result];
     }else if([@"enableFacebookDeferredApplinks" isEqualToString:call.method]){
         [self enableFacebookDeferredApplinks:call result:result];
+    }else if([@"disableSKAdNetwork" isEqualToString:call.method]){
+        [self disableSKAdNetwork:call result:result];
     }
     else{
         result(FlutterMethodNotImplemented);
     }
 }
 
-- (void)useReceiptValidationSandbox:(FlutterMethodCall*)call result:(FlutterResult)result{
-    bool isSandboxEnabled = call.arguments;
-    _isSandboxEnabled = isSandboxEnabled;
-    [AppsFlyerLib shared].useReceiptValidationSandbox = _isSandboxEnabled;
-    result(nil);
-}
-
-- (void)enableFacebookDeferredApplinks:(FlutterMethodCall*)call result:(FlutterResult)result{
-    bool isFacebookDeferredApplinksEnabled = call.arguments[@"isFacebookDeferredApplinksEnabled"];
-    if(isFacebookDeferredApplinksEnabled){
-       [[AppsFlyerLib shared] enableFacebookDeferredApplinksWithClass:NSClassFromString(@"FBSDKAppLinkUtility")];
+- (void)disableSKAdNetwork:(FlutterMethodCall*)call result:(FlutterResult)result{
+    id isSKADEnabled = call.arguments;
+    if ([isSKADEnabled isKindOfClass:[NSNumber class]]) {
+        _isSKADEnabled = [(NSNumber*)isSKADEnabled boolValue];
+        [AppsFlyerLib shared].disableSKAdNetwork = _isSKADEnabled;
     }
     result(nil);
 }
 
+- (void)useReceiptValidationSandbox:(FlutterMethodCall*)call result:(FlutterResult)result{
+    id isSandboxEnabled = call.arguments;
+    if ([isSandboxEnabled isKindOfClass:[NSNumber class]]) {
+        _isSandboxEnabled = [(NSNumber*)isSandboxEnabled boolValue];
+        [AppsFlyerLib shared].useReceiptValidationSandbox = _isSandboxEnabled;
+    }
+    result(nil);
+}
+
+- (void)enableFacebookDeferredApplinks:(FlutterMethodCall*)call result:(FlutterResult)result{
+    id isFacebookDeferredApplinksEnabled = call.arguments[@"isFacebookDeferredApplinksEnabled"];
+    if ([isFacebookDeferredApplinksEnabled isKindOfClass:[NSNumber class]]) {
+        if([(NSNumber*)isFacebookDeferredApplinksEnabled boolValue]){
+           [[AppsFlyerLib shared] enableFacebookDeferredApplinksWithClass:NSClassFromString(@"FBSDKAppLinkUtility")];
+        }
+    }
+    
+    result(nil);
+}
+
 - (void)setPushNotification:(FlutterMethodCall*)call result:(FlutterResult)result{
-    bool isPushNotificationEnabled = call.arguments;
-    _isPushNotificationEnabled = isPushNotificationEnabled;
+    id isPushNotificationEnabled = call.arguments;
+    if ([isPushNotificationEnabled isKindOfClass:[NSNumber class]]) {
+        _isPushNotificationEnabled = [(NSNumber*)isPushNotificationEnabled boolValue];
+    }
     result(nil);
 }
 
@@ -443,6 +464,15 @@ static BOOL _isSandboxEnabled = false;
     [AppsFlyerLib shared].appleAppID = appId;
     [AppsFlyerLib shared].appsFlyerDevKey = devKey;
     [AppsFlyerLib shared].isDebug = isDebug;
+
+    // Load SKAD rules
+    SEL SKSel = NSSelectorFromString(@"__willResolveSKRules:");
+    id AppsFlyer = [AppsFlyerLib shared];
+    if ([AppsFlyer respondsToSelector:SKSel]) {
+        bypassDidFinishLaunchingWithOption msgSend = (bypassDidFinishLaunchingWithOption)objc_msgSend;
+        msgSend(AppsFlyer, SKSel, 2);
+    }
+
     [[AppsFlyerLib shared] start];
 
     //post notification for the deep link object that the bridge is set and he can handle deep link

@@ -1,5 +1,8 @@
 # Versions
 
+## 6.2.4+1-flutterV1
+- Fix for SKAD Network + adding disable SKAD API
+
 ## 6.2.4-flutterV1
 - Update to iOS SDK V6.2.4
 
