@@ -271,6 +271,10 @@ class AppsFlyerService {
 #### AppsFlyer Setup
 Navigate to our website and set up a OneLink template. Under the "when app is installed" section, configure Android to launch the app using Universal links. 
 
+Get your SHA256 fingerprint
+1. [Creating A Keystore](https://flutter.dev/docs/deployment/android#create-a-keystore) (you'll eventually need to do this to release on the Play Store)
+2. [Generate Fingerprint](https://developers.google.com/android/guides/client-auth)
+
 #### Flutter Setup
 In your app’s manifest (`android/app/src/main/AndroidManifest.xml`) add the intent-filter you received from the above AppsFlyer step to your relevant activity:
 ```xml 
