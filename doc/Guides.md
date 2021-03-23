@@ -49,7 +49,6 @@ appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
 
 ```dart
 import 'dart:async';
-import 'dart:io';
 
 import 'package:package_info/package_info.dart';
 
@@ -214,7 +213,6 @@ class AppsFlyerService {
 
 ```dart
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
@@ -276,7 +274,7 @@ Navigate to our website and set up a OneLink template. Under the "when app is in
 #### Flutter Setup
 In your app’s manifest (`android/app/src/main/AndroidManifest.xml`) add the intent-filter you received from the above AppsFlyer step to your relevant activity:
 ```xml 
- <intent-filter  android:autoVerify="true">
+<intent-filter  android:autoVerify="true">
     <action android:name="android.intent.action.VIEW" />
     <category android:name="android.intent.category.DEFAULT" />
     <category android:name="android.intent.category.BROWSABLE" />
