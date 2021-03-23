@@ -12,6 +12,7 @@
     - [Unified deep linking](#Unified-deep-linking)
     - [iOS Deeplink Setup](#iosdeeplinks)
     - [Android Deeplink Setup](#android-deeplinks)
+    - [Full Example](#full-example)
 
     ---
 
@@ -21,16 +22,50 @@ To start using AppsFlyer you first need to create an instance of `AppsflyerSdk` 
 
 `AppsflyerSdk` receives a map or `AppsFlyerOptions` object. This is how you can configure our `AppsflyerSdk` instance and connect it to your AppsFlyer account.
 
-*Example (using map):*
+### Partial Example - [Full Example](#full-example) Below
+
+#### Manual Implementation
 ```dart
+import 'dart:async';
+import 'dart:io';
+
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
-//..
 
-Map appsFlyerOptions = { "afDevKey": afDevKey,
-                "afAppId": appId,
-                "isDebug": true};
+// ...
 
-AppsflyerSdk appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
+// Platform.isIOS from dart:io
+final packageName = Platform.isIOS ? 'your.ios.bundleIdentifier' : 'your.android.packageName'; 
+
+final Map<String, dynamic> appsFlyerOptions = <String, dynamic>{ 
+    "afDevKey": afDevKey, // AppsFlyer > Configuration > App Settings > Dev key
+    "isDebug": kDebugMode, // from flutter/foundation.dart
+    "afAppId": packageName,
+};
+
+appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
+```
+
+#### [PackageInfo](https://pub.dev/packages/package_info) Implementation
+
+```dart
+import 'dart:async';
+import 'dart:io';
+
+import 'package:package_info/package_info.dart';
+
+import 'package:appsflyer_sdk/appsflyer_sdk.dart';
+
+// ...
+
+final packageInfo = await PackageInfo.fromPlatform();
+
+final Map<String, dynamic> appsFlyerOptions = <String, dynamic>{ 
+    "afDevKey": afDevKey, // AppsFlyer > Configuration > App Settings > Dev key
+    "isDebug": kDebugMode, // from dart:io
+    "afAppId": packageInfo.packageName, // `bundleIdentifier` on iOS, `getPackageName` on Android.
+};
+
+appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
 ```
 
 The next step is to call `initSdk` which have the optional boolean parameters `registerConversionDataCallback` and the deeplink callbacks: `registerOnAppOpenAttributionCallback` 
@@ -43,7 +78,7 @@ After we call `initSdk` we can use all of AppsFlyer SDK features.
 appsflyerSdk.initSdk(
     registerConversionDataCallback: true,
     registerOnAppOpenAttributionCallback: true,
-    registerOnDeepLinkingCallback: true
+    registerOnDeepLinkingCallback: true,
 );
 ```
 ---
@@ -82,7 +117,7 @@ In order to use the unified deep link you need to send the `registerConversionDa
 =======
 Handle the Deferred deeplink in the following callback:
 ```dart
-appsflyerSdk.onInstallConversionData((res){
+appsflyerSdk.onInstallConversionData((dynamic res){
     print("res: " + res.toString());
 });
 ```
@@ -95,7 +130,7 @@ In order to use the unified deep link you need to send the `registerOnAppOpenAtt
 Handle the Direct deeplink in the following callback:
 
 ```dart
-appsflyerSdk.onAppOpenAttribution((res){
+appsflyerSdk.onAppOpenAttribution((dynamic res){
     print("res: " + res.toString());
 });
 ```
@@ -109,36 +144,160 @@ In order to use the unified deep link you need to send the `registerOnDeepLinkin
 Handle both the Direct & the deferred deeplink in the following callback:
 
 ```dart
-appsflyerSdk.onDeepLinking((res){
+appsflyerSdk.onDeepLinking((dynamic res){
     print("res: " + res.toString());
 });
 ```
 
 For more information about this api, please check [OneLink Guide Here](https://dev.appsflyer.com/docs/android-unified-deep-linking)
 
-###  <a id="android-deeplink"> Android Deeplink Setup
+### <a id="full-example"> Full Example
+
+#### Manual Implementation
+```dart
+import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
+
+import 'package:appsflyer_sdk/appsflyer_sdk.dart';
+
+class AppsFlyerService {
+    static const String brandDomain = 'your.brand.subdomain'; // (optional) needs hot restart when changed since it's static
+
+    AppsflyerSdk appsFlyerSdk;
+    Map<dynamic, dynamic> _deepLinkData;
+    Map<dynamic, dynamic> _gcd;
+
     
-    
+    Future<void> initialize() async {
+        // Platform.isIOS from dart:io
+        final packageName = Platform.isIOS ? 'your.ios.bundleIdentifier' : 'your.android.packageName'; 
+        // TODO: use flutter_dotenv(or similar) to keep key out of source control
+        final afDevKey = ''; // AppsFlyer > Configuration > App Settings > Dev key
+
+        final Map<String, dynamic> appsFlyerOptions = <String, dynamic>{
+            // use flutter_dotenv(or similar) to keep key out of source control
+            "afDevKey": afDevKey,
+            "isDebug": kDebugMode, // from flutter/foundation
+            "afAppId": packageName,
+        };
+
+        appsFlyerSdk = AppsflyerSdk(appsFlyerOptions)
+            ..setOneLinkCustomDomain([brandDomain]) // (optional)
+            ..onAppOpenAttribution(_handleAppOpenAttribution)
+            ..onInstallConversionData(_handleInstallConversionData)
+            ..onDeepLinking(_handleDeepLinking);
+    }
+
+    /// Unified Deep Linking
+    dynamic _handleDeepLinking(dynamic res) {
+        print('res: $res');
+        _deepLinkData = res;
+    }
+
+    /// Deferred Deep Linking
+    dynamic _handleInstallConversionData(dynamic res) {
+        print('res: $res');
+        _gcd = res;
+    }
+
+    /// Direct Deep Linking
+    dynamic _handleAppOpenAttribution(dynamic res) {
+        print('res: $res');
+        _deepLinkData = res;
+    }
+}
+```
+
+#### [PackageInfo](https://pub.dev/packages/package_info) Implementation
+
+```dart
+import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
+
+import 'package:appsflyer_sdk/appsflyer_sdk.dart';
+import 'package:package_info/package_info.dart';
+
+
+class AppsFlyerService {
+    static const String brandDomain = 'your.brand.subdomain'; // (optional) needs hot restart when changed since it's static
+
+    AppsflyerSdk appsFlyerSdk;
+    Map<dynamic, dynamic> _deepLinkData;
+    Map<dynamic, dynamic> _gcd;
+
+    Future<void> initialize() async {
+        final packageInfo = await PackageInfo.fromPlatform();
+        // TODO: use flutter_dotenv(or similar) to keep key out of source control
+        final afDevKey = ''; // AppsFlyer > Configuration > App Settings > Dev key
+
+        final Map<String, dynamic> appsFlyerOptions = <String, dynamic>{
+            "afDevKey": afDevKey, 
+            "isDebug": kDebugMode, // from flutter/foundation.dart
+            "afAppId": packageInfo.packageName, // `bundleIdentifier` on iOS, `getPackageName` on Android.
+        };
+
+        appsFlyerSdk = AppsflyerSdk(appsFlyerOptions)
+            ..setOneLinkCustomDomain([brandDomain]) // (optional)
+            ..onAppOpenAttribution(_handleAppOpenAttribution)
+            ..onInstallConversionData(_handleInstallConversionData)
+            ..onDeepLinking(_handleDeepLinking);
+    }
+
+    /// Unified Deep Linking
+    dynamic _handleDeepLinking(dynamic res) {
+        print('res: $res');
+        _deepLinkData = res;
+    }
+
+    /// Deferred Deep Linking
+    dynamic _handleInstallConversionData(dynamic res) {
+        print('res: $res');
+        _gcd = res;
+    }
+
+    /// Direct Deep Linking
+    dynamic _handleAppOpenAttribution(dynamic res) {
+        print('res: $res');
+        _deepLinkData = res;
+    }
+}
+```
+
+###  <a id="android-deeplink"> Android Deeplink Setup    
     
 #### URI Scheme
-In your app’s manifest add the following intent-filter to your relevant activity:
+#### AppsFlyer Setup
+Navigate to our website and set up a OneLink template. Under the "when app is installed" section, configure Android to launch the app using Universal links. 
+
+#### Flutter Setup
+In your app’s manifest (`android/app/src/main/AndroidManifest.xml`) add the intent-filter you received from the above AppsFlyer step to your relevant activity:
 ```xml 
-<intent-filter>
+ <intent-filter  android:autoVerify="true">
     <action android:name="android.intent.action.VIEW" />
     <category android:name="android.intent.category.DEFAULT" />
     <category android:name="android.intent.category.BROWSABLE" />
-    <data android:scheme="your unique scheme" />
+    <data android:scheme="https"
+        android:host="your unique scheme. ex. yourcompany.onelink.me" 
+        android:pathPrefix="your path prefix" />
 </intent-filter>
 ```
 
 **NOTE:** On Android, AppsFlyer SDK inspects activity intent object during onResume(). Because of that, for each activity that may be configured or launched with any [non-standard launch mode](https://developer.android.com/guide/topics/manifest/activity-element#lmode) the following code was added to `MainActivity.java` in `android/app/src/main/java/com...`
 
 ```java
-@Override
+    @Override
     public void onNewIntent(Intent intent) {
          super.onNewIntent(intent);
          setIntent(intent);
     }
+```
+
+```kotlin
+    // Insert Kotlin alternative here
 ```
 
 #### App Links
@@ -147,42 +306,13 @@ For more on App Links check out the guide [here](https://support.appsflyer.com/h
 
 ###  <a id="ios-deeplink"> iOS Deeplink Setup
 
-In order for the callback to be called:
-1. Import AppsFlyer SDK:
-    
-    a. For AppsFlyer SDK V6.2.0 and above add: ```#import #import "AppsflyerSdkPlugin.h"```
-   
-    b. For AppsFlyer SDK V6.1.0 and below add: ```#import <AppsFlyerLib/AppsFlyerLib.h>```
+#### AppsFlyer Setup
+Navigate to our website and set up a OneLink template. Under the "when app is installed" section, configure iOS to launch the app using Universal links.
 
-2. Set-up the following AppsFlyer API:
+Get your team id by opening [Apple Developer Account Resources](https://developer.apple.com/account/resources/certificates/list). The team id should be listed in the top-right, under your account name.
 
-#### URI Scheme
-
-```
-//   Reports app open from deep link from apps which do not support Universal Links (Twitter) and for iOS8 and below
-    - (BOOL)application:(UIApplication *)application openURL:(NSURL *)url sourceApplication:(NSString*)sourceApplication annotation:(id)annotation {
-        // AppsFlyer SDK version 6.2.0 and above 
-        [[AppsFlyerAttribution shared] handleOpenUrl:url sourceApplication:sourceApplication annotation:annotation];
-        
-        // AppsFlyer SDK version 6.1.0 and below 
-        [[AppsFlyerLib shared] handleOpenURL:url sourceApplication:sourceApplication withAnnotation:annotation];
-        return YES;
-    }
-
-    // Reports app open from deep link for iOS 10
-    - (BOOL)application:(UIApplication *)application openURL:(NSURL *)url options:(NSDictionary *) options {
-        
-        // AppsFlyer SDK version 6.2.0 and above 
-        [[AppsFlyerAttribution shared] handleOpenUrl:url options:options];
-        
-        // AppsFlyer SDK version 6.1.0 and below 
-        [[AppsFlyerLib shared] handleOpenUrl:url options:options];
-        return YES;
-    }
-```
-
-For more on URI-schemes check out the guide [here](https://support.appsflyer.com/hc/en-us/articles/208874366-OneLink-deep-linking-guide#setups-uri-scheme-for-ios-8-and-below)
-
+#### Flutter
+Everything is handled for you with the `GeneratedPluginRegistrant` files.
 
 ### Universal Links
     ```
