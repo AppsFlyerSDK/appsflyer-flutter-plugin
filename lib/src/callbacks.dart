@@ -4,8 +4,8 @@ import 'package:flutter/services.dart';
 
 const _channel = const MethodChannel('callbacks');
 
-typedef void MultiUseCallback(dynamic msg);
-typedef void CancelListening();
+typedef MultiUseCallback = void Function(dynamic msg);
+typedef CancelListening = void Function();
 
 Map<String, MultiUseCallback> _callbacksById = new Map();
 
