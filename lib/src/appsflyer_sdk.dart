@@ -47,7 +47,6 @@ class AppsflyerSdk {
 
     //validations
     final devKey = options.afDevKey;
-    assert(devKey != null);
     assert(devKey is String);
 
     validatedOptions[AppsflyerConstants.afDevKey] = devKey;
@@ -71,7 +70,6 @@ class AppsflyerSdk {
 
     if (Platform.isIOS) {
       final appID = options.appId;
-      assert(appID != null, "appleAppId is required for iOS apps");
       assert(appID is String);
       final exp = RegExp(r'^\d{8,11}$');
       assert(exp.hasMatch(appID));
