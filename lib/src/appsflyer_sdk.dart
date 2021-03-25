@@ -261,7 +261,7 @@ class AppsflyerSdk {
     // ignore: unnecessary_null_comparison
     assert(eventValues != null);
 
-    return await _methodChannel.invokeMethod(
+    return _methodChannel.invokeMethod(
         "logEvent", {'eventName': eventName, 'eventValues': eventValues});
   }
 
@@ -286,11 +286,11 @@ class AppsflyerSdk {
   }
 
   Future<String?> getHostName() async {
-    return await _methodChannel.invokeMethod("getHostName");
+    return _methodChannel.invokeMethod("getHostName");
   }
 
   Future<String?> getHostPrefix() async {
-    return await _methodChannel.invokeMethod("getHostPrefix");
+    return _methodChannel.invokeMethod("getHostPrefix");
   }
 
   void setAndroidIdData(String androidId) {
@@ -360,7 +360,7 @@ class AppsflyerSdk {
 
   ///Get AppsFlyer's unique device ID is created for every new install of an app.
   Future<String?> getAppsFlyerUID() async {
-    return await _methodChannel.invokeMethod("getAppsFlyerUID");
+    return _methodChannel.invokeMethod("getAppsFlyerUID");
   }
 
   ///Set to true if you want to delay sdk init until CUID is set
@@ -392,7 +392,7 @@ class AppsflyerSdk {
       String currency,
       String transactionId,
       Map<String, String> additionalParameters) async {
-    return await _methodChannel.invokeMethod("validateAndLogInAppIosPurchase", {
+    return _methodChannel.invokeMethod("validateAndLogInAppIosPurchase", {
       'productIdentifier': productIdentifier,
       'price': price,
       'currency': currency,

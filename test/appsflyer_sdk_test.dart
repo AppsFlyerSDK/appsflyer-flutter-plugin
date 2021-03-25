@@ -121,13 +121,13 @@ void main() {
     });
 
     test('check setIsUpdate call', () async {
-      instance.setIsUpdate(true);
+      instance.setIsUpdate(isUpdate: true);
 
       expect(selectedMethod, 'setIsUpdate');
     });
 
     test('check stop call', () async {
-      instance.stop(true);
+      instance.stop(isStopped: true);
 
       expect(selectedMethod, 'stop');
     });
@@ -218,13 +218,13 @@ void main() {
     });
 
     test('check setCollectIMEI call', () async {
-      instance.setCollectIMEI(true);
+      instance.setCollectIMEI(isCollect: true);
 
       expect(selectedMethod, 'setCollectIMEI');
     });
 
     test('check setCollectAndroidId call', () async {
-      instance.setCollectAndroidId(true);
+      instance.setCollectAndroidId(isCollect: true);
 
       expect(selectedMethod, 'setCollectAndroidId');
     });
@@ -248,7 +248,7 @@ void main() {
     });
 
     test('check waitForCustomerUserId call', () async {
-      instance.waitForCustomerUserId(false);
+      instance.waitForCustomerUserId(wait: false);
 
       expect(selectedMethod, 'waitForCustomerUserId');
     });
@@ -260,7 +260,7 @@ void main() {
     });
 
     test('check enableLocationCollection call', () async {
-      instance.enableLocationCollection(false);
+      instance.enableLocationCollection(flag: false);
 
       expect(selectedMethod, 'enableLocationCollection');
     });
