@@ -339,8 +339,14 @@ static BOOL _isSKADEnabled = false;
 
 -(void)onValidateFail:(NSError*)error{
     NSDictionary* errorObject = @{
-                @"error": error.description
-                };
+        @"error": @"error"
+    };
+    if(error != nil){
+        errorObject = @{
+            @"error": error.description
+        };
+    }
+    
     [_streamHandler sendResponseToFlutter:afValidatePurchase status:afFailure data:errorObject];
     [self performSelectorOnMainThread:@selector(handleCallback:) withObject:@[errorObject,afValidatePurchaseChannel] waitUntilDone:NO];
 }

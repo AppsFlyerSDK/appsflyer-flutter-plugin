@@ -27,6 +27,7 @@ class AppsflyerSdk {
           EventChannel(AppsflyerConstants.AF_EVENTS_CHANNEL);
 
       //check if the option variable is AFOptions type or map type
+      assert(options is AppsFlyerOptions || options is Map);
       if (options is AppsFlyerOptions) {
         _instance = AppsflyerSdk.private(methodChannel, eventChannel,
             afOptions: options);
