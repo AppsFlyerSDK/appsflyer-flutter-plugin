@@ -3,14 +3,14 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart';
 
-import 'package:appsflyer_sdk/appsflyer_sdk.dart';
-import 'package:appsflyer_sdk/src/platform_enums.dart';
+import '../appsflyer_sdk.dart';
+import 'platform_enums.dart';
 
 typedef ResponseCallback = void Function(AppsFlyerResponse response);
 typedef CancelListening = void Function();
 
 class Callbacks {
-  static const _channel = const MethodChannel('callbacks');
+  static const _channel = MethodChannel('callbacks');
   final Map<PlatformResponse, ResponseCallback> callbacksByResponse =
       <PlatformResponse, ResponseCallback>{};
 
@@ -18,7 +18,7 @@ class Callbacks {
     switch (call.method) {
       case 'callListener':
         try {
-          Map<String, dynamic> argumentMap = jsonDecode(call.arguments);
+          final Map<String, dynamic> argumentMap = jsonDecode(call.arguments);
           // Convert to enum or throw error
           final platformResponse = (argumentMap["id"] as String).toEnum();
 
@@ -29,7 +29,7 @@ class Callbacks {
             case PlatformResponse.validatePurchase:
             case PlatformResponse.generateInviteLinkSuccess:
               final String data = argumentMap["data"];
-              final AppsFlyerData response = AppsFlyerData(
+              final response = AppsFlyerData(
                 status: argumentMap['status'],
                 payload: jsonDecode(data),
               );

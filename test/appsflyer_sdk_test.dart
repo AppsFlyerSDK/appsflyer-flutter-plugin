@@ -6,26 +6,28 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late AppsflyerSdk instance;
-  String selectedMethod = "";
-  const MethodChannel methodChannel = MethodChannel('af-api');
-  const MethodChannel callbacksChannel = MethodChannel('callbacks');
-  const EventChannel eventChannel = EventChannel('af-events');
-  const MethodChannel eventMethodChannel = MethodChannel('af-events');
+  var selectedMethod = "";
+  const methodChannel = MethodChannel('af-api');
+  const callbacksChannel = MethodChannel('callbacks');
+  const eventChannel = EventChannel('af-events');
+  const eventMethodChannel = MethodChannel('af-events');
 
   setUp(() {
     //test map options way
     instance = AppsflyerSdk.private(methodChannel, eventChannel,
         mapOptions: {'afDevKey': 'sdfhj2342cx'});
 
-    methodChannel.setMockMethodCallHandler((MethodCall methodCall) async {
-      String method = methodCall.method;
+    methodChannel.setMockMethodCallHandler((methodCall) async {
+      final method = methodCall.method;
+
       if (method == 'initSdk') {
         selectedMethod = method;
       }
     });
 
-    eventMethodChannel.setMockMethodCallHandler((MethodCall methodCall) async {
-      String method = methodCall.method;
+    eventMethodChannel.setMockMethodCallHandler((methodCall) async {
+      final method = methodCall.method;
+
       if (method == 'listen') {
         selectedMethod = method;
       }
@@ -36,7 +38,7 @@ void main() {
     await instance.initSdk(
       registerConversionDataCallback: true,
       registerOnAppOpenAttributionCallback: true,
-      registerOnDeepLinkingCallback: false
+      registerOnDeepLinkingCallback: false,
     );
 
     expect('initSdk', selectedMethod);
@@ -49,14 +51,16 @@ void main() {
           mapOptions: {'afDevKey': 'sdfhj2342cx'});
 
       callbacksChannel.setMockMethodCallHandler((call) async {
-        String method = call.method;
+        final method = call.method;
+
         if (method == 'startListening') {
           selectedMethod = method;
         }
       });
 
-      methodChannel.setMockMethodCallHandler((MethodCall methodCall) async {
-        String method = methodCall.method;
+      methodChannel.setMockMethodCallHandler((methodCall) async {
+        final method = methodCall.method;
+
         switch (method) {
           case 'setOneLinkCustomDomain':
           case 'logCrossPromotionAndOpenStore':
@@ -117,13 +121,13 @@ void main() {
     });
 
     test('check setIsUpdate call', () async {
-      instance.setIsUpdate(true);
+      instance.setIsUpdate(isUpdate: true);
 
       expect(selectedMethod, 'setIsUpdate');
     });
 
     test('check stop call', () async {
-      instance.stop(true);
+      instance.stop(isStopped: true);
 
       expect(selectedMethod, 'stop');
     });
@@ -214,19 +218,19 @@ void main() {
     });
 
     test('check setCollectIMEI call', () async {
-      instance.setCollectIMEI(true);
+      instance.setCollectIMEI(isCollect: true);
 
       expect(selectedMethod, 'setCollectIMEI');
     });
 
     test('check setCollectAndroidId call', () async {
-      instance.setCollectAndroidId(true);
+      instance.setCollectAndroidId(isCollect: true);
 
       expect(selectedMethod, 'setCollectAndroidId');
     });
 
     test('check setUserEmailsWithCryptType call', () async {
-      instance.setUserEmails(["emails"], EmailCryptType.EmailCryptTypeNone);
+      instance.setUserEmails(["emails"], EmailCryptType.emailCryptTypeNone);
 
       expect(selectedMethod, 'setUserEmailsWithCryptType');
     });
@@ -244,7 +248,7 @@ void main() {
     });
 
     test('check waitForCustomerUserId call', () async {
-      instance.waitForCustomerUserId(false);
+      instance.waitForCustomerUserId(wait: false);
 
       expect(selectedMethod, 'waitForCustomerUserId');
     });
@@ -256,7 +260,7 @@ void main() {
     });
 
     test('check enableLocationCollection call', () async {
-      instance.enableLocationCollection(false);
+      instance.enableLocationCollection(flag: false);
 
       expect(selectedMethod, 'enableLocationCollection');
     });

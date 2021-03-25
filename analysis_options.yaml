@@ -1,0 +1,41 @@
+# import effective dart rules
+include: package:effective_dart/analysis_options.yaml
+analyzer:
+  exclude:
+    - lib/*generated*
+  errors:
+    missing_required_param: error
+    missing_return: error
+# https://dart-lang.github.io/linter/lints/
+linter:
+  rules:
+    public_member_api_docs: false
+    type_annotate_public_apis: false
+    prefer_relative_imports: true
+    avoid_function_literals_in_foreach_calls: false
+    avoid_relative_lib_imports: false
+    avoid_classes_with_only_static_members: false
+    avoid_catches_without_on_clauses: false
+    lines_longer_than_80_chars: false
+    one_member_abstracts: false
+    prefer_null_aware_operators: true
+    prefer_final_locals: true
+    prefer_final_fields: true
+    prefer_final_in_for_each: true
+    recursive_getters: true
+    sort_child_properties_last: true
+    unnecessary_await_in_return: true
+    unnecessary_const: true
+    unnecessary_getters_setters: true
+    unnecessary_overrides: true
+    unnecessary_string_interpolations: true
+    use_full_hex_values_for_flutter_colors: true
+    use_string_buffers: true
+    always_put_required_named_parameters_first: true
+    avoid_types_as_parameter_names: true
+    avoid_empty_else: true
+    avoid_slow_async_io: true
+    no_adjacent_strings_in_list: true
+    await_only_futures: true
+    use_setters_to_change_properties: false
+    directives_ordering: true
