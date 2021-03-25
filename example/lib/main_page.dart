@@ -14,17 +14,18 @@ class MainPage extends StatefulWidget {
 
 class MainPageState extends State<MainPage> {
   AppsflyerSdk _appsflyerSdk;
-  Map _deepLinkData;
-  Map _gcd;
+  Map<String, dynamic> _deepLinkData;
+  Map<String, dynamic> _gcd;
 
   // called on every foreground
   @override
   void initState() {
     super.initState();
     final AppsFlyerOptions options = AppsFlyerOptions(
-    afDevKey: DotEnv().env["DEV_KEY"],
-    appId: DotEnv().env["APP_ID"],
-    showDebug: true); 
+      afDevKey: DotEnv().env["DEV_KEY"],
+      appId: DotEnv().env["APP_ID"],
+      showDebug: true,
+    );
     _appsflyerSdk = AppsflyerSdk(options);
     _appsflyerSdk.onAppOpenAttribution((res) {
       print("res: " + res.toString());
@@ -38,7 +39,7 @@ class MainPageState extends State<MainPage> {
         _gcd = res;
       });
     });
-    _appsflyerSdk.onDeepLinking((res){
+    _appsflyerSdk.onDeepLinking((res) {
       print("res: " + res.toString());
       setState(() {
         _deepLinkData = res;
@@ -56,8 +57,9 @@ class MainPageState extends State<MainPage> {
               FutureBuilder<String>(
                   future: _appsflyerSdk.getSDKVersion(),
                   builder: (BuildContext context, AsyncSnapshot snapshot) {
-                    return Text(snapshot.hasData ? snapshot.data : "");
-                  }), 
+                    return Text(
+                        snapshot.hasData ? snapshot.data.toString() : "");
+                  }),
             ],
           ),
         ),
@@ -86,5 +88,4 @@ class MainPageState extends State<MainPage> {
   Future<bool> logEvent(String eventName, Map eventValues) {
     return _appsflyerSdk.logEvent(eventName, eventValues);
   }
-
 }
