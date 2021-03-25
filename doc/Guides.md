@@ -142,6 +142,21 @@ In your app’s manifest add the following intent-filter to your relevant activi
 ```
 
 #### App Links
+
+In your app’s manifest add the following intent-filter to your relevant activity:
+
+```xml 
+<intent-filter android:autoVerify="true">
+    <action android:name="android.intent.action.VIEW" />
+    <category android:name="android.intent.category.DEFAULT" />
+    <category android:name="android.intent.category.BROWSABLE" />
+    <data android:scheme="your unique scheme" />
+    <data android:scheme="https"
+        android:host="yourcompany.onelink.me" 
+        android:pathPrefix="your path prefix" />
+</intent-filter>
+```
+
 For more on App Links check out the guide [here](https://support.appsflyer.com/hc/en-us/articles/115005314223-Deep-Linking-Users-with-Android-App-Links#what-are-android-app-links).
 
 
@@ -199,10 +214,15 @@ For more on URI-schemes check out the guide [here](https://support.appsflyer.com
     
 
 More on Universal Links:
-
 Essentially, the Universal Links method links between an iOS mobile app and an associate website/domain, such as AppsFlyer’s OneLink domain (xxx.onelink.me). To do so, it is required to:
-1. Configure OneLink sub-domain and link to mobile app (by hosting the ‘apple-app-site-association’ file - AppsFlyer takes care of this part in the onelink setup on your dashboard)
-2. Configure the mobile app to register approved domains:
+
+1. Get your SHA256 fingerprint:
+
+    a. [Creating A Keystore](https://flutter.dev/docs/deployment/android#create-a-keystore) (you'll eventually need to do this to release on the Play Store)
+
+    b. [Generate Fingerprint](https://developers.google.com/android/guides/client-auth)
+2. Configure OneLink sub-domain and link to mobile app in the AppsFlyer onelink setup on your dashboard, add the fingerprint there (AppsFlyer takes care of hosting the ‘apple-app-site-association’ file)
+3. Configure the mobile app to register approved domains:
 
     ```xml
     <?xml version="1.0" encoding="UTF-8"?>
