@@ -226,8 +226,9 @@ class AppsflyerSdk {
       bool registerOnDeepLinkingCallback = false}) async {
     return Future.delayed(Duration(seconds: 0)).then((_) {
       if (registerConversionDataCallback) _registerConversionDataCallback();
-      if (registerOnAppOpenAttributionCallback)
+      if (registerOnAppOpenAttributionCallback) {
         _registerOnAppOpenAttributionCallback();
+      }
 
       if (registerConversionDataCallback ||
           registerOnAppOpenAttributionCallback) {
