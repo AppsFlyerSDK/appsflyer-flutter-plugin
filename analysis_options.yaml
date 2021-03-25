@@ -5,7 +5,6 @@ analyzer:
   errors:
     missing_required_param: error
     missing_return: error
-    todo: ignore
 # https://dart-lang.github.io/linter/lints/
 linter:
   rules:
