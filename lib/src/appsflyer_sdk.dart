@@ -273,14 +273,14 @@ class AppsflyerSdk {
   /// Opt-out of collection of IMEI.
   /// If the app does NOT contain Google Play Services, device IMEI is collected by the SDK.
   /// However, apps with Google play services should avoid IMEI collection as this is in violation of the Google Play policy.
-  void setCollectIMEI(bool isCollect) {
+  void setCollectIMEI({required bool isCollect}) {
     _methodChannel.invokeMethod("setCollectIMEI", {'isCollect': isCollect});
   }
 
   /// Opt-out of collection of Android ID.
   /// If the app does NOT contain Google Play Services, Android ID is collected by the SDK.
   /// However, apps with Google play services should avoid Android ID collection as this is in violation of the Google Play policy.
-  void setCollectAndroidId(bool isCollect) {
+  void setCollectAndroidId({required bool isCollect}) {
     _methodChannel
         .invokeMethod("setCollectAndroidId", {'isCollect': isCollect});
   }
@@ -321,18 +321,18 @@ class AppsflyerSdk {
     _methodChannel.invokeMethod("setCustomerUserId", {'id': id});
   }
 
-  void setIsUpdate(bool isUpdate) {
+  void setIsUpdate({required bool isUpdate}) {
     _methodChannel.invokeMethod("setIsUpdate", {'isUpdate': isUpdate});
   }
 
   /// Once this API is invoked, our SDK no longer communicates with our servers and stops functioning.
   /// In some extreme cases you might want to shut down all SDK activity due to legal and privacy compliance.
   /// This can be achieved with the stop API.
-  void stop(bool isStopped) {
+  void stop({required bool isStopped}) {
     _methodChannel.invokeMethod("stop", {'isStopped': isStopped});
   }
 
-  void enableLocationCollection(bool flag) {
+  void enableLocationCollection({required bool flag}) {
     _methodChannel.invokeMethod("enableLocationCollection", {'flag': flag});
   }
 
@@ -364,7 +364,7 @@ class AppsflyerSdk {
   }
 
   ///Set to true if you want to delay sdk init until CUID is set
-  void waitForCustomerUserId(bool wait) {
+  void waitForCustomerUserId({required bool wait}) {
     _methodChannel.invokeMethod("waitForCustomerUserId", {'wait': wait});
   }
 
@@ -402,7 +402,7 @@ class AppsflyerSdk {
   }
 
   /// set sandbox for iOS purchase validation
-  void useReceiptValidationSandbox(bool isSandboxEnabled) {
+  void useReceiptValidationSandbox({required bool isSandboxEnabled}) {
     _methodChannel.invokeMethod(
         "useReceiptValidationSandbox", isSandboxEnabled);
   }
@@ -548,16 +548,16 @@ class AppsflyerSdk {
     _methodChannel.invokeMethod("setOneLinkCustomDomain", brandDomains);
   }
 
-  void setPushNotification(bool isEnabled) {
+  void setPushNotification({required bool isEnabled}) {
     _methodChannel.invokeMethod("setPushNotification", isEnabled);
   }
 
-  void enableFacebookDeferredApplinks(bool isEnabled) {
+  void enableFacebookDeferredApplinks({required bool isEnabled}) {
     _methodChannel.invokeMethod("enableFacebookDeferredApplinks",
         {'isFacebookDeferredApplinksEnabled': isEnabled});
   }
 
-  void disableSKAdNetwork(bool isEnabled) {
+  void disableSKAdNetwork({required bool isEnabled}) {
     _methodChannel.invokeMethod("disableSKAdNetwork", isEnabled);
   }
 
