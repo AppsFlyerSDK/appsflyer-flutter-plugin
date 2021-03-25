@@ -20,11 +20,10 @@ class AppsflyerSdk {
   ///provided by the user
   factory AppsflyerSdk(options) {
     if (_instance == null) {
-      MethodChannel methodChannel =
+      final methodChannel =
           const MethodChannel(AppsflyerConstants.afMethodChannel);
 
-      EventChannel eventChannel =
-          EventChannel(AppsflyerConstants.afEventsChannel);
+      final eventChannel = EventChannel(AppsflyerConstants.afEventsChannel);
 
       //check if the option variable is AFOptions type or map type
       assert(options is AppsFlyerOptions || options is Map);
@@ -44,16 +43,16 @@ class AppsflyerSdk {
       {this.afOptions, this.mapOptions});
 
   Map<String, dynamic> _validateAFOptions(AppsFlyerOptions options) {
-    Map<String, dynamic> validatedOptions = {};
+    final validatedOptions = <String, dynamic>{};
 
     //validations
-    dynamic devKey = options.afDevKey;
+    final devKey = options.afDevKey;
     assert(devKey != null);
     assert(devKey is String);
 
     validatedOptions[AppsflyerConstants.afDevKey] = devKey;
 
-    dynamic appInviteOneLink = options.appInviteOneLink;
+    final appInviteOneLink = options.appInviteOneLink;
     if (appInviteOneLink != null) {
       assert(appInviteOneLink is String);
     }
@@ -71,10 +70,10 @@ class AppsflyerSdk {
     }
 
     if (Platform.isIOS) {
-      dynamic appID = options.appId;
+      final appID = options.appId;
       assert(appID != null, "appleAppId is required for iOS apps");
       assert(appID is String);
-      RegExp exp = RegExp(r'^\d{8,11}$');
+      final exp = RegExp(r'^\d{8,11}$');
       assert(exp.hasMatch(appID));
       validatedOptions[AppsflyerConstants.afAppId] = appID;
     }
@@ -99,15 +98,15 @@ class AppsflyerSdk {
   }
 
   Map<String, dynamic> _validateMapOptions(Map options) {
-    Map<String, dynamic> afOptions = {};
+    final afOptions = <String, dynamic>{};
     //validations
-    dynamic devKey = options[AppsflyerConstants.afDevKey];
+    final devKey = options[AppsflyerConstants.afDevKey];
     assert(devKey != null);
     assert(devKey is String);
 
     afOptions[AppsflyerConstants.afDevKey] = devKey;
 
-    dynamic appInviteOneLink = options[AppsflyerConstants.afInviteOneLink];
+    final appInviteOneLink = options[AppsflyerConstants.afInviteOneLink];
     if (appInviteOneLink != null) {
       assert(appInviteOneLink is String);
     }
@@ -127,7 +126,7 @@ class AppsflyerSdk {
     if (Platform.isIOS) {
       if (options[AppsflyerConstants.afTimeToWaitForAttUserAuthorization] !=
           null) {
-        dynamic timeToWaitForATTUserAuthorization =
+        final timeToWaitForATTUserAuthorization =
             options[AppsflyerConstants.afTimeToWaitForAttUserAuthorization];
         assert(timeToWaitForATTUserAuthorization is double);
 
@@ -135,10 +134,10 @@ class AppsflyerSdk {
             timeToWaitForATTUserAuthorization;
       }
 
-      dynamic appID = options[AppsflyerConstants.afAppId];
+      final appID = options[AppsflyerConstants.afAppId];
       assert(appID != null, "appleAppId is required for iOS apps");
       assert(appID is String);
-      RegExp exp = RegExp(r'^\d{8,11}$');
+      final exp = RegExp(r'^\d{8,11}$');
       assert(exp.hasMatch(appID));
       afOptions[AppsflyerConstants.afAppId] = appID;
     }
@@ -351,7 +350,7 @@ class AppsflyerSdk {
   ///Set the user emails and encrypt them.
   void setUserEmails(List<String> emails, [EmailCryptType? cryptType]) {
     if (cryptType != null) {
-      int cryptTypeInt = EmailCryptType.values.indexOf(cryptType);
+      final cryptTypeInt = EmailCryptType.values.indexOf(cryptType);
       _methodChannel.invokeMethod("setUserEmailsWithCryptType",
           {'emails': emails, 'cryptType': cryptTypeInt});
     } else {
@@ -416,8 +415,8 @@ class AppsflyerSdk {
 
   void _registerUDLListener() {
     _eventChannel.receiveBroadcastStream().listen((data) {
-      var decodedJSON = jsonDecode(data);
-      String? type = decodedJSON['type'];
+      final decodedJSON = jsonDecode(data as String);
+      final String? type = decodedJSON['type'];
       if (type == AppsflyerConstants.afOnDeepLink) {
         if (_afUDLStreamController != null &&
             !_afUDLStreamController!.isClosed) {
@@ -435,8 +434,8 @@ class AppsflyerSdk {
 
   void _registerGCDListener() {
     _eventChannel.receiveBroadcastStream().listen((data) {
-      var decodedJSON = jsonDecode(data);
-      String? type = decodedJSON['type'];
+      final decodedJSON = jsonDecode(data);
+      final String? type = decodedJSON['type'];
       switch (type) {
         case AppsflyerConstants.afGetConversionData:
           if (_afGCDStreamController != null &&
@@ -469,8 +468,8 @@ class AppsflyerSdk {
 
   void _registerPurchaseValidateListener() {
     _eventChannel.receiveBroadcastStream().listen((data) {
-      var decodedJSON = jsonDecode(data);
-      String? type = decodedJSON['type'];
+      final decodedJSON = jsonDecode(data);
+      final String? type = decodedJSON['type'];
       if (type == AppsflyerConstants.afValidatePurchase) {
         _afValidtaPurchaseController!.sink.add(decodedJSON);
       }
@@ -505,7 +504,7 @@ class AppsflyerSdk {
 
   Map<String, String?> _translateInviteLinkParamsToMap(
       AppsFlyerInviteLinkParams params) {
-    Map<String, String?> inviteLinkParamsMap = Map<String, String?>();
+    final inviteLinkParamsMap = <String, String?>{};
     inviteLinkParamsMap['referrerImageUrl'] = params.referreImageUrl;
     inviteLinkParamsMap['customerID'] = params.customerID;
     inviteLinkParamsMap['brandDomain'] = params.brandDomain;

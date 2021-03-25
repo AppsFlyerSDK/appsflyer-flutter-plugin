@@ -1,8 +1,5 @@
 include: package:effective_dart/analysis_options.yaml
 analyzer:
-  strong-mode:
-    implicit-casts: false
-    implicit-dynamic: true
   exclude:
     - lib/*generated*
   errors:

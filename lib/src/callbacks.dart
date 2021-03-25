@@ -13,16 +13,16 @@ Future<void> _methodCallHandler(MethodCall call) async {
   switch (call.method) {
     case 'callListener':
       try {
-        dynamic callMap = jsonDecode(call.arguments);
+        final callMap = jsonDecode(call.arguments);
         switch (callMap["id"]) {
           case "onAppOpenAttribution":
           case "onInstallConversionData":
           case "onDeepLinking":
           case "validatePurchase":
           case "generateInviteLinkSuccess":
-            String data = callMap["data"];
-            Map? decodedData = jsonDecode(data);
-            Map fullResponse = {
+            final String data = callMap["data"];
+            final Map<String, dynamic>? decodedData = jsonDecode(data);
+            final fullResponse = <String, dynamic>{
               "status": callMap['status'],
               "payload": decodedData
             };
