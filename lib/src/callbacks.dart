@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/services.dart';
 
-const _channel = const MethodChannel('callbacks');
+const _channel = MethodChannel('callbacks');
 
 typedef MultiUseCallback = void Function(dynamic msg);
 typedef CancelListening = void Function();
