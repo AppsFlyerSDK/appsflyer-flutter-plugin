@@ -1,56 +1,84 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/services.dart';
 
-const _channel = const MethodChannel('callbacks');
+import 'package:appsflyer_sdk/appsflyer_sdk.dart';
+import 'package:appsflyer_sdk/src/platform_enums.dart';
 
-typedef void MultiUseCallback(dynamic msg);
-typedef void CancelListening();
+typedef ResponseCallback = void Function(AppsFlyerResponse response);
+typedef CancelListening = void Function();
 
-Map<String, MultiUseCallback> _callbacksById = new Map();
+class Callbacks {
+  static const _channel = const MethodChannel('callbacks');
+  final Map<PlatformResponse, ResponseCallback> callbacksByResponse =
+      <PlatformResponse, ResponseCallback>{};
 
-Future<void> _methodCallHandler(MethodCall call) async {
-  switch (call.method) {
-    case 'callListener':
-      try {
-        dynamic callMap = jsonDecode(call.arguments);
-        switch (callMap["id"]) {
-          case "onAppOpenAttribution":
-          case "onInstallConversionData":
-          case "onDeepLinking":
-          case "validatePurchase":
-          case "generateInviteLinkSuccess":
-            String data = callMap["data"];
-            Map? decodedData = jsonDecode(data);
-            Map fullResponse = {
-              "status": callMap['status'],
-              "payload": decodedData
-            };
-            _callbacksById[callMap["id"]]!(fullResponse);
-            break;
-          default:
-            _callbacksById[callMap["id"]]!(callMap["data"]);
-            break;
+  Future<void> _methodCallHandler(MethodCall call) async {
+    switch (call.method) {
+      case 'callListener':
+        try {
+          Map<String, dynamic> argumentMap = jsonDecode(call.arguments);
+          // Convert to enum or throw error
+          final platformResponse = (argumentMap["id"] as String).toEnum();
+
+          switch (platformResponse) {
+            case PlatformResponse.onAppOpenAttribution:
+            case PlatformResponse.onInstallConversionData:
+            case PlatformResponse.onDeepLinking:
+            case PlatformResponse.validatePurchase:
+            case PlatformResponse.generateInviteLinkSuccess:
+              final String data = argumentMap["data"];
+              final AppsFlyerData response = AppsFlyerData(
+                status: argumentMap['status'],
+                payload: jsonDecode(data),
+              );
+
+              _handleCallback(
+                platformResponse: platformResponse,
+                response: response,
+              );
+              break;
+            default:
+              _handleCallback(
+                platformResponse: platformResponse,
+                response: AppsFlyerUnknown(argumentMap["data"]),
+              );
+              break;
+          }
+        } catch (e) {
+          print(e);
         }
-      } catch (e) {
-        print(e);
-      }
-      break;
-    default:
-      print('Ignoring invoke from native. This normally shouldn\'t happen.');
+        break;
+      default:
+        print("Ignoring invoke from native. This normally shouldn't happen.");
+    }
   }
-}
 
-Future<CancelListening> startListening(
-    MultiUseCallback callback, String callbackName) async {
-  _channel.setMethodCallHandler(_methodCallHandler);
+  void _handleCallback({
+    required PlatformResponse platformResponse,
+    required AppsFlyerResponse response,
+  }) {
+    if (callbacksByResponse.containsKey(platformResponse)) {
+      final methodCallback = callbacksByResponse[platformResponse]!;
 
-  _callbacksById[callbackName] = callback;
+      methodCallback(response);
+    }
+  }
 
-  await _channel.invokeMethod("startListening", callbackName);
+  Future<CancelListening> startListening<T>({
+    required ResponseCallback responseCallback,
+    required PlatformResponse platformResponse,
+  }) async {
+    _channel.setMethodCallHandler(_methodCallHandler);
 
-  return () {
-    _channel.invokeMethod("cancelListening", callbackName);
-    _callbacksById.remove(callbackName);
-  };
+    callbacksByResponse[platformResponse] = responseCallback;
+
+    await _channel.invokeMethod("startListening", platformResponse.asString());
+
+    return () {
+      _channel.invokeMethod("cancelListening", platformResponse.asString());
+      callbacksByResponse.remove(platformResponse);
+    };
+  }
 }

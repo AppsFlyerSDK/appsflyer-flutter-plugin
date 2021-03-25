@@ -1,5 +1,3 @@
-part of appsflyer_sdk;
-
 class AppsFlyerOptions {
   final String afDevKey;
   final bool showDebug;

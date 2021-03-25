@@ -1,14 +1,7 @@
-library appsflyer_sdk;
+// part of is discouraged: https://dart.dev/guides/libraries/create-library-packages#organizing-a-library-package
 
-import 'dart:io';
-import 'package:appsflyer_sdk/src/callbacks.dart';
-import 'package:flutter/services.dart';
-import 'dart:async';
-import 'dart:convert';
-import 'dart:core';
-import 'package:flutter/material.dart';
-
-part 'src/appsflyer_sdk.dart';
-part 'src/appsflyer_constants.dart';
-part 'src/appsflyer_options.dart';
-part 'src/appsflyer_invite_link_params.dart';
+export 'src/appsflyer_constants.dart';
+export 'src/appsflyer_invite_link_params.dart';
+export 'src/appsflyer_options.dart';
+export 'src/appsflyer_response.dart';
+export 'src/appsflyer_sdk.dart';

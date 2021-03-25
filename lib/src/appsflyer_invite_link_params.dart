@@ -1,5 +1,3 @@
-part of appsflyer_sdk;
-
 class AppsFlyerInviteLinkParams {
   final String? channel;
   final String? campaign;

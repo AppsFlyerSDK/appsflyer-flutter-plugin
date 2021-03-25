@@ -1,6 +1,18 @@
-part of appsflyer_sdk;
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+
+import 'appsflyer_constants.dart';
+import 'appsflyer_invite_link_params.dart';
+import 'appsflyer_options.dart';
+import 'callbacks.dart';
+import 'platform_enums.dart';
 
 class AppsflyerSdk {
+  static final Callbacks callbacks = Callbacks();
   // ignore: close_sinks
   StreamController? _afGCDStreamController;
   // ignore: close_sinks
@@ -90,7 +102,7 @@ class AppsflyerSdk {
       validatedOptions[AppsflyerConstants.AF_GCD] = false;
     }
 
-    if (_afUDLStreamController != null ) {
+    if (_afUDLStreamController != null) {
       validatedOptions[AppsflyerConstants.AF_UDL] = true;
     } else {
       validatedOptions[AppsflyerConstants.AF_UDL] = false;
@@ -157,7 +169,7 @@ class AppsflyerSdk {
       afOptions[AppsflyerConstants.AF_GCD] = false;
     }
 
-    if (_afUDLStreamController != null ) {
+    if (_afUDLStreamController != null) {
       afOptions[AppsflyerConstants.AF_UDL] = true;
     } else {
       afOptions[AppsflyerConstants.AF_UDL] = false;
@@ -176,7 +188,8 @@ class AppsflyerSdk {
   }
 
   Stream<Map>? get conversionDataStream {
-    return _afGCDStreamController?.stream.asBroadcastStream() as Stream<Map<dynamic, dynamic>>?;
+    return _afGCDStreamController?.stream.asBroadcastStream()
+        as Stream<Map<dynamic, dynamic>>?;
   }
 
   // Accessing AppsFlyer attribution, referred from deep linking
@@ -188,9 +201,9 @@ class AppsflyerSdk {
     }
   }
 
-
   Stream<Map>? get appOpenAttributionStream {
-    return _afOpenAttributionStreamController?.stream.asBroadcastStream() as Stream<Map<dynamic, dynamic>>?;
+    return _afOpenAttributionStreamController?.stream.asBroadcastStream()
+        as Stream<Map<dynamic, dynamic>>?;
   }
 
   // Unified deeplink: Accessing AppsFlyer deeplink attributes
@@ -204,12 +217,13 @@ class AppsflyerSdk {
   }
 
   Stream<Map>? get onDeepLinkingStream {
-    return _afUDLStreamController?.stream.asBroadcastStream() as Stream<Map<dynamic, dynamic>>?;
+    return _afUDLStreamController?.stream.asBroadcastStream()
+        as Stream<Map<dynamic, dynamic>>?;
   }
 
   ///Returns `Stream`. Accessing AppsFlyer purchase validation data
-   // ignore: unused_element
-   Stream<dynamic> _registerValidatePurchaseStream() {
+  // ignore: unused_element
+  Stream<dynamic> _registerValidatePurchaseStream() {
     if (_afValidtaPurchaseController == null) {
       _afValidtaPurchaseController = StreamController(onCancel: () {
         _afValidtaPurchaseController!.close();
@@ -226,7 +240,6 @@ class AppsflyerSdk {
       bool registerOnAppOpenAttributionCallback = false,
       bool registerOnDeepLinkingCallback = false}) async {
     return Future.delayed(Duration(seconds: 0)).then((_) {
-      
       if (registerConversionDataCallback) _registerConversionDataCallback();
       if (registerOnAppOpenAttributionCallback)
         _registerOnAppOpenAttributionCallback();
@@ -238,7 +251,7 @@ class AppsflyerSdk {
 
       if (registerOnDeepLinkingCallback) {
         _registerUDLCallback();
-      }      
+      }
 
       Map<String, dynamic>? validatedOptions;
       if (mapOptions != null) {
@@ -247,12 +260,14 @@ class AppsflyerSdk {
         validatedOptions = _validateAFOptions(afOptions!);
       }
 
-      return _methodChannel.invokeMethod("initSdk", validatedOptions);
+      final initSdk = PlatformMethod.initSdk.asString();
+      return _methodChannel.invokeMethod(initSdk, validatedOptions);
     });
   }
 
   Future<String?> getSDKVersion() async {
-    return _methodChannel.invokeMethod("getSDKVersion");
+    final getSDKVersion = PlatformMethod.getSDKVersion.asString();
+    return _methodChannel.invokeMethod(getSDKVersion);
   }
 
   ///These in-app events help you to log how loyal users discover your app, and attribute them to specific
@@ -276,66 +291,79 @@ class AppsflyerSdk {
   /// If the app does NOT contain Google Play Services, device IMEI is collected by the SDK.
   /// However, apps with Google play services should avoid IMEI collection as this is in violation of the Google Play policy.
   void setCollectIMEI(bool isCollect) {
-    _methodChannel.invokeMethod("setCollectIMEI", {'isCollect': isCollect});
+    final setCollectIMEI = PlatformMethod.setCollectIMEI.asString();
+    _methodChannel.invokeMethod(setCollectIMEI, {'isCollect': isCollect});
   }
 
   /// Opt-out of collection of Android ID.
   /// If the app does NOT contain Google Play Services, Android ID is collected by the SDK.
   /// However, apps with Google play services should avoid Android ID collection as this is in violation of the Google Play policy.
   void setCollectAndroidId(bool isCollect) {
-    _methodChannel
-        .invokeMethod("setCollectAndroidId", {'isCollect': isCollect});
+    final setCollectAndroidId = PlatformMethod.setCollectAndroidId.asString();
+    _methodChannel.invokeMethod(setCollectAndroidId, {'isCollect': isCollect});
   }
 
   Future<String?> getHostName() async {
-    return await _methodChannel.invokeMethod("getHostName");
+    final getHostName = PlatformMethod.getHostName.asString();
+    return await _methodChannel.invokeMethod(getHostName);
   }
 
   Future<String?> getHostPrefix() async {
-    return await _methodChannel.invokeMethod("getHostPrefix");
+    final getHostPrefix = PlatformMethod.getHostPrefix.asString();
+    return await _methodChannel.invokeMethod(getHostPrefix);
   }
 
   void setAndroidIdData(String androidId) {
-    _methodChannel.invokeMethod("setAndroidIdData", {'androidId': androidId});
+    final setAndroidIdData = PlatformMethod.setAndroidIdData.asString();
+    _methodChannel.invokeMethod(setAndroidIdData, {'androidId': androidId});
   }
 
   void setMinTimeBetweenSessions(int seconds) {
     assert(seconds >= 0, "the minimum timeout must be a positive number");
+    final setMinTimeBetweenSessions =
+        PlatformMethod.setMinTimeBetweenSessions.asString();
     _methodChannel
-        .invokeMethod("setMinTimeBetweenSessions", {'seconds': seconds});
+        .invokeMethod(setMinTimeBetweenSessions, {'seconds': seconds});
   }
 
   void setImeiData(String imei) {
-    _methodChannel.invokeMethod("setImeiData", {'imei': imei});
+    final setImeiData = PlatformMethod.setImeiData.asString();
+    _methodChannel.invokeMethod(setImeiData, {'imei': imei});
   }
 
   /// Setting user local currency code for in-app purchases.
   /// The currency code should be a 3 character ISO 4217 code. (default is USD).
   /// You can set the currency code for all events by calling the following method.
   void setCurrencyCode(String currencyCode) {
+    final setCurrencyCode = PlatformMethod.setCurrencyCode.asString();
     _methodChannel
-        .invokeMethod("setCurrencyCode", {'currencyCode': currencyCode});
+        .invokeMethod(setCurrencyCode, {'currencyCode': currencyCode});
   }
 
   /// Setting your own customer ID enables you to cross-reference your own unique ID with AppsFlyer’s unique ID and the other devices’ IDs.
   /// This ID is available in AppsFlyer CSV reports along with Postback APIs for cross-referencing with your internal IDs.
   void setCustomerUserId(String id) {
-    _methodChannel.invokeMethod("setCustomerUserId", {'id': id});
+    final setCustomerUserId = PlatformMethod.setCustomerUserId.asString();
+    _methodChannel.invokeMethod(setCustomerUserId, {'id': id});
   }
 
   void setIsUpdate(bool isUpdate) {
-    _methodChannel.invokeMethod("setIsUpdate", {'isUpdate': isUpdate});
+    final setIsUpdate = PlatformMethod.setIsUpdate.asString();
+    _methodChannel.invokeMethod(setIsUpdate, {'isUpdate': isUpdate});
   }
 
   /// Once this API is invoked, our SDK no longer communicates with our servers and stops functioning.
   /// In some extreme cases you might want to shut down all SDK activity due to legal and privacy compliance.
   /// This can be achieved with the stop API.
   void stop(bool isStopped) {
-    _methodChannel.invokeMethod("stop", {'isStopped': isStopped});
+    final stop = PlatformMethod.stop.asString();
+    _methodChannel.invokeMethod(stop, {'isStopped': isStopped});
   }
 
   void enableLocationCollection(bool flag) {
-    _methodChannel.invokeMethod("enableLocationCollection", {'flag': flag});
+    final enableLocationCollection =
+        PlatformMethod.enableLocationCollection.asString();
+    _methodChannel.invokeMethod(enableLocationCollection, {'flag': flag});
   }
 
   ///Please use updateServerUninstallToken instead
@@ -346,46 +374,55 @@ class AppsflyerSdk {
 
   ///Manually pass the Firebase / GCM Device Token for Uninstall measurement.
   void updateServerUninstallToken(String token) {
-    _methodChannel.invokeMethod("updateServerUninstallToken", {'token': token});
+    final updateServerUninstallToken =
+        PlatformMethod.updateServerUninstallToken.asString();
+    _methodChannel.invokeMethod(updateServerUninstallToken, {'token': token});
   }
 
   ///Set the user emails and encrypt them.
   void setUserEmails(List<String> emails, [EmailCryptType? cryptType]) {
     if (cryptType != null) {
       int cryptTypeInt = EmailCryptType.values.indexOf(cryptType);
-      _methodChannel.invokeMethod("setUserEmailsWithCryptType",
+      final setUserEmailsWithCryptType =
+          PlatformMethod.setUserEmailsWithCryptType.asString();
+      _methodChannel.invokeMethod(setUserEmailsWithCryptType,
           {'emails': emails, 'cryptType': cryptTypeInt});
     } else {
-      _methodChannel.invokeMethod("setUserEmails", {'emails': emails});
+      final setUserEmails = PlatformMethod.setUserEmails.asString();
+      _methodChannel.invokeMethod(setUserEmails, {'emails': emails});
     }
   }
 
   ///Get AppsFlyer's unique device ID is created for every new install of an app.
   Future<String?> getAppsFlyerUID() async {
-    return await _methodChannel.invokeMethod("getAppsFlyerUID");
+    final getAppsFlyerUID = PlatformMethod.getAppsFlyerUID.asString();
+    return await _methodChannel.invokeMethod(getAppsFlyerUID);
   }
 
   ///Set to true if you want to delay sdk init until CUID is set
   void waitForCustomerUserId(bool wait) {
-    _methodChannel.invokeMethod("waitForCustomerUserId", {'wait': wait});
+    final waitForCustomerUserId =
+        PlatformMethod.waitForCustomerUserId.asString();
+    _methodChannel.invokeMethod(waitForCustomerUserId, {'wait': wait});
   }
 
-  Future<dynamic> validateAndLogInAppAndroidPurchase (
+  Future<dynamic> validateAndLogInAppAndroidPurchase(
       String publicKey,
       String signature,
       String purchaseData,
       String price,
       String currency,
       Map<String, String>? additionalParameters) {
-
-      return _methodChannel.invokeMethod("validateAndLogInAppAndroidPurchase", {
-        'publicKey': publicKey,
-        'signature': signature,
-        'purchaseData': purchaseData,
-        'price': price,
-        'currency': currency,
-        'additionalParameters': additionalParameters
-      });
+    final validateAndLogInAppAndroidPurchase =
+        PlatformMethod.validateAndLogInAppAndroidPurchase.asString();
+    return _methodChannel.invokeMethod(validateAndLogInAppAndroidPurchase, {
+      'publicKey': publicKey,
+      'signature': signature,
+      'purchaseData': purchaseData,
+      'price': price,
+      'currency': currency,
+      'additionalParameters': additionalParameters
+    });
   }
 
   ///Accessing AppsFlyer purchase validation data
@@ -394,35 +431,38 @@ class AppsflyerSdk {
       String price,
       String currency,
       String transactionId,
-      Map<String, String> additionalParameters)async{
-      return await _methodChannel.invokeMethod("validateAndLogInAppIosPurchase", {
-        'productIdentifier': productIdentifier,
-        'price': price,
-        'currency': currency,
-        'transactionId': transactionId,
-        'additionalParameters': additionalParameters
-      });
+      Map<String, String> additionalParameters) async {
+    final validateAndLogInAppIosPurchase =
+        PlatformMethod.validateAndLogInAppIosPurchase.asString();
+    return await _methodChannel.invokeMethod(validateAndLogInAppIosPurchase, {
+      'productIdentifier': productIdentifier,
+      'price': price,
+      'currency': currency,
+      'transactionId': transactionId,
+      'additionalParameters': additionalParameters
+    });
   }
 
   /// set sandbox for iOS purchase validation
   void useReceiptValidationSandbox(bool isSandboxEnabled) {
-    _methodChannel.invokeMethod("useReceiptValidationSandbox", isSandboxEnabled);
+    _methodChannel.invokeMethod(
+        "useReceiptValidationSandbox", isSandboxEnabled);
   }
 
   /// Set additional data to be sent to AppsFlyer.
   void setAdditionalData(Map<String, dynamic>? customData) {
-    _methodChannel
-        .invokeMethod("setAdditionalData", {'customData': customData});
+    final setAdditionalData = PlatformMethod.setAdditionalData.asString();
+    _methodChannel.invokeMethod(setAdditionalData, {'customData': customData});
   }
 
   void _registerUDLListener() {
-    _eventChannel.receiveBroadcastStream().listen((data) { 
+    _eventChannel.receiveBroadcastStream().listen((data) {
       var decodedJSON = jsonDecode(data);
       String? type = decodedJSON['type'];
-      if(type == AppsflyerConstants.AF_ON_DEEP_LINK){
+      if (type == AppsflyerConstants.AF_ON_DEEP_LINK) {
         if (_afUDLStreamController != null &&
-              !_afUDLStreamController!.isClosed) {
-            _afUDLStreamController!.sink.add(decodedJSON);
+            !_afUDLStreamController!.isClosed) {
+          _afUDLStreamController!.sink.add(decodedJSON);
         } else {
           if ((afOptions != null && afOptions!.showDebug) ||
               (mapOptions != null &&
@@ -481,25 +521,35 @@ class AppsflyerSdk {
   ///The sharing filter blocks the sharing of S2S events via postbacks/API with integrated partners and other third-party integrations.
   ///Use the filter to fulfill regulatory requirements like GDPR and CCPA, to comply with user opt-out mechanisms, and for other business logic reasons.
   void setSharingFilter(List<String> filters) {
-    _methodChannel.invokeMethod("setSharingFilter", filters);
+    final setSharingFilter = PlatformMethod.setSharingFilter.asString();
+    _methodChannel.invokeMethod(setSharingFilter, filters);
   }
 
   void setSharingFilterForAllPartners() {
-    _methodChannel.invokeMethod("setSharingFilterForAllPartners");
+    final setSharingFilterForAllPartners =
+        PlatformMethod.setSharingFilterForAllPartners.asString();
+    _methodChannel.invokeMethod(setSharingFilterForAllPartners);
   }
 
   void generateInviteLink(
     AppsFlyerInviteLinkParams? parameters,
-    Function success,
-    Function error,
+    ResponseCallback success,
+    ResponseCallback error,
   ) {
     Map<String, String?>? paramsMap;
     if (parameters != null) {
       paramsMap = _translateInviteLinkParamsToMap(parameters);
     }
-    startListening(success as void Function(dynamic), "generateInviteLinkSuccess");
-    startListening(error as void Function(dynamic), "generateInviteLinkFailure");
-    _methodChannel.invokeMethod("generateInviteLink", paramsMap);
+    callbacks.startListening(
+      responseCallback: success,
+      platformResponse: PlatformResponse.generateInviteLinkSuccess,
+    );
+    callbacks.startListening(
+      responseCallback: error,
+      platformResponse: PlatformResponse.generateInviteLinkFailure,
+    );
+    final generateInviteLink = PlatformMethod.generateInviteLink.asString();
+    _methodChannel.invokeMethod(generateInviteLink, paramsMap);
   }
 
   Map<String, String?> _translateInviteLinkParamsToMap(
@@ -519,9 +569,13 @@ class AppsflyerSdk {
   ///Set the OneLink ID that should be used for User-Invite-API.
   ///The link that is generated for the user invite will use this OneLink ID as the base link ID
   Future<void> setAppInviteOneLinkID(
-      String oneLinkID, Function callback) async {
-    startListening(callback as void Function(dynamic), "setAppInviteOneLinkIDCallback");
-    await _methodChannel.invokeMethod("setAppInviteOneLinkID", {
+      String oneLinkID, ResponseCallback callback) async {
+    callbacks.startListening(
+        responseCallback: callback,
+        platformResponse: PlatformResponse.setAppInviteOneLinkIDCallback);
+    final setAppInviteOneLinkID =
+        PlatformMethod.setAppInviteOneLinkID.asString();
+    await _methodChannel.invokeMethod(setAppInviteOneLinkID, {
       'oneLinkID': oneLinkID,
     });
   }
@@ -529,14 +583,18 @@ class AppsflyerSdk {
   ///To attribute an impression use the following API call.
   ///Make sure to use the promoted App ID as it appears within the AppsFlyer dashboard.
   void logCrossPromotionImpression(String appId, String campaign, Map? data) {
-    _methodChannel.invokeMethod("logCrossPromotionImpression",
+    final logCrossPromotionImpression =
+        PlatformMethod.logCrossPromotionImpression.asString();
+    _methodChannel.invokeMethod(logCrossPromotionImpression,
         {'appId': appId, 'campaign': campaign, 'data': data});
   }
 
   ///Use the following API to attribute the click and launch the app store's app page.
   void logCrossPromotionAndOpenStore(
       String appId, String campaign, Map? params) {
-    _methodChannel.invokeMethod("logCrossPromotionAndOpenStore", {
+    final logCrossPromotionAndOpenStore =
+        PlatformMethod.logCrossPromotionAndOpenStore.asString();
+    _methodChannel.invokeMethod(logCrossPromotionAndOpenStore, {
       'appId': appId,
       'campaign': campaign,
       'params': params,
@@ -544,34 +602,53 @@ class AppsflyerSdk {
   }
 
   void setOneLinkCustomDomain(List<String> brandDomains) {
-    _methodChannel.invokeMethod("setOneLinkCustomDomain", brandDomains);
+    final setOneLinkCustomDomain =
+        PlatformMethod.setOneLinkCustomDomain.asString();
+    _methodChannel.invokeMethod(setOneLinkCustomDomain, brandDomains);
   }
 
   void setPushNotification(bool isEnabled) {
-    _methodChannel.invokeMethod("setPushNotification", isEnabled);
+    final setPushNotification = PlatformMethod.setPushNotification.asString();
+    _methodChannel.invokeMethod(setPushNotification, isEnabled);
   }
 
   void enableFacebookDeferredApplinks(bool isEnabled) {
-    _methodChannel.invokeMethod("enableFacebookDeferredApplinks", { 'isFacebookDeferredApplinksEnabled': isEnabled });
+    final enableFacebookDeferredApplinks =
+        PlatformMethod.enableFacebookDeferredApplinks.asString();
+    _methodChannel.invokeMethod(enableFacebookDeferredApplinks,
+        {'isFacebookDeferredApplinksEnabled': isEnabled});
   }
 
- void disableSKAdNetwork(bool isEnabled) {
-    _methodChannel.invokeMethod("disableSKAdNetwork", isEnabled);
+  void disableSKAdNetwork(bool isEnabled) {
+    final disableSKAdNetwork = PlatformMethod.disableSKAdNetwork.asString();
+    _methodChannel.invokeMethod(disableSKAdNetwork, isEnabled);
   }
 
-  void onInstallConversionData(Function callback) async {
-    startListening(callback as void Function(dynamic), "onInstallConversionData");
+  void onInstallConversionData(ResponseCallback callback) async {
+    callbacks.startListening(
+      responseCallback: callback,
+      platformResponse: PlatformResponse.onInstallConversionData,
+    );
   }
 
-  void onAppOpenAttribution(Function callback) async {
-    startListening(callback as void Function(dynamic), "onAppOpenAttribution");
+  void onAppOpenAttribution(ResponseCallback callback) async {
+    callbacks.startListening(
+      responseCallback: callback,
+      platformResponse: PlatformResponse.onAppOpenAttribution,
+    );
   }
 
-  void onDeepLinking(Function callback) async {
-    startListening(callback as void Function(dynamic), "onDeepLinking");
+  void onDeepLinking(ResponseCallback callback) async {
+    callbacks.startListening(
+      responseCallback: callback,
+      platformResponse: PlatformResponse.onDeepLinking,
+    );
   }
 
-  void onPurchaseValidation(Function callback) async {
-    startListening(callback as void Function(dynamic), "validatePurchase");
+  void onPurchaseValidation(ResponseCallback callback) async {
+    callbacks.startListening(
+      responseCallback: callback,
+      platformResponse: PlatformResponse.validatePurchase,
+    );
   }
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -14,34 +15,49 @@ class MainPage extends StatefulWidget {
 
 class MainPageState extends State<MainPage> {
   AppsflyerSdk _appsflyerSdk;
-  Map _deepLinkData;
-  Map _gcd;
+  Map<String, dynamic> _deepLinkData;
+  Map<String, dynamic> _gcd;
 
   // called on every foreground
   @override
   void initState() {
     super.initState();
+    final dotEnv = DotEnv();
     final AppsFlyerOptions options = AppsFlyerOptions(
-    afDevKey: DotEnv().env["DEV_KEY"],
-    appId: DotEnv().env["APP_ID"],
-    showDebug: true); 
-    _appsflyerSdk = AppsflyerSdk(options);
-    _appsflyerSdk.onAppOpenAttribution((res) {
-      print("res: " + res.toString());
-      setState(() {
-        _deepLinkData = res;
+      afDevKey: dotEnv.env["DEV_KEY"],
+      appId: dotEnv.env["APP_ID"],
+      showDebug: kDebugMode,
+    );
+
+    _appsflyerSdk = AppsflyerSdk(options)
+      ..onAppOpenAttribution(_handleAppOpenAttribution)
+      ..onInstallConversionData(_handleInstallConversionData)
+      ..onDeepLinking(_handleDeepLinking);
+  }
+
+  void _handleDeepLinking(AppsFlyerResponse response) {
+    print('res: $response');
+    setState(() {
+      _deepLinkData = response.then((data) {
+        return data;
       });
     });
-    _appsflyerSdk.onInstallConversionData((res) {
-      print("res: " + res.toString());
-      setState(() {
-        _gcd = res;
+  }
+
+  void _handleInstallConversionData(AppsFlyerResponse response) {
+    print('res: $response');
+    setState(() {
+      _gcd = response.then((data) {
+        return data;
       });
     });
-    _appsflyerSdk.onDeepLinking((res){
-      print("res: " + res.toString());
-      setState(() {
-        _deepLinkData = res;
+  }
+
+  void _handleAppOpenAttribution(AppsFlyerResponse response) {
+    print('res: $response');
+    setState(() {
+      _deepLinkData = response.then((data) {
+        return data;
       });
     });
   }
@@ -54,18 +70,20 @@ class MainPageState extends State<MainPage> {
             children: <Widget>[
               Text('AppsFlyer SDK example app'),
               FutureBuilder<String>(
-                  future: _appsflyerSdk.getSDKVersion(),
-                  builder: (BuildContext context, AsyncSnapshot snapshot) {
-                    return Text(snapshot.hasData ? snapshot.data : "");
-                  }), 
+                future: _appsflyerSdk.getSDKVersion(),
+                builder: (BuildContext context, AsyncSnapshot snapshot) {
+                  return Text(snapshot.hasData ? snapshot.data : "");
+                },
+              ),
             ],
           ),
         ),
         body: FutureBuilder<dynamic>(
             future: _appsflyerSdk.initSdk(
-                registerConversionDataCallback: true,
-                registerOnAppOpenAttributionCallback: true,
-                registerOnDeepLinkingCallback: true),
+              registerConversionDataCallback: true,
+              registerOnAppOpenAttributionCallback: true,
+              registerOnDeepLinkingCallback: true,
+            ),
             builder: (BuildContext context, AsyncSnapshot snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return Center(child: CircularProgressIndicator());
@@ -83,8 +101,7 @@ class MainPageState extends State<MainPage> {
             }));
   }
 
-  Future<bool> logEvent(String eventName, Map eventValues) {
+  Future<bool> logEvent(String eventName, Map<String, dynamic> eventValues) {
     return _appsflyerSdk.logEvent(eventName, eventValues);
   }
-
 }
