@@ -7,7 +7,7 @@ const _channel = MethodChannel('callbacks');
 typedef MultiUseCallback = void Function(dynamic msg);
 typedef CancelListening = void Function();
 
-Map<String, MultiUseCallback> _callbacksById = new Map();
+Map<String, MultiUseCallback> _callbacksById = {};
 
 Future<void> _methodCallHandler(MethodCall call) async {
   switch (call.method) {
