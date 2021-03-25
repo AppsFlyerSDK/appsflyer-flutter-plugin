@@ -6,26 +6,28 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late AppsflyerSdk instance;
-  String selectedMethod = "";
-  const MethodChannel methodChannel = MethodChannel('af-api');
-  const MethodChannel callbacksChannel = MethodChannel('callbacks');
-  const EventChannel eventChannel = EventChannel('af-events');
-  const MethodChannel eventMethodChannel = MethodChannel('af-events');
+  var selectedMethod = "";
+  const methodChannel = MethodChannel('af-api');
+  const callbacksChannel = MethodChannel('callbacks');
+  const eventChannel = EventChannel('af-events');
+  const eventMethodChannel = MethodChannel('af-events');
 
   setUp(() {
     //test map options way
     instance = AppsflyerSdk.private(methodChannel, eventChannel,
         mapOptions: {'afDevKey': 'sdfhj2342cx'});
 
-    methodChannel.setMockMethodCallHandler((MethodCall methodCall) async {
-      String method = methodCall.method;
+    methodChannel.setMockMethodCallHandler((methodCall) async {
+      final method = methodCall.method;
+
       if (method == 'initSdk') {
         selectedMethod = method;
       }
     });
 
-    eventMethodChannel.setMockMethodCallHandler((MethodCall methodCall) async {
-      String method = methodCall.method;
+    eventMethodChannel.setMockMethodCallHandler((methodCall) async {
+      final method = methodCall.method;
+
       if (method == 'listen') {
         selectedMethod = method;
       }
@@ -36,7 +38,7 @@ void main() {
     await instance.initSdk(
       registerConversionDataCallback: true,
       registerOnAppOpenAttributionCallback: true,
-      registerOnDeepLinkingCallback: false
+      registerOnDeepLinkingCallback: false,
     );
 
     expect('initSdk', selectedMethod);
@@ -49,14 +51,16 @@ void main() {
           mapOptions: {'afDevKey': 'sdfhj2342cx'});
 
       callbacksChannel.setMockMethodCallHandler((call) async {
-        String method = call.method;
+        final method = call.method;
+
         if (method == 'startListening') {
           selectedMethod = method;
         }
       });
 
-      methodChannel.setMockMethodCallHandler((MethodCall methodCall) async {
-        String method = methodCall.method;
+      methodChannel.setMockMethodCallHandler((methodCall) async {
+        final method = methodCall.method;
+
         switch (method) {
           case 'setOneLinkCustomDomain':
           case 'logCrossPromotionAndOpenStore':
@@ -226,7 +230,7 @@ void main() {
     });
 
     test('check setUserEmailsWithCryptType call', () async {
-      instance.setUserEmails(["emails"], EmailCryptType.EmailCryptTypeNone);
+      instance.setUserEmails(["emails"], EmailCryptType.emailCryptTypeNone);
 
       expect(selectedMethod, 'setUserEmailsWithCryptType');
     });

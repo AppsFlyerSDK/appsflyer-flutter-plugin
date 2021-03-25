@@ -1,33 +1,33 @@
 part of appsflyer_sdk;
 
 enum EmailCryptType {
-  EmailCryptTypeNone,
-  EmailCryptTypeSHA1,
-  EmailCryptTypeMD5,
-  EmailCryptTypeSHA256
+  emailCryptTypeNone,
+  emailCryptTypeSHA1,
+  emailCryptTypeMD5,
+  emailCryptTypeSHA256
 }
 
 class AppsflyerConstants {
-  static const String AF_DEV_KEY = "afDevKey";
-  static const String AF_APP_Id = "afAppId";
-  static const String AF_IS_DEBUG = "isDebug";
-  static const String AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION =
+  static const String afDevKey = "afDevKey";
+  static const String afAppId = "afAppId";
+  static const String afIsDebug = "isDebug";
+  static const String afTimeToWaitForAttUserAuthorization =
       "timeToWaitForATTUserAuthorization";
-  static const String AF_GCD = "GCD";
-  static const String AF_UDL = "UDL";
-  static const String AF_SUCCESS = "success";
-  static const String AF_FAILURE = "failure";
-  static const String AF_GET_CONVERSION_DATA = "onInstallConversionDataLoaded";
-  static const String AF_ON_APP_OPEN_ATTRIBUTION = "onAppOpenAttribution";
-  static const String AF_ON_DEEP_LINK = "onDeepLinking";
+  static const String afGCD = "GCD";
+  static const String afUDL = "UDL";
+  static const String afSuccess = "success";
+  static const String afFailure = "failure";
+  static const String afGetConversionData = "onInstallConversionDataLoaded";
+  static const String afOnAppOpenAttribution = "onAppOpenAttribution";
+  static const String afOnDeepLink = "onDeepLinking";
 
-  static const String AF_EVENTS_CHANNEL = "af-events";
-  static const String AF_METHOD_CHANNEL = "af-api";
+  static const String afEventsChannel = "af-events";
+  static const String afMethodChannel = "af-api";
 
-  static const String AF_VALIDATE_PURCHASE = "validatePurchase";
-  static const String APP_INVITE_ONE_LINK = "appInviteOneLink";
+  static const String afValidatePurchase = "validatePurchase";
+  static const String afInviteOneLink = "appInviteOneLink";
 
-  static const String DISABLE_COLLECT_ASA = "disableCollectASA";
-  static const String DISABLE_ADVERTISING_IDENTIFIER =
+  static const String disableCollectASA = "disableCollectASA";
+  static const String disableAdvertisingIdentifier =
       "disableAdvertisingIdentifier";
 }

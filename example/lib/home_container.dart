@@ -5,9 +5,9 @@ import 'text_border.dart';
 import 'utils.dart';
 
 class HomeContainer extends StatefulWidget {
-  final Map onData;
-  final Future<bool> Function(String, Map) logEvent;
-  Object deepLinkData;
+  final Map<String, dynamic> onData;
+  final Future<bool> Function(String, Map<String, dynamic>) logEvent;
+  final Object deepLinkData;
 
   HomeContainer({this.onData, this.deepLinkData, this.logEvent});
 
@@ -17,14 +17,30 @@ class HomeContainer extends StatefulWidget {
 
 class _HomeContainerState extends State<HomeContainer> {
   final String eventName = "purchase";
-
-  final Map eventValues = {
+  final Map<String, String> eventValues = {
     "af_content_id": "id123",
     "af_currency": "USD",
     "af_revenue": "20"
   };
 
   String _logEventResponse = "No event have been sent";
+  TextEditingController textEditingController;
+
+  @override
+  void initState() {
+    super.initState();
+    final text = widget.deepLinkData != null
+        ? Utils.formatJson(widget.deepLinkData)
+        : "No Attribution data";
+
+    textEditingController = TextEditingController(text: text);
+  }
+
+  @override
+  void dispose() {
+    textEditingController?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,10 +68,7 @@ class _HomeContainerState extends State<HomeContainer> {
                 padding: EdgeInsets.only(top: 12.0),
               ),
               TextBorder(
-                controller: TextEditingController(
-                     text: widget.deepLinkData != null ? 
-                            Utils.formatJson(widget.deepLinkData) : 
-                            "No Attribution data"),
+                controller: textEditingController,
                 labelText: "Attribution Data:",
               ),
               Padding(
