@@ -56,12 +56,23 @@ extension PlatformResponseExtension on PlatformResponse {
 }
 
 extension MethodCallIdExtension on String {
-  PlatformResponse toEnum() {
+  PlatformResponse toPlatformResponse() {
     // Throw if we don't find an enum to match on
-    return PlatformResponse.values.firstWhere(_matchesEnum(this));
+    return PlatformResponse.values.firstWhere(_matchesPlatform(this));
   }
 
-  bool Function(PlatformResponse) _matchesEnum(String current) {
+  PlatformMethod toPlatformMethod() {
+    // Throw if we don't find an enum to match on
+    return PlatformMethod.values.firstWhere(_matchesMethod(this));
+  }
+
+  bool Function(PlatformResponse) _matchesPlatform(String current) {
+    return (e) {
+      return describeEnum(e) == current;
+    };
+  }
+
+  bool Function(PlatformMethod) _matchesMethod(String current) {
     return (e) {
       return describeEnum(e) == current;
     };

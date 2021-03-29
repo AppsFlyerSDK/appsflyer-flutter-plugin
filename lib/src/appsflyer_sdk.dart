@@ -13,113 +13,80 @@ import 'platform_enums.dart';
 
 class AppsflyerSdk {
   static final Callbacks callbacks = Callbacks();
-  // ignore: close_sinks
-  StreamController? _afGCDStreamController;
-  // ignore: close_sinks
-  StreamController? _afUDLStreamController;
-  // ignore: close_sinks
-  StreamController? _afOpenAttributionStreamController;
-  // ignore: close_sinks
-  StreamController? _afValidtaPurchaseController;
-  EventChannel _eventChannel;
   static AppsflyerSdk? _instance;
   final MethodChannel _methodChannel;
+  final AppsFlyerOptions? afOptions;
 
-  AppsFlyerOptions? afOptions;
-  Map? mapOptions;
+  StreamController? _afGCDStreamController;
+  StreamController? _afUDLStreamController;
+  StreamController? _afOpenAttributionStreamController;
+  StreamController? _afValidtaPurchaseController;
+  EventChannel _eventChannel;
+
+  @mustCallSuper
+  void dispose() {
+    [
+      _afGCDStreamController,
+      _afUDLStreamController,
+      _afOpenAttributionStreamController,
+      _afValidtaPurchaseController
+    ].forEach((controller) => controller?.close());
+  }
 
   ///Returns the [AppsflyerSdk] instance, initialized with a custom options
   ///provided by the user
-  factory AppsflyerSdk(options) {
+  factory AppsflyerSdk(AppsFlyerOptions options) {
     if (_instance == null) {
-      final methodChannel =
-          const MethodChannel(AppsflyerConstants.afMethodChannel);
+      const eventChannel = EventChannel(AppsflyerConstants.afEventsChannel);
+      const methodChannel = MethodChannel(AppsflyerConstants.afMethodChannel);
 
-      final eventChannel = EventChannel(AppsflyerConstants.afEventsChannel);
-
-      //check if the option variable is AFOptions type or map type
-      assert(options is AppsFlyerOptions || options is Map);
-      if (options is AppsFlyerOptions) {
-        _instance = AppsflyerSdk.private(methodChannel, eventChannel,
-            afOptions: options);
-      } else if (options is Map) {
-        _instance = AppsflyerSdk.private(methodChannel, eventChannel,
-            mapOptions: options);
-      }
+      _instance = AppsflyerSdk._(
+        methodChannel,
+        eventChannel,
+        afOptions: options,
+      );
     }
+
     return _instance!;
   }
 
-  @visibleForTesting
-  AppsflyerSdk.private(this._methodChannel, this._eventChannel,
-      {this.afOptions, this.mapOptions});
+  factory AppsflyerSdk.fromMap(Map<String, dynamic> options) {
+    if (_instance == null) {
+      const eventChannel = EventChannel(AppsflyerConstants.afEventsChannel);
+      const methodChannel = MethodChannel(AppsflyerConstants.afMethodChannel);
 
-  Map<String, dynamic> _validateAFOptions(AppsFlyerOptions options) {
-    final validatedOptions = <String, dynamic>{};
-
-    //validations
-    final devKey = options.afDevKey;
-    assert(devKey is String);
-
-    validatedOptions[AppsflyerConstants.afDevKey] = devKey;
-
-    final appInviteOneLink = options.appInviteOneLink;
-    if (appInviteOneLink != null) {
-      assert(appInviteOneLink is String);
+      _instance = AppsflyerSdk._(
+        methodChannel,
+        eventChannel,
+        afOptions: _toAFOptions(options),
+      );
     }
 
-    validatedOptions[AppsflyerConstants.afInviteOneLink] = appInviteOneLink;
-
-    if (options.disableCollectASA != null) {
-      validatedOptions[AppsflyerConstants.disableCollectASA] =
-          options.disableCollectASA;
-    }
-
-    if (options.disableAdvertisingIdentifier != null) {
-      validatedOptions[AppsflyerConstants.disableAdvertisingIdentifier] =
-          options.disableAdvertisingIdentifier;
-    }
-
-    if (Platform.isIOS) {
-      final appID = options.appId;
-      assert(appID is String);
-      final exp = RegExp(r'^\d{8,11}$');
-      assert(exp.hasMatch(appID));
-      validatedOptions[AppsflyerConstants.afAppId] = appID;
-    }
-
-    validatedOptions[AppsflyerConstants.afIsDebug] =
-        // ignore: unnecessary_null_comparison
-        (options.showDebug != null) ? options.showDebug : false;
-
-    if (_afGCDStreamController != null ||
-        _afOpenAttributionStreamController != null) {
-      validatedOptions[AppsflyerConstants.afGCD] = true;
-    } else {
-      validatedOptions[AppsflyerConstants.afGCD] = false;
-    }
-
-    if (_afUDLStreamController != null) {
-      validatedOptions[AppsflyerConstants.afUDL] = true;
-    } else {
-      validatedOptions[AppsflyerConstants.afUDL] = false;
-    }
-    return validatedOptions;
+    return _instance!;
   }
 
-  Map<String, dynamic> _validateMapOptions(Map options) {
+  AppsflyerSdk._(
+    this._methodChannel,
+    this._eventChannel, {
+    this.afOptions,
+  });
+
+  @visibleForTesting
+  AppsflyerSdk.private(
+    this._methodChannel,
+    this._eventChannel,
+    Map<String, dynamic> mapOptions,
+  ) : afOptions = AppsflyerSdk.fromMap(mapOptions).afOptions;
+
+  static AppsFlyerOptions _toAFOptions(Map<String, dynamic> options) {
     final afOptions = <String, dynamic>{};
     //validations
-    final devKey = options[AppsflyerConstants.afDevKey];
-    assert(devKey != null);
-    assert(devKey is String);
+    final String devKey = options[AppsflyerConstants.afDevKey];
 
     afOptions[AppsflyerConstants.afDevKey] = devKey;
 
-    final appInviteOneLink = options[AppsflyerConstants.afInviteOneLink];
-    if (appInviteOneLink != null) {
-      assert(appInviteOneLink is String);
-    }
+    final String? appInviteOneLink =
+        options[AppsflyerConstants.afInviteOneLink];
 
     afOptions[AppsflyerConstants.afInviteOneLink] = appInviteOneLink;
 
@@ -136,17 +103,14 @@ class AppsflyerSdk {
     if (Platform.isIOS) {
       if (options[AppsflyerConstants.afTimeToWaitForAttUserAuthorization] !=
           null) {
-        final timeToWaitForATTUserAuthorization =
+        final double timeToWaitForATTUserAuthorization =
             options[AppsflyerConstants.afTimeToWaitForAttUserAuthorization];
-        assert(timeToWaitForATTUserAuthorization is double);
 
         afOptions[AppsflyerConstants.afTimeToWaitForAttUserAuthorization] =
             timeToWaitForATTUserAuthorization;
       }
 
-      final appID = options[AppsflyerConstants.afAppId];
-      assert(appID != null, "appleAppId is required for iOS apps");
-      assert(appID is String);
+      final String appID = options[AppsflyerConstants.afAppId];
       final exp = RegExp(r'^\d{8,11}$');
       assert(exp.hasMatch(appID));
       afOptions[AppsflyerConstants.afAppId] = appID;
@@ -157,27 +121,34 @@ class AppsflyerSdk {
             ? options[AppsflyerConstants.afIsDebug]
             : false;
 
-    if (_afGCDStreamController != null ||
-        _afOpenAttributionStreamController != null) {
-      afOptions[AppsflyerConstants.afGCD] = true;
-    } else {
-      afOptions[AppsflyerConstants.afGCD] = false;
-    }
+    final String afDevKey = afOptions[AppsflyerConstants.afDevKey];
+    final bool afShowDebug = afOptions[AppsflyerConstants.afIsDebug];
+    final String? afAppId = afOptions[AppsflyerConstants.afAppId];
+    final double? afTimeToWaitForAttUserAuthorization =
+        afOptions[AppsflyerConstants.afTimeToWaitForAttUserAuthorization];
+    final String? afInviteOneLink =
+        afOptions[AppsflyerConstants.afInviteOneLink];
+    final bool? disableAdvertisingIdentifier =
+        afOptions[AppsflyerConstants.disableAdvertisingIdentifier];
+    final bool? disableCollectASA =
+        afOptions[AppsflyerConstants.disableCollectASA];
 
-    if (_afUDLStreamController != null) {
-      afOptions[AppsflyerConstants.afUDL] = true;
-    } else {
-      afOptions[AppsflyerConstants.afUDL] = false;
-    }
-
-    return afOptions;
+    return AppsFlyerOptions(
+      afDevKey: afDevKey,
+      showDebug: afShowDebug,
+      appId: afAppId ?? '',
+      timeToWaitForATTUserAuthorization: afTimeToWaitForAttUserAuthorization,
+      appInviteOneLink: afInviteOneLink,
+      disableAdvertisingIdentifier: disableAdvertisingIdentifier,
+      disableCollectASA: disableCollectASA,
+    );
   }
 
   // Accessing AppsFlyer Conversion Data from the SDK
   void _registerConversionDataCallback() {
     if (_afGCDStreamController == null) {
       _afGCDStreamController = StreamController<Map>(onCancel: () {
-        _afGCDStreamController!.close();
+        _afGCDStreamController?.close();
       });
     }
   }
@@ -191,7 +162,7 @@ class AppsflyerSdk {
   void _registerOnAppOpenAttributionCallback() {
     if (_afOpenAttributionStreamController == null) {
       _afOpenAttributionStreamController = StreamController<Map>(onCancel: () {
-        _afOpenAttributionStreamController!.close();
+        _afOpenAttributionStreamController?.close();
       });
     }
   }
@@ -205,7 +176,7 @@ class AppsflyerSdk {
   void _registerUDLCallback() {
     if (_afUDLStreamController == null) {
       _afUDLStreamController = StreamController<Map>(onCancel: () {
-        _afUDLStreamController!.close();
+        _afUDLStreamController?.close();
       });
       _registerUDLListener();
     }
@@ -230,35 +201,31 @@ class AppsflyerSdk {
   }
 
   ///initialize the SDK, using the options initialized from the constructor|
-  Future<dynamic> initSdk(
-      {bool registerConversionDataCallback = false,
-      bool registerOnAppOpenAttributionCallback = false,
-      bool registerOnDeepLinkingCallback = false}) async {
-    return Future.delayed(Duration(seconds: 0)).then((_) {
-      if (registerConversionDataCallback) _registerConversionDataCallback();
-      if (registerOnAppOpenAttributionCallback) {
-        _registerOnAppOpenAttributionCallback();
-      }
+  Future<dynamic> initSdk({
+    bool registerConversionDataCallback = false,
+    bool registerOnAppOpenAttributionCallback = false,
+    bool registerOnDeepLinkingCallback = false,
+  }) async {
+    return Future.delayed(Duration(seconds: 0)).then(
+      (_) {
+        if (registerConversionDataCallback) _registerConversionDataCallback();
+        if (registerOnAppOpenAttributionCallback) {
+          _registerOnAppOpenAttributionCallback();
+        }
 
-      if (registerConversionDataCallback ||
-          registerOnAppOpenAttributionCallback) {
-        _registerGCDListener();
-      }
+        if (registerConversionDataCallback ||
+            registerOnAppOpenAttributionCallback) {
+          _registerGCDListener();
+        }
 
-      if (registerOnDeepLinkingCallback) {
-        _registerUDLCallback();
-      }
+        if (registerOnDeepLinkingCallback) {
+          _registerUDLCallback();
+        }
 
-      Map<String, dynamic>? validatedOptions;
-      if (mapOptions != null) {
-        validatedOptions = _validateMapOptions(mapOptions!);
-      } else if (afOptions != null) {
-        validatedOptions = _validateAFOptions(afOptions!);
-      }
-
-      final initSdk = PlatformMethod.initSdk.asString();
-      return _methodChannel.invokeMethod(initSdk, validatedOptions);
-    });
+        final initSdk = PlatformMethod.initSdk.asString();
+        return _methodChannel.invokeMethod(initSdk, afOptions?.toJson());
+      },
+    );
   }
 
   Future<String?> getSDKVersion() async {
@@ -455,15 +422,15 @@ class AppsflyerSdk {
     _eventChannel.receiveBroadcastStream().listen((data) {
       final decodedJSON = jsonDecode(data);
       final String? type = decodedJSON['type'];
-      if (type == AppsflyerConstants.afOnDeepLink) {
+
+      if (type?.toPlatformResponse() == AppsflyerConstants.afOnDeepLink) {
         if (_afUDLStreamController != null &&
             !_afUDLStreamController!.isClosed) {
-          _afUDLStreamController!.sink.add(decodedJSON);
+          _afUDLStreamController?.sink.add(decodedJSON);
         } else {
-          if ((afOptions != null && afOptions!.showDebug) ||
-              (mapOptions != null &&
-                  mapOptions![AppsflyerConstants.afIsDebug])) {
-            print("UDL Stream controller is closed. the event wasn't sent");
+          if (afOptions != null && afOptions!.showDebug) {
+            printError(
+                "UDL Stream controller is closed. the event wasn't sent");
           }
         }
       }
@@ -474,15 +441,14 @@ class AppsflyerSdk {
     _eventChannel.receiveBroadcastStream().listen((data) {
       final decodedJSON = jsonDecode(data);
       final String? type = decodedJSON['type'];
+
       switch (type) {
         case AppsflyerConstants.afGetConversionData:
           if (_afGCDStreamController != null &&
               !_afGCDStreamController!.isClosed) {
-            _afGCDStreamController!.sink.add(decodedJSON);
+            _afGCDStreamController?.sink.add(decodedJSON);
           } else {
-            if ((afOptions != null && afOptions!.showDebug) ||
-                (mapOptions != null &&
-                    mapOptions![AppsflyerConstants.afIsDebug])) {
+            if (afOptions != null && afOptions!.showDebug) {
               print("GCD Stream controller is closed. the event wasn't sent");
             }
           }
@@ -490,11 +456,9 @@ class AppsflyerSdk {
         case AppsflyerConstants.afOnAppOpenAttribution:
           if (_afOpenAttributionStreamController != null &&
               !_afOpenAttributionStreamController!.isClosed) {
-            _afOpenAttributionStreamController!.sink.add(decodedJSON);
+            _afOpenAttributionStreamController?.sink.add(decodedJSON);
           } else {
-            if ((afOptions != null && afOptions!.showDebug) ||
-                (mapOptions != null &&
-                    mapOptions![AppsflyerConstants.afIsDebug])) {
+            if (afOptions != null && afOptions!.showDebug) {
               print(
                   "OnAppOpenAttribution stream is closed. the event wasn't sent");
             }
@@ -528,38 +492,20 @@ class AppsflyerSdk {
   }
 
   void generateInviteLink(
-    AppsFlyerInviteLinkParams? parameters,
-    ResponseCallback success,
-    ResponseCallback error,
-  ) {
-    Map<String, String?>? paramsMap;
-    if (parameters != null) {
-      paramsMap = _translateInviteLinkParamsToMap(parameters);
-    }
+    AppsFlyerInviteLinkParams? params, {
+    required ResponseCallback onSuccess,
+    required ResponseCallback onError,
+  }) {
     callbacks.startListening(
-      responseCallback: success,
+      responseCallback: onSuccess,
       platformResponse: PlatformResponse.generateInviteLinkSuccess,
     );
     callbacks.startListening(
-      responseCallback: error,
+      responseCallback: onError,
       platformResponse: PlatformResponse.generateInviteLinkFailure,
     );
     final generateInviteLink = PlatformMethod.generateInviteLink.asString();
-    _methodChannel.invokeMethod(generateInviteLink, paramsMap);
-  }
-
-  Map<String, String?> _translateInviteLinkParamsToMap(
-      AppsFlyerInviteLinkParams params) {
-    final inviteLinkParamsMap = <String, String?>{};
-    inviteLinkParamsMap['referrerImageUrl'] = params.referreImageUrl;
-    inviteLinkParamsMap['customerID'] = params.customerID;
-    inviteLinkParamsMap['brandDomain'] = params.brandDomain;
-    inviteLinkParamsMap['baseDeeplink'] = params.baseDeepLink;
-    inviteLinkParamsMap['referrerName'] = params.referrerName;
-    inviteLinkParamsMap['channel'] = params.channel;
-    inviteLinkParamsMap['campaign'] = params.campaign;
-
-    return inviteLinkParamsMap;
+    _methodChannel.invokeMethod(generateInviteLink, params?.toJson());
   }
 
   ///Set the OneLink ID that should be used for User-Invite-API.
@@ -622,29 +568,45 @@ class AppsflyerSdk {
 
   void onInstallConversionData(ResponseCallback callback) async {
     callbacks.startListening(
-      responseCallback: callback,
+      responseCallback: _responseLogger('onInstallConversionData', callback),
       platformResponse: PlatformResponse.onInstallConversionData,
     );
   }
 
   void onAppOpenAttribution(ResponseCallback callback) async {
     callbacks.startListening(
-      responseCallback: callback,
+      responseCallback: _responseLogger('onAppOpenAttribution', callback),
       platformResponse: PlatformResponse.onAppOpenAttribution,
     );
   }
 
   void onDeepLinking(ResponseCallback callback) async {
     callbacks.startListening(
-      responseCallback: callback,
+      responseCallback: _responseLogger('onDeepLinking', callback),
       platformResponse: PlatformResponse.onDeepLinking,
     );
   }
 
   void onPurchaseValidation(ResponseCallback callback) async {
     callbacks.startListening(
-      responseCallback: callback,
+      responseCallback: _responseLogger('onPurchaseValidation', callback),
       platformResponse: PlatformResponse.validatePurchase,
     );
+  }
+
+  ResponseCallback _responseLogger(String trace, ResponseCallback callback) {
+    return (response) {
+      debugPrint('$trace callback executed with $response');
+
+      callback(response);
+    };
+  }
+
+  void printWarning(String text) {
+    print('\x1B[33m$text\x1B[0m');
+  }
+
+  void printError(String text) {
+    print('\x1B[31m$text\x1B[0m');
   }
 }

@@ -10,9 +10,17 @@ typedef ResponseCallback = void Function(AppsFlyerResponse response);
 typedef CancelListening = void Function();
 
 class Callbacks {
+  static const statusKey = 'status', dataKey = 'data', deepLinkKey = 'deepLink';
   static const _channel = MethodChannel('callbacks');
   final Map<PlatformResponse, ResponseCallback> callbacksByResponse =
       <PlatformResponse, ResponseCallback>{};
+
+  String _unwrapJson({
+    required String argumentData,
+    required String unwrapKey,
+  }) {
+    return jsonDecode(argumentData)[unwrapKey];
+  }
 
   Future<void> _methodCallHandler(MethodCall call) async {
     switch (call.method) {
@@ -20,18 +28,32 @@ class Callbacks {
         try {
           final Map<String, dynamic> argumentMap = jsonDecode(call.arguments);
           // Convert to enum or throw error
-          final platformResponse = (argumentMap["id"] as String).toEnum();
+          final platformResponse =
+              (argumentMap["id"] as String).toPlatformResponse();
+          final argumentData = argumentMap[dataKey];
 
           switch (platformResponse) {
             case PlatformResponse.onAppOpenAttribution:
+              _handleKnownResponse(
+                platformResponse: platformResponse,
+                argumentMap: argumentMap,
+              );
+              break;
             case PlatformResponse.onInstallConversionData:
+              _handleKnownResponse(
+                platformResponse: platformResponse,
+                argumentMap: argumentMap,
+              );
+              break;
             case PlatformResponse.onDeepLinking:
-            case PlatformResponse.validatePurchase:
-            case PlatformResponse.generateInviteLinkSuccess:
-              final String data = argumentMap["data"];
+              final payload = _unwrapJson(
+                unwrapKey: deepLinkKey,
+                argumentData: argumentData,
+              );
+
               final response = AppsFlyerData(
-                status: argumentMap['status'],
-                payload: jsonDecode(data),
+                status: argumentMap[statusKey],
+                payload: jsonDecode(payload),
               );
 
               _handleCallback(
@@ -39,10 +61,22 @@ class Callbacks {
                 response: response,
               );
               break;
+            case PlatformResponse.validatePurchase:
+              _handleKnownResponse(
+                platformResponse: platformResponse,
+                argumentMap: argumentMap,
+              );
+              break;
+            case PlatformResponse.generateInviteLinkSuccess:
+              _handleKnownResponse(
+                platformResponse: platformResponse,
+                argumentMap: argumentMap,
+              );
+              break;
             default:
               _handleCallback(
                 platformResponse: platformResponse,
-                response: AppsFlyerUnknown(argumentMap["data"]),
+                response: AppsFlyerUnknown(argumentData),
               );
               break;
           }
@@ -53,6 +87,24 @@ class Callbacks {
       default:
         print("Ignoring invoke from native. This normally shouldn't happen.");
     }
+  }
+
+  void _handleKnownResponse({
+    required PlatformResponse platformResponse,
+    required Map<String, dynamic> argumentMap,
+  }) {
+    assert(argumentMap.containsKey(statusKey));
+    assert(argumentMap.containsKey(dataKey));
+
+    final response = AppsFlyerData(
+      status: argumentMap[statusKey],
+      payload: jsonDecode(argumentMap[dataKey]),
+    );
+
+    _handleCallback(
+      platformResponse: platformResponse,
+      response: response,
+    );
   }
 
   void _handleCallback({

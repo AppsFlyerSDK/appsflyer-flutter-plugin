@@ -16,4 +16,16 @@ class AppsFlyerInviteLinkParams {
     this.customerID,
     this.referreImageUrl,
   });
+
+  Map<String, String?> toJson() {
+    return {
+      'referrerImageUrl': referreImageUrl,
+      'customerID': customerID,
+      'brandDomain': brandDomain,
+      'baseDeeplink': baseDeepLink,
+      'referrerName': referrerName,
+      'channel': channel,
+      'campaign': campaign,
+    };
+  }
 }

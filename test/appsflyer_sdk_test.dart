@@ -14,8 +14,11 @@ void main() {
 
   setUp(() {
     //test map options way
-    instance = AppsflyerSdk.private(methodChannel, eventChannel,
-        mapOptions: {'afDevKey': 'sdfhj2342cx'});
+    instance = AppsflyerSdk.private(
+      methodChannel,
+      eventChannel,
+      {'afDevKey': 'sdfhj2342cx'},
+    );
 
     methodChannel.setMockMethodCallHandler((methodCall) async {
       final method = methodCall.method;
@@ -47,8 +50,11 @@ void main() {
   group('AppsFlyerSdk', () {
     setUp(() {
       //test map options way
-      instance = AppsflyerSdk.private(methodChannel, eventChannel,
-          mapOptions: {'afDevKey': 'sdfhj2342cx'});
+      instance = AppsflyerSdk.private(
+        methodChannel,
+        eventChannel,
+        {'afDevKey': 'sdfhj2342cx'},
+      );
 
       callbacksChannel.setMockMethodCallHandler((call) async {
         final method = call.method;
@@ -163,7 +169,7 @@ void main() {
     });
 
     test('check generateInviteLink call', () async {
-      instance.generateInviteLink(null, (msg) {}, (err) {});
+      instance.generateInviteLink(null, onSuccess: (msg) {}, onError: (err) {});
 
       expect(selectedMethod, 'generateInviteLink');
     });

@@ -203,7 +203,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                 generateInviteLink(call, result);
                 break;
             case "setAppInviteOneLinkID":
-                setAppInivteOneLinkID(call, result);
+                setAppInviteOneLinkID(call, result);
                 break;
             case "logCrossPromotionImpression":
                 logCrossPromotionImpression(call, result);
@@ -270,7 +270,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         result.success(null);
     }
 
-    private void setAppInivteOneLinkID(MethodCall call, Result result) {
+    private void setAppInviteOneLinkID(MethodCall call, Result result) {
         String oneLinkId = (String) call.argument("oneLinkID");
         if(oneLinkId==null || oneLinkId.length() == 0){
             result.success(null);
