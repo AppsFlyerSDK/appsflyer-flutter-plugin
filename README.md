@@ -37,13 +37,30 @@ When submitting an issue please specify your AppsFlyer sign-up (account) email ,
 
 - Android AppsFlyerSDK **v6.2.0**
 
+### Type Safety Introduced from version `7.0.0`, upgraded from `Map` and `dynamic` types!
+
 ### Flutter 2.0 is supported from version `6.2.3+2`, including null safety support!
 
 ### The version `6.2.4-flutterv1` will use iOS SDK V6.2.4 with Flutter V1
 
 ---
+
+## <a id="v7-breaking-changes"> **❗Migration Guide to v7**
+With the introduction of type safety, we've fully revamped the way we return data! We've given you tools to interact with those types as well.
+
+Before version 7, your callbacks would receive `dynamic` data and you'd have to do the leg work yourself. Now, in v7, we classes containing 
+the information you're looking for. In the case of deep links, we provide classes you can use to convert our `Map`s to.
+
+### Quick Start
+Use the `AppsFlyerService` from the example app to get started!
+
+### Rather Do It Yourself?
+Use the `map` or `when` method in combination with `OneLinkBase.fromJson` on any `AppsFlyerResponse` to handle the payload returned.
+
+Alternatively, check out the `DeepLinkResponse` class within the service to see how to create your own class with custom params.
+
 ## <a id="v6-breaking-changes"> **❗Migration Guide to v6**
-- [Integration guide](https://support.appsflyer.com//hc/en-us/articles/207032066#introduction)
+- [Integration guide](https://support.appsflyer.com/hc/en-us/articles/207032066#introduction)
 - [Migration guide](https://support.appsflyer.com/hc/en-us/articles/360011571778)
 
 In v6 of AppsFlyer SDK there are some api breaking changes: 
@@ -67,7 +84,7 @@ In order to install the plugin, visit [this](https://pub.dartlang.org/packages/a
 
 ### <a id="appsFlyer-options"> ⚙️  AppsFlyerOptions
 
-To start using AppsFlyer you first need to create an instance of `AppsflyerSdk` before using any other of our sdk functionalities.  
+To start using AppsFlyer you first need to create an instance of `AppsflyerSdk` before using any other of our sdk functionalities (see the service in the example app for v7 and above).  
 
 `AppsflyerSdk` receives a map or `AppsFlyerOptions` object. This is how you can configure our `AppsflyerSdk` instance and connect it to your AppsFlyer account.
 
