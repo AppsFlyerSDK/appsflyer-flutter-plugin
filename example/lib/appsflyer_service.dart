@@ -76,7 +76,8 @@ class AppsFlyerService extends ChangeNotifier {
     return null;
   }
 
-  Future<AppsFlyerResponse> getLinkAsync(AppsFlyerInviteLinkParams params) {
+  Future<AppsFlyerResponse> generateInviteLinkAsync(
+      AppsFlyerInviteLinkParams params) {
     final completer = Completer<AppsFlyerResponse>();
 
     sdk.generateInviteLink(

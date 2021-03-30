@@ -33,7 +33,7 @@ class _HomeContainerStreamsState extends State<HomeContainerStreams> {
     return SingleChildScrollView(
       child: Container(
         child: Padding(
-          padding: EdgeInsets.all(AppConstants.CONTAINER_PADDING),
+          padding: EdgeInsets.all(AppConstants.containerPadding),
           child: Column(
             children: <Widget>[
               Text(
@@ -41,7 +41,7 @@ class _HomeContainerStreamsState extends State<HomeContainerStreams> {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               Padding(
-                padding: EdgeInsets.only(top: AppConstants.TOP_PADDING),
+                padding: EdgeInsets.only(top: AppConstants.topPadding),
               ),
               StreamBuilder<dynamic>(
                   stream: widget.onData?.asBroadcastStream(),
