@@ -80,10 +80,11 @@ class _HomeContainerState extends State<HomeContainer> {
       child: Padding(
         padding: EdgeInsets.all(AppConstants.containerPadding),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('AF SDK', style: TextStyle(fontWeight: FontWeight.bold)),
             Padding(padding: EdgeInsets.only(top: AppConstants.topPadding)),
-            SizedBox(height: 12.0),
+            InfoCard(),
+            SizedBox(height: 24),
             TextBorder(
               labelText: 'Attribution Data:',
               controller: attributionController,
@@ -95,7 +96,8 @@ class _HomeContainerState extends State<HomeContainer> {
             ),
             SizedBox(height: 12.0),
             _buildPurchaseEventSection(),
-            _buildGenerateLinkSection(),
+            SizedBox(height: 12.0),
+            LinkGenerator(appsFlyerService: widget.appsFlyerService),
           ],
         ),
       ),
@@ -142,8 +144,39 @@ class _HomeContainerState extends State<HomeContainer> {
       ),
     );
   }
+}
 
-  Widget _buildGenerateLinkSection() {
+class LinkGenerator extends StatefulWidget {
+  final AppsFlyerService appsFlyerService;
+
+  const LinkGenerator({
+    @required this.appsFlyerService,
+    Key key,
+  }) : super(key: key);
+
+  @override
+  _LinkGeneratorState createState() => _LinkGeneratorState();
+}
+
+class _LinkGeneratorState extends State<LinkGenerator> {
+  static const inviteLinkDefault = 'No link has been generated';
+  TextEditingController inviteLinkController;
+
+  @override
+  void initState() {
+    super.initState();
+
+    inviteLinkController = TextEditingController(text: inviteLinkDefault);
+  }
+
+  @override
+  void dispose() {
+    inviteLinkController?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.all(20.0),
       decoration: BoxDecoration(
@@ -158,11 +191,21 @@ class _HomeContainerState extends State<HomeContainer> {
             controller: inviteLinkController,
           ),
           SizedBox(height: 12.0),
-          AsyncButton(
-            onPressed: _generateInviteLink,
-            builder: (isBusy) => isBusy
-                ? Text('Generating Link...')
-                : Text('Generate Invite Link'),
+          ButtonBar(
+            alignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(primary: Colors.grey[700]),
+                onPressed: () => inviteLinkController.text = inviteLinkDefault,
+                child: Text('Clear'),
+              ),
+              AsyncButton(
+                onPressed: _generateInviteLink,
+                builder: (isBusy) => isBusy
+                    ? Text('Generating Link...')
+                    : Text('Generate Invite Link'),
+              ),
+            ],
           ),
         ],
       ),
@@ -182,11 +225,27 @@ class _HomeContainerState extends State<HomeContainer> {
       referrerName: 'Mobile App',
     );
 
-    final service = widget.appsFlyerService;
-    final appsFlyerResponse = await service.generateInviteLinkAsync(params);
+    final appsFlyerResponse =
+        await widget.appsFlyerService.generateInviteLinkAsync(params);
 
     inviteLinkController.text = Utils.prettyPrintDiagnosticable(
       appsFlyerResponse,
+    );
+  }
+}
+
+class InfoCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: Colors.grey[700],
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Text(
+          'Attribution and Deep Link data populate after opening a OneLink',
+          style: TextStyle(fontSize: 16, color: Colors.white),
+        ),
+      ),
     );
   }
 }
