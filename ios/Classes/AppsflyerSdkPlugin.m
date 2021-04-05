@@ -1,7 +1,12 @@
 #import "AppsflyerSdkPlugin.h"
 #import "AppsFlyerStreamHandler.h"
 #import <objc/message.h>
+
+
 typedef void (*bypassDidFinishLaunchingWithOption)(id, SEL, NSInteger);
+typedef void (*bypassDisableAdvertisingIdentifier)(id, SEL, BOOL);
+typedef void (*bypassWaitForATTUserAuthorization)(id, SEL, NSTimeInterval);
+
 
 @implementation AppsflyerSdkPlugin {
     FlutterEventChannel *_eventChannel;
@@ -466,17 +471,31 @@ static BOOL _isSKADEnabled = false;
 
     
     [AppsFlyerLib shared].disableCollectASA = disableCollectASA;
-    [AppsFlyerLib shared].disableAdvertisingIdentifier = disableAdvertisingIdentifier;
+
+    SEL DisableAdvertisingSel = NSSelectorFromString(@"setDisableAdvertisingIdentifier:");
+    id AppsFlyer = [AppsFlyerLib shared];
+    if ([AppsFlyer respondsToSelector:DisableAdvertisingSel] && disableAdvertisingIdentifier) {
+        bypassDisableAdvertisingIdentifier msgSend = (bypassDisableAdvertisingIdentifier)objc_msgSend;
+        msgSend(AppsFlyer, DisableAdvertisingSel, disableAdvertisingIdentifier);
+    }
+
     [AppsFlyerLib shared].appleAppID = appId;
     [AppsFlyerLib shared].appsFlyerDevKey = devKey;
     [AppsFlyerLib shared].isDebug = isDebug;
-
+    
     // Load SKAD rules
     SEL SKSel = NSSelectorFromString(@"__willResolveSKRules:");
-    id AppsFlyer = [AppsFlyerLib shared];
+    
     if ([AppsFlyer respondsToSelector:SKSel]) {
         bypassDidFinishLaunchingWithOption msgSend = (bypassDidFinishLaunchingWithOption)objc_msgSend;
         msgSend(AppsFlyer, SKSel, 2);
+    }
+    
+    SEL WaitForATTSel = NSSelectorFromString(@"waitForATTUserAuthorizationWithTimeoutInterval:");
+
+    if ([AppsFlyer respondsToSelector:WaitForATTSel] && timeToWaitForATTUserAuthorization != 0) {
+        bypassWaitForATTUserAuthorization msgSend = (bypassWaitForATTUserAuthorization)objc_msgSend;
+        msgSend(AppsFlyer, WaitForATTSel, timeToWaitForATTUserAuthorization);
     }
 
     [[AppsFlyerLib shared] start];

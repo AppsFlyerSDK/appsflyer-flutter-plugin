@@ -23,8 +23,12 @@ When submitting an issue please specify your AppsFlyer sign-up (account) email ,
 - [Getting started](#getting-started)
 - [Setting AppsFlyer options](#appsFlyer-options)
 - [Initializing the SDK](#init-sdk)
-- [Guides](#guides)
-- [API](#api)
+- [Set plugin for IOS 14](#ios14)
+- [Setting strict mode (app for kids)](#strictMode)
+- [Additional Guides](#guides)
+- [APIs](#api)
+
+---
 
 ### Supported Platforms
 
@@ -42,6 +46,7 @@ When submitting an issue please specify your AppsFlyer sign-up (account) email ,
 ### The version `6.2.4-flutterv1` will use iOS SDK V6.2.4 with Flutter V1
 
 ---
+
 ## <a id="v6-breaking-changes"> **❗Migration Guide to v6**
 - [Integration guide](https://support.appsflyer.com//hc/en-us/articles/207032066#introduction)
 - [Migration guide](https://support.appsflyer.com/hc/en-us/articles/360011571778)
@@ -61,9 +66,13 @@ In v6 of AppsFlyer SDK there are some api breaking changes:
 ### Important notice
 - Switch `ConversionData` and `OnAppOpenAttribution` to be based on callbacks instead of streams since plugin version `6.0.5+2`
 
+---
+
 ## <a id="getting-started"> **📲 Getting started**
 
 In order to install the plugin, visit [this](https://pub.dartlang.org/packages/appsflyer_sdk#-installing-tab-) page.
+
+---
 
 ### <a id="appsFlyer-options"> ⚙️  AppsFlyerOptions
 
@@ -82,6 +91,8 @@ Map appsFlyerOptions = { "afDevKey": afDevKey,
 
 AppsflyerSdk appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
 ```
+
+---
 
 ### <a id="init-sdk"> 🚀  Initializing the SDK
 
@@ -102,10 +113,77 @@ appsflyerSdk.initSdk(
 );
 ```
 
-## <a id="guides"> **📖 Guides**
+---
+
+## <a id="ios14"> Set plugin for IOS 14
+
+1. Add `#import <AppTrackingTransparency/AppTrackingTransparency.h>` in your `AppDelegate.m` 
+
+2. Add the ATT pop-up for IDFA collection so your `AppDelegate.m` will look like this:
+```
+-(BOOL)application:(UIApplication*)application didFinishLaunchingWithOptions:(NSDictionary*)launchOptions
+{
+    self.viewController = [[MainViewController alloc] init];
+    if (@available(iOS 14, *)) {
+        [ATTrackingManager requestTrackingAuthorizationWithCompletionHandler:^(ATTrackingManagerAuthorizationStatus status) {
+            //If you want to do something with the pop-up
+        }];
+    }
+    return [super application:application didFinishLaunchingWithOptions:launchOptions];
+}
+```
+
+3. Add Privacy - Tracking Usage Description inside your `.plist` file in Xcode.
+
+4. Optional: Set the `timeToWaitForATTUserAuthorization` property in the `AppsFlyerOptions` to delay the sdk initazliation for a number of `x seconds` until the user accept the consent dialog:
+```dart
+AppsFlyerOptions options = AppsFlyerOptions(
+    afDevKey: DotEnv().env["DEV_KEY"],
+    appId: DotEnv().env["APP_ID"],
+    showDebug: true,
+    timeToWaitForATTUserAuthorization: 30
+    ); 
+```
+
+For more info visit our Full Support guide for iOS 14:
+
+https://support.appsflyer.com/hc/en-us/articles/207032066#integration-33-configuring-app-tracking-transparency-att-support
+
+---
+
+## <a id="strictMode">👨‍👩‍👧‍👦  Strict mode for App-kids
+
+Starting from version **6.2.4-nullsafety.5** iOS SDK comes in two variants: **Strict** mode and **Regular** mode. 
+
+Please read more: https://support.appsflyer.com/hc/en-us/articles/207032066#integration-strict-mode-sdk
+
+***Change to Strict mode***
+
+After you [installed](#installation) the AppsFlyer plugin:
+
+1. Go to the `ios` folder
+2. Open `appsflyer_sdk.podspec` and add `/Strict` to the `s.ios.dependency` as follow:
+
+`s.ios.dependency 'AppsFlyerFramework', '6.x.x'` To >> `s.ios.dependency 'AppsFlyerFramework/Strict', '6.x.x'`
+
+3. Go to `example/ios` and Run `pod install`
+
+***Change to Regular mode***
+
+1. Go to the `ios` folder:
+2. Open `appsflyer_sdk.podspec` and remove `/strict`:
+
+`s.ios.dependency 'AppsFlyerFramework/Strict', '6.x.x'` To >> `s.ios.dependency 'AppsFlyerFramework', '6.x.x'`
+
+3. Go to `example/ios` and Run `pod install`
+
+---
+
+## <a id="guides"> **📖 Additional Guides (Deeplinking & more) **
 
 Great installation and setup guides can be viewed [here](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/blob/master/doc/Guides.md)
 
+---
 ## <a id="api"> **📑 API**
 
 see the full [API](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/blob/master/doc/API.md) available for this plugin.

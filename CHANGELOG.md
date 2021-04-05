@@ -1,5 +1,9 @@
 # Versions
 
+## 6.2.4-nullsafety.5
+- Added support for strict mode (kids app)
+- Added support for wait for att status API
+
 ## 6.2.4+4-nullsafety
 - Fix small bug with validateAndLogInAppIosPurchase API
 

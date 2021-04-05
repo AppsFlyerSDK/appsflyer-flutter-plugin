@@ -71,6 +71,12 @@ class AppsflyerSdk {
     }
 
     if (Platform.isIOS) {
+      if (options.timeToWaitForATTUserAuthorization != null) {
+        dynamic timeToWaitForATTUserAuthorization = options.timeToWaitForATTUserAuthorization;
+        assert(timeToWaitForATTUserAuthorization is double);
+
+        validatedOptions[AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION] = timeToWaitForATTUserAuthorization;
+      }
       dynamic appID = options.appId;
       assert(appID != null, "appleAppId is required for iOS apps");
       assert(appID is String);
@@ -125,16 +131,11 @@ class AppsflyerSdk {
     }
 
     if (Platform.isIOS) {
-      if (options[
-              AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION] !=
-          null) {
-        dynamic timeToWaitForATTUserAuthorization = options[
-            AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION];
+      if (options[AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION] != null) {
+        dynamic timeToWaitForATTUserAuthorization = options[AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION];
         assert(timeToWaitForATTUserAuthorization is double);
 
-        afOptions[
-                AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION] =
-            timeToWaitForATTUserAuthorization;
+        afOptions[AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION] = timeToWaitForATTUserAuthorization;
       }
 
       dynamic appID = options[AppsflyerConstants.AF_APP_Id];
