@@ -26,7 +26,7 @@ To start using AppsFlyer you first need to create an instance of `AppsflyerSdk` 
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 //..
 
-Map appsFlyerOptions = { "afDevKey": afDevKey,
+AppsFlyerOptions appsFlyerOptions = { "afDevKey": afDevKey,
                 "afAppId": appId,
                 "isDebug": true};
 
@@ -46,6 +46,7 @@ appsflyerSdk.initSdk(
     registerOnDeepLinkingCallback: true
 );
 ```
+
 ---
 
 ## <a id="out-of-store"> Android Out of store
