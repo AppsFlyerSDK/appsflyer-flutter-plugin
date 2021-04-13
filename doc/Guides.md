@@ -134,13 +134,25 @@ In your app’s manifest add the following intent-filter to your relevant activi
 
 **NOTE:** On Android, AppsFlyer SDK inspects activity intent object during onResume(). Because of that, for each activity that may be configured or launched with any [non-standard launch mode](https://developer.android.com/guide/topics/manifest/activity-element#lmode) the following code was added to `MainActivity.java` in `android/app/src/main/java/com...`
 
+Java:
+
 ```java
-@Override
+    @Override
     public void onNewIntent(Intent intent) {
          super.onNewIntent(intent);
          setIntent(intent);
     }
 ```
+
+Kotlin:
+
+```
+    override fun onNewIntent(intent : Intent){
+        super.onNewIntent(intent)
+        setIntent(intent)
+    }
+```
+
 
 #### App Links
 
@@ -166,16 +178,18 @@ For more on App Links check out the guide [here](https://support.appsflyer.com/h
 In order for the callback to be called:
 1. Import AppsFlyer SDK:
     
-    a. For AppsFlyer SDK V6.2.0 and above add: ```#import #import "AppsflyerSdkPlugin.h"```
+    a. For AppsFlyer SDK V6.2.0 and above add: ```#import "AppsflyerSdkPlugin.h"```
    
     b. For AppsFlyer SDK V6.1.0 and below add: ```#import <AppsFlyerLib/AppsFlyerLib.h>```
 
 2. Set-up the following AppsFlyer API:
 
-#### URI Scheme
+### URI Scheme
+
+
+Objective-C:
 
 ```
-//   Reports app open from deep link from apps which do not support Universal Links (Twitter) and for iOS8 and below
     - (BOOL)application:(UIApplication *)application openURL:(NSURL *)url sourceApplication:(NSString*)sourceApplication annotation:(id)annotation {
         // AppsFlyer SDK version 6.2.0 and above 
         [[AppsFlyerAttribution shared] handleOpenUrl:url sourceApplication:sourceApplication annotation:annotation];
@@ -197,11 +211,29 @@ In order for the callback to be called:
     }
 ```
 
+Swift:
+
+```swift
+    override func application(_ application: UIApplication, open url: URL, sourceApplication: String?, annotation: Any) -> Bool {
+        AppsFlyerAttribution.shared()!.handleOpenUrl(url, sourceApplication: sourceApplication, annotation: annotation);
+        return true
+    }
+
+    override func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+        AppsFlyerAttribution.shared()!.handleOpenUrl(url, options: options)
+        return true
+    }
+```
+
 For more on URI-schemes check out the guide [here](https://support.appsflyer.com/hc/en-us/articles/208874366-OneLink-deep-linking-guide#setups-uri-scheme-for-ios-8-and-below)
 
 
 ### Universal Links
-    ```
+
+
+Objective-C:
+
+    ```:
     // Reports app open from a Universal Link for iOS 9 or above
     - (BOOL) application:(UIApplication *)application continueUserActivity:(NSUserActivity *)userActivity restorationHandler:(void (^)(NSArray<id<UIUserActivityRestoring>> *restorableObjects))restorationHandler {
         // AppsFlyer SDK version 6.2.0 and above 
@@ -213,6 +245,20 @@ For more on URI-schemes check out the guide [here](https://support.appsflyer.com
     }
     ```
     
+Swift:
+
+```swift
+    private func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([Any]?) -> Void) -> Bool {
+        AppsFlyerAttribution.shared()!.continueUserActivity(userActivity, restorationHandler: nil)
+        return true
+    }
+
+    override func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
+        AppsFlyerAttribution.shared()!.continueUserActivity(userActivity, restorationHandler: nil)
+        return true
+     }
+```
+
 
 More on Universal Links:
 Essentially, the Universal Links method links between an iOS mobile app and an associate website/domain, such as AppsFlyer’s OneLink domain (xxx.onelink.me). To do so, it is required to:
