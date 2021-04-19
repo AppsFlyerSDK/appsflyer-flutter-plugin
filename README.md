@@ -161,21 +161,23 @@ Please read more: https://support.appsflyer.com/hc/en-us/articles/207032066#inte
 
 After you [installed](#installation) the AppsFlyer plugin:
 
-1. Go to the `ios` folder
-2. Open `appsflyer_sdk.podspec` and add `/Strict` to the `s.ios.dependency` as follow:
+1. Go to the `$HOME/.pub-cache/hosted/pub.dartlang.org/appsflyer_sdk-<CURRENT VERSION>/ios` folder
+2. Open `appsflyer_sdk.podspec`, add `/Strict` to the `s.ios.dependency` as follow:
 
 `s.ios.dependency 'AppsFlyerFramework', '6.x.x'` To >> `s.ios.dependency 'AppsFlyerFramework/Strict', '6.x.x'`
+and save
 
-3. Go to `example/ios` and Run `pod install`
+3. Go to `ios` folder of your current project and Run `pod update`
 
 ***Change to Regular mode***
 
-1. Go to the `ios` folder:
+1. Go to the `$HOME/.pub-cache/hosted/pub.dartlang.org/appsflyer_sdk-<CURRENT VERSION>/ios` folder:
 2. Open `appsflyer_sdk.podspec` and remove `/strict`:
 
 `s.ios.dependency 'AppsFlyerFramework/Strict', '6.x.x'` To >> `s.ios.dependency 'AppsFlyerFramework', '6.x.x'`
+and save
 
-3. Go to `example/ios` and Run `pod install`
+3. Go to `ios` folder of your current project and Run `pod update`
 
 ---
 
