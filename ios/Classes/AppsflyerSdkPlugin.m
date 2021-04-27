@@ -483,13 +483,6 @@ static BOOL _isSKADEnabled = false;
     [AppsFlyerLib shared].appsFlyerDevKey = devKey;
     [AppsFlyerLib shared].isDebug = isDebug;
     
-    // Load SKAD rules
-    SEL SKSel = NSSelectorFromString(@"__willResolveSKRules:");
-    
-    if ([AppsFlyer respondsToSelector:SKSel]) {
-        bypassDidFinishLaunchingWithOption msgSend = (bypassDidFinishLaunchingWithOption)objc_msgSend;
-        msgSend(AppsFlyer, SKSel, 2);
-    }
     
     SEL WaitForATTSel = NSSelectorFromString(@"waitForATTUserAuthorizationWithTimeoutInterval:");
 
