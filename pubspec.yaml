@@ -1,6 +1,6 @@
 name: appsflyer_sdk
 description: A Flutter plugin for AppsFlyer SDK. Supports iOS and Android.
-version: 6.2.4-nullsafety.5
+version: 6.2.6-nullsafety.0
 
 homepage: https://github.com/AppsFlyerSDK/flutter_appsflyer_sdk
 

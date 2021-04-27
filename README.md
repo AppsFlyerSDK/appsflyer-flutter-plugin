@@ -24,7 +24,6 @@ When submitting an issue please specify your AppsFlyer sign-up (account) email ,
 - [Setting AppsFlyer options](#appsFlyer-options)
 - [Initializing the SDK](#init-sdk)
 - [Set plugin for IOS 14](#ios14)
-- [Setting strict mode (app for kids)](#strictMode)
 - [Additional Guides](#guides)
 - [APIs](#api)
 
@@ -37,7 +36,7 @@ When submitting an issue please specify your AppsFlyer sign-up (account) email ,
 
 ### This plugin is built for
 
-- iOS AppsFlyerSDK **v6.2.4**
+- iOS AppsFlyerSDK **v6.2.6**
 
 - Android AppsFlyerSDK **v6.2.0**
 
@@ -123,7 +122,7 @@ appsflyerSdk.initSdk(
 ```
 -(BOOL)application:(UIApplication*)application didFinishLaunchingWithOptions:(NSDictionary*)launchOptions
 {
-    self.viewController = [[MainViewController alloc] init];
+    [GeneratedPluginRegistrant registerWithRegistry:self];
     if (@available(iOS 14, *)) {
         [ATTrackingManager requestTrackingAuthorizationWithCompletionHandler:^(ATTrackingManagerAuthorizationStatus status) {
             //If you want to do something with the pop-up
@@ -151,37 +150,7 @@ https://support.appsflyer.com/hc/en-us/articles/207032066#integration-33-configu
 
 ---
 
-## <a id="strictMode">👨‍👩‍👧‍👦  Strict mode for App-kids
-
-Starting from version **6.2.4-nullsafety.5** iOS SDK comes in two variants: **Strict** mode and **Regular** mode. 
-
-Please read more: https://support.appsflyer.com/hc/en-us/articles/207032066#integration-strict-mode-sdk
-
-***Change to Strict mode***
-
-After you [installed](#installation) the AppsFlyer plugin:
-
-1. Go to the `$HOME/.pub-cache/hosted/pub.dartlang.org/appsflyer_sdk-<CURRENT VERSION>/ios` folder
-2. Open `appsflyer_sdk.podspec`, add `/Strict` to the `s.ios.dependency` as follow:
-
-`s.ios.dependency 'AppsFlyerFramework', '6.x.x'` To >> `s.ios.dependency 'AppsFlyerFramework/Strict', '6.x.x'`
-and save
-
-3. Go to `ios` folder of your current project and Run `pod update`
-
-***Change to Regular mode***
-
-1. Go to the `$HOME/.pub-cache/hosted/pub.dartlang.org/appsflyer_sdk-<CURRENT VERSION>/ios` folder:
-2. Open `appsflyer_sdk.podspec` and remove `/strict`:
-
-`s.ios.dependency 'AppsFlyerFramework/Strict', '6.x.x'` To >> `s.ios.dependency 'AppsFlyerFramework', '6.x.x'`
-and save
-
-3. Go to `ios` folder of your current project and Run `pod update`
-
----
-
-## <a id="guides"> **📖 Additional Guides (Deeplinking & more) **
+## <a id="guides"> **📖 Additional Guides (Deeplinking, out of store, Strict mode (app for kids) & iOS 14) **
 
 Great installation and setup guides can be viewed [here](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/blob/master/doc/Guides.md)
 

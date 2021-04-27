@@ -1,12 +1,17 @@
 #import "AppDelegate.h"
 #import "GeneratedPluginRegistrant.h"
 #import "AppsflyerSdkPlugin.h"
+#import <AppTrackingTransparency/AppTrackingTransparency.h>
 
 @implementation AppDelegate
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     [GeneratedPluginRegistrant registerWithRegistry:self];
-    
+     if (@available(iOS 14, *)) {
+        [ATTrackingManager requestTrackingAuthorizationWithCompletionHandler:^(ATTrackingManagerAuthorizationStatus status) {
+            //If you want to do something with the pop-up
+        }];
+    }
     return [super application:application didFinishLaunchingWithOptions:launchOptions];
 }
 

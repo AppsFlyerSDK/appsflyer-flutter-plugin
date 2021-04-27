@@ -1,5 +1,9 @@
 # Versions
 
+## 6.2.6-nullsafety.0
+- Update for iOS SDK V6.2.6
+- Refactoring for SKAD network feature
+
 ## 6.2.4-nullsafety.5
 - Added support for strict mode (kids app)
 - Added support for wait for att status API

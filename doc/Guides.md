@@ -12,8 +12,10 @@
     - [Unified deep linking](#Unified-deep-linking)
     - [iOS Deeplink Setup](#iosdeeplinks)
     - [Android Deeplink Setup](#android-deeplinks)
+- [Set plugin for IOS 14](#ios14)
+- [Setting strict mode (app for kids)](#strictMode)
 
-    ---
+---
 
 ##  <a id="init-sdk"> Init SDK
 
@@ -285,3 +287,70 @@ Essentially, the Universal Links method links between an iOS mobile app and an a
     ```
 
 For more on Universal Links check out the guide [here](https://support.appsflyer.com/hc/en-us/articles/208874366-OneLink-Deep-Linking-Guide#setups-universal-links).
+
+
+## <a id="ios14"> Set plugin for IOS 14
+
+1. Add `#import <AppTrackingTransparency/AppTrackingTransparency.h>` in your `AppDelegate.m` 
+
+2. Add the ATT pop-up for IDFA collection so your `AppDelegate.m` will look like this:
+```
+-(BOOL)application:(UIApplication*)application didFinishLaunchingWithOptions:(NSDictionary*)launchOptions
+{
+    [GeneratedPluginRegistrant registerWithRegistry:self];
+    if (@available(iOS 14, *)) {
+        [ATTrackingManager requestTrackingAuthorizationWithCompletionHandler:^(ATTrackingManagerAuthorizationStatus status) {
+            //If you want to do something with the pop-up
+        }];
+    }
+    return [super application:application didFinishLaunchingWithOptions:launchOptions];
+}
+```
+
+3. Add Privacy - Tracking Usage Description inside your `.plist` file in Xcode.
+
+4. Optional: Set the `timeToWaitForATTUserAuthorization` property in the `AppsFlyerOptions` to delay the sdk initazliation for a number of `x seconds` until the user accept the consent dialog:
+```dart
+AppsFlyerOptions options = AppsFlyerOptions(
+    afDevKey: DotEnv().env["DEV_KEY"],
+    appId: DotEnv().env["APP_ID"],
+    showDebug: true,
+    timeToWaitForATTUserAuthorization: 30
+    ); 
+```
+
+For more info visit our Full Support guide for iOS 14:
+
+https://support.appsflyer.com/hc/en-us/articles/207032066#integration-33-configuring-app-tracking-transparency-att-support
+
+---
+
+## <a id="strictMode">👨‍👩‍👧‍👦  Strict mode for App-kids
+
+Starting from version **6.2.4-nullsafety.5** iOS SDK comes in two variants: **Strict** mode and **Regular** mode. 
+
+Please read more: https://support.appsflyer.com/hc/en-us/articles/207032066#integration-strict-mode-sdk
+
+***Change to Strict mode***
+
+After you [installed](#installation) the AppsFlyer plugin:
+
+1. Go to the `$HOME/.pub-cache/hosted/pub.dartlang.org/appsflyer_sdk-<CURRENT VERSION>/ios` folder
+2. Open `appsflyer_sdk.podspec`, add `/Strict` to the `s.ios.dependency` as follow:
+
+`s.ios.dependency 'AppsFlyerFramework', '6.x.x'` To >> `s.ios.dependency 'AppsFlyerFramework/Strict', '6.x.x'`
+and save
+
+3. Go to `ios` folder of your current project and Run `pod update`
+
+***Change to Regular mode***
+
+1. Go to the `$HOME/.pub-cache/hosted/pub.dartlang.org/appsflyer_sdk-<CURRENT VERSION>/ios` folder:
+2. Open `appsflyer_sdk.podspec` and remove `/strict`:
+
+`s.ios.dependency 'AppsFlyerFramework/Strict', '6.x.x'` To >> `s.ios.dependency 'AppsFlyerFramework', '6.x.x'`
+and save
+
+3. Go to `ios` folder of your current project and Run `pod update`
+
+---
