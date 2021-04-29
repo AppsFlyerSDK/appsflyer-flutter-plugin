@@ -175,7 +175,7 @@ In your app’s manifest add the following intent-filter to your relevant activi
 For more on App Links check out the guide [here](https://support.appsflyer.com/hc/en-us/articles/115005314223-Deep-Linking-Users-with-Android-App-Links#what-are-android-app-links).
 
 
-###  <a id="ios-deeplink"> iOS Deeplink Setup
+###  <a id="iosdeeplinks"> iOS Deeplink Setup
 
 In order for the callback to be called:
 1. Import AppsFlyer SDK:
