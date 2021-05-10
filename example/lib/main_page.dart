@@ -27,19 +27,19 @@ class MainPageState extends State<MainPage> {
     showDebug: true); 
     _appsflyerSdk = AppsflyerSdk(options);
     _appsflyerSdk.onAppOpenAttribution((res) {
-      print("res: " + res.toString());
+      print("onAppOpenAttribution res: " + res.toString());
       setState(() {
         _deepLinkData = res;
       });
     });
     _appsflyerSdk.onInstallConversionData((res) {
-      print("res: " + res.toString());
+      print("onInstallConversionData res: " + res.toString());
       setState(() {
         _gcd = res;
       });
     });
     _appsflyerSdk.onDeepLinking((res){
-      print("res: " + res.toString());
+      print("onDeepLinking res: " + res.toString());
       setState(() {
         _deepLinkData = res;
       });

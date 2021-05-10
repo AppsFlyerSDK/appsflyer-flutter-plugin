@@ -5,6 +5,7 @@
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:flutter-subdomain.onelink.me</string>
+		<string>applinks:gabrieltest.onelink.me</string>
 	</array>
 </dict>
 </plist>
