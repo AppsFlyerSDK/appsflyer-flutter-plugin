@@ -495,7 +495,7 @@ static BOOL _isSKADEnabled = false;
 
     //post notification for the deep link object that the bridge is set and he can handle deep link
     [AppsFlyerAttribution shared].isBridgeReady = YES;
-   [[NSNotificationCenter defaultCenter] postNotificationName:AF_BRIDGE_SET object:self];
+    [[NSNotificationCenter defaultCenter] postNotificationName:AF_BRIDGE_SET object:self];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
     
