@@ -1,5 +1,8 @@
 # Versions
 
+## 6.2.6-nullsafety.1
+- Fix for deeplinking in iOS
+
 ## 6.2.6-nullsafety.0
 - Update for iOS SDK V6.2.6
 - Refactoring for SKAD network feature
