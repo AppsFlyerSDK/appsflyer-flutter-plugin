@@ -14,6 +14,7 @@
     - [Android Deeplink Setup](#android-deeplinks)
 - [Set plugin for IOS 14](#ios14)
 - [Setting strict mode (app for kids)](#strictMode)
+- [Uninstall](#uninstall)
 
 ---
 
@@ -352,5 +353,22 @@ and save
 and save
 
 3. Go to `ios` folder of your current project and Run `pod update`
+
+---
+
+## <a id="uninstall"> Uninstall
+
+***Android:
+
+1. Add Firebase messaging to your flutter app. You can use the Offical Firebase messagin package by Google:
+https://pub.dev/packages/firebase_messaging
+2. Follow the native guide on implementing the Uninstall feature both on the Firebase plaform and the app:
+https://support.appsflyer.com/hc/en-us/articles/360017822118-Integrate-Android-uninstall-measurement-into-an-app
+
+***iOS:
+
+1. Follow the native iOS guide:
+
+https://support.appsflyer.com/hc/en-us/articles/360017822178-Integrate-iOS-uninstall-measurement-into-an-app-
 
 ---
