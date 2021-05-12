@@ -465,7 +465,7 @@ appsFlyerSdk.disableSKAdNetwork(true);
 ---
 **<a id="getAppsFlyerUID"> `Future<String?> getAppsFlyerUID() async`**
 
-Use this API in order to get the A.
+Use this API in order to get the AppsFlyer ID.
 
 _Example:_
 ```dart
