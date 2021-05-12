@@ -358,14 +358,14 @@ and save
 
 ## <a id="uninstall"> Uninstall Feature
 
-###Android:
+Android:
 
 1. Add Firebase messaging to your flutter app. You can use the Offical Firebase messagin package by Google:
 https://pub.dev/packages/firebase_messaging
 2. Follow the native guide on implementing the Uninstall feature both on the Firebase plaform and the app:
 https://support.appsflyer.com/hc/en-us/articles/360017822118-Integrate-Android-uninstall-measurement-into-an-app
 
-###iOS:
+iOS:
 
 1. Follow the native iOS guide:
 
