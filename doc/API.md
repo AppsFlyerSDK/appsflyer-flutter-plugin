@@ -35,6 +35,7 @@
 - [User Invite](#userInvite)
 - [enableFacebookDeferredApplinks](#enableFacebookDeferredApplinks)
 - [disableSKAdNetwork](#disableSKAdNetwork)
+- [getAppsFlyerUID](#getAppsFlyerUID)
 - [stream](#streams)
 ---
 
@@ -460,6 +461,17 @@ Use this API in order to disable the SK Ad network (request will be sent but the
 _Example:_
 ```dart
 appsFlyerSdk.disableSKAdNetwork(true);
+```
+---
+**<a id="getAppsFlyerUID"> `Future<String?> getAppsFlyerUID() async`**
+
+Use this API in order to get the A.
+
+_Example:_
+```dart
+appsFlyerSdk.getAppsFlyerUID().then((AppsFlyerId) {
+  print("AppsFlyer ID: ${AppsFlyerId}");
+});
 ```
 ---
 ### **Conversion Data and on app open attribution for older versions**
