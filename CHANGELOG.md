@@ -1,5 +1,8 @@
 # Versions
 
+## 6.3.0-nullsafety.0
+- Update iOS & Android to SDK v6.3.0
+
 ## 6.2.6-nullsafety.1
 - Fix for deeplinking in iOS
 
