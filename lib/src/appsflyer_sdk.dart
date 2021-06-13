@@ -229,8 +229,9 @@ class AppsflyerSdk {
     return Future.delayed(Duration(seconds: 0)).then((_) {
       
       if (registerConversionDataCallback) _registerConversionDataCallback();
-      if (registerOnAppOpenAttributionCallback)
+      if (registerOnAppOpenAttributionCallback){
         _registerOnAppOpenAttributionCallback();
+      }
 
       if (registerConversionDataCallback ||
           registerOnAppOpenAttributionCallback) {
@@ -505,7 +506,7 @@ class AppsflyerSdk {
 
   Map<String, String?> _translateInviteLinkParamsToMap(
       AppsFlyerInviteLinkParams params) {
-    Map<String, String?> inviteLinkParamsMap = Map<String, String?>();
+    Map<String, String?> inviteLinkParamsMap = <String, String?>{};
     inviteLinkParamsMap['referrerImageUrl'] = params.referreImageUrl;
     inviteLinkParamsMap['customerID'] = params.customerID;
     inviteLinkParamsMap['brandDomain'] = params.brandDomain;
