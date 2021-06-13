@@ -2,12 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/services.dart';
 
-const _channel = const MethodChannel('callbacks');
+const _channel = MethodChannel('callbacks');
 
-typedef void MultiUseCallback(dynamic msg);
-typedef void CancelListening();
+typedef MultiUseCallback = void Function(dynamic msg);
+typedef CancelListening = void Function();
 
-Map<String, MultiUseCallback> _callbacksById = new Map();
+Map<String, MultiUseCallback> _callbacksById = <String, void Function(dynamic)> {};
 
 Future<void> _methodCallHandler(MethodCall call) async {
   switch (call.method) {
@@ -32,7 +32,7 @@ Future<void> _methodCallHandler(MethodCall call) async {
             _callbacksById[callMap["id"]]!(callMap["data"]);
             break;
         }
-      } catch (e) {
+      } on Exception catch (e) {
         print(e);
       }
       break;

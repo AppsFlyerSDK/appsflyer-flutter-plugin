@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:appsflyer_sdk_example/text_border.dart';
-import 'package:appsflyer_sdk_example/utils.dart';
 import 'package:flutter/material.dart';
-
 import 'app_constants.dart';
+import 'text_border.dart';
+import 'utils.dart';
+
 
 class HomeContainerStreams extends StatefulWidget {
   final Stream<Map> onData;

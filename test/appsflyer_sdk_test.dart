@@ -17,14 +17,14 @@ void main() {
     instance = AppsflyerSdk.private(methodChannel, eventChannel,
         mapOptions: {'afDevKey': 'sdfhj2342cx'});
 
-    methodChannel.setMockMethodCallHandler((MethodCall methodCall) async {
+    methodChannel.setMockMethodCallHandler((methodCall) async {
       String method = methodCall.method;
       if (method == 'initSdk') {
         selectedMethod = method;
       }
     });
 
-    eventMethodChannel.setMockMethodCallHandler((MethodCall methodCall) async {
+    eventMethodChannel.setMockMethodCallHandler((methodCall) async {
       String method = methodCall.method;
       if (method == 'listen') {
         selectedMethod = method;
@@ -55,7 +55,7 @@ void main() {
         }
       });
 
-      methodChannel.setMockMethodCallHandler((MethodCall methodCall) async {
+      methodChannel.setMockMethodCallHandler((methodCall) async {
         String method = methodCall.method;
         switch (method) {
           case 'setOneLinkCustomDomain':

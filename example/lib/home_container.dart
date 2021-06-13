@@ -4,6 +4,7 @@ import './app_constants.dart';
 import 'text_border.dart';
 import 'utils.dart';
 
+// ignore: must_be_immutable
 class HomeContainer extends StatefulWidget {
   final Map onData;
   final Future<bool> Function(String, Map) logEvent;

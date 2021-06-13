@@ -1,4 +1,6 @@
 # Versions
+## 6.3.0-nullsafety.1
+- Added effective dart package for linter rules
 
 ## 6.3.0-nullsafety.0
 - Update iOS & Android to SDK v6.3.0

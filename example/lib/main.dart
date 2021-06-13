@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/material.dart';
 
 import './main_page.dart';
-import 'package:flutter/material.dart';
 
 Future<void> main() async {
   await DotEnv().load('.env');
