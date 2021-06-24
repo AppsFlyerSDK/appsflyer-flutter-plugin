@@ -36,9 +36,9 @@ When submitting an issue please specify your AppsFlyer sign-up (account) email ,
 
 ### This plugin is built for
 
-- iOS AppsFlyerSDK **v6.3.0**
+- iOS AppsFlyerSDK **v6.3.2**
 
-- Android AppsFlyerSDK **v6.3.0**
+- Android AppsFlyerSDK **v6.3.2**
 
 ### Flutter 2.0 is supported from version `6.2.3+2`, including null safety support!
 
@@ -91,6 +91,35 @@ Map appsFlyerOptions = { "afDevKey": afDevKey,
 AppsflyerSdk appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
 ```
 
+
+**Disable Advertiser ID & IDFA:**
+
+
+Adding `"disableAdvertisingIdentifier": true` in the appsFlyerOptions will disable:
+
+
+Android:
+
+OAID (Open Anonymous Device Identifier)
+
+AAID (Amazon Advertising ID)
+
+GAID (Google Advertising ID)
+
+
+iOS:
+
+IDFA
+
+
+```dart
+Map appsFlyerOptions = { 
+    "afDevKey": afDevKey,
+    "afAppId": appId,
+    "isDebug": true
+    "disableAdvertisingIdentifier": true
+};
+```
 ---
 
 ### <a id="init-sdk"> 🚀  Initializing the SDK

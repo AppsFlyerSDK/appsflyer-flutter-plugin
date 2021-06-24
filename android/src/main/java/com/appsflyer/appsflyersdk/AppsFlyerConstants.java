@@ -18,6 +18,7 @@ public class AppsFlyerConstants {
     final static String AF_GCD_CALLBACK                         = "onInstallConversionData";
     final static String AF_OAOA_CALLBACK                        = "onAppOpenAttribution";
     final static String AF_UDL_CALLBACK                         = "onDeepLinking";
+    final static String DISABLE_ADVERTISING_IDENTIFIER          = "disableAdvertisingIdentifier";
 
     final static String AF_EVENTS_CHANNEL                       = "af-events";
     final static String AF_METHOD_CHANNEL                       = "af-api";

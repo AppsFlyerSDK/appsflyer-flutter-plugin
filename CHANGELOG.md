@@ -1,4 +1,7 @@
 # Versions
+## 6.3.2-nullsafety.0
+- Update to SDK v6.3.2 and added support for disabling advertiser ID on Android
+
 ## 6.3.0-nullsafety.1
 - Added effective dart package for linter rules
 
