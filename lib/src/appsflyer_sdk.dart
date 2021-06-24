@@ -66,8 +66,9 @@ class AppsflyerSdk {
     }
 
     if (options.disableAdvertisingIdentifier != null) {
-      validatedOptions[AppsflyerConstants.DISABLE_ADVERTISING_IDENTIFIER] =
-          options.disableAdvertisingIdentifier;
+      validatedOptions[AppsflyerConstants.DISABLE_ADVERTISING_IDENTIFIER] = options.disableAdvertisingIdentifier;
+    } else {
+      validatedOptions[AppsflyerConstants.DISABLE_ADVERTISING_IDENTIFIER] = false;
     }
 
     if (Platform.isIOS) {
@@ -128,6 +129,9 @@ class AppsflyerSdk {
     if (options[AppsflyerConstants.DISABLE_ADVERTISING_IDENTIFIER] != null) {
       afOptions[AppsflyerConstants.DISABLE_ADVERTISING_IDENTIFIER] =
           options[AppsflyerConstants.DISABLE_ADVERTISING_IDENTIFIER];
+    } else {
+      afOptions[AppsflyerConstants.DISABLE_ADVERTISING_IDENTIFIER] =
+          false;
     }
 
     if (Platform.isIOS) {
@@ -227,7 +231,6 @@ class AppsflyerSdk {
       bool registerOnAppOpenAttributionCallback = false,
       bool registerOnDeepLinkingCallback = false}) async {
     return Future.delayed(Duration(seconds: 0)).then((_) {
-      
       if (registerConversionDataCallback) _registerConversionDataCallback();
       if (registerOnAppOpenAttributionCallback){
         _registerOnAppOpenAttributionCallback();
@@ -557,10 +560,13 @@ class AppsflyerSdk {
     _methodChannel.invokeMethod("enableFacebookDeferredApplinks", { 'isFacebookDeferredApplinksEnabled': isEnabled });
   }
 
- void disableSKAdNetwork(bool isEnabled) {
+  void disableSKAdNetwork(bool isEnabled) {
     _methodChannel.invokeMethod("disableSKAdNetwork", isEnabled);
   }
 
+  void setDisableAdvertisingIdentifiers(bool isEnabled) {
+    _methodChannel.invokeMethod("setDisableAdvertisingIdentifiers", { 'isSetDisableAdvertisingIdentifiersEnable': isEnabled });
+  }
   void onInstallConversionData(Function callback) async {
     startListening(callback as void Function(dynamic), "onInstallConversionData");
   }

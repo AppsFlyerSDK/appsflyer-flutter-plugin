@@ -484,11 +484,15 @@ static BOOL _isSKADEnabled = false;
     [AppsFlyerLib shared].isDebug = isDebug;
     
     
-    SEL WaitForATTSel = NSSelectorFromString(@"waitForATTUserAuthorizationWithTimeoutInterval:");
+    // SEL WaitForATTSel = NSSelectorFromString(@"waitForATTUserAuthorizationWithTimeoutInterval:");
 
-    if ([AppsFlyer respondsToSelector:WaitForATTSel] && timeToWaitForATTUserAuthorization != 0) {
-        bypassWaitForATTUserAuthorization msgSend = (bypassWaitForATTUserAuthorization)objc_msgSend;
-        msgSend(AppsFlyer, WaitForATTSel, timeToWaitForATTUserAuthorization);
+    // if ([AppsFlyer respondsToSelector:WaitForATTSel] && timeToWaitForATTUserAuthorization != 0) {
+    //     bypassWaitForATTUserAuthorization msgSend = (bypassWaitForATTUserAuthorization)objc_msgSend;
+    //     msgSend(AppsFlyer, WaitForATTSel, timeToWaitForATTUserAuthorization);
+    // }
+
+    if (timeToWaitForATTUserAuthorization != 0) {
+        [[AppsFlyerLib shared] waitForATTUserAuthorizationWithTimeoutInterval:timeToWaitForATTUserAuthorization];
     }
 
     [[AppsFlyerLib shared] start];

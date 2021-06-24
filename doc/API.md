@@ -171,6 +171,7 @@ Future<bool> logEvent(String eventName, Map eventValues) async {
 ---
 
 ## Other functionalities:
+
 **<a id="setUserEmails"> `setUserEmails(List<String> emails, [EmailCryptType cryptType])`**
 
 Set the user emails with the given encryption (`EmailCryptTypeNone, EmailCryptTypeSHA1, EmailCryptTypeMD5, EmailCryptTypeSHA256`). the default encryption is `EmailCryptTypeNone`.

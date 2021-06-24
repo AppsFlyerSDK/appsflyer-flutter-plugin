@@ -51,6 +51,7 @@ import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_ON_APP_OPEN_ATTRI
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_ON_INSTALL_CONVERSION_DATA_LOADED;
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_SUCCESS;
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_VALIDATE_PURCHASE;
+import static com.appsflyer.appsflyersdk.AppsFlyerConstants.DISABLE_ADVERTISING_IDENTIFIER;
 
 /**
  * AppsflyerSdkPlugin
@@ -73,6 +74,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private Boolean udlCallback = false;
     private Boolean validatePurchaseCallback = false;
     private Boolean isFacebookDeferredApplinksEnabled = false;
+    private Boolean isSetDisableAdvertisingIdentifiersEnable = false;
 
     private void onAttachedToEngine(Context applicationContext, BinaryMessenger messenger) {
         this.mContext = applicationContext;
@@ -220,10 +222,22 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "enableFacebookDeferredApplinks":
                 enableFacebookDeferredApplinks(call, result);
                 break;
+            case "setDisableAdvertisingIdentifiers":
+                setDisableAdvertisingIdentifiers(call, result);
+                break;
             default:
                 result.notImplemented();
                 break;
         }
+    }
+    private void setDisableAdvertisingIdentifiers(MethodCall call, Result result) {
+        isSetDisableAdvertisingIdentifiersEnable = (boolean)call.argument("isSetDisableAdvertisingIdentifiersEnable");
+        if(isSetDisableAdvertisingIdentifiersEnable){
+            AppsFlyerLib.getInstance().setDisableAdvertisingIdentifiers(true);
+        }else{
+            AppsFlyerLib.getInstance().setDisableAdvertisingIdentifiers(false);
+        }
+        result.success(null);
     }
 
     private void enableFacebookDeferredApplinks(MethodCall call, Result result) {
@@ -555,6 +569,11 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         String afDevKey = (String) call.argument(AppsFlyerConstants.AF_DEV_KEY);
         if (afDevKey == null || afDevKey.equals("")) {
             result.error(null, "AF Dev Key is empty", "AF dev key cannot be empty");
+        }
+
+        boolean advertiserIdDisabled = (boolean) call.argument(AppsFlyerConstants.DISABLE_ADVERTISING_IDENTIFIER);
+        if (advertiserIdDisabled) {
+            instance.setDisableAdvertisingIdentifiers(true);
         }
 
         boolean getGCD = (boolean) call.argument(AppsFlyerConstants.AF_GCD);
