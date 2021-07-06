@@ -10,8 +10,9 @@
     - [Deferred Deep Linking (Get Conversion Data)](#deferred-deep-linking)
     - [Direct Deep Linking](#direct-deep-linking)
     - [Unified deep linking](#Unified-deep-linking)
-    - [iOS Deeplink Setup](#iosdeeplinks)
     - [Android Deeplink Setup](#android-deeplinks)
+    - [iOS Deeplink Setup](#iosdeeplinks)
+    - [Example in swift](#Example-swift)
 - [Set plugin for IOS 14](#ios14)
 - [Setting strict mode (app for kids)](#strictMode)
 - [Uninstall feature](#uninstall)
@@ -283,8 +284,8 @@ Swift:
      }
 ```
 
-	
-Example in swift:
+<a id="Example-swift">	
+###Example in swift:###
 	
 	
 
@@ -376,10 +377,11 @@ Or
 	
 	b. Add native implementation:
 
+	
+- Add `#import <AppTrackingTransparency/AppTrackingTransparency.h>` in your `AppDelegate.m` 
 
-		- Add `#import <AppTrackingTransparency/AppTrackingTransparency.h>` in your `AppDelegate.m` 
-
-		- Add the ATT pop-up for IDFA collection so your `AppDelegate.m` will look like this:
+- Add the ATT pop-up for IDFA collection so your `AppDelegate.m` will look like this:
+	
 	
 		```
 		-(BOOL)application:(UIApplication*)application didFinishLaunchingWithOptions:(NSDictionary*)launchOptions
