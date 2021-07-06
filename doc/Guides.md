@@ -179,13 +179,18 @@ For more on App Links check out the guide [here](https://support.appsflyer.com/h
 ###  <a id="iosdeeplinks"> iOS Deeplink Setup
 
 In order for the callback to be called:
+	
 1. Import AppsFlyer SDK:
     
 Objective C:
 	
-    a. For AppsFlyer SDK V6.2.0 and above add: ```#import "AppsflyerSdkPlugin.h"```
+    a. For AppsFlyer SDK V6.2.0 and above add: 
+	
+	```#import "AppsflyerSdkPlugin.h"```
    
-    b. For AppsFlyer SDK V6.1.0 and below add: ```#import <AppsFlyerLib/AppsFlyerLib.h>```
+    b. For AppsFlyer SDK V6.1.0 and below add: 
+	
+	```#import <AppsFlyerLib/AppsFlyerLib.h>```
 
 Swift:
 	
@@ -193,9 +198,13 @@ Add ```import AppsFlyerLib``` in the `AppDelegate.swift` file.
 
 Add in the `Runner-Bridging-Header.h` one of the following lines:
 	
-     a. For AppsFlyer SDK V6.2.0 and above add: ```#import <AppsflyerSdkPlugin.h>``
+     a. For AppsFlyer SDK V6.2.0 and above add: 
+	
+	```#import <AppsflyerSdkPlugin.h>``
    
-     b. For AppsFlyer SDK V6.1.0 and below add: ```#import <AppsFlyerLib/AppsFlyerLib.h>```
+     b. For AppsFlyer SDK V6.1.0 and below add: 
+	
+	```#import <AppsFlyerLib/AppsFlyerLib.h>```
 
 2. Set-up the following AppsFlyer API:
 
@@ -248,7 +257,7 @@ For more on URI-schemes check out the guide [here](https://support.appsflyer.com
 
 Objective-C:
 
-    ```:
+    ```
     // Reports app open from a Universal Link for iOS 9 or above
     - (BOOL) application:(UIApplication *)application continueUserActivity:(NSUserActivity *)userActivity restorationHandler:(void (^)(NSArray<id<UIUserActivityRestoring>> *restorableObjects))restorationHandler {
         // AppsFlyer SDK version 6.2.0 and above 
@@ -274,7 +283,9 @@ Swift:
      }
 ```
 
+	
 Example in swift:
+	
 	
 
 `Runner-Bridging-Header.h`	
@@ -356,6 +367,7 @@ For more on Universal Links check out the guide [here](https://support.appsflyer
 ## <a id="ios14"> Set plugin for IOS 14
 	
 1. Adding the conset dialog:
+	
 There are 2 ways to add it to your app:
 	
 	a. Add the following Library: https://pub.dev/packages/app_tracking_transparency
@@ -368,6 +380,7 @@ Or
 		- Add `#import <AppTrackingTransparency/AppTrackingTransparency.h>` in your `AppDelegate.m` 
 
 		- Add the ATT pop-up for IDFA collection so your `AppDelegate.m` will look like this:
+	
 		```
 		-(BOOL)application:(UIApplication*)application didFinishLaunchingWithOptions:(NSDictionary*)launchOptions
 		{
@@ -384,12 +397,14 @@ Or
 	
 
 2. Add Privacy - Tracking Usage Description inside your `.plist` file in Xcode.
+	
 ```
 <key>NSUserTrackingUsageDescription</key>
 <string>This identifier will be used to deliver personalized ads to you.</string>
 ```
 	
 3. Optional: Set the `timeToWaitForATTUserAuthorization` property in the `AppsFlyerOptions` to delay the sdk initazliation for a number of `x seconds` until the user accept the consent dialog:
+	
 ```dart
 AppsFlyerOptions options = AppsFlyerOptions(
     afDevKey: DotEnv().env["DEV_KEY"],
