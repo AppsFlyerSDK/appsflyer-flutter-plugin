@@ -181,9 +181,21 @@ For more on App Links check out the guide [here](https://support.appsflyer.com/h
 In order for the callback to be called:
 1. Import AppsFlyer SDK:
     
+Objective C:
+	
     a. For AppsFlyer SDK V6.2.0 and above add: ```#import "AppsflyerSdkPlugin.h"```
    
     b. For AppsFlyer SDK V6.1.0 and below add: ```#import <AppsFlyerLib/AppsFlyerLib.h>```
+
+Swift:
+	
+Add ```import AppsFlyerLib``` in the `AppDelegate.swift` file.
+
+Add in the `Runner-Bridging-Header.h` one of the following lines:
+	
+     a. For AppsFlyer SDK V6.2.0 and above add: ```#import <AppsflyerSdkPlugin.h>``
+   
+     b. For AppsFlyer SDK V6.1.0 and below add: ```#import <AppsFlyerLib/AppsFlyerLib.h>```
 
 2. Set-up the following AppsFlyer API:
 
@@ -262,7 +274,58 @@ Swift:
      }
 ```
 
+Example in swift:
+	
 
+`Runner-Bridging-Header.h`	
+	
+```	
+#import "GeneratedPluginRegistrant.h"
+#import <AppsflyerSdkPlugin.h>
+```
+	
+	
+`AppDelegate.swift`
+	
+```swift
+import UIKit
+import Flutter
+import AppsFlyerLib
+
+@UIApplicationMain
+@objc class AppDelegate: FlutterAppDelegate {
+  override func application(
+    _ application: UIApplication,
+    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+  ) -> Bool {
+    GeneratedPluginRegistrant.register(with: self)
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+    
+       // Open URI-scheme for iOS 9 and above
+    override func application(_ application: UIApplication, open url: URL, sourceApplication: String?, annotation: Any) -> Bool {
+        NSLog("AppsFlyer [deep link]: Open URI-scheme for iOS 9 and above")
+        AppsFlyerAttribution.shared()!.handleOpenUrl(url, sourceApplication: sourceApplication, annotation: annotation);
+        return true
+       }
+
+       // Reports app open from deep link for iOS 10 or later
+    override func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
+        NSLog("AppsFlyer [deep link]: continue userActivity")
+        AppsFlyerAttribution.shared()!.continueUserActivity(userActivity, restorationHandler:nil )
+           return true
+       }
+    
+    override func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+        NSLog("AppsFlyer [deep link]: Open URI-scheme options")
+
+        AppsFlyerAttribution.shared()!.handleOpenUrl(url, options: options)
+           return true
+       }
+}
+```
+	
+	
 More on Universal Links:
 Essentially, the Universal Links method links between an iOS mobile app and an associate website/domain, such as AppsFlyer’s OneLink domain (xxx.onelink.me). To do so, it is required to:
 
@@ -291,26 +354,42 @@ For more on Universal Links check out the guide [here](https://support.appsflyer
 
 
 ## <a id="ios14"> Set plugin for IOS 14
+	
+1. Adding the conset dialog:
+There are 2 ways to add it to your app:
+	
+	a. Add the following Library: https://pub.dev/packages/app_tracking_transparency
 
-1. Add `#import <AppTrackingTransparency/AppTrackingTransparency.h>` in your `AppDelegate.m` 
+Or 
+	
+	b. Add native implementation:
 
-2. Add the ATT pop-up for IDFA collection so your `AppDelegate.m` will look like this:
+
+		- Add `#import <AppTrackingTransparency/AppTrackingTransparency.h>` in your `AppDelegate.m` 
+
+		- Add the ATT pop-up for IDFA collection so your `AppDelegate.m` will look like this:
+		```
+		-(BOOL)application:(UIApplication*)application didFinishLaunchingWithOptions:(NSDictionary*)launchOptions
+		{
+		    [GeneratedPluginRegistrant registerWithRegistry:self];
+		    if (@available(iOS 14, *)) {
+			[ATTrackingManager requestTrackingAuthorizationWithCompletionHandler:^(ATTrackingManagerAuthorizationStatus status) {
+			    //If you want to do something with the pop-up
+			}];
+		    }
+		    return [super application:application didFinishLaunchingWithOptions:launchOptions];
+		}
+		```
+
+	
+
+2. Add Privacy - Tracking Usage Description inside your `.plist` file in Xcode.
 ```
--(BOOL)application:(UIApplication*)application didFinishLaunchingWithOptions:(NSDictionary*)launchOptions
-{
-    [GeneratedPluginRegistrant registerWithRegistry:self];
-    if (@available(iOS 14, *)) {
-        [ATTrackingManager requestTrackingAuthorizationWithCompletionHandler:^(ATTrackingManagerAuthorizationStatus status) {
-            //If you want to do something with the pop-up
-        }];
-    }
-    return [super application:application didFinishLaunchingWithOptions:launchOptions];
-}
+<key>NSUserTrackingUsageDescription</key>
+<string>This identifier will be used to deliver personalized ads to you.</string>
 ```
-
-3. Add Privacy - Tracking Usage Description inside your `.plist` file in Xcode.
-
-4. Optional: Set the `timeToWaitForATTUserAuthorization` property in the `AppsFlyerOptions` to delay the sdk initazliation for a number of `x seconds` until the user accept the consent dialog:
+	
+3. Optional: Set the `timeToWaitForATTUserAuthorization` property in the `AppsFlyerOptions` to delay the sdk initazliation for a number of `x seconds` until the user accept the consent dialog:
 ```dart
 AppsFlyerOptions options = AppsFlyerOptions(
     afDevKey: DotEnv().env["DEV_KEY"],
