@@ -17,6 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface AppsFlyerStreamHandler: NSObject<FlutterStreamHandler, AppsFlyerLibDelegate, AppsFlyerDeepLinkDelegate>
 
 - (void)sendResponseToFlutter:(NSString *)responseID status:(NSString *)status data:(NSDictionary *)data;
+- (NSString*) getStatusAsString:(AFSDKDeepLinkResultStatus)value;
 
 @end
 

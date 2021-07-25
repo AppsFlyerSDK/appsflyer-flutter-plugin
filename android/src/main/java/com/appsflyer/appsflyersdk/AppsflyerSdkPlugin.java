@@ -454,8 +454,20 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                         JSONObject args = new JSONObject();
                         try {
                             args.put("id", callbackName);
-                            args.put("status", status);
-                            args.put("data", data.toString());
+                            //return data for UDL
+                            if (callbackName.equals(AppsFlyerConstants.AF_UDL_CALLBACK)) {
+                                DeepLinkResult dp = (DeepLinkResult) data;
+                                args.put("deepLinkStatus", dp.getStatus().toString());
+                                if (dp.getError() != null) {
+                                    args.put("deepLinkError", dp.getError().toString());
+                                }
+                                if (dp.getStatus() == DeepLinkResult.Status.FOUND) {
+                                    args.put("deepLinkObj", dp.getDeepLink().AFInAppEventParameterName);
+                                }
+                            } else { // return data for conversionData and OAOA
+                                args.put("status", status);
+                                args.put("data", data.toString());
+                            }
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }

@@ -180,11 +180,13 @@ class AppsflyerSdk {
     }
   }
 
+  @Deprecated("please use onInstallConversionData")
   Stream<Map>? get conversionDataStream {
     return _afGCDStreamController?.stream.asBroadcastStream() as Stream<Map<dynamic, dynamic>>?;
   }
 
   // Accessing AppsFlyer attribution, referred from deep linking
+  @Deprecated("lease use onInstallConversionData callback")
   void _registerOnAppOpenAttributionCallback() {
     if (_afOpenAttributionStreamController == null) {
       _afOpenAttributionStreamController = StreamController<Map>(onCancel: () {
@@ -193,7 +195,7 @@ class AppsflyerSdk {
     }
   }
 
-
+  @Deprecated("Please use onAppOpenAttribution callback")
   Stream<Map>? get appOpenAttributionStream {
     return _afOpenAttributionStreamController?.stream.asBroadcastStream() as Stream<Map<dynamic, dynamic>>?;
   }
@@ -208,6 +210,7 @@ class AppsflyerSdk {
     }
   }
 
+  @Deprecated("Please use onDeepLinking callback")
   Stream<Map>? get onDeepLinkingStream {
     return _afUDLStreamController?.stream.asBroadcastStream() as Stream<Map<dynamic, dynamic>>?;
   }
@@ -575,8 +578,8 @@ class AppsflyerSdk {
     startListening(callback as void Function(dynamic), "onAppOpenAttribution");
   }
 
-  void onDeepLinking(Function callback) async {
-    startListening(callback as void Function(dynamic), "onDeepLinking");
+  void onDeepLinking(Function(DeepLinkResult) callback) async {
+    startListeningToUDL(callback as void Function(DeepLinkResult), "onDeepLinking");
   }
 
   void onPurchaseValidation(Function callback) async {
