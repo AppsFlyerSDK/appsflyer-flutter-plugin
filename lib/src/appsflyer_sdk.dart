@@ -180,6 +180,7 @@ class AppsflyerSdk {
     }
   }
 
+  @Deprecated("please use onInstallConversionData callback")
   Stream<Map>? get conversionDataStream {
     return _afGCDStreamController?.stream.asBroadcastStream() as Stream<Map<dynamic, dynamic>>?;
   }
@@ -193,7 +194,7 @@ class AppsflyerSdk {
     }
   }
 
-
+  @Deprecated("Please use onAppOpenAttribution callback")
   Stream<Map>? get appOpenAttributionStream {
     return _afOpenAttributionStreamController?.stream.asBroadcastStream() as Stream<Map<dynamic, dynamic>>?;
   }
@@ -204,10 +205,10 @@ class AppsflyerSdk {
       _afUDLStreamController = StreamController<Map>(onCancel: () {
         _afUDLStreamController!.close();
       });
-      _registerUDLListener();
     }
   }
 
+  @Deprecated("Please use onDeepLinking callback")
   Stream<Map>? get onDeepLinkingStream {
     return _afUDLStreamController?.stream.asBroadcastStream() as Stream<Map<dynamic, dynamic>>?;
   }
@@ -236,14 +237,14 @@ class AppsflyerSdk {
         _registerOnAppOpenAttributionCallback();
       }
 
-      if (registerConversionDataCallback ||
-          registerOnAppOpenAttributionCallback) {
-        _registerGCDListener();
-      }
-
       if (registerOnDeepLinkingCallback) {
         _registerUDLCallback();
-      }      
+      }
+
+      if (registerConversionDataCallback ||
+          registerOnAppOpenAttributionCallback||registerOnDeepLinkingCallback) {
+        _registerListeners();
+      }
 
       Map<String, dynamic>? validatedOptions;
       if (mapOptions != null) {
@@ -439,7 +440,7 @@ class AppsflyerSdk {
     });
   }
 
-  void _registerGCDListener() {
+  void _registerListeners() {
     _eventChannel.receiveBroadcastStream().listen((data) {
       var decodedJSON = jsonDecode(data);
       String? type = decodedJSON['type'];
@@ -469,6 +470,19 @@ class AppsflyerSdk {
             }
           }
           break;
+        case AppsflyerConstants.AF_ON_DEEP_LINK:
+            if (_afUDLStreamController != null &&
+                !_afUDLStreamController!.isClosed) {
+              _afUDLStreamController!.sink.add(decodedJSON);
+            } else {
+              if ((afOptions != null && afOptions!.showDebug) ||
+                  (mapOptions != null &&
+                      mapOptions![AppsflyerConstants.AF_IS_DEBUG])) {
+                print("UDL Stream controller is closed. the event wasn't sent");
+              }
+            }
+
+
       }
     });
   }

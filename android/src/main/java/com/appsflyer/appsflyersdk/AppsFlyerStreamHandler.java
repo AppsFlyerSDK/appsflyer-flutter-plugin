@@ -3,6 +3,8 @@ package com.appsflyer.appsflyersdk;
 import android.content.Context;
 import android.content.IntentFilter;
 
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
 import io.flutter.plugin.common.EventChannel;
 
 public class AppsFlyerStreamHandler implements EventChannel.StreamHandler {
@@ -16,12 +18,12 @@ public class AppsFlyerStreamHandler implements EventChannel.StreamHandler {
     @Override
     public void onListen(Object o, EventChannel.EventSink eventSink) {
         appsFlyerBroadcastReceiver = new AppsFlyerBroadcastReceiver(eventSink);
-        mContext.registerReceiver(appsFlyerBroadcastReceiver, new IntentFilter(AppsFlyerConstants.AF_BROADCAST_ACTION_NAME));
+        LocalBroadcastManager.getInstance(mContext).registerReceiver(appsFlyerBroadcastReceiver, new IntentFilter(AppsFlyerConstants.AF_BROADCAST_ACTION_NAME));
     }
 
     @Override
     public void onCancel(Object o) {
-        mContext.unregisterReceiver(appsFlyerBroadcastReceiver);
+        LocalBroadcastManager.getInstance(mContext).unregisterReceiver(appsFlyerBroadcastReceiver);
         appsFlyerBroadcastReceiver = null;
     }
 }
