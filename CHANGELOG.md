@@ -1,4 +1,8 @@
 # Versions
+
+## 6.3.3-nullsafety.0
+- change to local broadcast
+
 ## 6.3.2-nullsafety.0
 - Update to SDK v6.3.2 and added support for disabling advertiser ID on Android
 
