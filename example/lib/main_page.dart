@@ -38,10 +38,10 @@ class MainPageState extends State<MainPage> {
         _gcd = res;
       });
     });
-    _appsflyerSdk.onDeepLinking((res){
+    _appsflyerSdk.onDeepLinking((DeepLinkResult res){
       print("onDeepLinking res: " + res.toString());
       setState(() {
-        _deepLinkData = res;
+        _deepLinkData = res.toJson();
       });
     });
 

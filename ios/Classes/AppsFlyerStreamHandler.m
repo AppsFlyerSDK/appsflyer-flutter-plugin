@@ -8,27 +8,12 @@
 #import "AppsFlyerStreamHandler.h"
 
 @implementation AppsFlyerStreamHandler {
-    FlutterEventSink _eventSink;
-}
 
-- (FlutterError* _Nullable)onListenWithArguments:(id _Nullable)arguments
-                                       eventSink:(FlutterEventSink)events {
-    _eventSink = events;
-    return nil;
-}
-
-- (FlutterError* _Nullable)onCancelWithArguments:(id _Nullable)arguments {
-    _eventSink = nil;
-    return nil;
 }
 
 - (void)onConversionDataSuccess:(NSDictionary *)installData {
-    NSDictionary *message = @{@"status":afSuccess,
-                              @"type":afOnInstallConversionDataLoaded,
-                              @"data":installData };
     NSError *error;
-    NSString *JSONString = [self mapToJson:message withError:error];
-    
+
     //use callbacks
     if([AppsflyerSdkPlugin gcdCallback]){
         NSString *installDataJson = [self mapToJson:installData withError:error];
@@ -37,13 +22,12 @@
             @"data": installDataJson,
             @"status": afSuccess
         };
-        JSONString = [self mapToJson:fullResponse withError:error];
+        NSString *JSONString = [self mapToJson:fullResponse withError:error];
         [AppsflyerSdkPlugin.callbackChannel invokeMethod:@"callListener" arguments:JSONString];
         return;
     }else if (error) {
         return;
     }
-    _eventSink(JSONString);
 }
 
 - (NSString *)mapToJson:(NSDictionary *)data withError:(NSError *)error{
@@ -53,11 +37,6 @@
 }
 
 - (void)onConversionDataFail:(NSError *)error {
-    NSDictionary *errorMessage = @{@"status":afFailure,
-                                   @"type":afOnInstallConversionDataLoaded,
-                                   @"data":error.localizedDescription};
-    NSString *JSONString = [self mapToJson:errorMessage withError:error];
-    
     //use callbacks
     if([AppsflyerSdkPlugin gcdCallback]){
         NSDictionary *fullResponse = @{
@@ -65,7 +44,7 @@
             @"data": error.localizedDescription,
             @"status": afSuccess
         };
-        JSONString = [self mapToJson:fullResponse withError:error];
+        NSString *JSONString = [self mapToJson:fullResponse withError:error];
         [AppsflyerSdkPlugin.callbackChannel invokeMethod:@"callListener" arguments:JSONString];
         return;
     }
@@ -73,18 +52,11 @@
     if (error) {
         return;
     }
-    _eventSink(JSONString);
 }
 
 
 - (void)onAppOpenAttribution:(NSDictionary *)attributionData {
-    NSDictionary* message = @{
-        @"status": afSuccess,
-        @"type": afOnAppOpenAttribution,
-        @"data": attributionData
-    };
     NSError *error;
-    NSString *JSONString = [self mapToJson:message withError:error];
     //use callbacks
     if([AppsflyerSdkPlugin oaoaCallback]){
         NSString* attributionDataJson = [self mapToJson:attributionData withError:error];
@@ -93,7 +65,7 @@
             @"data": attributionDataJson,
             @"status": afSuccess
         };
-        JSONString = [self mapToJson:fullResponse withError:error];
+        NSString *JSONString = [self mapToJson:fullResponse withError:error];
         [AppsflyerSdkPlugin.callbackChannel invokeMethod:@"callListener" arguments:JSONString];
         return;
     }
@@ -101,50 +73,25 @@
     if (error) {
         return;
     }
-    _eventSink(JSONString);
 }
 
 - (void)onAppOpenAttributionFailure:(NSError *)_errorMessage {
-    NSDictionary* errorMessage = @{
-        @"status": afFailure,
-        @"type": afOnAppOpenAttribution,
-        @"data": _errorMessage.localizedDescription
-        
-    };
     NSError *error;
-    NSString *JSONString = [self mapToJson:errorMessage withError:error];
     if([AppsflyerSdkPlugin oaoaCallback]){
         NSDictionary *fullResponse = @{
             @"id": afOAOACallback,
             @"data": error.localizedDescription,
             @"status": afSuccess
         };
-        JSONString = [self mapToJson:fullResponse withError:error];
+        NSString *JSONString = [self mapToJson:fullResponse withError:error];
         [AppsflyerSdkPlugin.callbackChannel invokeMethod:@"callListener" arguments:JSONString];
         return;
     }
     
-    _eventSink(JSONString);
 }
 
 - (void)didResolveDeepLink:(AppsFlyerDeepLinkResult* _Nonnull) deepLinkResult {
-    if(deepLinkResult.deepLink){
-        NSMutableDictionary *message = [[NSMutableDictionary alloc] initWithCapacity:4];
-        message[  @"id"] = afUDPCallback;
-        message[  @"deepLinkStatus"] = [self getStatusAsString:deepLinkResult.status];
-        if(deepLinkResult.deepLink != nil){
-            NSMutableDictionary * params = [[NSMutableDictionary alloc] initWithCapacity: deepLinkResult.deepLink.clickEvent.count + 1];
-            [params addEntriesFromDictionary:deepLinkResult.deepLink.clickEvent];
-            params[@"isDeferred"] = [NSNumber numberWithBool:deepLinkResult.deepLink.isDeferred];
-            message [@"deepLinkObj"] = params;
-        }
-        if (deepLinkResult.error != nil && deepLinkResult.error.localizedDescription) {
-            message [@"deepLinkError"] =  deepLinkResult.error.localizedDescription;
-            
-        }
         NSError *error;
-        NSString *JSONString = [self mapToJson:message withError:error];
-        //use callbacks
         if([AppsflyerSdkPlugin udpCallback]){
             NSMutableDictionary *fullResponse = [[NSMutableDictionary alloc] initWithCapacity:4];
           
@@ -161,7 +108,7 @@
                 fullResponse [@"deepLinkError"] =  deepLinkResult.error.localizedDescription;
                 
             }
-            JSONString = [self mapToJson:fullResponse withError:error];
+            NSString *JSONString = [self mapToJson:fullResponse withError:error];
             [AppsflyerSdkPlugin.callbackChannel invokeMethod:@"callListener" arguments:JSONString];
             return;
         }
@@ -169,9 +116,8 @@
         if (error) {
             return;
         }
-        _eventSink(JSONString);
     }
-}
+
 
 - (void)sendResponseToFlutter:(NSString *)responseID status:(NSString *)status data:(NSDictionary *)data{
     NSError *error;
@@ -205,6 +151,7 @@
             
     }
 }
+
 
 
 @end

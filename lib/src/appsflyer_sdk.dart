@@ -1,14 +1,6 @@
 part of appsflyer_sdk;
 
 class AppsflyerSdk {
-  // ignore: close_sinks
-  StreamController? _afGCDStreamController;
-  // ignore: close_sinks
-  StreamController? _afUDLStreamController;
-  // ignore: close_sinks
-  StreamController? _afOpenAttributionStreamController;
-  // ignore: close_sinks
-  StreamController? _afValidtaPurchaseController;
   EventChannel _eventChannel;
   static AppsflyerSdk? _instance;
   final MethodChannel _methodChannel;
@@ -90,18 +82,6 @@ class AppsflyerSdk {
         // ignore: unnecessary_null_comparison
         (options.showDebug != null) ? options.showDebug : false;
 
-    if (_afGCDStreamController != null ||
-        _afOpenAttributionStreamController != null) {
-      validatedOptions[AppsflyerConstants.AF_GCD] = true;
-    } else {
-      validatedOptions[AppsflyerConstants.AF_GCD] = false;
-    }
-
-    if (_afUDLStreamController != null ) {
-      validatedOptions[AppsflyerConstants.AF_UDL] = true;
-    } else {
-      validatedOptions[AppsflyerConstants.AF_UDL] = false;
-    }
     return validatedOptions;
   }
 
@@ -155,77 +135,8 @@ class AppsflyerSdk {
             ? options[AppsflyerConstants.AF_IS_DEBUG]
             : false;
 
-    if (_afGCDStreamController != null ||
-        _afOpenAttributionStreamController != null) {
-      afOptions[AppsflyerConstants.AF_GCD] = true;
-    } else {
-      afOptions[AppsflyerConstants.AF_GCD] = false;
-    }
-
-    if (_afUDLStreamController != null ) {
-      afOptions[AppsflyerConstants.AF_UDL] = true;
-    } else {
-      afOptions[AppsflyerConstants.AF_UDL] = false;
-    }
 
     return afOptions;
-  }
-
-  // Accessing AppsFlyer Conversion Data from the SDK
-  void _registerConversionDataCallback() {
-    if (_afGCDStreamController == null) {
-      _afGCDStreamController = StreamController<Map>(onCancel: () {
-        _afGCDStreamController!.close();
-      });
-    }
-  }
-
-  @Deprecated("please use onInstallConversionData")
-  Stream<Map>? get conversionDataStream {
-    return _afGCDStreamController?.stream.asBroadcastStream() as Stream<Map<dynamic, dynamic>>?;
-  }
-
-  // Accessing AppsFlyer attribution, referred from deep linking
-  @Deprecated("lease use onInstallConversionData callback")
-  void _registerOnAppOpenAttributionCallback() {
-    if (_afOpenAttributionStreamController == null) {
-      _afOpenAttributionStreamController = StreamController<Map>(onCancel: () {
-        _afOpenAttributionStreamController!.close();
-      });
-    }
-  }
-
-  @Deprecated("Please use onAppOpenAttribution callback")
-  Stream<Map>? get appOpenAttributionStream {
-    return _afOpenAttributionStreamController?.stream.asBroadcastStream() as Stream<Map<dynamic, dynamic>>?;
-  }
-
-  // Unified deeplink: Accessing AppsFlyer deeplink attributes
-  void _registerUDLCallback() {
-    if (_afUDLStreamController == null) {
-      _afUDLStreamController = StreamController<Map>(onCancel: () {
-        _afUDLStreamController!.close();
-      });
-      _registerUDLListener();
-    }
-  }
-
-  @Deprecated("Please use onDeepLinking callback")
-  Stream<Map>? get onDeepLinkingStream {
-    return _afUDLStreamController?.stream.asBroadcastStream() as Stream<Map<dynamic, dynamic>>?;
-  }
-
-  ///Returns `Stream`. Accessing AppsFlyer purchase validation data
-   // ignore: unused_element
-   Stream<dynamic> _registerValidatePurchaseStream() {
-    if (_afValidtaPurchaseController == null) {
-      _afValidtaPurchaseController = StreamController(onCancel: () {
-        _afValidtaPurchaseController!.close();
-      });
-
-      _registerPurchaseValidateListener();
-    }
-    return _afValidtaPurchaseController!.stream;
   }
 
   ///initialize the SDK, using the options initialized from the constructor|
@@ -234,19 +145,6 @@ class AppsflyerSdk {
       bool registerOnAppOpenAttributionCallback = false,
       bool registerOnDeepLinkingCallback = false}) async {
     return Future.delayed(Duration(seconds: 0)).then((_) {
-      if (registerConversionDataCallback) _registerConversionDataCallback();
-      if (registerOnAppOpenAttributionCallback){
-        _registerOnAppOpenAttributionCallback();
-      }
-
-      if (registerConversionDataCallback ||
-          registerOnAppOpenAttributionCallback) {
-        _registerGCDListener();
-      }
-
-      if (registerOnDeepLinkingCallback) {
-        _registerUDLCallback();
-      }      
 
       Map<String, dynamic>? validatedOptions;
       if (mapOptions != null) {
@@ -254,6 +152,9 @@ class AppsflyerSdk {
       } else if (afOptions != null) {
         validatedOptions = _validateAFOptions(afOptions!);
       }
+
+      validatedOptions?[AppsflyerConstants.AF_GCD] = registerConversionDataCallback || registerOnAppOpenAttributionCallback;
+      validatedOptions?[AppsflyerConstants.AF_UDL] = registerOnDeepLinkingCallback;
 
       return _methodChannel.invokeMethod("initSdk", validatedOptions);
     });
@@ -423,68 +324,7 @@ class AppsflyerSdk {
         .invokeMethod("setAdditionalData", {'customData': customData});
   }
 
-  void _registerUDLListener() {
-    _eventChannel.receiveBroadcastStream().listen((data) { 
-      var decodedJSON = jsonDecode(data);
-      String? type = decodedJSON['type'];
-      if(type == AppsflyerConstants.AF_ON_DEEP_LINK){
-        if (_afUDLStreamController != null &&
-              !_afUDLStreamController!.isClosed) {
-            _afUDLStreamController!.sink.add(decodedJSON);
-        } else {
-          if ((afOptions != null && afOptions!.showDebug) ||
-              (mapOptions != null &&
-                  mapOptions![AppsflyerConstants.AF_IS_DEBUG])) {
-            print("UDL Stream controller is closed. the event wasn't sent");
-          }
-        }
-      }
-    });
-  }
 
-  void _registerGCDListener() {
-    _eventChannel.receiveBroadcastStream().listen((data) {
-      var decodedJSON = jsonDecode(data);
-      String? type = decodedJSON['type'];
-      switch (type) {
-        case AppsflyerConstants.AF_GET_CONVERSION_DATA:
-          if (_afGCDStreamController != null &&
-              !_afGCDStreamController!.isClosed) {
-            _afGCDStreamController!.sink.add(decodedJSON);
-          } else {
-            if ((afOptions != null && afOptions!.showDebug) ||
-                (mapOptions != null &&
-                    mapOptions![AppsflyerConstants.AF_IS_DEBUG])) {
-              print("GCD Stream controller is closed. the event wasn't sent");
-            }
-          }
-          break;
-        case AppsflyerConstants.AF_ON_APP_OPEN_ATTRIBUTION:
-          if (_afOpenAttributionStreamController != null &&
-              !_afOpenAttributionStreamController!.isClosed) {
-            _afOpenAttributionStreamController!.sink.add(decodedJSON);
-          } else {
-            if ((afOptions != null && afOptions!.showDebug) ||
-                (mapOptions != null &&
-                    mapOptions![AppsflyerConstants.AF_IS_DEBUG])) {
-              print(
-                  "OnAppOpenAttribution stream is closed. the event wasn't sent");
-            }
-          }
-          break;
-      }
-    });
-  }
-
-  void _registerPurchaseValidateListener() {
-    _eventChannel.receiveBroadcastStream().listen((data) {
-      var decodedJSON = jsonDecode(data);
-      String? type = decodedJSON['type'];
-      if (type == AppsflyerConstants.AF_VALIDATE_PURCHASE) {
-        _afValidtaPurchaseController!.sink.add(decodedJSON);
-      }
-    });
-  }
 
   ///The sharing filter blocks the sharing of S2S events via postbacks/API with integrated partners and other third-party integrations.
   ///Use the filter to fulfill regulatory requirements like GDPR and CCPA, to comply with user opt-out mechanisms, and for other business logic reasons.
@@ -579,7 +419,7 @@ class AppsflyerSdk {
   }
 
   void onDeepLinking(Function(DeepLinkResult) callback) async {
-    startListeningToUDL(callback as void Function(DeepLinkResult), "onDeepLinking");
+    startListeningToUDL(callback, "onDeepLinking");
   }
 
   void onPurchaseValidation(Function callback) async {
