@@ -1,4 +1,6 @@
 # Versions
+## 6.3.5
+- Updated AppsFlyer iOS SDK to v6.3.5
 
 ## 6.3.3+1
 - fix JNI issue
