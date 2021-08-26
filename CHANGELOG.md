@@ -1,4 +1,7 @@
 # Versions
+## 6.3.3+2
+- Updated AppsFlyer Android SDK to v6.3.2
+- Updated AppsFlyer iOS SDK to v6.3.2
 
 ## 6.3.3-nullsafety.0
 - change to local broadcast
