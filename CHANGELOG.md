@@ -1,5 +1,8 @@
 # Versions
 
+## 6.3.3+1
+- fix JNI issue
+
 ## 6.3.3-nullsafety.0
 - change to local broadcast
 
