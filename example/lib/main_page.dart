@@ -44,7 +44,6 @@ class MainPageState extends State<MainPage> {
         _deepLinkData = res;
       });
     });
-
   }
 
   @override
