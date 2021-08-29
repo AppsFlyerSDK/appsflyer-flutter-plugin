@@ -596,4 +596,8 @@ class AppsflyerSdk {
   void onPurchaseValidation(Function callback) async {
     startListening(callback as void Function(dynamic), "validatePurchase");
   }
+
+  void setCurrentDeviceLanguage(String language) async {
+   _methodChannel.invokeMethod("setCurrentDeviceLanguage", language);
+  }
 }

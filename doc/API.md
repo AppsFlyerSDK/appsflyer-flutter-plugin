@@ -36,6 +36,7 @@
 - [enableFacebookDeferredApplinks](#enableFacebookDeferredApplinks)
 - [disableSKAdNetwork](#disableSKAdNetwork)
 - [getAppsFlyerUID](#getAppsFlyerUID)
+- [setCurrentDeviceLanguage](#setCurrentDeviceLanguage)
 - [stream](#streams)
 ---
 
@@ -473,6 +474,15 @@ _Example:_
 appsFlyerSdk.getAppsFlyerUID().then((AppsFlyerId) {
   print("AppsFlyer ID: ${AppsFlyerId}");
 });
+```
+---
+**<a id="setCurrentDeviceLanguage"> `void setCurrentDeviceLanguage(string language)`**
+
+Use this API in order to set the language
+
+_Example:_
+```dart
+appsFlyerSdk.setCurrentDeviceLanguage("en");
 ```
 ---
 ### **Conversion Data and on app open attribution for older versions**

@@ -126,10 +126,18 @@ static BOOL _isSKADEnabled = false;
         [self enableFacebookDeferredApplinks:call result:result];
     }else if([@"disableSKAdNetwork" isEqualToString:call.method]){
         [self disableSKAdNetwork:call result:result];
+    }else if([@"setCurrentDeviceLanguage" isEqualToString:call.method]){
+        [self setCurrentDeviceLanguage:call result:result];
     }
     else{
         result(FlutterMethodNotImplemented);
     }
+}
+
+- (void)setCurrentDeviceLanguage:(FlutterMethodCall*)call result:(FlutterResult)result{
+    NSString* language = call.arguments;
+    [[AppsFlyerLib shared] setCurrentDeviceLanguage: language];
+    result(nil);
 }
 
 - (void)disableSKAdNetwork:(FlutterMethodCall*)call result:(FlutterResult)result{
