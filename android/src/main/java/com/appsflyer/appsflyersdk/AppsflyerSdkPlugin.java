@@ -40,11 +40,10 @@ import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
+import io.flutter.plugin.common.PluginRegistry;
 
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_EVENTS_CHANNEL;
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_FAILURE;
-import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_ON_APP_OPEN_ATTRIBUTION;
-import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_ON_INSTALL_CONVERSION_DATA_LOADED;
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_SUCCESS;
 
 /**
@@ -58,6 +57,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private static String cachedOnAttributionFailure;
     private static String cachedOnConversionDataFail;
     private static DeepLinkResult cachedDeepLinkResult;
+    
     final Handler uiThreadHandler = new Handler(Looper.getMainLooper());
     private EventChannel mEventChannel;
     /**
@@ -77,42 +77,16 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private Boolean isFacebookDeferredApplinksEnabled = false;
     private Boolean isSetDisableAdvertisingIdentifiersEnable = false;
     private Map<String, Map<String, Object>> mCallbacks = new HashMap<>();
-    MethodCallHandler callbacksHandler = new MethodCallHandler() {
+    
+    PluginRegistry.NewIntentListener onNewIntentListener = new PluginRegistry.NewIntentListener() {
         @Override
-        public void onMethodCall(MethodCall call, Result result) {
-            final String method = call.method;
-            if ("startListening".equals(method)) {
-                startListening(call.arguments, result);
-            } else {
-                result.notImplemented();
-            }
+        public boolean onNewIntent(Intent intent) {
+            activity.setIntent(intent);
+            return false;
         }
     };
-    private DeepLinkListener deepLinkListener = new DeepLinkListener() {
 
-        @Override
-        public void onDeepLinking(DeepLinkResult deepLinkResult) {
-            if (saveCallbacks) {
-                cachedDeepLinkResult = deepLinkResult;
-                return;
-            }
-            if (udlCallback) {
-                runOnUIThread(deepLinkResult, AppsFlyerConstants.AF_UDL_CALLBACK, AF_SUCCESS);
-            } else {
-                try {
-                    JSONObject obj = new JSONObject();
-                    obj.put("status", AF_SUCCESS);
-                    obj.put("type", AppsFlyerConstants.AF_UDL_CALLBACK);
-                    obj.put("data", deepLinkResult.getDeepLink().getClickEvent());
-
-                    sendEventToDart(obj, AF_EVENTS_CHANNEL);
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-    };
-    private AppsFlyerConversionListener afConversionListener = new AppsFlyerConversionListener() {
+    private final AppsFlyerConversionListener afConversionListener = new AppsFlyerConversionListener() {
         @Override
         public void onConversionDataSuccess(Map<String, Object> map) {
             if (saveCallbacks) {
@@ -122,8 +96,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             if (gcdCallback) {
                 JSONObject dataObj = new JSONObject(replaceNullValues(map));
                 runOnUIThread(dataObj, AppsFlyerConstants.AF_GCD_CALLBACK, AF_SUCCESS);
-            } else {
-                handleSuccess(AF_ON_INSTALL_CONVERSION_DATA_LOADED, map, AF_EVENTS_CHANNEL);
             }
         }
 
@@ -136,8 +108,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             if (gcdCallback) {
                 JSONObject obj = buildJsonResponse(s, AF_FAILURE);
                 runOnUIThread(obj, AppsFlyerConstants.AF_GCD_CALLBACK, AF_FAILURE);
-            } else {
-                handleError(AF_ON_INSTALL_CONVERSION_DATA_LOADED, s, AF_EVENTS_CHANNEL);
             }
         }
 
@@ -151,8 +121,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             if (oaoaCallback) {
                 JSONObject obj = new JSONObject(replaceNullValues(objMap));
                 runOnUIThread(obj, AppsFlyerConstants.AF_OAOA_CALLBACK, AF_SUCCESS);
-            } else {
-                handleSuccess(AF_ON_APP_OPEN_ATTRIBUTION, objMap, AF_EVENTS_CHANNEL);
             }
         }
 
@@ -165,8 +133,31 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             if (oaoaCallback) {
                 JSONObject obj = buildJsonResponse(errorMessage, AF_FAILURE);
                 runOnUIThread(obj, AppsFlyerConstants.AF_OAOA_CALLBACK, AF_FAILURE);
+            }
+        }
+    };
+    private final DeepLinkListener afDeepLinkListener = new DeepLinkListener() {
+
+        @Override
+        public void onDeepLinking(DeepLinkResult deepLinkResult) {
+            if (saveCallbacks) {
+                cachedDeepLinkResult = deepLinkResult;
+                return;
+            }
+            if (udlCallback) {
+                runOnUIThread(deepLinkResult, AppsFlyerConstants.AF_UDL_CALLBACK, AF_SUCCESS);
+            }
+        }
+    };
+
+    private final MethodCallHandler callbacksHandler = new MethodCallHandler() {
+        @Override
+        public void onMethodCall(MethodCall call, Result result) {
+            final String method = call.method;
+            if ("startListening".equals(method)) {
+                startListening(call.arguments, result);
             } else {
-                handleError(AF_ON_APP_OPEN_ATTRIBUTION, errorMessage, AF_EVENTS_CHANNEL);
+                result.notImplemented();
             }
         }
     };
@@ -174,13 +165,13 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private void onAttachedToEngine(Context applicationContext, BinaryMessenger messenger) {
         this.mContext = applicationContext;
         this.mEventChannel = new EventChannel(messenger, AF_EVENTS_CHANNEL);
-        mEventChannel.setStreamHandler(new AppsFlyerStreamHandler(mContext));
         mMethodChannel = new MethodChannel(messenger, AppsFlyerConstants.AF_METHOD_CHANNEL);
         mMethodChannel.setMethodCallHandler(this);
         mCallbackChannel = new MethodChannel(messenger, AppsFlyerConstants.AF_CALLBACK_CHANNEL);
         mCallbackChannel.setMethodCallHandler(callbacksHandler);
 
     }
+
 
     private void startListening(Object arguments, Result rawResult) {
         // Get callback id
@@ -325,7 +316,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     private void enableFacebookDeferredApplinks(MethodCall call, Result result) {
         isFacebookDeferredApplinksEnabled = (boolean) call.argument("isFacebookDeferredApplinksEnabled");
-        ;
+        
         if (isFacebookDeferredApplinksEnabled) {
             AppsFlyerLib.getInstance().enableFacebookDeferredApplinks(true);
         } else {
@@ -415,7 +406,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
 
         CreateOneLinkHttpTask.ResponseListener listener = new CreateOneLinkHttpTask.ResponseListener() {
-            JSONObject obj = new JSONObject();
+            final JSONObject obj = new JSONObject();
 
             @Override
             public void onResponse(final String oneLinkUrl) {
@@ -456,8 +447,21 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                         JSONObject args = new JSONObject();
                         try {
                             args.put("id", callbackName);
-                            args.put("status", status);
-                            args.put("data", data.toString());
+                            //return data for UDL
+                            if (callbackName.equals(AppsFlyerConstants.AF_UDL_CALLBACK)) {
+                                DeepLinkResult dp = (DeepLinkResult) data;
+                                args.put("deepLinkStatus", dp.getStatus().toString());
+                                if (dp.getError() != null) {
+                                    args.put("deepLinkError", dp.getError().toString());
+                                }
+                                if (dp.getStatus() == DeepLinkResult.Status.FOUND) {
+                                    args.put("deepLinkObj", dp.getDeepLink().AFInAppEventParameterName);
+                                }
+                            } else { // return data for conversionData and OAOA
+                                JSONObject dataJSON = (JSONObject) data;
+                                args.put("status", status);
+                                args.put("data", data.toString());
+                            }
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
@@ -507,19 +511,11 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         AppsFlyerInAppPurchaseValidatorListener validatorListener = new AppsFlyerInAppPurchaseValidatorListener() {
             @Override
             public void onValidateInApp() {
-                try {
-                    JSONObject obj = new JSONObject();
-                    if (validatePurchaseCallback) {
-                        runOnUIThread(obj, AppsFlyerConstants.AF_VALIDATE_PURCHASE, AF_SUCCESS);
-                    } else {
-                        obj.put("status", AF_SUCCESS);
-                        sendEventToDart(obj, AF_EVENTS_CHANNEL);
-                    }
-                } catch (JSONException e) {
-                    e.printStackTrace();
+                if (validatePurchaseCallback) {
+                    runOnUIThread(new JSONObject(), AppsFlyerConstants.AF_VALIDATE_PURCHASE, AF_SUCCESS);
                 }
-
             }
+
 
             @Override
             public void onValidateInAppFailure(String s) {
@@ -528,9 +524,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                     obj.put("error", s);
                     if (validatePurchaseCallback) {
                         runOnUIThread(obj, AppsFlyerConstants.AF_VALIDATE_PURCHASE, AF_FAILURE);
-                    } else {
-                        obj.put("status", AF_FAILURE);
-                        sendEventToDart(obj, AF_EVENTS_CHANNEL);
                     }
                 } catch (JSONException e) {
                     e.printStackTrace();
@@ -667,7 +660,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         // added Unified deeplink
         boolean getUdl = (boolean) call.argument(AppsFlyerConstants.AF_UDL);
         if (getUdl) {
-            instance.subscribeForDeepLink(deepLinkListener);
+            instance.subscribeForDeepLink(afDeepLinkListener);
         }
 
         boolean isDebug = (boolean) call.argument(AppsFlyerConstants.AF_IS_DEBUG);
@@ -710,6 +703,10 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     //RD-65582
     private void sendCachedCallbacksToDart() {
+        if (cachedDeepLinkResult != null) {
+            afDeepLinkListener.onDeepLinking(cachedDeepLinkResult);
+            cachedDeepLinkResult = null;
+        }
         if (cachedOnConversionDataSuccess != null) {
             afConversionListener.onConversionDataSuccess(cachedOnConversionDataSuccess);
             cachedOnConversionDataSuccess = null;
@@ -726,40 +723,8 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             afConversionListener.onConversionDataFail(cachedOnConversionDataFail);
             cachedOnConversionDataFail = null;
         }
-        if (cachedDeepLinkResult != null) {
-            deepLinkListener.onDeepLinking(cachedDeepLinkResult);
-            cachedDeepLinkResult = null;
-        }
     }
 
-
-    private void handleSuccess(String eventType, Map<String, Object> data, String channel) {
-        try {
-            JSONObject obj = new JSONObject();
-            obj.put("status", AF_SUCCESS);
-            obj.put("type", eventType);
-            obj.put("data", new JSONObject(replaceNullValues(data)));
-
-            sendEventToDart(obj, channel);
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void handleError(String eventType, String errorMessage, String channel) {
-
-        try {
-            JSONObject obj = new JSONObject();
-
-            obj.put("status", AF_FAILURE);
-            obj.put("type", eventType);
-            obj.put("data", errorMessage);
-
-            sendEventToDart(obj, channel);
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-    }
 
     private JSONObject buildJsonResponse(Object data, String status) {
         JSONObject obj = new JSONObject();
@@ -786,13 +751,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         return newMap;
     }
 
-    private void sendEventToDart(final JSONObject params, String channel) {
-        Intent intent = new Intent();
-        intent.addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES);
-        intent.setAction(AppsFlyerConstants.AF_BROADCAST_ACTION_NAME);
-        intent.putExtra("params", params.toString());
-        LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent);
-    }
 
     @Override
     public void onAttachedToEngine(FlutterPluginBinding binding) {
@@ -812,6 +770,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         activity = binding.getActivity();
         mIntent = binding.getActivity().getIntent();
         mApplication = binding.getActivity().getApplication();
+        binding.addOnNewIntentListener(onNewIntentListener);
     }
 
     @Override
@@ -822,14 +781,13 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     @Override
     public void onReattachedToActivityForConfigChanges(ActivityPluginBinding binding) {
         sendCachedCallbacksToDart();
+        binding.addOnNewIntentListener(onNewIntentListener);
     }
 
     @Override
     public void onDetachedFromActivity() {
         activity = null;
         saveCallbacks = true;
-
-
     }
 
 }
