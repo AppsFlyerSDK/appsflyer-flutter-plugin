@@ -11,6 +11,7 @@ typedef void (*bypassWaitForATTUserAuthorization)(id, SEL, NSTimeInterval);
 @implementation AppsflyerSdkPlugin {
     FlutterEventChannel *_eventChannel;
     AppsFlyerStreamHandler *_streamHandler;
+    
 }
 static NSMutableArray* _callbackById;
 static FlutterMethodChannel* _callbackChannel;
@@ -20,6 +21,7 @@ static BOOL _udpCallback = false;
 static BOOL _isPushNotificationEnabled = false;
 static BOOL _isSandboxEnabled = false;
 static BOOL _isSKADEnabled = false;
+
 
 + (FlutterMethodChannel*)callbackChannel{
     return _callbackChannel;
@@ -43,19 +45,20 @@ static BOOL _isSKADEnabled = false;
         _streamHandler = [[AppsFlyerStreamHandler alloc] init];
         _callbackChannel = [FlutterMethodChannel methodChannelWithName:afCallbacksMethodChannel binaryMessenger:messenger];
         _eventChannel = [FlutterEventChannel eventChannelWithName:afEventChannel binaryMessenger:messenger];
-        [_eventChannel setStreamHandler:_streamHandler];
     }
     return self;
 }
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
     id<FlutterBinaryMessenger> messenger = [registrar messenger];
-    
     FlutterMethodChannel *channel = [FlutterMethodChannel methodChannelWithName:afMethodChannel binaryMessenger:messenger];
     FlutterMethodChannel *callbackChannel = [FlutterMethodChannel methodChannelWithName:afCallbacksMethodChannel binaryMessenger:messenger];
     AppsflyerSdkPlugin *instance = [[AppsflyerSdkPlugin alloc] initWithMessenger:messenger];
     [registrar addMethodCallDelegate:instance channel:channel];
     [registrar addMethodCallDelegate:instance channel:callbackChannel];
+    [registrar addApplicationDelegate:instance];
+    
+    
 }
 
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
@@ -162,7 +165,7 @@ static BOOL _isSKADEnabled = false;
     id isFacebookDeferredApplinksEnabled = call.arguments[@"isFacebookDeferredApplinksEnabled"];
     if ([isFacebookDeferredApplinksEnabled isKindOfClass:[NSNumber class]]) {
         if([(NSNumber*)isFacebookDeferredApplinksEnabled boolValue]){
-           [[AppsFlyerLib shared] enableFacebookDeferredApplinksWithClass:NSClassFromString(@"FBSDKAppLinkUtility")];
+            [[AppsFlyerLib shared] enableFacebookDeferredApplinksWithClass:NSClassFromString(@"FBSDKAppLinkUtility")];
         }
     }
     
@@ -192,7 +195,7 @@ static BOOL _isSKADEnabled = false;
 - (void)startListening:(FlutterMethodCall*)call result:(FlutterResult)result{
     // Prepare callback dictionary
     if (_callbackById == nil) _callbackById = [NSMutableArray array];
-
+    
     NSString* callbackId = call.arguments;
     if ([callbackId isEqualToString:afGCDCallback]){
         _gcdCallback = true;
@@ -228,32 +231,35 @@ static BOOL _isSKADEnabled = false;
     } completionHandler:^(NSURL * _Nullable url) {
         NSString * resultURL = url.absoluteString;
         NSDictionary* resultURLObject;
-                    if(resultURL != nil){
-                        resultURLObject = @{
-                            @"userInviteURL": resultURL
-                        };
-                        if([_callbackById containsObject:afGenerateInviteLinkSuccess]){
-                            [_streamHandler sendResponseToFlutter:afGenerateInviteLinkSuccess status:afSuccess data:resultURLObject];
-                        }
-                    }else{
-                        resultURLObject = @{
-                            @"error": @"The URL wasn't generated!"
-                        };
-                        if([_callbackById containsObject:afGenerateInviteLinkFailure]){
-                            [_streamHandler sendResponseToFlutter:afGenerateInviteLinkFailure status:afFailure data:resultURLObject];
-                        }
-                    }
+        if(resultURL != nil){
+            resultURLObject = @{
+                @"userInviteURL": resultURL
+            };
+            if([_callbackById containsObject:afGenerateInviteLinkSuccess]){
+                [_streamHandler sendResponseToFlutter:afGenerateInviteLinkSuccess status:afSuccess data:resultURLObject];
+            }
+        }else{
+            resultURLObject = @{
+                @"error": @"The URL wasn't generated!"
+            };
+            if([_callbackById containsObject:afGenerateInviteLinkFailure]){
+                [_streamHandler sendResponseToFlutter:afGenerateInviteLinkFailure status:afFailure data:resultURLObject];
+            }
+        }
     }];
     
     result(nil);
 }
+
+
+
 
 - (void)setAppInviteOneLinkID:(FlutterMethodCall*)call result:(FlutterResult)result{
     NSString* oneLinkID = call.arguments[@"oneLinkID"];
     [AppsFlyerLib shared].appInviteOneLinkID = oneLinkID;
     if([_callbackById containsObject:@"setAppInviteOneLinkIDCallback"]){
         NSDictionary* message = @{
-          @"status": afSuccess
+            @"status": afSuccess
         };
         [_streamHandler sendResponseToFlutter:afAppInviteOneLinkID status:afSuccess data:message];
     }
@@ -273,23 +279,23 @@ static BOOL _isSKADEnabled = false;
     NSDictionary* customParams = call.arguments[@"params"];
     
     [AppsFlyerShareInviteHelper generateInviteUrlWithLinkGenerator:^AppsFlyerLinkGenerator * _Nonnull(AppsFlyerLinkGenerator * _Nonnull generator) {
-                if (campaign != nil && ![campaign isEqualToString:@""]) {
-                    [generator setCampaign:campaign];
-                }
-                if (![customParams isKindOfClass:[NSNull class]]) {
-                    [generator addParameters:customParams];
-                }
-
-                return generator;
-            } completionHandler: ^(NSURL * _Nullable url) {
-                NSString *appLink = url.absoluteString;
-                if (@available(iOS 10.0, *)) {
-                    [[UIApplication sharedApplication] openURL:[NSURL URLWithString:appLink] options:@{} completionHandler:^(BOOL success) {
-                    }];
-                } else {
-                    // Fallback on earlier versions
-                }
+        if (campaign != nil && ![campaign isEqualToString:@""]) {
+            [generator setCampaign:campaign];
+        }
+        if (![customParams isKindOfClass:[NSNull class]]) {
+            [generator addParameters:customParams];
+        }
+        
+        return generator;
+    } completionHandler: ^(NSURL * _Nullable url) {
+        NSString *appLink = url.absoluteString;
+        if (@available(iOS 10.0, *)) {
+            [[UIApplication sharedApplication] openURL:[NSURL URLWithString:appLink] options:@{} completionHandler:^(BOOL success) {
             }];
+        } else {
+            // Fallback on earlier versions
+        }
+    }];
 }
 
 - (void)setSharingFilter:(FlutterMethodCall*)call result:(FlutterResult)result{
@@ -334,14 +340,14 @@ static BOOL _isSKADEnabled = false;
     NSDictionary* additionalParameters = call.arguments[@"additionalParameters"];
     
     [[AppsFlyerLib shared] validateAndLogInAppPurchase:productIdentifier price:price currency:currency transactionId:transactionId additionalParameters:additionalParameters
-                                                            success:^(NSDictionary *response) {
-                                                                NSLog(@"AppsFlyer Debug: validateAndLogInAppIosPurchase Success!");
-                                                                [self onValidateSuccess:response];
-                                                            }
-                                                            failure:^(NSError *error, id reponse) {
-                                                                NSLog(@"AppsFlyer Debug: validateAndLogInAppIosPurchase failed with Error: %@", error);
-                                                                [self onValidateFail:error];
-                                                            }];
+                                               success:^(NSDictionary *response) {
+        NSLog(@"AppsFlyer Debug: validateAndLogInAppIosPurchase Success!");
+        [self onValidateSuccess:response];
+    }
+                                               failure:^(NSError *error, id reponse) {
+        NSLog(@"AppsFlyer Debug: validateAndLogInAppIosPurchase failed with Error: %@", error);
+        [self onValidateFail:error];
+    }];
     
     result(nil);
 }
@@ -435,11 +441,11 @@ static BOOL _isSKADEnabled = false;
     id isUDPValue = nil;
     id isDisableCollectASA = nil;
     id isDisableAdvertisingIdentifier = nil;
-
+    
     devKey = call.arguments[afDevKey];
     appId = call.arguments[afAppId];
     timeToWaitForATTUserAuthorization = [(id)call.arguments[afTimeToWaitForATTUserAuthorization] doubleValue];
-
+    
     isDebugValue = call.arguments[afIsDebug];
     if ([isDebugValue isKindOfClass:[NSNumber class]]) {
         // isDebug is a boolean that will come through as an NSNumber
@@ -452,7 +458,7 @@ static BOOL _isSKADEnabled = false;
     if (isConversionData == YES) {
         [[AppsFlyerLib shared] setDelegate:_streamHandler];
     }
-
+    
     isUDPValue = call.arguments[afUDL];
     if ([isUDPValue isKindOfClass:[NSNumber class]]) {
         isUDP = [(NSNumber*)isUDPValue boolValue];
@@ -476,35 +482,35 @@ static BOOL _isSKADEnabled = false;
         // isDebug is a boolean that will come through as an NSNumber
         disableAdvertisingIdentifier = [(NSNumber*)isDisableAdvertisingIdentifier boolValue];
     }
-
+    
     
     [AppsFlyerLib shared].disableCollectASA = disableCollectASA;
-
+    
     SEL DisableAdvertisingSel = NSSelectorFromString(@"setDisableAdvertisingIdentifier:");
     id AppsFlyer = [AppsFlyerLib shared];
     if ([AppsFlyer respondsToSelector:DisableAdvertisingSel] && disableAdvertisingIdentifier) {
         bypassDisableAdvertisingIdentifier msgSend = (bypassDisableAdvertisingIdentifier)objc_msgSend;
         msgSend(AppsFlyer, DisableAdvertisingSel, disableAdvertisingIdentifier);
     }
-
+    
     [AppsFlyerLib shared].appleAppID = appId;
     [AppsFlyerLib shared].appsFlyerDevKey = devKey;
     [AppsFlyerLib shared].isDebug = isDebug;
     
     
     // SEL WaitForATTSel = NSSelectorFromString(@"waitForATTUserAuthorizationWithTimeoutInterval:");
-
+    
     // if ([AppsFlyer respondsToSelector:WaitForATTSel] && timeToWaitForATTUserAuthorization != 0) {
     //     bypassWaitForATTUserAuthorization msgSend = (bypassWaitForATTUserAuthorization)objc_msgSend;
     //     msgSend(AppsFlyer, WaitForATTSel, timeToWaitForATTUserAuthorization);
     // }
-
+    
     if (timeToWaitForATTUserAuthorization != 0) {
         [[AppsFlyerLib shared] waitForATTUserAuthorizationWithTimeoutInterval:timeToWaitForATTUserAuthorization];
     }
-
+    
     [[AppsFlyerLib shared] start];
-
+    
     //post notification for the deep link object that the bridge is set and he can handle deep link
     [AppsFlyerAttribution shared].isBridgeReady = YES;
     [[NSNotificationCenter defaultCenter] postNotificationName:AF_BRIDGE_SET object:self];
@@ -534,6 +540,7 @@ static BOOL _isSKADEnabled = false;
     NSLog(@"App Did Become Active");
 }
 
+
 + (FlutterViewController*) getViewController{
     UIViewController *topMostViewControllerObj =  [[[UIApplication sharedApplication] delegate] window].rootViewController;
     FlutterViewController *flutterViewController = (FlutterViewController *)topMostViewControllerObj;
@@ -551,10 +558,36 @@ static BOOL _isSKADEnabled = false;
                                                              error:&error];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"af-events" object:dataFromDict];
     //if(!error){
-        //[flutterViewController sendOnChannel:channel message:dataFromDict binaryReply:^(NSData * _Nullable reply) {
-            //
-        //}];
+    //[flutterViewController sendOnChannel:channel message:dataFromDict binaryReply:^(NSData * _Nullable reply) {
+    //
+    //}];
     //}
+}
+
+# pragma mark - handle deep links
+// Deep linking
+// Open URI-scheme for iOS 9 and above
+- (BOOL)application:(UIApplication *)application openURL:(NSURL *)url options:(NSDictionary *) options {
+    [[AppsFlyerAttribution shared] handleOpenUrl:url options:options];
+    
+    // Results of this are ORed and NO doesn't affect other delegate interceptors' result.
+    return NO;
+    
+}
+// Open URI-scheme for iOS 8 and below
+- (BOOL)application:(UIApplication *)application openURL:(NSURL *)url sourceApplication:(NSString*)sourceApplication annotation:(id)annotation {
+    [[AppsFlyerAttribution shared] handleOpenUrl:url sourceApplication:sourceApplication annotation:annotation];
+    
+    // Results of this are ORed and NO doesn't affect other delegate interceptors' result.
+    return NO;
+    
+}
+// Open Universal Links
+- (BOOL)application:(UIApplication *)application continueUserActivity:(NSUserActivity *)userActivity restorationHandler:(void (^)(NSArray * _Nullable))restorationHandler {
+    [[AppsFlyerAttribution shared] continueUserActivity:userActivity restorationHandler:restorationHandler];
+    
+    // Results of this are ORed and NO doesn't affect other delegate interceptors' result.
+    return NO;
 }
 
 
