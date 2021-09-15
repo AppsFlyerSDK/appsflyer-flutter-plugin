@@ -1,6 +1,10 @@
 #import <Flutter/Flutter.h>
-#import <AppsFlyerLib/AppsFlyerLib.h>
 #import "AppsFlyerAttribution.h"
+#if __has_include(<AppsFlyerLib/AppsFlyerLib.h>) // from Pod
+#import <AppsFlyerLib/AppsFlyerLib.h>
+#else
+#import "AppsFlyerLib.h"
+#endif
 
 @interface AppsflyerSdkPlugin: NSObject<FlutterPlugin>
 
@@ -46,3 +50,4 @@
 #define afCallbacksMethodChannel        @"callbacks"
 #define afEventChannel                  @"af-events"
 #define afValidatePurchaseChannel       @"af-validate-purchase"
+
