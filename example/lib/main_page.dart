@@ -72,7 +72,7 @@ class MainPageState extends State<MainPage> {
               } else {
                 if (snapshot.hasData) {
                   return HomeContainer(
-                    onData: _gcd,
+                    onData: _gcd, 
                     deepLinkData: _deepLinkData,
                     logEvent: logEvent,
                   );

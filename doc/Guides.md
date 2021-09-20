@@ -114,8 +114,8 @@ In order to use the unified deep link you need to send the `registerOnDeepLinkin
 Handle both the Direct & the deferred deeplink in the following callback:
 
 ```dart
-appsflyerSdk.onDeepLinking((res){
-    print("res: " + res.toString());
+_appsflyerSdk.onDeepLinking((DeepLinkResult res){
+      print("onDeepLinking res: " + res.toString());
 });
 ```
 
@@ -135,6 +135,8 @@ In your app’s manifest add the following intent-filter to your relevant activi
     <data android:scheme="your unique scheme" />
 </intent-filter>
 ```
+
+**❗Not needed from v6.4.0 and above**
 
 **NOTE:** On Android, AppsFlyer SDK inspects activity intent object during onResume(). Because of that, for each activity that may be configured or launched with any [non-standard launch mode](https://developer.android.com/guide/topics/manifest/activity-element#lmode) the following code was added to `MainActivity.java` in `android/app/src/main/java/com...`
 
@@ -178,6 +180,9 @@ For more on App Links check out the guide [here](https://support.appsflyer.com/h
 
 
 ###  <a id="iosdeeplinks"> iOS Deeplink Setup
+
+**❗Not needed from v6.4.0 and above**
+
 
 In order for the callback to be called:
 	
@@ -255,6 +260,7 @@ For more on URI-schemes check out the guide [here](https://support.appsflyer.com
 
 ### Universal Links
 
+**❗Not needed from v6.4.0 and above**
 
 Objective-C:
 

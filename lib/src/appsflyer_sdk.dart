@@ -324,18 +324,6 @@ class AppsflyerSdk {
         .invokeMethod("setAdditionalData", {'customData': customData});
   }
 
-
-
-  ///The sharing filter blocks the sharing of S2S events via postbacks/API with integrated partners and other third-party integrations.
-  ///Use the filter to fulfill regulatory requirements like GDPR and CCPA, to comply with user opt-out mechanisms, and for other business logic reasons.
-  void setSharingFilter(List<String> filters) {
-    _methodChannel.invokeMethod("setSharingFilter", filters);
-  }
-
-  void setSharingFilterForAllPartners() {
-    _methodChannel.invokeMethod("setSharingFilterForAllPartners");
-  }
-
   void generateInviteLink(
     AppsFlyerInviteLinkParams? parameters,
     Function success,
@@ -429,4 +417,20 @@ class AppsflyerSdk {
   void setCurrentDeviceLanguage(String language) async {
    _methodChannel.invokeMethod("setCurrentDeviceLanguage", language);
   }
+
+  @Deprecated("use setSharingFilterForPartners instead")
+  void setSharingFilter(List<String> partners) {
+    setSharingFilterForPartners(partners);
+  }
+  @Deprecated("use setSharingFilterForPartners instead")
+  void setSharingFilterForAllPartners() {
+    setSharingFilterForPartners(["all"]);
+  }
+
+  ///The sharing filter blocks the sharing of S2S events via postbacks/API with integrated partners and other third-party integrations.
+  ///Use the filter to fulfill regulatory requirements like GDPR and CCPA, to comply with user opt-out mechanisms, and for other business logic reasons.
+  void setSharingFilterForPartners(List<String> partners) async {
+   _methodChannel.invokeMethod("setSharingFilterForPartners", partners);
+  }
 }
+

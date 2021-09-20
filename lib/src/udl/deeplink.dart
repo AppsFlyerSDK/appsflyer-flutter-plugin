@@ -2,10 +2,10 @@ part of appsflyer_sdk;
 
 
 class DeepLink{
+
 final Map<String , dynamic> _clickEvent;
 
-  DeepLink(this._clickEvent);
-
+DeepLink(this._clickEvent);
 
 Map<String , dynamic> get clickEvent => _clickEvent;
 

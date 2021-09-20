@@ -1,4 +1,11 @@
 # Versions
+## 6.4.0
+- Updated to 6.4.0 in iOS & Android SDK\
+- Dedicated class for UDL for handling deeplink
+- New API `setSharingFilterForPartners`.`setSharingFilter` & `setSharingFilterForAllPartners` APIs were deprecated. 
+
+## 6.3.5+3
+rollback to previous version
 ## 6.3.5+2
 ## 6.3.5+1
 ## 6.3.5

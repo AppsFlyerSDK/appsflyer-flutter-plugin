@@ -36,15 +36,19 @@ When submitting an issue please specify your AppsFlyer sign-up (account) email ,
 
 ### This plugin is built for
 
-- iOS AppsFlyerSDK **v6.3.5**
+- iOS AppsFlyerSDK **v6.4.0**
 
-- Android AppsFlyerSDK **v6.3.2**
+- Android AppsFlyerSDK **v6.4.0**
 
 ### Flutter 2.0 is supported from version `6.2.3+2`, including null safety support!
 
 ### The version `6.2.4-flutterv1` will use iOS SDK V6.2.4 with Flutter V1
 
 ---
+## <a id="v6.4.0-breaking-changes"> **❗Breaking changes in v6.4.0**
+- UDL (Unified deep link) now as a dedicated class with getters for handling the deeplink result.
+- `setSharingFilter` & `setSharingFilterForAllPartners` APIs are deprecated. Instead use the new API `setSharingFilterForPartners`.
+
 
 ## <a id="v6-breaking-changes"> **❗Migration Guide to v6**
 - [Integration guide](https://support.appsflyer.com//hc/en-us/articles/207032066#introduction)
