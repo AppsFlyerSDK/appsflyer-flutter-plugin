@@ -38,10 +38,25 @@ class MainPageState extends State<MainPage> {
         _gcd = res;
       });
     });
-    _appsflyerSdk.onDeepLinking((DeepLinkResult res){
-      print("onDeepLinking res: " + res.toString());
+    _appsflyerSdk.onDeepLinking((DeepLinkResult dp){
+      switch (dp.status) {
+        case Status.FOUND:
+          print(dp.deepLink?.toString());
+          print("deep link value: ${dp.deepLink?.deepLinkValue}");
+          break;
+        case Status.NOT_FOUND:
+          print("deep link not found");
+          break;
+        case Status.ERROR:
+          print("deep link error: ${dp.error}");
+          break;
+        case Status.PARSE_ERROR:
+          print("deep link status parsing error");
+          break;
+      }
+      print("onDeepLinking res: " + dp.toString());
       setState(() {
-        _deepLinkData = res.toJson();
+        _deepLinkData = dp.toJson();
       });
     });
   }

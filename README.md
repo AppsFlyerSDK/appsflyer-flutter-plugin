@@ -46,8 +46,10 @@ When submitting an issue please specify your AppsFlyer sign-up (account) email ,
 
 ---
 ## <a id="v6.4.0-breaking-changes"> **❗Breaking changes in v6.4.0**
-- UDL (Unified deep link) now as a dedicated class with getters for handling the deeplink result.
-- `setSharingFilter` & `setSharingFilterForAllPartners` APIs are deprecated. Instead use the new API `setSharingFilterForPartners`.
+- UDL (Unified deep link) now as a dedicated class with getters for handling the deeplink result. 
+[Check the full UDL guide](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/blob/master/doc/Guides.md#-3-unified-deep-linking).
+- `setSharingFilter` & `setSharingFilterForAllPartners` APIs are deprecated. 
+Instead use the [new API `setSharingFilterForPartners`](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/blob/RD-69098/update6.4.0%26more/doc/API.md#setSharingFilterForPartners).
 
 
 ## <a id="v6-breaking-changes"> **❗Migration Guide to v6**

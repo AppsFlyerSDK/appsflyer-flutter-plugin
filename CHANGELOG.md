@@ -1,8 +1,12 @@
 # Versions
 ## 6.4.0
-- Updated to 6.4.0 in iOS & Android SDK\
+- Updated to 6.4.0 in iOS & Android SDK
 - Dedicated class for UDL for handling deeplink
 - New API `setSharingFilterForPartners`.`setSharingFilter` & `setSharingFilterForAllPartners` APIs were deprecated. 
+- setIntent is not required anymore in MainActivity (Android)
+- application(_:open:sourceApplication:annotation:) is not required anymore in AppDelegate (iOS)
+- application(_:open:options:) is not required anymore in AppDelegate (iOS)
+- application(_:continue:restorationHandler:) is not required anymore in AppDelegate (iOS)
 
 ## 6.3.5+3
 rollback to previous version
