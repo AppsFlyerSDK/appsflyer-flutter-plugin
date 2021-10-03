@@ -1,5 +1,4 @@
 # Versions
-## 6.4.0
 
 ## 6.4.0
 - Updated to 6.4.0 in iOS & Android SDK
@@ -13,7 +12,9 @@
 ## 6.3.5+3
 rollback to previous version
 ## 6.3.5+2
+Removed streams from the plugin
 ## 6.3.5+1
+Added setCurrentDeviceLanguage API
 ## 6.3.5
 - Updated AppsFlyer iOS SDK to v6.3.5
 

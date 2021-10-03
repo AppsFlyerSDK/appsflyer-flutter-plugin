@@ -52,6 +52,10 @@ When submitting an issue please specify your AppsFlyer sign-up (account) email ,
 Instead use the [new API `setSharingFilterForPartners`](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/blob/RD-69098/update6.4.0%26more/doc/API.md#setSharingFilterForPartners).
 
 
+## <a id="v6.3.5+2"> **❗Breaking changes in v6.3.5+2**
+- Remove stream from the plugin (no change is needed if you use callbacks for handling deeplink).
+
+
 ## <a id="v6-breaking-changes"> **❗Migration Guide to v6**
 - [Integration guide](https://support.appsflyer.com//hc/en-us/articles/207032066#introduction)
 - [Migration guide](https://support.appsflyer.com/hc/en-us/articles/360011571778)
