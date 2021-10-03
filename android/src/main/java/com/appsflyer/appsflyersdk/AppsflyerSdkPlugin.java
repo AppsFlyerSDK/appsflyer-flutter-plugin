@@ -298,10 +298,22 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "setDisableAdvertisingIdentifiers":
                 setDisableAdvertisingIdentifiers(call, result);
                 break;
+            case "setSharingFilterForPartners":
+                setSharingFilterForPartners(call, result);
+                break;
             default:
                 result.notImplemented();
                 break;
         }
+    }
+
+    private void setSharingFilterForPartners(MethodCall call, Result result) {
+        if(call.arguments != null){
+            ArrayList<String> partnersInput = (ArrayList<String>) call.arguments;
+            String[] partners = partnersInput.toArray(new String[partnersInput.size()]);
+            AppsFlyerLib.getInstance().setSharingFilterForPartners(partners);
+        }
+        result.success(null);
     }
 
     private void setDisableAdvertisingIdentifiers(MethodCall call, Result result) {
@@ -455,7 +467,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                                     args.put("deepLinkError", dp.getError().toString());
                                 }
                                 if (dp.getStatus() == DeepLinkResult.Status.FOUND) {
-                                    args.put("deepLinkObj", dp.getDeepLink().AFInAppEventParameterName);
+                                    args.put("deepLinkObj", dp.getDeepLink().getClickEvent());
                                 }
                             } else { // return data for conversionData and OAOA
                                 JSONObject dataJSON = (JSONObject) data;

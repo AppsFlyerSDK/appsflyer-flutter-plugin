@@ -37,6 +37,7 @@
 - [disableSKAdNetwork](#disableSKAdNetwork)
 - [getAppsFlyerUID](#getAppsFlyerUID)
 - [setCurrentDeviceLanguage](#setCurrentDeviceLanguage)
+- [setSharingFilterForPartners](#setSharingFilterForPartners)
 - [stream](#streams)
 ---
 
@@ -483,6 +484,24 @@ Use this API in order to set the language
 _Example:_
 ```dart
 appsFlyerSdk.setCurrentDeviceLanguage("en");
+```
+---
+**<a id="setSharingFilterForPartners"> `void setSharingFilterForPartners(List<String> partners)`**
+
+`setSharingFilter` & `setSharingFilterForAllPartners` APIs were deprecated! 
+
+Use `setSharingFilterForPartners` instead.
+
+Used by advertisers to exclude specified networks/integrated partners from getting data. [Learn more here](https://support.appsflyer.com/hc/en-us/articles/207032126#additional-apis-exclude-partners-from-getting-data)
+
+_Example:_
+```dart
+appsFlyerSdk.setSharingFilterForPartners([]);                                        // Reset list (default)
+appsFlyerSdk.setSharingFilterForPartners(null);                                      // Reset list (default)
+appsFlyerSdk.setSharingFilterForPartners(['facebook_int']);                          // Single partner
+appsFlyerSdk.setSharingFilterForPartners(['facebook_int', 'googleadwords_int']);     // Multiple partners
+appsFlyerSdk.setSharingFilterForPartners(['all']);                                   // All partners
+appsFlyerSdk.setSharingFilterForPartners(['googleadwords_int', 'all']);              // All partners
 ```
 ---
 ### **Conversion Data and on app open attribution for older versions**

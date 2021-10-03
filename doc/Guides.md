@@ -111,12 +111,59 @@ When a deeplink is clicked on the device the AppsFlyer SDK will return the link 
 In order to use the unified deep link you need to send the `registerOnDeepLinkingCallback: true` flag inside the object that sent to the sdk.
 **NOTE:** when sending this flag, the sdk will ignore `onAppOpenAttribution`!
 
-Handle both the Direct & the deferred deeplink in the following callback:
+**Breaking changes!**
+
+From version v6.4.0 a Unified deeplinking class was addded. You can use the following class to handle the deeplink:
 
 ```dart
-appsflyerSdk.onDeepLinking((res){
-    print("res: " + res.toString());
-});
+class DeepLink{
+
+    DeepLink(this._clickEvent);
+    final Map<String , dynamic> _clickEvent;
+    Map<String , dynamic> get clickEvent => _clickEvent;
+    String? get deepLinkValue =>  _clickEvent["deep_link_value"] as String;
+    String? get matchType =>  _clickEvent["match_type"] as String;
+    String? get clickHttpReferrer =>   _clickEvent["click_http_referrer"] as String;
+    String? get mediaSource =>  _clickEvent["media_source"] as String;
+    String? get campaign =>  _clickEvent["campaign"] as String;
+    String? get campaignId =>   _clickEvent["campaign_id"] as String;
+    String? get afSub1 => _clickEvent["af_sub1"] as String;
+    String? get afSub2 =>  _clickEvent["af_sub2"] as String;
+    String? get afSub3 => _clickEvent["af_sub3"] as String;
+    String? get afSub4 =>  _clickEvent["af_sub4"] as String;
+    String? get afSub5 =>   _clickEvent["af_sub5"] as String;
+    bool get isDeferred =>  _clickEvent["is_deferred"] as bool;
+
+    @override
+    String toString() {
+        return 'DeepLink: ${jsonEncode(_clickEvent)}';
+    }
+    String? getStringValue(String key) {
+        return _clickEvent[key] as String;
+    }
+}
+```
+
+Example of handling both the Direct & the deferred deeplink in the following callback:
+
+```dart
+ _appsflyerSdk?.onDeepLinking((DeepLinkResult dp) {
+      switch (dp.status) {
+        case Status.FOUND:
+          print(dp.deepLink?.toString());
+          print("deep link value: ${dp.deepLink?.deepLinkValue}");
+          break;
+        case Status.NOT_FOUND:
+          print("deep link not found");
+          break;
+        case Status.ERROR:
+          print("deep link error: ${dp.error}");
+          break;
+        case Status.PARSE_ERROR:
+          print("deep link status parsing error");
+          break;
+      }
+    }
 ```
 
 For more information about this api, please check [OneLink Guide Here](https://dev.appsflyer.com/docs/android-unified-deep-linking)
@@ -135,6 +182,8 @@ In your app’s manifest add the following intent-filter to your relevant activi
     <data android:scheme="your unique scheme" />
 </intent-filter>
 ```
+
+**❗Not needed from v6.4.0 and above**
 
 **NOTE:** On Android, AppsFlyer SDK inspects activity intent object during onResume(). Because of that, for each activity that may be configured or launched with any [non-standard launch mode](https://developer.android.com/guide/topics/manifest/activity-element#lmode) the following code was added to `MainActivity.java` in `android/app/src/main/java/com...`
 
@@ -178,6 +227,9 @@ For more on App Links check out the guide [here](https://support.appsflyer.com/h
 
 
 ###  <a id="iosdeeplinks"> iOS Deeplink Setup
+
+**❗Not needed from v6.4.0 and above**
+
 
 In order for the callback to be called:
 	
@@ -255,6 +307,7 @@ For more on URI-schemes check out the guide [here](https://support.appsflyer.com
 
 ### Universal Links
 
+**❗Not needed from v6.4.0 and above**
 
 Objective-C:
 

@@ -131,10 +131,18 @@ static BOOL _isSKADEnabled = false;
         [self disableSKAdNetwork:call result:result];
     }else if([@"setCurrentDeviceLanguage" isEqualToString:call.method]){
         [self setCurrentDeviceLanguage:call result:result];
+    }else if([@"setSharingFilterForPartners" isEqualToString:call.method]){
+        [self setSharingFilterForPartners:call result:result];
     }
     else{
         result(FlutterMethodNotImplemented);
     }
+}
+
+- (void)setSharingFilterForPartners:(FlutterMethodCall*)call result:(FlutterResult)result{
+    NSArray* partners = call.arguments;
+    [[AppsFlyerLib shared] setSharingFilterForPartners: partners];
+    result(nil);
 }
 
 - (void)setCurrentDeviceLanguage:(FlutterMethodCall*)call result:(FlutterResult)result{
