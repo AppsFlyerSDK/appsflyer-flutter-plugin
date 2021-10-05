@@ -38,6 +38,7 @@
 - [getAppsFlyerUID](#getAppsFlyerUID)
 - [setCurrentDeviceLanguage](#setCurrentDeviceLanguage)
 - [setSharingFilterForPartners](#setSharingFilterForPartners)
+- [setOneLinkCustomDomain](#setOneLinkCustomDomain)
 ---
 
 ##### <a id="appsflyer-options"> **`AppsflyerSdk(Map options)`** 
@@ -502,3 +503,16 @@ appsFlyerSdk.setSharingFilterForPartners(['facebook_int', 'googleadwords_int']);
 appsFlyerSdk.setSharingFilterForPartners(['all']);                                   // All partners
 appsFlyerSdk.setSharingFilterForPartners(['googleadwords_int', 'all']);              // All partners
 ```
+
+---
+**<a id="setOneLinkCustomDomain"> `void setOneLinkCustomDomain(List<String> brandDomains)`**
+
+Use this API in order to set branded domains. 
+
+Find more information in the [following article on branded domains](https://support.appsflyer.com/hc/en-us/articles/360002329137-Implementing-Branded-Links). 
+
+_Example:_
+```dart
+appsFlyerSdk.setOneLinkCustomDomain(["promotion.greatapp.com","click.greatapp.com","deals.greatapp.com"]);
+```
+---
