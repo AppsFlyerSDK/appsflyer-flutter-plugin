@@ -1,6 +1,7 @@
 # Versions
 ## 6.4.0+1
-
+- Added nullable in deeplink object 
+- Remove of local stream import
 ## 6.4.0
 - Updated to 6.4.0 in iOS & Android SDK
 - Dedicated class for UDL for handling deeplink
