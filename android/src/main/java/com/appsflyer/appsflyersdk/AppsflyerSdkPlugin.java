@@ -8,8 +8,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-
 import com.appsflyer.AFLogger;
 import com.appsflyer.AppsFlyerConversionListener;
 import com.appsflyer.AppsFlyerInAppPurchaseValidatorListener;
