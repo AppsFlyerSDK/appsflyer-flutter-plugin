@@ -23,6 +23,7 @@ import com.appsflyer.share.ShareInviteHelper;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -498,7 +499,13 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private void setUserEmailsWithCryptType(MethodCall call, Result result) {
         List<String> emails = call.argument("emails");
         int cryptTypeInt = call.argument("cryptType");
-        AppsFlyerProperties.EmailsCryptType cryptType = AppsFlyerProperties.EmailsCryptType.values()[cryptTypeInt];
+        AppsFlyerProperties.EmailsCryptType cryptType = null;
+        if (cryptTypeInt == 0)
+            cryptType= AppsFlyerProperties.EmailsCryptType.NONE;
+        if (cryptTypeInt == 3)
+            cryptType= AppsFlyerProperties.EmailsCryptType.SHA256;
+        if (cryptTypeInt == 1 || cryptTypeInt==2)
+            throw new InvalidParameterException("you can use only NONE or SHA256 for EmailsCryptType on android");
         if (emails != null) {
             AppsFlyerLib.getInstance().setUserEmails(cryptType, emails.toArray(new String[0]));
         }
