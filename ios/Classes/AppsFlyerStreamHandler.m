@@ -75,8 +75,7 @@
     }
 }
 
-- (void)onAppOpenAttributionFailure:(NSError *)_errorMessage {
-    NSError *error;
+- (void)onAppOpenAttributionFailure:(NSError *)error {
     if([AppsflyerSdkPlugin oaoaCallback]){
         NSDictionary *fullResponse = @{
             @"id": afOAOACallback,

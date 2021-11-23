@@ -1,4 +1,4 @@
-<img src="https://www.appsflyer.com/wp-content/uploads/2016/11/logo-1.svg"  width="200">
+<img src="https://support.appsflyer.com/hc/article_attachments/360004154837/flutter_icon.png"  width="200">
 
 # appsflyer_sdk
 
