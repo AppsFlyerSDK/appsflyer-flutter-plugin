@@ -176,12 +176,12 @@ Future<bool> logEvent(String eventName, Map eventValues) async {
 
 **<a id="setUserEmails"> `setUserEmails(List<String> emails, [EmailCryptType cryptType])`**
 
-Set the user emails with the given encryption (`EmailCryptTypeNone, EmailCryptTypeSHA1, EmailCryptTypeMD5, EmailCryptTypeSHA256`). the default encryption is `EmailCryptTypeNone`.
+Set the user emails with the given encryption (`EmailCryptTypeNone, EmailCryptTypeSHA256`). the default encryption is `EmailCryptTypeNone`.
 
 _Example:_
 ```dart
 appsFlyerSdk.setUserEmails(
-       ["a@a.com", "b@b.com"], EmailCryptType.EmailCryptTypeSHA1);
+       ["a@a.com", "b@b.com"], EmailCryptType.EmailCryptTypeSHA256);
 ```
 ---
 **<a id="setMinTimeBetweenSessions"> `void setMinTimeBetweenSessions(int seconds)`**
@@ -432,7 +432,8 @@ AppsFlyerInviteLinkParams inviteLinkParams = new AppsFlyerInviteLinkParams(
       brandDomain: "",
       customerID: "",
       referreImageUrl: "",
-      campaign: ""
+      campaign: "",
+      customParams: {"key":"value"}
 );
 
 appsFlyerSdk.generateInviteLink(inviteLinkParams, 

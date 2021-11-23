@@ -2,8 +2,6 @@ part of appsflyer_sdk;
 
 enum EmailCryptType {
   EmailCryptTypeNone,
-  EmailCryptTypeSHA1,
-  EmailCryptTypeMD5,
   EmailCryptTypeSHA256
 }
 

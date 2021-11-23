@@ -23,6 +23,7 @@ import com.appsflyer.share.ShareInviteHelper;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -390,6 +391,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         String referrerImageUrl = (String) call.argument("referrerImageUrl");
         String baseDeepLink = (String) call.argument("baseDeeplink");
         String brandDomain = (String) call.argument("brandDomain");
+        Map<String, String> customParams = (Map<String, String>) call.argument("customParams");
 
         LinkGenerator linkGenerator = ShareInviteHelper.generateInviteUrl(mContext);
 
@@ -413,6 +415,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
         if (brandDomain != null && !brandDomain.equals("")) {
             linkGenerator.setBrandDomain(brandDomain);
+        }
+        if (customParams != null && !customParams.equals("")) {
+            linkGenerator.addParameters(customParams);
         }
 
         CreateOneLinkHttpTask.ResponseListener listener = new CreateOneLinkHttpTask.ResponseListener() {
@@ -498,7 +503,16 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private void setUserEmailsWithCryptType(MethodCall call, Result result) {
         List<String> emails = call.argument("emails");
         int cryptTypeInt = call.argument("cryptType");
-        AppsFlyerProperties.EmailsCryptType cryptType = AppsFlyerProperties.EmailsCryptType.values()[cryptTypeInt];
+        
+        AppsFlyerProperties.EmailsCryptType cryptType = null;
+        if (cryptTypeInt == 0){
+            cryptType = AppsFlyerProperties.EmailsCryptType.NONE;
+        } else if (cryptTypeInt == 1){
+            cryptType = AppsFlyerProperties.EmailsCryptType.SHA256;
+        } else {
+            throw new InvalidParameterException("You can use only NONE or SHA256 for EmailsCryptType on android");
+        }
+
         if (emails != null) {
             AppsFlyerLib.getInstance().setUserEmails(cryptType, emails.toArray(new String[0]));
         }

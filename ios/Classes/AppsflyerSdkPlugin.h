@@ -43,7 +43,7 @@
 #define afUDPCallback                   @"onDeepLinking"
 #define afGenerateInviteLinkSuccess     @"generateInviteLinkSuccess"
 #define afGenerateInviteLinkFailure     @"generateInviteLinkFailure"
-#define afAppInviteOneLinkID            @"appInviteOneLinkID"
+#define afAppInviteOneLinkID            @"setAppInviteOneLinkIDCallback"
 
 // Stream Channels
 #define afMethodChannel                 @"af-api"

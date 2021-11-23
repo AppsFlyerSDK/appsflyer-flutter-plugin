@@ -329,7 +329,7 @@ class AppsflyerSdk {
     Function success,
     Function error,
   ) {
-    Map<String, String?>? paramsMap;
+    Map<String, Object?>? paramsMap;
     if (parameters != null) {
       paramsMap = _translateInviteLinkParamsToMap(parameters);
     }
@@ -338,9 +338,10 @@ class AppsflyerSdk {
     _methodChannel.invokeMethod("generateInviteLink", paramsMap);
   }
 
-  Map<String, String?> _translateInviteLinkParamsToMap(
+  Map<String, Object?> _translateInviteLinkParamsToMap(
       AppsFlyerInviteLinkParams params) {
-    Map<String, String?> inviteLinkParamsMap = <String, String?>{};
+    Map<String, Object?> inviteLinkParamsMap = <String, Object?>{};
+    inviteLinkParamsMap['customParams'] = params.customParams;
     inviteLinkParamsMap['referrerImageUrl'] = params.referreImageUrl;
     inviteLinkParamsMap['customerID'] = params.customerID;
     inviteLinkParamsMap['brandDomain'] = params.brandDomain;

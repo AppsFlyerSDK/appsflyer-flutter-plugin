@@ -24,6 +24,7 @@ class MainPageState extends State<MainPage> {
     afDevKey: DotEnv().env["DEV_KEY"],
     appId: DotEnv().env["APP_ID"],
     showDebug: true,
+    disableAdvertisingIdentifier: true
     ); 
     _appsflyerSdk = AppsflyerSdk(options);
     _appsflyerSdk.onAppOpenAttribution((res) {
@@ -41,7 +42,7 @@ class MainPageState extends State<MainPage> {
     _appsflyerSdk.onDeepLinking((DeepLinkResult dp){
       switch (dp.status) {
         case Status.FOUND:
-          print(dp.deepLink?.toString());
+          print(dp.deepLink?.toString()); 
           print("deep link value: ${dp.deepLink?.deepLinkValue}");
           break;
         case Status.NOT_FOUND:
@@ -59,6 +60,17 @@ class MainPageState extends State<MainPage> {
         _deepLinkData = dp.toJson();
       });
     });
+    // _appsflyerSdk.setUserEmails(["gab@man.com"], Em ailCryptType.EmailCryptTypeNone);
+    // _appsflyerSdk.setAppInviteOneLinkID("R7ji", (response){print('setAppInviteOneLinkID response:  $response');});
+    // _appsflyerSdk.generateInviteLink(new AppsFlyerInviteLinkParams(channel: "", 
+    //   referrerName: "re",
+    //   baseDeepLink: "",
+    //   brandDomain: "",
+    //   customerID: "",
+    //   referreImageUrl: "",
+    //   campaign: "",
+    //   customParams: {"key":"test"}), 
+    // (response){print(response);}, (err){print(err);});
   }
 
   @override
@@ -78,8 +90,8 @@ class MainPageState extends State<MainPage> {
         ),
         body: FutureBuilder<dynamic>(
             future: _appsflyerSdk.initSdk(
-                registerConversionDataCallback: true,
-                registerOnAppOpenAttributionCallback: true,
+                registerConversionDataCallback: false,
+                registerOnAppOpenAttributionCallback: false,
                 registerOnDeepLinkingCallback: true),
             builder: (BuildContext context, AsyncSnapshot snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
@@ -99,6 +111,7 @@ class MainPageState extends State<MainPage> {
   }
 
   Future<bool> logEvent(String eventName, Map eventValues) {
+    _appsflyerSdk.disableSKAdNetwork(false);
     return _appsflyerSdk.logEvent(eventName, eventValues);
   }
 
