@@ -74,8 +74,6 @@ static BOOL _isSKADEnabled = false;
         [self waitForCustomerId:call result:result];
     }else if([@"setUserEmails" isEqualToString:call.method]){
         [self setUserEmails:call result:result];
-    }else if([ @"setUserEmailsWithCryptType" isEqualToString:call.method]){
-        [self setUserEmailsWithCryptType:call result:result];
     }
     else if([@"updateServerUninstallToken" isEqualToString:call.method]){
         [self updateServerUninstallToken:call result:result];
@@ -419,7 +417,7 @@ static BOOL _isSKADEnabled = false;
     result(nil);
 }
 
-- (void)setUserEmailsWithCryptType:(FlutterMethodCall*)call result:(FlutterResult)result{
+- (void)setUserEmails:(FlutterMethodCall*)call result:(FlutterResult)result{
     NSMutableArray *emails = call.arguments[@"emails"];
     NSArray *emaillsArray = [emails copy];
     NSNumber* cryptTypeInt = (id)call.arguments[@"cryptType"];
@@ -430,14 +428,6 @@ static BOOL _isSKADEnabled = false;
     }
     
     [[AppsFlyerLib shared] setUserEmails:emaillsArray withCryptType:cryptType];
-    
-    result(nil);
-}
-
-- (void)setUserEmails:(FlutterMethodCall*)call result:(FlutterResult)result{
-    NSMutableArray *emails = call.arguments[@"emails"];
-    NSArray *emailsArray = [emails copy];
-    [[AppsFlyerLib shared] setUserEmails:emailsArray withCryptType:EmailCryptTypeNone];
     result(nil);
 }
 

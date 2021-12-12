@@ -60,17 +60,6 @@ class MainPageState extends State<MainPage> {
         _deepLinkData = dp.toJson();
       });
     });
-    // _appsflyerSdk.setUserEmails(["gab@man.com"], Em ailCryptType.EmailCryptTypeNone);
-    // _appsflyerSdk.setAppInviteOneLinkID("R7ji", (response){print('setAppInviteOneLinkID response:  $response');});
-    // _appsflyerSdk.generateInviteLink(new AppsFlyerInviteLinkParams(channel: "", 
-    //   referrerName: "re",
-    //   baseDeepLink: "",
-    //   brandDomain: "",
-    //   customerID: "",
-    //   referreImageUrl: "",
-    //   campaign: "",
-    //   customParams: {"key":"test"}), 
-    // (response){print(response);}, (err){print(err);});
   }
 
   @override
@@ -90,7 +79,7 @@ class MainPageState extends State<MainPage> {
         ),
         body: FutureBuilder<dynamic>(
             future: _appsflyerSdk.initSdk(
-                registerConversionDataCallback: false,
+                registerConversionDataCallback: true,
                 registerOnAppOpenAttributionCallback: false,
                 registerOnDeepLinkingCallback: true),
             builder: (BuildContext context, AsyncSnapshot snapshot) {
