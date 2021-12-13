@@ -23,6 +23,7 @@ import com.appsflyer.share.ShareInviteHelper;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -239,9 +240,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "setUserEmails":
                 setUserEmails(call, result);
                 break;
-            case "setUserEmailsWithCryptType":
-                setUserEmailsWithCryptType(call, result);
-                break;
             case "setCollectAndroidId":
                 setCollectAndroidId(call, result);
                 break;
@@ -390,6 +388,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         String referrerImageUrl = (String) call.argument("referrerImageUrl");
         String baseDeepLink = (String) call.argument("baseDeeplink");
         String brandDomain = (String) call.argument("brandDomain");
+        Map<String, String> customParams = (Map<String, String>) call.argument("customParams");
 
         LinkGenerator linkGenerator = ShareInviteHelper.generateInviteUrl(mContext);
 
@@ -413,6 +412,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
         if (brandDomain != null && !brandDomain.equals("")) {
             linkGenerator.setBrandDomain(brandDomain);
+        }
+        if (customParams != null && !customParams.equals("")) {
+            linkGenerator.addParameters(customParams);
         }
 
         CreateOneLinkHttpTask.ResponseListener listener = new CreateOneLinkHttpTask.ResponseListener() {
@@ -493,15 +495,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     private void getAppsFlyerUID(Result result) {
         result.success(AppsFlyerLib.getInstance().getAppsFlyerUID(this.mContext));
-    }
-
-    private void setUserEmailsWithCryptType(MethodCall call, Result result) {
-        List<String> emails = call.argument("emails");
-        int cryptTypeInt = call.argument("cryptType");
-        AppsFlyerProperties.EmailsCryptType cryptType = AppsFlyerProperties.EmailsCryptType.values()[cryptTypeInt];
-        if (emails != null) {
-            AppsFlyerLib.getInstance().setUserEmails(cryptType, emails.toArray(new String[0]));
-        }
     }
 
     private void validateAndLogInAppPurchase(MethodCall call, Result result) {
@@ -586,10 +579,22 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     }
 
     private void setUserEmails(MethodCall call, Result result) {
-        List<String> userEmails = call.argument("emails");
-        if (userEmails != null) {
-            AppsFlyerLib.getInstance().setUserEmails(userEmails.toArray(new String[0]));
+        List<String> emails = call.argument("emails");
+        int cryptTypeInt = call.argument("cryptType");
+        
+        AppsFlyerProperties.EmailsCryptType cryptType = null;
+        if (cryptTypeInt == 0){
+            cryptType = AppsFlyerProperties.EmailsCryptType.NONE;
+        } else if (cryptTypeInt == 1){
+            cryptType = AppsFlyerProperties.EmailsCryptType.SHA256;
+        } else {
+            throw new InvalidParameterException("You can use only NONE or SHA256 for EmailsCryptType on android");
         }
+
+        if (emails != null) {
+            AppsFlyerLib.getInstance().setUserEmails(cryptType, emails.toArray(new String[0]));
+        }
+
         result.success(null);
     }
 

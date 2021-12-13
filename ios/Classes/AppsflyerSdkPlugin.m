@@ -74,8 +74,6 @@ static BOOL _isSKADEnabled = false;
         [self waitForCustomerId:call result:result];
     }else if([@"setUserEmails" isEqualToString:call.method]){
         [self setUserEmails:call result:result];
-    }else if([ @"setUserEmailsWithCryptType" isEqualToString:call.method]){
-        [self setUserEmailsWithCryptType:call result:result];
     }
     else if([@"updateServerUninstallToken" isEqualToString:call.method]){
         [self updateServerUninstallToken:call result:result];
@@ -225,6 +223,7 @@ static BOOL _isSKADEnabled = false;
     NSString* referrerName = call.arguments[@"referrerName"];
     NSString* channel = call.arguments[@"channel"];
     NSString* campaign = call.arguments[@"campaign"];
+    NSDictionary* customParams = call.arguments[@"customParams"];
     
     [AppsFlyerShareInviteHelper generateInviteUrlWithLinkGenerator:^AppsFlyerLinkGenerator * _Nonnull(AppsFlyerLinkGenerator * _Nonnull generator) {
         [generator setChannel:channel];
@@ -234,6 +233,7 @@ static BOOL _isSKADEnabled = false;
         [generator setReferrerName:referrerName];
         [generator setReferrerImageURL:referrerImageUrl];
         [generator setReferrerCustomerId:customerID];
+        [generator addParameters:customParams];
         
         return generator;
     } completionHandler:^(NSURL * _Nullable url) {
@@ -417,19 +417,17 @@ static BOOL _isSKADEnabled = false;
     result(nil);
 }
 
-- (void)setUserEmailsWithCryptType:(FlutterMethodCall*)call result:(FlutterResult)result{
+- (void)setUserEmails:(FlutterMethodCall*)call result:(FlutterResult)result{
     NSMutableArray *emails = call.arguments[@"emails"];
     NSArray *emaillsArray = [emails copy];
     NSNumber* cryptTypeInt = (id)call.arguments[@"cryptType"];
-    EmailCryptType cryptType = (EmailCryptType)[cryptTypeInt integerValue];
+    
+    EmailCryptType cryptType = EmailCryptTypeNone;
+    if(1 == [cryptTypeInt doubleValue]){
+        cryptType = EmailCryptTypeSHA256;
+    }
+    
     [[AppsFlyerLib shared] setUserEmails:emaillsArray withCryptType:cryptType];
-    result(nil);
-}
-
-- (void)setUserEmails:(FlutterMethodCall*)call result:(FlutterResult)result{
-    NSMutableArray *emails = call.arguments[@"emails"];
-    NSArray *emailsArray = [emails copy];
-    [[AppsFlyerLib shared] setUserEmails:emailsArray withCryptType:EmailCryptTypeNone];
     result(nil);
 }
 

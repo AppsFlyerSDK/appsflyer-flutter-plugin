@@ -260,13 +260,11 @@ class AppsflyerSdk {
 
   ///Set the user emails and encrypt them.
   void setUserEmails(List<String> emails, [EmailCryptType? cryptType]) {
+    int cryptTypeInt = 0;
     if (cryptType != null) {
-      int cryptTypeInt = EmailCryptType.values.indexOf(cryptType);
-      _methodChannel.invokeMethod("setUserEmailsWithCryptType",
-          {'emails': emails, 'cryptType': cryptTypeInt});
-    } else {
-      _methodChannel.invokeMethod("setUserEmails", {'emails': emails});
+      cryptTypeInt = EmailCryptType.values.indexOf(cryptType);
     }
+    _methodChannel.invokeMethod("setUserEmails",{'emails': emails, 'cryptType': cryptTypeInt});
   }
 
   ///Get AppsFlyer's unique device ID is created for every new install of an app.
@@ -329,7 +327,7 @@ class AppsflyerSdk {
     Function success,
     Function error,
   ) {
-    Map<String, String?>? paramsMap;
+    Map<String, Object?>? paramsMap;
     if (parameters != null) {
       paramsMap = _translateInviteLinkParamsToMap(parameters);
     }
@@ -338,9 +336,10 @@ class AppsflyerSdk {
     _methodChannel.invokeMethod("generateInviteLink", paramsMap);
   }
 
-  Map<String, String?> _translateInviteLinkParamsToMap(
+  Map<String, Object?> _translateInviteLinkParamsToMap(
       AppsFlyerInviteLinkParams params) {
-    Map<String, String?> inviteLinkParamsMap = <String, String?>{};
+    Map<String, Object?> inviteLinkParamsMap = <String, Object?>{};
+    inviteLinkParamsMap['customParams'] = params.customParams;
     inviteLinkParamsMap['referrerImageUrl'] = params.referreImageUrl;
     inviteLinkParamsMap['customerID'] = params.customerID;
     inviteLinkParamsMap['brandDomain'] = params.brandDomain;
