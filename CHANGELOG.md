@@ -1,4 +1,7 @@
 # Versions
+## 6.4.4
+- Updated AppsFlyer Android SDK to v6.4.3
+- Updated AppsFlyer iOS SDK to v6.4.4
 ## 6.4.0+2
 ## 6.4.0+1
 - Added nullable in deeplink object 

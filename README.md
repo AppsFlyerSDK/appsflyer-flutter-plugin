@@ -36,7 +36,7 @@ When submitting an issue please specify your AppsFlyer sign-up (account) email ,
 
 ### This plugin is built for
 
-- iOS AppsFlyerSDK **v6.4.0**
+- iOS AppsFlyerSDK **v6.4.4**
 
 - Android AppsFlyerSDK **v6.4.0**
 
