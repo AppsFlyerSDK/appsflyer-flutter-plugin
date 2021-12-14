@@ -223,7 +223,11 @@ static BOOL _isSKADEnabled = false;
     NSString* referrerName = call.arguments[@"referrerName"];
     NSString* channel = call.arguments[@"channel"];
     NSString* campaign = call.arguments[@"campaign"];
+    
     NSDictionary* customParams = call.arguments[@"customParams"];
+    if(customParams == [NSNull null]){
+       customParams = nil;
+    };
     
     [AppsFlyerShareInviteHelper generateInviteUrlWithLinkGenerator:^AppsFlyerLinkGenerator * _Nonnull(AppsFlyerLinkGenerator * _Nonnull generator) {
         [generator setChannel:channel];
