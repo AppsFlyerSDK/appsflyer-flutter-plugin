@@ -1,4 +1,5 @@
 # Versions
+## 6.4.4+2
 ## 6.4.0+2
 ## 6.4.0+1
 - Added nullable in deeplink object 
