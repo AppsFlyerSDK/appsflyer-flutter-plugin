@@ -155,19 +155,44 @@ appsflyerSdk.initSdk(
 
 ## <a id="ios14"> Set plugin for IOS 14
 
+### Objective C:
 1. Add `#import <AppTrackingTransparency/AppTrackingTransparency.h>` in your `AppDelegate.m` 
 
+### Swift:
+1. Add `import AppTrackingTransparency` in your `AppDelegate.swift` 
+
+### Objective C:
 2. Add the ATT pop-up for IDFA collection so your `AppDelegate.m` will look like this:
 ```
 -(BOOL)application:(UIApplication*)application didFinishLaunchingWithOptions:(NSDictionary*)launchOptions
 {
     [GeneratedPluginRegistrant registerWithRegistry:self];
-    if (@available(iOS 14, *)) {
+    if (@available(iOS 14.5, *)) {
         [ATTrackingManager requestTrackingAuthorizationWithCompletionHandler:^(ATTrackingManagerAuthorizationStatus status) {
             //If you want to do something with the pop-up
         }];
     }
     return [super application:application didFinishLaunchingWithOptions:launchOptions];
+}
+```
+
+### Swift:
+2. Add the ATT pop-up for IDFA collection so your `AppDelegate.swift` will look like this:
+```
+override func application(
+  _ application: UIApplication,
+  didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+) -> Bool {
+    GeneratedPluginRegistrant.register(with: self)
+    
+    if #available(iOS 14.5, *) {
+        // If your app showing pop-up with request for push notifications, you need to set delay for 1 second before showing ATT pop-up
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1, execute: {
+            ATTrackingManager.requestTrackingAuthorization { _ in }
+        })
+    }
+    
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
 }
 ```
 
