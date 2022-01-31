@@ -159,15 +159,12 @@ appsflyerSdk.initSdk(
 
 2. Add the ATT pop-up for IDFA collection so your `AppDelegate.m` will look like this:
 ```
--(BOOL)application:(UIApplication*)application didFinishLaunchingWithOptions:(NSDictionary*)launchOptions
-{
-    [GeneratedPluginRegistrant registerWithRegistry:self];
+- (void)applicationDidBecomeActive:(nonnull UIApplication *)application {
     if (@available(iOS 14, *)) {
         [ATTrackingManager requestTrackingAuthorizationWithCompletionHandler:^(ATTrackingManagerAuthorizationStatus status) {
-            //If you want to do something with the pop-up
+            // native code here
         }];
     }
-    return [super application:application didFinishLaunchingWithOptions:launchOptions];
 }
 ```
 
