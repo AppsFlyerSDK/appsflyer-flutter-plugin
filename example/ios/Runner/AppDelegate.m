@@ -7,12 +7,15 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     [GeneratedPluginRegistrant registerWithRegistry:self];
-     if (@available(iOS 14, *)) {
+    return [super application:application didFinishLaunchingWithOptions:launchOptions];
+}
+
+- (void)applicationDidBecomeActive:(nonnull UIApplication *)application {
+    if (@available(iOS 14, *)) {
         [ATTrackingManager requestTrackingAuthorizationWithCompletionHandler:^(ATTrackingManagerAuthorizationStatus status) {
-            //If you want to do something with the pop-up
+            // native code here
         }];
     }
-    return [super application:application didFinishLaunchingWithOptions:launchOptions];
 }
 
 // Reports app open from a Universal Link for iOS 9 or above
