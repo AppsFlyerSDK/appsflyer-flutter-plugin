@@ -24,7 +24,7 @@ class MainPageState extends State<MainPage> {
     afDevKey: DotEnv().env["DEV_KEY"],
     appId: DotEnv().env["APP_ID"],
     showDebug: true,
-    disableAdvertisingIdentifier: true
+    timeToWaitForATTUserAuthorization: 15
     ); 
     _appsflyerSdk = AppsflyerSdk(options);
     _appsflyerSdk.onAppOpenAttribution((res) {
@@ -60,6 +60,7 @@ class MainPageState extends State<MainPage> {
         _deepLinkData = dp.toJson();
       });
     });
+    
   }
 
   @override
@@ -100,7 +101,6 @@ class MainPageState extends State<MainPage> {
   }
 
   Future<bool> logEvent(String eventName, Map eventValues) {
-    _appsflyerSdk.disableSKAdNetwork(false);
     return _appsflyerSdk.logEvent(eventName, eventValues);
   }
 
