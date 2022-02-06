@@ -131,10 +131,21 @@ static BOOL _isSKADEnabled = false;
         [self setCurrentDeviceLanguage:call result:result];
     }else if([@"setSharingFilterForPartners" isEqualToString:call.method]){
         [self setSharingFilterForPartners:call result:result];
+    }else if([@"setDisableAdvertisingIdentifiers" isEqualToString:call.method]){
+        [self setDisableAdvertisingIdentifiers:call result:result];
     }
     else{
         result(FlutterMethodNotImplemented);
     }
+}
+
+- (void)setDisableAdvertisingIdentifiers:(FlutterMethodCall*)call result:(FlutterResult)result{
+    id isAdvertiserIdEnabled = call.arguments;
+    if ([isAdvertiserIdEnabled isKindOfClass:[NSNumber class]]) {
+        BOOL _isAdvertiserIdEnabled = [isAdvertiserIdEnabled boolValue];
+        [[AppsFlyerLib shared] setDisableAdvertisingIdentifier: _isAdvertiserIdEnabled];
+    }
+    result(nil);
 }
 
 - (void)setSharingFilterForPartners:(FlutterMethodCall*)call result:(FlutterResult)result{

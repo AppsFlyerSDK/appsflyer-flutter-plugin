@@ -395,7 +395,7 @@ class AppsflyerSdk {
   }
 
   void setDisableAdvertisingIdentifiers(bool isEnabled) {
-    _methodChannel.invokeMethod("setDisableAdvertisingIdentifiers", { 'isSetDisableAdvertisingIdentifiersEnable': isEnabled });
+    _methodChannel.invokeMethod("setDisableAdvertisingIdentifiers", isEnabled);
   }
   void onInstallConversionData(Function callback) async {
     startListening(callback as void Function(dynamic), "onInstallConversionData");

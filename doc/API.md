@@ -39,6 +39,8 @@
 - [setCurrentDeviceLanguage](#setCurrentDeviceLanguage)
 - [setSharingFilterForPartners](#setSharingFilterForPartners)
 - [setOneLinkCustomDomain](#setOneLinkCustomDomain)
+- [setDisableAdvertisingIdentifiers](#setDisableAdvertisingIdentifiers)
+
 ---
 
 ##### <a id="appsflyer-options"> **`AppsflyerSdk(Map options)`** 
@@ -515,5 +517,14 @@ Find more information in the [following article on branded domains](https://supp
 _Example:_
 ```dart
 appsFlyerSdk.setOneLinkCustomDomain(["promotion.greatapp.com","click.greatapp.com","deals.greatapp.com"]);
+```
+---
+**<a id="setDisableAdvertisingIdentifiers"> `void setDisableAdvertisingIdentifiers(bool isSetDisableAdvertisingIdentifiersEnable)`**
+
+Manually enable or disable Advertiser ID in Android & IDFA in iOS
+
+_Example:_
+```dart
+widget.appsFlyerSdk.setDisableAdvertisingIdentifiers(true);
 ```
 ---

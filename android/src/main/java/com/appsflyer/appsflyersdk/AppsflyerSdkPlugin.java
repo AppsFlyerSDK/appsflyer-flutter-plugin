@@ -313,7 +313,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     }
 
     private void setDisableAdvertisingIdentifiers(MethodCall call, Result result) {
-        isSetDisableAdvertisingIdentifiersEnable = (boolean) call.argument("isSetDisableAdvertisingIdentifiersEnable");
+        isSetDisableAdvertisingIdentifiersEnable = (boolean) call.arguments;
         if (isSetDisableAdvertisingIdentifiersEnable) {
             AppsFlyerLib.getInstance().setDisableAdvertisingIdentifiers(true);
         } else {
