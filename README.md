@@ -38,7 +38,7 @@ When submitting an issue please specify your AppsFlyer sign-up (account) email ,
 
 - iOS AppsFlyerSDK **v6.5.2**
 
-- Android AppsFlyerSDK **v6.4.3**
+- Android AppsFlyerSDK **v6.5.2**
 
 ### Flutter 2.0 is supported from version `6.2.3+2`, including null safety support!
 
