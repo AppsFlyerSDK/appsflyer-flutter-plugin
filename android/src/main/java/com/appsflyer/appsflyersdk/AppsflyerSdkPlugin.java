@@ -297,10 +297,28 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "setSharingFilterForPartners":
                 setSharingFilterForPartners(call, result);
                 break;
+            case "getOutOfStore":
+                getOutOfStore(result);
+                break;
+            case "setOutOfStore":
+                setOutOfStore(call, result);
+                break;
             default:
                 result.notImplemented();
                 break;
         }
+    }
+    
+    private void getOutOfStore(Result result) {
+        result.success(AppsFlyerLib.getInstance().getOutOfStore(this.mContext));
+    }
+
+    private void setOutOfStore(MethodCall call, Result result) {
+            String sourceName = (String) call.arguments;
+            if (sourceName != null) {
+                AppsFlyerLib.getInstance().setOutOfStore(sourceName);
+            }
+        result.success(null);
     }
 
     private void setSharingFilterForPartners(MethodCall call, Result result) {
