@@ -79,7 +79,7 @@ In v6 of AppsFlyer SDK there are some api breaking changes:
 
 ## <a id="getting-started"> **📲 Getting started**
 
-In order to install the plugin, visit [this](https://pub.dartlang.org/packages/appsflyer_sdk#-installing-tab-) page.
+In order to install the plugin, visit [this](https://pub.dev/packages/appsflyer_sdk/install) page.
 
 ---
 
