@@ -25,6 +25,7 @@ import org.json.JSONObject;
 
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -297,10 +298,33 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "setSharingFilterForPartners":
                 setSharingFilterForPartners(call, result);
                 break;
+            case "setPartnerData":
+                setPartnerData(call, result);
+                break;
+            case "setResolveDeepLinkURLs":
+                setResolveDeepLinkURLs(call, result);
+                break;
             default:
                 result.notImplemented();
                 break;
         }
+    }
+
+    private void setResolveDeepLinkURLs(MethodCall call, Result result) {
+        ArrayList<String> urls = (ArrayList<String>) call.arguments;
+        String[] urlsArr = urls.toArray(new String[urls.size()]);
+        AppsFlyerLib.getInstance().setResolveDeepLinkURLs(urlsArr);
+
+        result.success(null);
+    }
+
+    private void setPartnerData(MethodCall call, Result result) {
+        String partnerId = (String) call.argument("partnerId");
+        HashMap<String, Object> partnerData = (HashMap<String, Object>) call.argument("partnersData");
+        if(partnerData != null){
+            AppsFlyerLib.getInstance().setPartnerData(partnerId, partnerData);
+        }
+        result.success(null);
     }
 
     private void setSharingFilterForPartners(MethodCall call, Result result) {

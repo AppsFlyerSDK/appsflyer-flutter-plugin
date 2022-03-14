@@ -431,5 +431,12 @@ class AppsflyerSdk {
   void setSharingFilterForPartners(List<String> partners) async {
    _methodChannel.invokeMethod("setSharingFilterForPartners", partners);
   }
+
+  void setPartnerData(String partnerId, Map<String, Object> partnerData) async {
+   _methodChannel.invokeMethod("setPartnerData", {'partnerId': partnerId, 'partnersData': partnerData});
+  }
+  void setResolveDeepLinkURLs(List<String> urls) async {
+   _methodChannel.invokeMethod("setResolveDeepLinkURLs", urls);
+  }
 }
 
