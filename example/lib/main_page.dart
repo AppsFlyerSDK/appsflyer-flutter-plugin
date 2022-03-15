@@ -60,9 +60,6 @@ class MainPageState extends State<MainPage> {
         _deepLinkData = dp.toJson();
       });
     });
-    
-    // Map<String, Object> partnerData = {"1": {}, "2": 'Orange'};
-    // _appsflyerSdk.setPartnerData("partnerId", partnerData);
   }
 
   @override
@@ -103,7 +100,6 @@ class MainPageState extends State<MainPage> {
   }
 
   Future<bool> logEvent(String eventName, Map eventValues) {
-    // _appsflyerSdk.setResolveDeepLinkURLs(["clickdomain.com", "myclickdomain.com", "anotherclickdomain.com"]);
     return _appsflyerSdk.logEvent(eventName, eventValues);
   }
 

@@ -312,7 +312,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     private void setResolveDeepLinkURLs(MethodCall call, Result result) {
         ArrayList<String> urls = (ArrayList<String>) call.arguments;
-        String[] urlsArr = urls.toArray(new String[urls.size()]);
+        String[] urlsArr = urls.toArray(new String[0]);
         AppsFlyerLib.getInstance().setResolveDeepLinkURLs(urlsArr);
 
         result.success(null);

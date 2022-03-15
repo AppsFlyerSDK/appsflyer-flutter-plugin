@@ -536,7 +536,7 @@ Allows sending custom data for partner integration purposes.
 
 _Example:_
 ```dart
-  Map<String, Object> partnerData = {"puid", "1234", "puid": '5678'};
+  Map<String, Object> partnerData = {"puid": "1234", "puid": '5678'};
   appsflyerSdk.setPartnerData("partnerId", partnerData);
 ```
 ---
