@@ -88,6 +88,8 @@ void main() {
           case 'setHost':
           case 'logEvent':
           case 'initSdk':
+          case 'setOutOfStore':
+          case 'getOutOfStore':
             selectedMethod = methodCall.method;
             break;
         }
@@ -271,6 +273,18 @@ void main() {
       instance.setAndroidIdData("androidId");
 
       expect(selectedMethod, 'setAndroidIdData');
+    });
+
+    test('check getOutOfStore call', () async {
+      instance.getOutOfStore();
+
+      expect(selectedMethod, 'getOutOfStore');
+    });
+
+    test('check setOutOfStore call', () async {
+      instance.setOutOfStore("source");
+
+      expect(selectedMethod, 'setOutOfStore');
     });
   });
 }

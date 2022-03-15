@@ -429,7 +429,15 @@ class AppsflyerSdk {
   ///The sharing filter blocks the sharing of S2S events via postbacks/API with integrated partners and other third-party integrations.
   ///Use the filter to fulfill regulatory requirements like GDPR and CCPA, to comply with user opt-out mechanisms, and for other business logic reasons.
   void setSharingFilterForPartners(List<String> partners) async {
-   _methodChannel.invokeMethod("setSharingFilterForPartners", partners);
+    _methodChannel.invokeMethod("setSharingFilterForPartners", partners);
+  }
+
+  void setOutOfStore(String sourceName) async {
+    _methodChannel.invokeMethod("setOutOfStore", sourceName);
+  }
+
+  Future<String?> getOutOfStore() async {
+    return await _methodChannel.invokeMethod("getOutOfStore");
   }
 
   void setPartnerData(String partnerId, Map<String, Object> partnerData) async {
@@ -439,4 +447,3 @@ class AppsflyerSdk {
    _methodChannel.invokeMethod("setResolveDeepLinkURLs", urls);
   }
 }
-
