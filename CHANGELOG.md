@@ -1,4 +1,5 @@
 # Versions
+## 6.5.2+1
 ## 6.5.2
 - Updated AppsFlyer Android SDK to v6.5.2
 - Updated AppsFlyer iOS SDK to v6.5.2
