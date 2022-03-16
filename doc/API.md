@@ -42,6 +42,8 @@
 - [setDisableAdvertisingIdentifiers](#setDisableAdvertisingIdentifiers)
 - [setPartnerData](#setPartnerData)
 - [setResolveDeepLinkURLs](#setResolveDeepLinkURLs)
+- [setOutOfStore](#setOutOfStore)
+- [getOutOfStore](#getOutOfStore)
 
 ---
 
@@ -549,5 +551,34 @@ setResolveDeepLinkURLs enables you to configure the SDK to resolve the wrapped O
 _Example:_
 ```dart
   appsflyerSdk.setResolveDeepLinkURLs(["clickdomain.com", "myclickdomain.com", "anotherclickdomain.com"]);
+```
+---
+**<a id="setOutOfStore"> `void setOutOfStore(String sourceName)`**
+
+**Android Only!**
+
+Specify the alternative app store that the app is downloaded from.
+
+_Example:_
+```dart
+  if(Platform.isAndroid){
+    appsflyerSdk.setOutOfStore("facebook_int");
+  }
+```
+---
+**<a id="getOutOfStore"> `Future<String?> getOutOfStore()`**
+
+**Android Only!**
+
+Get the third-party app store referrer value.
+
+_Example:_
+```dart
+  if(Platform.isAndroid){
+    Future<String> store = appsflyerSdk.getOutOfStore();
+    store.then((store) {
+      print(store);
+    });
+  }
 ```
 ---
