@@ -25,6 +25,7 @@ import org.json.JSONObject;
 
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -297,10 +298,51 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "setSharingFilterForPartners":
                 setSharingFilterForPartners(call, result);
                 break;
+            case "getOutOfStore":
+                getOutOfStore(result);
+                break;
+            case "setOutOfStore":
+                setOutOfStore(call, result);
+                break;
+            case "setPartnerData":
+                setPartnerData(call, result);
+                break;
+            case "setResolveDeepLinkURLs":
+                setResolveDeepLinkURLs(call, result);
+                break;
             default:
                 result.notImplemented();
                 break;
         }
+    }
+    
+    private void getOutOfStore(Result result) {
+        result.success(AppsFlyerLib.getInstance().getOutOfStore(this.mContext));
+    }
+
+    private void setOutOfStore(MethodCall call, Result result) {
+            String sourceName = (String) call.arguments;
+            if (sourceName != null) {
+                AppsFlyerLib.getInstance().setOutOfStore(sourceName);
+            }
+        result.success(null);
+    }
+
+    private void setResolveDeepLinkURLs(MethodCall call, Result result) {
+        ArrayList<String> urls = (ArrayList<String>) call.arguments;
+        String[] urlsArr = urls.toArray(new String[0]);
+        AppsFlyerLib.getInstance().setResolveDeepLinkURLs(urlsArr);
+
+        result.success(null);
+    }
+
+    private void setPartnerData(MethodCall call, Result result) {
+        String partnerId = (String) call.argument("partnerId");
+        HashMap<String, Object> partnerData = (HashMap<String, Object>) call.argument("partnersData");
+        if(partnerData != null){
+            AppsFlyerLib.getInstance().setPartnerData(partnerId, partnerData);
+        }
+        result.success(null);
     }
 
     private void setSharingFilterForPartners(MethodCall call, Result result) {

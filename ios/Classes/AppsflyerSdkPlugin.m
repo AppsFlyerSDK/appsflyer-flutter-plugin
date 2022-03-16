@@ -133,10 +133,32 @@ static BOOL _isSKADEnabled = false;
         [self setSharingFilterForPartners:call result:result];
     }else if([@"setDisableAdvertisingIdentifiers" isEqualToString:call.method]){
         [self setDisableAdvertisingIdentifiers:call result:result];
+    }else if([@"setPartnerData" isEqualToString:call.method]){
+        [self setPartnerData:call result:result];
+    }else if([@"setResolveDeepLinkURLs" isEqualToString:call.method]){
+        [self setResolveDeepLinkURLs:call result:result];
     }
     else{
         result(FlutterMethodNotImplemented);
     }
+}
+
+- (void)setResolveDeepLinkURLs:(FlutterMethodCall*)call result:(FlutterResult)result{
+    NSArray* urlsArr = call.arguments;
+    if(urlsArr != nil){
+        [[AppsFlyerLib shared] setResolveDeepLinkURLs:urlsArr];
+    }
+    result(nil);
+}
+
+- (void)setPartnerData:(FlutterMethodCall*)call result:(FlutterResult)result{
+    NSString* partnerId = call.arguments[@"partnerId"];
+    NSDictionary* partnersData = call.arguments[@"partnersData"];
+    if(partnersData == [NSNull null]){
+       partnersData = nil;
+    };
+    [[AppsFlyerLib shared] setPartnerDataWithPartnerId:partnerId partnerInfo:partnersData];
+    result(nil);
 }
 
 - (void)setDisableAdvertisingIdentifiers:(FlutterMethodCall*)call result:(FlutterResult)result{

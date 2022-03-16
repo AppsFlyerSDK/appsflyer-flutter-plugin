@@ -40,6 +40,10 @@
 - [setSharingFilterForPartners](#setSharingFilterForPartners)
 - [setOneLinkCustomDomain](#setOneLinkCustomDomain)
 - [setDisableAdvertisingIdentifiers](#setDisableAdvertisingIdentifiers)
+- [setPartnerData](#setPartnerData)
+- [setResolveDeepLinkURLs](#setResolveDeepLinkURLs)
+- [setOutOfStore](#setOutOfStore)
+- [getOutOfStore](#getOutOfStore)
 
 ---
 
@@ -516,7 +520,7 @@ Find more information in the [following article on branded domains](https://supp
 
 _Example:_
 ```dart
-appsFlyerSdk.setOneLinkCustomDomain(["promotion.greatapp.com","click.greatapp.com","deals.greatapp.com"]);
+  appsFlyerSdk.setOneLinkCustomDomain(["promotion.greatapp.com","click.greatapp.com","deals.greatapp.com"]);
 ```
 ---
 **<a id="setDisableAdvertisingIdentifiers"> `void setDisableAdvertisingIdentifiers(bool isSetDisableAdvertisingIdentifiersEnable)`**
@@ -525,6 +529,56 @@ Manually enable or disable Advertiser ID in Android & IDFA in iOS
 
 _Example:_
 ```dart
-widget.appsFlyerSdk.setDisableAdvertisingIdentifiers(true);
+  appsFlyerSdk.setDisableAdvertisingIdentifiers(true);
+```
+---
+**<a id="setPartnerData"> `void setPartnerData(String partnerId, Map<String, Object> partnerData)`**
+
+Allows sending custom data for partner integration purposes.
+
+_Example:_
+```dart
+  Map<String, Object> partnerData = {"puid": "1234", "puid": '5678'};
+  appsflyerSdk.setPartnerData("partnerId", partnerData);
+```
+---
+**<a id="setResolveDeepLinkURLs"> `void setResolveDeepLinkURLs(List<String> urls)`**
+
+Advertisers can wrap an AppsFlyer OneLink within another Universal Link. This Universal Link will invoke the app but any deep linking data will not propagate to AppsFlyer.
+
+setResolveDeepLinkURLs enables you to configure the SDK to resolve the wrapped OneLink URLs, so that deep linking can occur correctly.
+
+_Example:_
+```dart
+  appsflyerSdk.setResolveDeepLinkURLs(["clickdomain.com", "myclickdomain.com", "anotherclickdomain.com"]);
+```
+---
+**<a id="setOutOfStore"> `void setOutOfStore(String sourceName)`**
+
+**Android Only!**
+
+Specify the alternative app store that the app is downloaded from.
+
+_Example:_
+```dart
+  if(Platform.isAndroid){
+    appsflyerSdk.setOutOfStore("facebook_int");
+  }
+```
+---
+**<a id="getOutOfStore"> `Future<String?> getOutOfStore()`**
+
+**Android Only!**
+
+Get the third-party app store referrer value.
+
+_Example:_
+```dart
+  if(Platform.isAndroid){
+    Future<String> store = appsflyerSdk.getOutOfStore();
+    store.then((store) {
+      print(store);
+    });
+  }
 ```
 ---

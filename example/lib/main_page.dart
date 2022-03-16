@@ -60,7 +60,6 @@ class MainPageState extends State<MainPage> {
         _deepLinkData = dp.toJson();
       });
     });
-    
   }
 
   @override
