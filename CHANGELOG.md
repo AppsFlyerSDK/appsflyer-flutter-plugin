@@ -1,4 +1,6 @@
 # Versions
+## 6.5.2+1
+- New APIs: getOutOfStore, setOutOfStore, setResolveDeepLinkURLs, setPartnerData
 ## 6.5.2
 - Updated AppsFlyer Android SDK to v6.5.2
 - Updated AppsFlyer iOS SDK to v6.5.2
