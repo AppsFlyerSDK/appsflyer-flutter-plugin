@@ -150,6 +150,13 @@ appsflyerSdk.initSdk(
     registerOnDeepLinkingCallback: true
 );
 ```
+  
+Add this snippet in the main() method to register installations  
+```dart
+appsflyerSdk.onInstallConversionData((response){
+    debugPrint('Appsflyer - $response');
+  });
+```  
 
 ---
 
