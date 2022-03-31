@@ -152,7 +152,7 @@ _Example:_
 ```
 
 ---
-##### <a id="logEvent"> **`logEvent(String eventName, Map eventValues)`**
+##### <a id="logEvent"> **`logEvent(String eventName, Map? eventValues)`**
 
 - These in-app events help you to understand how loyal users discover your app, and attribute them to specific
   campaigns/media-sources. Please take the time define the event/s you want to measure to allow you
@@ -167,7 +167,7 @@ _Example:_
 _Example:_
 
 ```dart
-Future<bool> logEvent(String eventName, Map eventValues) async {
+Future<bool> logEvent(String eventName, Map? eventValues) async {
     bool result;
     try {
       result = await appsflyerSdk.logEvent(eventName, eventValues);

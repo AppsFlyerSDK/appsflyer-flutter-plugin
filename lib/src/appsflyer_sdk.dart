@@ -168,10 +168,7 @@ class AppsflyerSdk {
   ///campaigns/media-sources. Please take the time define the event/s you want to measure to allow you
   ///to send ROI (Return on Investment) and LTV (Lifetime Value).
   ///- The `logEvent` method allows you to send in-app events to AppsFlyer analytics. This method allows you to add events dynamically by adding them directly to the application code.
-  Future<bool?> logEvent(String eventName, Map eventValues) async {
-    // ignore: unnecessary_null_comparison
-    assert(eventValues != null);
-
+  Future<bool?> logEvent(String eventName, Map? eventValues) async {
     return await _methodChannel.invokeMethod(
         "logEvent", {'eventName': eventName, 'eventValues': eventValues});
   }
