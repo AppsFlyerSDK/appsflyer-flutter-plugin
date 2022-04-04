@@ -566,6 +566,11 @@ static BOOL _isSKADEnabled = false;
 -(void)logEventWithCall:(FlutterMethodCall*)call result:(FlutterResult)result{
     NSString *eventName =  call.arguments[afEventName];
     NSDictionary *eventValues = call.arguments[afEventValues];
+
+    // Explicitily setting the values to be nil if call.arguments[afEventValues] returns <null>.
+    if (eventValues == [NSNull null]) {
+        eventValues = nil;
+    }
     
     [[AppsFlyerLib shared] logEvent:eventName withValues:eventValues];
     //TODO: Add callback handler
