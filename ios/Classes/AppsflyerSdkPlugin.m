@@ -256,8 +256,30 @@ static BOOL _isSKADEnabled = false;
     NSString* referrerName = call.arguments[@"referrerName"];
     NSString* channel = call.arguments[@"channel"];
     NSString* campaign = call.arguments[@"campaign"];
-    
     NSDictionary* customParams = call.arguments[@"customParams"];
+
+    //Explicitly setting the values of the parameters to be nil in case they are initially received as <null>. 
+    if (customerID == [NSNull null]) {
+        customerID = nil;
+    }
+    if (referrerImageUrl == [NSNull null]) {
+        referrerImageUrl = nil;
+    }
+    if (brandDomain == [NSNull null]) {
+        brandDomain = nil;
+    }
+    if (baseDeeplink == [NSNull null]) {
+        baseDeeplink = nil;
+    }
+    if (referrerName == [NSNull null]) {
+        referrerName = nil;
+    }
+    if (channel == [NSNull null]) {
+        channel = nil;
+    }
+    if (campaign == [NSNull null]) {
+        campaign = nil;
+    }
     if(customParams == [NSNull null]){
        customParams = nil;
     };
@@ -511,7 +533,7 @@ static BOOL _isSKADEnabled = false;
     }
     
     appInviteOneLink = call.arguments[afInviteOneLink];
-    if(appInviteOneLink != nil){
+    if (appInviteOneLink != nil && appInviteOneLink != [NSNull null]) {
         [AppsFlyerLib shared].appInviteOneLinkID = appInviteOneLink;
     }
     

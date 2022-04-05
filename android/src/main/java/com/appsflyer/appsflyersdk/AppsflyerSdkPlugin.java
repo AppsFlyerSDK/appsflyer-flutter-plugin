@@ -466,7 +466,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             public void onResponse(final String oneLinkUrl) {
                 if (mCallbacks.containsKey("generateInviteLinkSuccess")) {
                     try {
-                        obj.put("userInviteUrl", oneLinkUrl);
+                        obj.put("userInviteURL", oneLinkUrl);
                         runOnUIThread(obj, "generateInviteLinkSuccess", AF_SUCCESS);
                     } catch (JSONException e) {
                         e.printStackTrace();
