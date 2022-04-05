@@ -1,4 +1,5 @@
 # Versions
+## 6.5.2+2
 ## 6.5.2+1
 - New APIs: getOutOfStore, setOutOfStore, setResolveDeepLinkURLs, setPartnerData
 ## 6.5.2
