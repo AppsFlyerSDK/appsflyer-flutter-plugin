@@ -266,7 +266,9 @@ appsFlyerSdk.waitForCustomerUserId(true);
 
 _Example:_
 ```dart
-appsFlyerSdk.setAdditionalData({"customData": "data"});
+var audiences = {"phone_number_sha256": "xxxxx", "phone_number_e164_sha256": "xxxxx"};
+var customData = {"audiences": audiences};
+appsFlyerSdk.setAdditionalData(customData);
 ```
 ---
 **<a id="setCollectAndroidId"> `void setCollectAndroidId(bool isCollect)`**
