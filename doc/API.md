@@ -57,9 +57,9 @@
 
 | name       | type      | default | description                                                                                                                    |
 | ---------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `afDevKey` | `string`  |         | [Appsflyer Dev key](https://support.appsflyer.com/hc/en-us/articles/207032126-AppsFlyer-SDK-Integration-Android)               |
-| `afAppId`  | `string`  |         | [Apple Application ID](https://support.appsflyer.com/hc/en-us/articles/207032066-AppsFlyer-SDK-Integration-iOS) (for iOS only) |
-| `isDebug`  | `boolean` | `false` | debug mode (optional)                                                                                                          |
+| `afDevKey` | `String`  |         | [Appsflyer Dev key](https://support.appsflyer.com/hc/en-us/articles/207032126-AppsFlyer-SDK-Integration-Android)               |
+| `afAppId`  | `String`  |         | [Apple Application ID](https://support.appsflyer.com/hc/en-us/articles/207032066-AppsFlyer-SDK-Integration-iOS) (for iOS only) |
+| `isDebug`  | `bool` | `false` | debug mode (optional)                                                                                                          |
 
 _Example:_
 
@@ -167,13 +167,13 @@ _Example:_
 _Example:_
 
 ```dart
-Future<bool> logEvent(String eventName, Map? eventValues) async {
-    bool result;
+Future<bool?> logEvent(String eventName, Map? eventValues) async {
+    bool? result;
     try {
-      result = await appsflyerSdk.logEvent(eventName, eventValues);
+        result = await appsflyerSdk.logEvent(eventName, eventValues);
     } on Exception catch (e) {}
-      print("Result logEvent: ${result}");
-  }
+    print("Result logEvent: $result");
+}
 ```
 
 ---
@@ -330,7 +330,7 @@ appsFlyerSdk.updateServerUninstallToken("token");
       String purchaseData,
       String price,
       String currency,
-      Map<String, String> additionalParameters)`
+      Map<String, String>? additionalParameters)`
 
 _Example:_
 ```dart
@@ -359,7 +359,7 @@ appsFlyerSdk.validateAndLogInAppIosPurchase(
            "price",
            "currency",
            "transactionId",
-           "additionalParameters");
+           {"fs": "fs"});
 ```
 
 ***Purchase validation sandbox mode for iOS:***
