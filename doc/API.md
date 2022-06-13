@@ -262,7 +262,7 @@ _Example:_
 appsFlyerSdk.waitForCustomerUserId(true);
 ```
 ---
-**<a id="setAdditionalData"> `void setAdditionalData(Map addionalData)`**
+**<a id="setAdditionalData"> `void setAdditionalData(Map additionalData)`**
 
 _Example:_
 ```dart
