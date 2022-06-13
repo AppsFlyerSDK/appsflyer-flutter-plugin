@@ -59,7 +59,7 @@
 | ---------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `afDevKey` | `String`  |         | [Appsflyer Dev key](https://support.appsflyer.com/hc/en-us/articles/207032126-AppsFlyer-SDK-Integration-Android)               |
 | `afAppId`  | `String`  |         | [Apple Application ID](https://support.appsflyer.com/hc/en-us/articles/207032066-AppsFlyer-SDK-Integration-iOS) (for iOS only) |
-| `isDebug`  | `bool` | `false` | debug mode (optional)                                                                                                          |
+| `showDebug`  | `bool` | `false` | debug mode (optional)                                                                                                          |
 
 _Example:_
 
@@ -69,7 +69,7 @@ import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 
 Map appsFlyerOptions = { "afDevKey": afDevKey,
                 "afAppId": appId,
-                "isDebug": true};
+                "showDebug": true};
 
 AppsflyerSdk appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
 
@@ -266,8 +266,8 @@ appsFlyerSdk.waitForCustomerUserId(true);
 
 _Example:_
 ```dart
-var audiences = {"phone_number_sha256": "xxxxx", "phone_number_e164_sha256": "xxxxx"};
-var customData = {"audiences": audiences};
+var data = {"key1": "value1", "key2": "value2"};
+var customData = {"customData": data};
 appsFlyerSdk.setAdditionalData(customData);
 ```
 ---
