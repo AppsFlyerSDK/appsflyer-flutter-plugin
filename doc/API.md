@@ -44,6 +44,7 @@
 - [setResolveDeepLinkURLs](#setResolveDeepLinkURLs)
 - [setOutOfStore](#setOutOfStore)
 - [getOutOfStore](#getOutOfStore)
+- [setDisableNetworkData](#setDisableNetworkData)
 
 ---
 
@@ -240,6 +241,8 @@ appsFlyerSdk.setAndroidIdData("androidId");
 ```
 ---
 **<a id="enableLocationCollection"> `void enableLocationCollection(bool flag)`**
+
+**Removed as of v6.8.0**
 
 _Example:_
 ```dart
@@ -581,6 +584,19 @@ _Example:_
     store.then((store) {
       print(store);
     });
+  }
+```
+---
+**<a id="setDisableNetworkData"> `void setDisableNetworkData(bool disable)`**
+
+**Android Only!**
+
+Use to opt-out of collecting the network operator name (carrier) and sim operator name from the device.
+
+_Example:_
+```dart
+  if(Platform.isAndroid){
+    appsflyerSdk.setDisableNetworkData(true);
   }
 ```
 ---

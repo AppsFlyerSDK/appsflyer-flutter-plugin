@@ -21,11 +21,10 @@ class MainPageState extends State<MainPage> {
   void initState() {
     super.initState();
     final AppsFlyerOptions options = AppsFlyerOptions(
-    afDevKey: DotEnv().env["DEV_KEY"],
-    appId: DotEnv().env["APP_ID"],
-    showDebug: true,
-    timeToWaitForATTUserAuthorization: 15
-    ); 
+        afDevKey: DotEnv().env["DEV_KEY"],
+        appId: DotEnv().env["APP_ID"],
+        showDebug: true,
+        timeToWaitForATTUserAuthorization: 15);
     _appsflyerSdk = AppsflyerSdk(options);
     _appsflyerSdk.onAppOpenAttribution((res) {
       print("onAppOpenAttribution res: " + res.toString());
@@ -39,10 +38,10 @@ class MainPageState extends State<MainPage> {
         _gcd = res;
       });
     });
-    _appsflyerSdk.onDeepLinking((DeepLinkResult dp){
+    _appsflyerSdk.onDeepLinking((DeepLinkResult dp) {
       switch (dp.status) {
         case Status.FOUND:
-          print(dp.deepLink?.toString()); 
+          print(dp.deepLink?.toString());
           print("deep link value: ${dp.deepLink?.deepLinkValue}");
           break;
         case Status.NOT_FOUND:
@@ -70,10 +69,9 @@ class MainPageState extends State<MainPage> {
             children: <Widget>[
               Text('AppsFlyer SDK example app'),
               FutureBuilder<String>(
-                  future: _appsflyerSdk.getSDKVersion(),
                   builder: (BuildContext context, AsyncSnapshot snapshot) {
-                    return Text(snapshot.hasData ? snapshot.data : "");
-                  }), 
+                return Text(snapshot.hasData ? snapshot.data : "");
+              }),
             ],
           ),
         ),
@@ -88,7 +86,7 @@ class MainPageState extends State<MainPage> {
               } else {
                 if (snapshot.hasData) {
                   return HomeContainer(
-                    onData: _gcd, 
+                    onData: _gcd,
                     deepLinkData: _deepLinkData,
                     logEvent: logEvent,
                   );
@@ -102,5 +100,4 @@ class MainPageState extends State<MainPage> {
   Future<bool> logEvent(String eventName, Map eventValues) {
     return _appsflyerSdk.logEvent(eventName, eventValues);
   }
-
 }

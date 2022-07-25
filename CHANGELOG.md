@@ -1,4 +1,10 @@
 # Versions
+## 6.8.0
+- The API `enableLocationCollection` has been removed.
+- The API `setDisableNetworkData` has been added.
+- The AD_ID permission has been added to the plugin.
+- Updated AppsFlyer Android SDK to v6.8.0
+- Updated AppsFlyer iOS SDK to v6.8.0
 ## 6.5.2+2
 ## 6.5.2+1
 - New APIs: getOutOfStore, setOutOfStore, setResolveDeepLinkURLs, setPartnerData
