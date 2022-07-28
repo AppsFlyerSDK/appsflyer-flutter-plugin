@@ -14,6 +14,9 @@ class DeepLink{
   }
 
   String? get deepLinkValue =>  _clickEvent["deep_link_value"] as String?;
+  
+
+  String? get deepLinkSubValue =>  _clickEvent["deep_link_sub1"] as String?;
 
 
   String? get matchType =>  _clickEvent["match_type"] as String?;
