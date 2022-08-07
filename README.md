@@ -12,12 +12,14 @@
 
 ### <a id="plugin-build-for"> This plugin is built for
 
-- Android AppsFlyer SDK **v6.5.2**
-- iOS AppsFlyer SDK **v6.5.2**
+- Android AppsFlyer SDK **v6.8.0**
+- iOS AppsFlyer SDK **v6.8.0**
 
 ## <a id="breaking-changes"> 	❗❗ Breaking changes when updating to v6.x.x❗❗
 
 If you have used one of the removed/changed APIs, please check the integration guide for the updated instructions.
+
+- From version `6.8.0`, the `enableLocationCollection` has been removed from the plugin.
 
 - From version `6.4.0`, UDL (Unified deep link) now as a dedicated class with getters for handling the deeplink result. 
 [Check the full UDL guide](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/blob/master/doc/Guides.md#-3-unified-deep-linking).
@@ -37,7 +39,7 @@ Instead use the [new API `setSharingFilterForPartners`](https://github.com/AppsF
 | stopTracking                  | stop                        |
 | validateAndTrackInAppPurchase | validateAndLogInAppPurchase |
 
-- From version `6.1.2+4`, we have renated the following APIs:
+- From version `6.1.2+4`, we have renamed the following APIs:
 
 |Before v6.1.2+4                | v6.1.2+4                    |
 |-------------------------------|-----------------------------|
@@ -45,6 +47,12 @@ Instead use the [new API `setSharingFilterForPartners`](https://github.com/AppsF
 
 ### Important notice
 - Switch `ConversionData` and `OnAppOpenAttribution` to be based on callbacks instead of streams from plugin version `6.0.5+2`.
+
+## AD_ID permission for Android
+In v6.8.0 of the AppsFlyer SDK, we added the normal permission `com.google.android.gms.permission.AD_ID` to the SDK's AndroidManifest, 
+to allow the SDK to collect the Android Advertising ID on apps targeting API 33.
+If your app is targeting children, you need to revoke this permission to comply with Google's Data policy.
+You can read more about it [here](https://dev.appsflyer.com/hc/docs/install-android-sdk#the-ad_id-permission).
 
 ##  📖 Guides
 - [Adding the SDK to your project](/doc/Installation.md)

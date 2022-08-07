@@ -226,9 +226,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "setAndroidIdData":
                 setAndroidIdData(call, result);
                 break;
-            case "enableLocationCollection":
-                enableLocationCollection(call, result);
-                break;
             case "setCustomerUserId":
                 setCustomerUserId(call, result);
                 break;
@@ -310,12 +307,21 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "setResolveDeepLinkURLs":
                 setResolveDeepLinkURLs(call, result);
                 break;
+            case "setDisableNetworkData":
+                setDisableNetworkData(call, result);
+                break;
             default:
                 result.notImplemented();
                 break;
         }
     }
     
+    private void setDisableNetworkData(MethodCall call, Result result) {
+        boolean disableNetworkData = (boolean) call.arguments;
+        AppsFlyerLib.getInstance().setDisableNetworkData(disableNetworkData);
+        result.success(null);
+    }
+
     private void getOutOfStore(Result result) {
         result.success(AppsFlyerLib.getInstance().getOutOfStore(this.mContext));
     }
@@ -643,12 +649,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private void setCustomerUserId(MethodCall call, Result result) {
         String userId = (String) call.argument("id");
         AppsFlyerLib.getInstance().setCustomerUserId(userId);
-        result.success(null);
-    }
-
-    private void enableLocationCollection(MethodCall call, Result result) {
-        boolean flag = (boolean) call.argument("flag");
-        AppsFlyerLib.getInstance().enableLocationCollection(flag);
         result.success(null);
     }
 

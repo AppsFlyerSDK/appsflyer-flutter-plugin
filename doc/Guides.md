@@ -39,7 +39,7 @@ AppsflyerSdk appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
 
 The next step is to call `initSdk` which have the optional boolean parameters `registerConversionDataCallback` and the deeplink callbacks: `registerOnAppOpenAttributionCallback` 
 `registerOnDeepLinkingCallback`
-All callbacks are set to true as default.
+All callbacks are set to false as default.
 
 After we call `initSdk` we can use all of AppsFlyer SDK features.
 
