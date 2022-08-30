@@ -1,4 +1,6 @@
 # Versions
+## 6.8.2
+- update to android v6.8.2
 ## 6.8.0
 - The API `enableLocationCollection` has been removed.
 - The API `setDisableNetworkData` has been added.
