@@ -64,6 +64,7 @@ void main() {
           case 'setAppInviteOneLinkID':
           case 'generateInviteLink':
           case 'setSharingFilterForAllPartners':
+          case 'setSharingFilterForPartners':
           case 'setSharingFilter':
           case 'getSDKVersion':
           case 'getAppsFlyerUID':
@@ -78,7 +79,6 @@ void main() {
           case 'setAdditionalData':
           case 'waitForCustomerUserId':
           case 'setCustomerUserId':
-          case 'enableLocationCollection':
           case 'setAndroidIdData':
           case 'setImeiData':
           case 'updateServerUninstallToken':
@@ -166,16 +166,22 @@ void main() {
       expect(selectedMethod, 'generateInviteLink');
     });
 
+    test('check setSharingFilterForPartners call', () async {
+      instance.setSharingFilterForPartners(['all']);
+
+      expect(selectedMethod, 'setSharingFilterForPartners');
+    });
+
     test('check setSharingFilterForAllPartners call', () async {
       instance.setSharingFilterForAllPartners();
 
-      expect(selectedMethod, 'setSharingFilterForAllPartners');
+      expect(selectedMethod, 'setSharingFilterForPartners');
     });
 
     test('check setSharingFilter call', () async {
-      instance.setSharingFilter(["filters"]);
+      instance.setSharingFilter(["partners"]);
 
-      expect(selectedMethod, 'setSharingFilter');
+      expect(selectedMethod, 'setSharingFilterForPartners');
     });
 
     test('check getSDKVersion call', () async {
@@ -230,7 +236,7 @@ void main() {
     test('check setUserEmailsWithCryptType call', () async {
       instance.setUserEmails(["emails"], EmailCryptType.EmailCryptTypeNone);
 
-      expect(selectedMethod, 'setUserEmailsWithCryptType');
+      expect(selectedMethod, 'setUserEmails');
     });
 
     test('check setUserEmails call', () async {
@@ -255,12 +261,6 @@ void main() {
       instance.setCustomerUserId("id");
 
       expect(selectedMethod, 'setCustomerUserId');
-    });
-
-    test('check enableLocationCollection call', () async {
-      instance.enableLocationCollection(false);
-
-      expect(selectedMethod, 'enableLocationCollection');
     });
 
     test('check setImeiData call', () async {
