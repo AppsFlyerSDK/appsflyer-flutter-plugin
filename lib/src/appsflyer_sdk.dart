@@ -346,7 +346,7 @@ class AppsflyerSdk {
       AppsFlyerInviteLinkParams params) {
     Map<String, Object?> inviteLinkParamsMap = <String, Object?>{};
     inviteLinkParamsMap['customParams'] = params.customParams;
-    inviteLinkParamsMap['referrerImageUrl'] = params.referreImageUrl;
+    inviteLinkParamsMap['referrerImageUrl'] = params.referrerImageUrl;
     inviteLinkParamsMap['customerID'] = params.customerID;
     inviteLinkParamsMap['brandDomain'] = params.brandDomain;
     inviteLinkParamsMap['baseDeeplink'] = params.baseDeepLink;
