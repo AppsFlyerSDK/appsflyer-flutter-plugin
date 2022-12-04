@@ -22,6 +22,7 @@
 - [setAndroidIdData](#setAndroidIdData)
 - [enableLocationCollection](#enableLocationCollection)
 - [setCustomerUserId](#setCustomerUserId)
+- [setCustomerIdAndLogSession](#setCustomerIdAndLogSession)
 - [waitForCustomerUserId](#waitForCustomerUserId)
 - [setAdditionalData](#setAdditionalData)
 - [setCollectAndroidId](#setCollectAndroidId)
@@ -32,6 +33,7 @@
 - [updateServerUninstallToken](#updateServerUninstallToken)
 - [Validate Purchase](#validatePurchase)
 - [setPushNotification](#setPushNotification)
+- [addPushNotificationDeepLinkPath](#addPushNotificationDeepLinkPath)
 - [User Invite](#userInvite)
 - [enableFacebookDeferredApplinks](#enableFacebookDeferredApplinks)
 - [disableSKAdNetwork](#disableSKAdNetwork)
@@ -250,6 +252,7 @@ appsFlyerSdk.enableLocationCollection(true);
 ```
 ---
 **<a id="setCustomerUserId"> `void setCustomerUserId(String userId)`**
+
 [What is customer user id?](https://support.appsflyer.com/hc/en-us/articles/207032016-Customer-User-ID)
 
 _Example:_
@@ -257,12 +260,27 @@ _Example:_
 appsFlyerSdk.setCustomerUserId("id");
 ```
 ---
+**<a id="setCustomerIdAndLogSession"> `void setCustomerIdAndLogSession(String userId)` Android only!**
+
+[What is customer user id?](https://support.appsflyer.com/hc/en-us/articles/207032016-Customer-User-ID)
+
+_Example:_
+```dart
+if(Platform.isAndroid){
+  appsFlyerSdk.setCustomerIdAndLogSession("id");
+}
+```
+---
 **<a id="waitForCustomerUserId"> `void waitForCustomerUserId(bool wait)`**
+
 You can set this function to `true` if you don't want to log events without setting customer id first.
+
+[Read the following article to understand the use of this API](https://support.appsflyer.com/hc/en-us/articles/207032016-Customer-User-ID-field-CUID-#android-sdk-developer-instructions)
 
 _Example:_
 ```dart
 appsFlyerSdk.waitForCustomerUserId(true);
+appsFlyerSdk.setCustomerIdAndLogSession("id");
 ```
 ---
 **<a id="setAdditionalData"> `void setAdditionalData(Map additionalData)`**
@@ -403,6 +421,25 @@ Please check the following guide in order to understand the relevant payload nee
 
 https://support.appsflyer.com/hc/en-us/articles/207364076-Measuring-push-notification-re-engagement-campaigns
 
+---
+**<a id="addPushNotificationDeepLinkPath"> `void addPushNotificationDeepLinkPath(List<String> deeplinkPath)`**
+
+_Example:_
+```dart
+appsFlyerSdk.addPushNotificationDeepLinkPath(["deeply", "nested", "deep_link"]);
+```
+
+This call matches the following payload structure:
+
+```json
+{
+  "deeply": {
+      "nested": {
+          "deep_link": "https://yourdeeplink2.onelink.me"
+      }
+  }
+}
+```
 ---
 **<a id="userInvite"> User Invite**
 

@@ -276,9 +276,19 @@ class AppsflyerSdk {
     return await _methodChannel.invokeMethod("getAppsFlyerUID");
   }
 
+  ///Set customer user ID and unlock the wait for customer user id. Use with waitForCustomerUserId
+  void setCustomerIdAndLogSession(String id) {
+    _methodChannel.invokeMethod("setCustomerIdAndLogSession", {'id': id});
+  }
+
   ///Set to true if you want to delay sdk init until CUID is set
   void waitForCustomerUserId(bool wait) {
     _methodChannel.invokeMethod("waitForCustomerUserId", {'wait': wait});
+  }
+
+  ///Adds array of keys, which are used to compose key path to resolve deeplink from push notification payload.
+  void addPushNotificationDeepLinkPath(List<String> deeplinkPath) {
+    _methodChannel.invokeMethod("addPushNotificationDeepLinkPath", deeplinkPath);
   }
 
   Future<dynamic> validateAndLogInAppAndroidPurchase(

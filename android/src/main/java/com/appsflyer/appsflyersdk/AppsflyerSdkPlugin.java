@@ -229,6 +229,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "setCustomerUserId":
                 setCustomerUserId(call, result);
                 break;
+            case "setCustomerIdAndLogSession":
+                setCustomerIdAndLogSession(call, result);
+                break;
             case "waitForCustomerUserId":
                 waitForCustomerUserId(call, result);
                 break;
@@ -310,12 +313,24 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "setDisableNetworkData":
                 setDisableNetworkData(call, result);
                 break;
+            case "addPushNotificationDeepLinkPath":
+                addPushNotificationDeepLinkPath(call, result);
+                break;
             default:
                 result.notImplemented();
                 break;
         }
     }
     
+    private void addPushNotificationDeepLinkPath(MethodCall call, Result result) {
+        if(call.arguments != null){
+            ArrayList<String> depplinkPath = (ArrayList<String>) call.arguments;
+            String[] depplinkPathArr = depplinkPath.toArray(new String[depplinkPath.size()]);
+            AppsFlyerLib.getInstance().addPushNotificationDeepLinkPath(depplinkPathArr);
+        }
+        result.success(null);
+    }    
+
     private void setDisableNetworkData(MethodCall call, Result result) {
         boolean disableNetworkData = (boolean) call.arguments;
         AppsFlyerLib.getInstance().setDisableNetworkData(disableNetworkData);
@@ -649,6 +664,12 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private void setCustomerUserId(MethodCall call, Result result) {
         String userId = (String) call.argument("id");
         AppsFlyerLib.getInstance().setCustomerUserId(userId);
+        result.success(null);
+    }
+
+    private void setCustomerIdAndLogSession(MethodCall call, Result result) {
+        String userId = (String) call.argument("id");
+        AppsFlyerLib.getInstance().setCustomerIdAndLogSession(userId, mContext);
         result.success(null);
     }
 
