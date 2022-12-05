@@ -271,16 +271,18 @@ if(Platform.isAndroid){
 }
 ```
 ---
-**<a id="waitForCustomerUserId"> `void waitForCustomerUserId(bool wait)`**
+**<a id="waitForCustomerUserId"> `void waitForCustomerUserId(bool wait)` Android only**
 
 You can set this function to `true` if you don't want to log events without setting customer id first.
 
-[Read the following article to understand the use of this API](https://support.appsflyer.com/hc/en-us/articles/207032016-Customer-User-ID-field-CUID-#android-sdk-developer-instructions)
+[In order to wait for customer user ID in iOS, please read the following article](https://support.appsflyer.com/hc/en-us/articles/207032016-Customer-User-ID-field-CUID-#ios-sdk-developer-instructions)
 
 _Example:_
 ```dart
-appsFlyerSdk.waitForCustomerUserId(true);
-appsFlyerSdk.setCustomerIdAndLogSession("id");
+if(Platform.isAndroid){
+  appsFlyerSdk.waitForCustomerUserId(true);
+  appsFlyerSdk.setCustomerIdAndLogSession("id");
+}
 ```
 ---
 **<a id="setAdditionalData"> `void setAdditionalData(Map additionalData)`**
