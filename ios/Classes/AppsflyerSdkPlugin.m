@@ -86,6 +86,8 @@ static BOOL _isSKADEnabled = false;
     }else if([@"setIsUpdate" isEqualToString:call.method]){
         //
     }else if([@"setCustomerUserId" isEqualToString:call.method]){
+        [self setCustomerUserId:call result:result];    
+    }else if([@"setCustomerIdAndLogSession" isEqualToString:call.method]){
         [self setCustomerUserId:call result:result];
     }else if([@"setCurrencyCode" isEqualToString:call.method ]){
         //
