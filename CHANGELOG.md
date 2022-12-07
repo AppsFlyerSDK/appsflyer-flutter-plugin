@@ -1,4 +1,8 @@
 # Versions
+## 6.9.3
+- update to Android SDK to v6.9.3 & iOS SDK to v6.9.1
+- Added `addPushNotificationDeepLinkPath` API
+- Added `setCustomerIdAndLogSession` API for android
 ## 6.8.2
 - update to android v6.8.2
 ## 6.8.0

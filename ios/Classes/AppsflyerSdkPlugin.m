@@ -86,6 +86,8 @@ static BOOL _isSKADEnabled = false;
     }else if([@"setIsUpdate" isEqualToString:call.method]){
         //
     }else if([@"setCustomerUserId" isEqualToString:call.method]){
+        [self setCustomerUserId:call result:result];    
+    }else if([@"setCustomerIdAndLogSession" isEqualToString:call.method]){
         [self setCustomerUserId:call result:result];
     }else if([@"setCurrencyCode" isEqualToString:call.method ]){
         //
@@ -137,10 +139,20 @@ static BOOL _isSKADEnabled = false;
         [self setPartnerData:call result:result];
     }else if([@"setResolveDeepLinkURLs" isEqualToString:call.method]){
         [self setResolveDeepLinkURLs:call result:result];
+    }else if([@"addPushNotificationDeepLinkPath" isEqualToString:call.method]){
+        [self addPushNotificationDeepLinkPath:call result:result];
     }
     else{
         result(FlutterMethodNotImplemented);
     }
+}
+
+- (void)addPushNotificationDeepLinkPath:(FlutterMethodCall*)call result:(FlutterResult)result{
+    NSArray* deeplinkPath = call.arguments;
+    if(deeplinkPath != nil){
+        [[AppsFlyerLib shared] addPushNotificationDeepLinkPath:deeplinkPath];
+    }
+    result(nil);
 }
 
 - (void)setResolveDeepLinkURLs:(FlutterMethodCall*)call result:(FlutterResult)result{
