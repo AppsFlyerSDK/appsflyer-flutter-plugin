@@ -59,7 +59,8 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private static String cachedOnAttributionFailure;
     private static String cachedOnConversionDataFail;
     private static DeepLinkResult cachedDeepLinkResult;
-    
+    private static List<AppsflyerSdkPlugin> instances = new ArrayList<>();
+
     final Handler uiThreadHandler = new Handler(Looper.getMainLooper());
     private EventChannel mEventChannel;
     /**
@@ -79,7 +80,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private Boolean isFacebookDeferredApplinksEnabled = false;
     private Boolean isSetDisableAdvertisingIdentifiersEnable = false;
     private Map<String, Map<String, Object>> mCallbacks = new HashMap<>();
-    
+
     PluginRegistry.NewIntentListener onNewIntentListener = new PluginRegistry.NewIntentListener() {
         @Override
         public boolean onNewIntent(Intent intent) {
@@ -171,7 +172,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         mMethodChannel.setMethodCallHandler(this);
         mCallbackChannel = new MethodChannel(messenger, AppsFlyerConstants.AF_CALLBACK_CHANNEL);
         mCallbackChannel.setMethodCallHandler(callbacksHandler);
-
+        instances.add(this);
     }
 
 
@@ -323,7 +324,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                 break;
         }
     }
-    
+
     private void addPushNotificationDeepLinkPath(MethodCall call, Result result) {
         if(call.arguments != null){
             ArrayList<String> depplinkPath = (ArrayList<String>) call.arguments;
@@ -331,7 +332,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             AppsFlyerLib.getInstance().addPushNotificationDeepLinkPath(depplinkPathArr);
         }
         result.success(null);
-    }    
+    }
 
     private void setDisableNetworkData(MethodCall call, Result result) {
         boolean disableNetworkData = (boolean) call.arguments;
@@ -389,7 +390,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     private void enableFacebookDeferredApplinks(MethodCall call, Result result) {
         isFacebookDeferredApplinksEnabled = (boolean) call.argument("isFacebookDeferredApplinksEnabled");
-        
+
         if (isFacebookDeferredApplinksEnabled) {
             AppsFlyerLib.getInstance().enableFacebookDeferredApplinks(true);
         } else {
@@ -542,7 +543,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
-                        mCallbackChannel.invokeMethod("callListener", args.toString());
+                        for (AppsflyerSdkPlugin instance : instances) {
+                             instance.mCallbackChannel.invokeMethod("callListener", args.toString());
+                         }
                     }
                 }
         );
@@ -646,7 +649,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private void setUserEmails(MethodCall call, Result result) {
         List<String> emails = call.argument("emails");
         int cryptTypeInt = call.argument("cryptType");
-        
+
         AppsFlyerProperties.EmailsCryptType cryptType = null;
         if (cryptTypeInt == 0){
             cryptType = AppsFlyerProperties.EmailsCryptType.NONE;
@@ -844,8 +847,11 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     public void onDetachedFromEngine(FlutterPluginBinding binding) {
         mMethodChannel.setMethodCallHandler(null);
         mMethodChannel = null;
+        mCallbackChannel.setMethodCallHandler(null);
+        mCallbackChannel = null;
         mEventChannel.setStreamHandler(null);
         mEventChannel = null;
+        instances.remove(this);
     }
 
     @Override
