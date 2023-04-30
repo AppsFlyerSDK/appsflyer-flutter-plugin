@@ -19,6 +19,8 @@ import com.appsflyer.deeplink.DeepLinkResult;
 import com.appsflyer.share.CrossPromotionHelper;
 import com.appsflyer.share.LinkGenerator;
 import com.appsflyer.share.ShareInviteHelper;
+import com.appsflyer.internal.platform_extension.Plugin;
+import com.appsflyer.internal.platform_extension.PluginInfo;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -748,6 +750,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         } else {
             instance.setDebugLog(false);
         }
+
+        PluginInfo pluginInfo = new PluginInfo(Plugin.FLUTTER, AppsFlyerConstants.PLUGIN_VERSION);
+        instance.setPluginInfo(pluginInfo);
 
         instance.init(afDevKey, gcdListener, mContext);
 

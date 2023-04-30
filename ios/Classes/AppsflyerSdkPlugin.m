@@ -570,6 +570,8 @@ static BOOL _isSKADEnabled = false;
         msgSend(AppsFlyer, DisableAdvertisingSel, disableAdvertisingIdentifier);
     }
     
+    [[AppsFlyerLib shared] setPluginInfoWith:AFSDKPluginFlutter pluginVersion:kAppsFlyerPluginVersion additionalParams:nil];
+
     [AppsFlyerLib shared].appleAppID = appId;
     [AppsFlyerLib shared].appsFlyerDevKey = devKey;
     [AppsFlyerLib shared].isDebug = isDebug;
