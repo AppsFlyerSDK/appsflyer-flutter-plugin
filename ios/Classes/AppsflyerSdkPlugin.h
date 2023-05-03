@@ -16,6 +16,7 @@
 @end
 
 // Appsflyer JS objects
+#define kAppsFlyerPluginVersion             @"6.10.1"
 #define afDevKey                            @"afDevKey"
 #define afAppId                             @"afAppId"
 #define afIsDebug                           @"isDebug"
