@@ -1,4 +1,6 @@
 # Versions
+## 6.11.1
+- update to Android SDK to v6.11.1
 ## 6.10.1
 - update to Android SDK to v6.10.3 & iOS SDK to v6.10.1
 ## 6.9.3
