@@ -421,16 +421,17 @@ https://support.appsflyer.com/hc/en-us/articles/207364076-Measuring-push-notific
 ---
 **<a id="sendPushNotificationData"> `void sendPushNotificationData(Map? userInfo)`**
 
-For Android: Make sure to call this API inside the page of every activity that is launched after clicking the notification.
+For Android: Make sure to call this API inside the page of every activity that is launched after clicking the notification. 
+Pass null as an argument.
 
-For iOS: This API can be called in the pus notification listener.
+For iOS: This API should be called in the push notification listener.
 
 Please check the following guide in order to understand the relevant payload needed for AppsFlyer to attribute the push notification:
 
 https://support.appsflyer.com/hc/en-us/articles/207364076-Measuring-push-notification-re-engagement-campaigns
 
 
-_Example:_
+_iOS Example:_
 ```dart
 final Map userInfo = {
             "af":{
@@ -448,11 +449,16 @@ final Map userInfo = {
 appsFlyerSdk.sendPushNotificationData(userInfo);
 ```
 
-Example for firebase:
+iOS with firebase:
 ```dart
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     appsflyerSdk.sendPushNotificationData(message.data);
   });
+```
+
+Example for Android:
+```dart
+  appsflyerSdk.sendPushNotificationData(null);
 ```
 
 ---

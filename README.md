@@ -19,6 +19,8 @@
 
 If you have used one of the removed/changed APIs, please check the integration guide for the updated instructions.
 
+- From version `6.11.2`, the `setPushNotification` will not work in iOS. [Please use new API sendPushNotificationData when receiving a notification on flutter side](/doc/API.md#sendPushNotificationData). 
+
 - From version `6.8.0`, the `enableLocationCollection` has been removed from the plugin.
 
 - From version `6.4.0`, UDL (Unified deep link) now as a dedicated class with getters for handling the deeplink result. 
