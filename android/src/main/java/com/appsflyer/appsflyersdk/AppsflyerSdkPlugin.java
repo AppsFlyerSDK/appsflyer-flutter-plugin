@@ -289,6 +289,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                 setOneLinkCustomDomain(call, result);
                 break;
             case "setPushNotification":
+                setPushNotification(call, result);
+                break;
+            case "sendPushNotificationData":
                 sendPushNotificationData(call, result);
                 break;
             case "enableFacebookDeferredApplinks":
@@ -395,6 +398,11 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         } else {
             AppsFlyerLib.getInstance().enableFacebookDeferredApplinks(false);
         }
+        result.success(null);
+    }
+
+    private void setPushNotification(MethodCall call, Result result) {
+        AppsFlyerLib.getInstance().sendPushNotificationData(activity);
         result.success(null);
     }
 

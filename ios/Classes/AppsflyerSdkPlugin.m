@@ -122,7 +122,9 @@ static BOOL _isSKADEnabled = false;
     }else if([@"setOneLinkCustomDomain" isEqualToString:call.method]){
         [self setOneLinkCustomDomain:call result:result];
     }else if([@"setPushNotification" isEqualToString:call.method]){
-        [self setPushNotification:call result:result];
+        [self setPushNotification:call result:result];    
+    }else if([@"sendPushNotificationData" isEqualToString:call.method]){
+        [self sendPushNotificationData:call result:result];
     }else if([@"useReceiptValidationSandbox" isEqualToString:call.method]){
         [self useReceiptValidationSandbox:call result:result];
     }else if([@"enableFacebookDeferredApplinks" isEqualToString:call.method]){
@@ -231,10 +233,10 @@ static BOOL _isSKADEnabled = false;
     result(nil);
 }
 
-- (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
-    if(_isPushNotificationEnabled){
-        [[AppsFlyerLib shared] handlePushNotification:userInfo];
-    }
+- (void)sendPushNotificationData:(FlutterMethodCall*)call result:(FlutterResult)result{
+    NSDictionary* userInfo = call.arguments;
+    [[AppsFlyerLib shared] handlePushNotification:userInfo];
+    result(nil);
 }
 
 - (void)setOneLinkCustomDomain:(FlutterMethodCall*)call result:(FlutterResult)result{

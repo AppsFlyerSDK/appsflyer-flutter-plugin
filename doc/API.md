@@ -32,7 +32,8 @@
 - [getHostPrefix](#getHostPrefix)
 - [updateServerUninstallToken](#updateServerUninstallToken)
 - [Validate Purchase](#validatePurchase)
-- [setPushNotification](#setPushNotification)
+- [setPushNotification](#setPushNotification)[DEPRECATED]
+- [sendPushNotificationData](#sendPushNotificationData)
 - [addPushNotificationDeepLinkPath](#addPushNotificationDeepLinkPath)
 - [User Invite](#userInvite)
 - [enableFacebookDeferredApplinks](#enableFacebookDeferredApplinks)
@@ -400,7 +401,7 @@ appsflyerSdk.onPurchaseValidation((res){
 ```
 
 ---
-**<a id="setPushNotification"> `void setPushNotification(bool isEnabled)`**
+**<a id="setPushNotification"> `void setPushNotification(bool isEnabled)`[DEPRECATED]**
 
 _Example:_
 ```dart
@@ -416,6 +417,43 @@ For iOS: This API can be called once at the initalization phase.
 Please check the following guide in order to understand the relevant payload needed for AppsFlyer to attribute the push notification:
 
 https://support.appsflyer.com/hc/en-us/articles/207364076-Measuring-push-notification-re-engagement-campaigns
+
+---
+**<a id="sendPushNotificationData"> `void sendPushNotificationData(Map? userInfo)`**
+
+For Android: Make sure to call this API inside the page of every activity that is launched after clicking the notification.
+
+For iOS: This API can be called in the pus notification listener.
+
+Please check the following guide in order to understand the relevant payload needed for AppsFlyer to attribute the push notification:
+
+https://support.appsflyer.com/hc/en-us/articles/207364076-Measuring-push-notification-re-engagement-campaigns
+
+
+_Example:_
+```dart
+final Map userInfo = {
+            "af":{
+                "c": "test_campaign",
+                "is_retargeting": true,
+                "pid": "push_provider_int",
+            },
+            "aps":{
+                "alert": "Get 5000 Coins",
+                "badge": "37",
+                "sound": "default"
+            }
+        };
+
+appsFlyerSdk.sendPushNotificationData(userInfo);
+```
+
+Example for firebase:
+```dart
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    appsflyerSdk.sendPushNotificationData(message.data);
+  });
+```
 
 ---
 **<a id="addPushNotificationDeepLinkPath"> `void addPushNotificationDeepLinkPath(List<String> deeplinkPath)`**
