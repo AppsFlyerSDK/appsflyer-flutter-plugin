@@ -414,31 +414,16 @@ _Example:_
 ```dart
 appsFlyerSdk.setPushNotification(true);
 ```
-
-_NOTE:_ 
-
-For Android: Make sure to call this API inside the page of every activity that is launched after clicking the notification.
-
-For iOS: This API can be called once at the initalization phase.
-
-Please check the following guide in order to understand the relevant payload needed for AppsFlyer to attribute the push notification:
-
-https://support.appsflyer.com/hc/en-us/articles/207364076-Measuring-push-notification-re-engagement-campaigns
-
 ---
 **<a id="sendPushNotificationData"> `void sendPushNotificationData(Map? userInfo)`**
 
-For Android: Make sure to call this API inside the page of every activity that is launched after clicking the notification. 
-Pass null as an argument.
+Push-notification campaigns are used to create fast re-engagements with existing users.
 
-For iOS: This API should be called in the push notification listener.
+[Learn more](https://support.appsflyer.com/hc/en-us/articles/207364076-Measuring-Push-Notification-Re-Engagement-Campaigns)
 
-Please check the following guide in order to understand the relevant payload needed for AppsFlyer to attribute the push notification:
+For Android: AppsFlyer SDK uses the activity in order to process the push payload. Make sure you call this api when the app's activity is available (NOT dead state).
 
-https://support.appsflyer.com/hc/en-us/articles/207364076-Measuring-push-notification-re-engagement-campaigns
-
-
-_iOS Example:_
+_Example:_
 ```dart
 final Map userInfo = {
             "af":{
@@ -454,18 +439,6 @@ final Map userInfo = {
         };
 
 appsFlyerSdk.sendPushNotificationData(userInfo);
-```
-
-iOS with firebase:
-```dart
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    appsflyerSdk.sendPushNotificationData(message.data);
-  });
-```
-
-Example for Android:
-```dart
-  appsflyerSdk.sendPushNotificationData(null);
 ```
 
 ---
