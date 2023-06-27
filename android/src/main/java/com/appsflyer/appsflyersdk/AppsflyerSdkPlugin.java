@@ -60,7 +60,8 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private static String cachedOnAttributionFailure;
     private static String cachedOnConversionDataFail;
     private static DeepLinkResult cachedDeepLinkResult;
-    
+    private static ActivityPluginBinding activityPluginBinding;
+
     final Handler uiThreadHandler = new Handler(Looper.getMainLooper());
     private EventChannel mEventChannel;
     /**
@@ -773,7 +774,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         AppsFlyerConversionListener gcdListener = null;
         DeepLinkListener udlListener = null;
         AppsFlyerLib instance = AppsFlyerLib.getInstance();
-
+        if(activity == null){
+            activity = activityPluginBinding.getActivity();
+        }
         String afDevKey = (String) call.argument(AppsFlyerConstants.AF_DEV_KEY);
         if (afDevKey == null || afDevKey.equals("")) {
             result.error(null, "AF Dev Key is empty", "AF dev key cannot be empty");
@@ -901,10 +904,11 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onAttachedToActivity(ActivityPluginBinding binding) {
-        activity = binding.getActivity();
-        mIntent = binding.getActivity().getIntent();
-        mApplication = binding.getActivity().getApplication();
-        binding.addOnNewIntentListener(onNewIntentListener);
+        activityPluginBinding = binding;
+        activity = activityPluginBinding.getActivity();
+        mIntent = activityPluginBinding.getActivity().getIntent();
+        mApplication = activityPluginBinding.getActivity().getApplication();
+        activityPluginBinding.addOnNewIntentListener(onNewIntentListener);
     }
 
     @Override
