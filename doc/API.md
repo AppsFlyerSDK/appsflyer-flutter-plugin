@@ -32,7 +32,8 @@
 - [getHostPrefix](#getHostPrefix)
 - [updateServerUninstallToken](#updateServerUninstallToken)
 - [Validate Purchase](#validatePurchase)
-- [setPushNotification](#setPushNotification)
+- [setPushNotification](#setPushNotification)[DEPRECATED]
+- [sendPushNotificationData](#sendPushNotificationData)
 - [addPushNotificationDeepLinkPath](#addPushNotificationDeepLinkPath)
 - [User Invite](#userInvite)
 - [enableFacebookDeferredApplinks](#enableFacebookDeferredApplinks)
@@ -58,11 +59,18 @@
 
 **`options`**
 
-| name       | type      | default | description                                                                                                                    |
-| ---------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `afDevKey` | `String`  |         | [Appsflyer Dev key](https://support.appsflyer.com/hc/en-us/articles/207032126-AppsFlyer-SDK-Integration-Android)               |
-| `afAppId`  | `String`  |         | [Apple Application ID](https://support.appsflyer.com/hc/en-us/articles/207032066-AppsFlyer-SDK-Integration-iOS) (for iOS only) |
-| `showDebug`  | `bool` | `false` | debug mode (optional)                                                                                                          |
+                                                                                                        |
+| Setting  | Type   | Description   |
+| -------- | -------- | ------------- |
+| devKey   | String | Your application's [devKey](https://support.appsflyer.com/hc/en-us/articles/207032066-Basic-SDK-integration-guide#retrieving-the-dev-key) provided by AppsFlyer (required)  |
+| appId      | String | Your application's [App ID](https://support.appsflyer.com/hc/en-us/articles/207377436-Adding-a-new-app#available-in-the-app-store-google-play-store-windows-phone-store)  (required for iOS only) that you configured in your AppsFlyer dashboard  |
+| showDebug    | bool | Debug mode - set to `true` for testing only, do not release to production with this parameter set to `true`! |
+| timeToWaitForATTUserAuthorization  | double | Delays the SDK start for x seconds until the user either accepts the consent dialog, declines it, or the timer runs out. |
+| appInviteOneLink    | String | The [OneLink template ID](https://support.appsflyer.com/hc/en-us/articles/115004480866-User-invite-attribution#parameters) that is used to generate a User Invite, this is not a required field in the `AppsFlyerOptions`, you may choose to set it later via the appropriate API. |
+| disableAdvertisingIdentifier| bool | Opt-out of the collection of Advertising Identifiers, which include OAID, AAID, GAID and IDFA. |
+| disableCollectASA | bool | Opt-out of the Apple Search Ads attributions. |
+
+
 
 _Example:_
 
@@ -400,22 +408,38 @@ appsflyerSdk.onPurchaseValidation((res){
 ```
 
 ---
-**<a id="setPushNotification"> `void setPushNotification(bool isEnabled)`**
+**<a id="setPushNotification"> `void setPushNotification(bool isEnabled)`[DEPRECATED]**
 
 _Example:_
 ```dart
 appsFlyerSdk.setPushNotification(true);
 ```
+---
+**<a id="sendPushNotificationData"> `void sendPushNotificationData(Map? userInfo)`**
 
-_NOTE:_ 
+Push-notification campaigns are used to create fast re-engagements with existing users.
 
-For Android: Make sure to call this API inside the page of every activity that is launched after clicking the notification.
+[Learn more](https://support.appsflyer.com/hc/en-us/articles/207364076-Measuring-Push-Notification-Re-Engagement-Campaigns)
 
-For iOS: This API can be called once at the initalization phase.
+For Android: AppsFlyer SDK uses the activity in order to process the push payload. Make sure you call this api when the app's activity is available (NOT dead state).
 
-Please check the following guide in order to understand the relevant payload needed for AppsFlyer to attribute the push notification:
+_Example:_
+```dart
+final Map userInfo = {
+            "af":{
+                "c": "test_campaign",
+                "is_retargeting": true,
+                "pid": "push_provider_int",
+            },
+            "aps":{
+                "alert": "Get 5000 Coins",
+                "badge": "37",
+                "sound": "default"
+            }
+        };
 
-https://support.appsflyer.com/hc/en-us/articles/207364076-Measuring-push-notification-re-engagement-campaigns
+appsFlyerSdk.sendPushNotificationData(userInfo);
+```
 
 ---
 **<a id="addPushNotificationDeepLinkPath"> `void addPushNotificationDeepLinkPath(List<String> deeplinkPath)`**

@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -59,7 +60,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private static String cachedOnAttributionFailure;
     private static String cachedOnConversionDataFail;
     private static DeepLinkResult cachedDeepLinkResult;
-    
+
     final Handler uiThreadHandler = new Handler(Looper.getMainLooper());
     private EventChannel mEventChannel;
     /**
@@ -199,6 +200,10 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onMethodCall(MethodCall call, Result result) {
+        if(activity == null){
+            Log.d("AppsFlyer", "Activity isn't attached to the flutter engine");
+            return;
+        }
         final String method = call.method;
         switch (method) {
             case "initSdk":
@@ -289,6 +294,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                 setOneLinkCustomDomain(call, result);
                 break;
             case "setPushNotification":
+                setPushNotification(call, result);
+                break;
+            case "sendPushNotificationData":
                 sendPushNotificationData(call, result);
                 break;
             case "enableFacebookDeferredApplinks":
@@ -398,11 +406,58 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         result.success(null);
     }
 
-    private void sendPushNotificationData(MethodCall call, Result result) {
+    private void setPushNotification(MethodCall call, Result result) {
         AppsFlyerLib.getInstance().sendPushNotificationData(activity);
         result.success(null);
     }
 
+    private void sendPushNotificationData(MethodCall call, Result result) {
+        final Map<String, Object> pushPayload = (Map<String, Object>) call.arguments;
+        String errorMsg = null;
+        Bundle bundle;
+
+        if(pushPayload == null){
+            Log.d("AppsFlyer", "Push payload is null");
+            return;
+        }
+
+        try {
+            bundle = this.jsonToBundle(new JSONObject(pushPayload));
+        } catch (JSONException e) {
+            Log.d("AppsFlyer", "Can't parse pushPayload to bundle");
+            return;
+        }
+
+        if (activity != null) {
+            Intent intent = activity.getIntent();
+            if (intent != null) {
+                intent.putExtras(bundle);
+                activity.setIntent(intent);
+                AppsFlyerLib.getInstance().sendPushNotificationData(activity);
+            } else {
+                errorMsg = "The intent is null. Push payload has not been sent!";
+            }
+        } else {
+            errorMsg = "The activity is null. Push payload has not been sent!";
+        }
+
+        if(errorMsg != null){
+            Log.d("AppsFlyer", errorMsg);
+            return;
+        }
+
+        result.success(null);
+    }
+    private static Bundle jsonToBundle(JSONObject jsonObject) throws JSONException {
+        Bundle bundle = new Bundle();
+        Iterator iter = jsonObject.keys();
+        while (iter.hasNext()) {
+            String key = (String) iter.next();
+            String value = jsonObject.getString(key);
+            bundle.putString(key, value);
+        }
+        return bundle;
+    }
     private void setOneLinkCustomDomain(MethodCall call, Result result) {
         ArrayList<String> brandDomains = (ArrayList<String>) call.arguments;
         String[] brandDomainsArray = brandDomains.toArray(new String[brandDomains.size()]);

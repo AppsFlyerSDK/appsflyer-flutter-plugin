@@ -13,11 +13,13 @@
 ### <a id="plugin-build-for"> This plugin is built for
 
 - Android AppsFlyer SDK **v6.11.2**
-- iOS AppsFlyer SDK **v6.10.1**
+- iOS AppsFlyer SDK **v6.11.2**
 
 ## <a id="breaking-changes"> 	❗❗ Breaking changes when updating to v6.x.x❗❗
 
 If you have used one of the removed/changed APIs, please check the integration guide for the updated instructions.
+
+- From version `6.11.2`, the `setPushNotification` will not work in iOS. [Please use our new API `sendPushNotificationData` when receiving a notification on flutter side](/doc/API.md#sendPushNotificationData). 
 
 - From version `6.8.0`, the `enableLocationCollection` has been removed from the plugin.
 

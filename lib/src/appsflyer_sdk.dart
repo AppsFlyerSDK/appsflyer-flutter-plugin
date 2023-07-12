@@ -403,6 +403,10 @@ class AppsflyerSdk {
     _methodChannel.invokeMethod("setPushNotification", isEnabled);
   }
 
+  void sendPushNotificationData(Map? userInfo) {
+    _methodChannel.invokeMethod("sendPushNotificationData", userInfo);
+  }
+
   void enableFacebookDeferredApplinks(bool isEnabled) {
     _methodChannel.invokeMethod("enableFacebookDeferredApplinks",
         {'isFacebookDeferredApplinksEnabled': isEnabled});
