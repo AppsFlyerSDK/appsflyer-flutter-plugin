@@ -292,8 +292,7 @@ appsFlyerSdk.setCustomerIdAndLogSession("id");
 _Example:_
 ```dart
 var data = {"key1": "value1", "key2": "value2"};
-var customData = {"customData": data};
-appsFlyerSdk.setAdditionalData(customData);
+appsFlyerSdk.setAdditionalData(data);
 ```
 ---
 **<a id="setCollectAndroidId"> `void setCollectAndroidId(bool isCollect)`**
