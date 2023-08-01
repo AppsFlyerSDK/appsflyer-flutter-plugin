@@ -13,32 +13,33 @@ class MainPage extends StatefulWidget {
 }
 
 class MainPageState extends State<MainPage> {
-  AppsflyerSdk _appsflyerSdk;
-  Map _deepLinkData;
-  Map _gcd;
+  AppsflyerSdk? _appsflyerSdk;
+  Map? _deepLinkData;
+  Map? _gcd;
   // called on every foreground
   @override
   void initState() {
     super.initState();
     final AppsFlyerOptions options = AppsFlyerOptions(
-        afDevKey: DotEnv().env["DEV_KEY"],
-        appId: DotEnv().env["APP_ID"],
-        showDebug: true,
-        timeToWaitForATTUserAuthorization: 15);
+      afDevKey: dotenv.env["DEV_KEY"]!,
+      appId: dotenv.env["APP_ID"]!,
+      showDebug: true,
+      timeToWaitForATTUserAuthorization: 15,
+    );
     _appsflyerSdk = AppsflyerSdk(options);
-    _appsflyerSdk.onAppOpenAttribution((res) {
+    _appsflyerSdk!.onAppOpenAttribution((res) {
       print("onAppOpenAttribution res: " + res.toString());
       setState(() {
         _deepLinkData = res;
       });
     });
-    _appsflyerSdk.onInstallConversionData((res) {
+    _appsflyerSdk!.onInstallConversionData((res) {
       print("onInstallConversionData res: " + res.toString());
       setState(() {
         _gcd = res;
       });
     });
-    _appsflyerSdk.onDeepLinking((DeepLinkResult dp) {
+    _appsflyerSdk!.onDeepLinking((DeepLinkResult dp) {
       switch (dp.status) {
         case Status.FOUND:
           print(dp.deepLink?.toString());
@@ -76,7 +77,7 @@ class MainPageState extends State<MainPage> {
           ),
         ),
         body: FutureBuilder<dynamic>(
-            future: _appsflyerSdk.initSdk(
+            future: _appsflyerSdk!.initSdk(
                 registerConversionDataCallback: true,
                 registerOnAppOpenAttributionCallback: false,
                 registerOnDeepLinkingCallback: true),
@@ -97,7 +98,7 @@ class MainPageState extends State<MainPage> {
             }));
   }
 
-  Future<bool> logEvent(String eventName, Map eventValues) {
-    return _appsflyerSdk.logEvent(eventName, eventValues);
+  Future<bool?> logEvent(String eventName, Map eventValues) {
+    return _appsflyerSdk!.logEvent(eventName, eventValues);
   }
 }

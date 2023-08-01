@@ -6,11 +6,15 @@ import 'utils.dart';
 
 // ignore: must_be_immutable
 class HomeContainer extends StatefulWidget {
-  final Map onData;
-  final Future<bool> Function(String, Map) logEvent;
-  Object deepLinkData;
+  final Map? onData;
+  final Future<bool?> Function(String, Map) logEvent;
+  Map<dynamic, dynamic>? deepLinkData;
 
-  HomeContainer({this.onData, this.deepLinkData, this.logEvent});
+  HomeContainer({
+    this.onData,
+    this.deepLinkData,
+    required this.logEvent,
+  });
 
   @override
   _HomeContainerState createState() => _HomeContainerState();
@@ -54,9 +58,9 @@ class _HomeContainerState extends State<HomeContainer> {
               ),
               TextBorder(
                 controller: TextEditingController(
-                     text: widget.deepLinkData != null ? 
-                            Utils.formatJson(widget.deepLinkData) : 
-                            "No Attribution data"),
+                    text: widget.deepLinkData != null
+                        ? Utils.formatJson(widget.deepLinkData)
+                        : "No Attribution data"),
                 labelText: "Attribution Data:",
               ),
               Padding(
