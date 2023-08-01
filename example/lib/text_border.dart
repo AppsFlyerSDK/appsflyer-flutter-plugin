@@ -5,7 +5,7 @@ class TextBorder extends StatelessWidget {
   TextEditingController controller;
   String labelText;
 
-  TextBorder({this.controller, this.labelText});
+  TextBorder({required this.controller, required this.labelText});
 
   @override
   Widget build(BuildContext context) {

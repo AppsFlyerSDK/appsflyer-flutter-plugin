@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import './main_page.dart';
 
 Future<void> main() async {
-  await DotEnv().load('.env');
+  await dotenv.load(fileName: ".env");
   runApp(MyApp());
 }
 
