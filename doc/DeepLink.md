@@ -4,7 +4,7 @@ Deep Linking vs Deferred Deep Linking:
 
 A deep link is a special URL that routes to a specific spot, whether that’s on a website or in an app. A “mobile deep link” then, is a link that contains all the information needed to take a user directly into an app or a particular location within an app instead of just launching the app’s home page.
 
-If the app is installed on the user's device - the deep link routes them to the correct location in the app. But what if the app isn't installed? This is where Deferred Deep Linking is used.When the app isn't installed, clicking on the link routes the user to the store to download the app. Deferred Deep linking defer or delay the deep linking process until after the app has been downloaded, and ensures that after they install, the user gets to the right location in the app.
+If the app is installed on the user's device - the deep link routes them to the correct location in the app. But what if the app isn't installed? This is where Deferred Deep Linking is used. When the app isn't installed, clicking on the link routes the user to the store to download the app. Deferred Deep linking defer or delay the deep linking process until after the app has been downloaded, and ensures that after they install, the user gets to the right location in the app.
 
 [Android and iOS set-up](#setup)
 

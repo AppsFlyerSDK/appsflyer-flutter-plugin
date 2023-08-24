@@ -13,10 +13,10 @@ class AppsflyerSdk {
   factory AppsflyerSdk(options) {
     if (_instance == null) {
       MethodChannel methodChannel =
-          const MethodChannel(AppsflyerConstants.AF_METHOD_CHANNEL);
+      const MethodChannel(AppsflyerConstants.AF_METHOD_CHANNEL);
 
       EventChannel eventChannel =
-          EventChannel(AppsflyerConstants.AF_EVENTS_CHANNEL);
+      EventChannel(AppsflyerConstants.AF_EVENTS_CHANNEL);
 
       //check if the option variable is AFOptions type or map type
       assert(options is AppsFlyerOptions || options is Map);
@@ -35,6 +35,7 @@ class AppsflyerSdk {
   AppsflyerSdk.private(this._methodChannel, this._eventChannel,
       {this.afOptions, this.mapOptions});
 
+  /// Validates [AppsFlyerOptions] and converts them to a map acceptable for the AppsFlyer SDK.
   Map<String, dynamic> _validateAFOptions(AppsFlyerOptions options) {
     Map<String, dynamic> validatedOptions = {};
 
@@ -62,7 +63,7 @@ class AppsflyerSdk {
           options.disableAdvertisingIdentifier;
     } else {
       validatedOptions[AppsflyerConstants.DISABLE_ADVERTISING_IDENTIFIER] =
-          false;
+      false;
     }
 
     if (Platform.isIOS) {
@@ -72,7 +73,7 @@ class AppsflyerSdk {
         assert(timeToWaitForATTUserAuthorization is double);
 
         validatedOptions[
-                AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION] =
+        AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION] =
             timeToWaitForATTUserAuthorization;
       }
       dynamic appID = options.appId;
@@ -84,12 +85,13 @@ class AppsflyerSdk {
     }
 
     validatedOptions[AppsflyerConstants.AF_IS_DEBUG] =
-        // ignore: unnecessary_null_comparison
-        (options.showDebug != null) ? options.showDebug : false;
+    // ignore: unnecessary_null_comparison
+    (options.showDebug != null) ? options.showDebug : false;
 
     return validatedOptions;
   }
 
+  /// Validates a map of option values, checking their types and presence.
   Map<String, dynamic> _validateMapOptions(Map options) {
     Map<String, dynamic> afOptions = {};
     //validations
@@ -108,26 +110,26 @@ class AppsflyerSdk {
 
     if (options[AppsflyerConstants.DISABLE_COLLECT_ASA] != null) {
       afOptions[AppsflyerConstants.DISABLE_COLLECT_ASA] =
-          options[AppsflyerConstants.DISABLE_COLLECT_ASA];
+      options[AppsflyerConstants.DISABLE_COLLECT_ASA];
     }
 
     if (options[AppsflyerConstants.DISABLE_ADVERTISING_IDENTIFIER] != null) {
       afOptions[AppsflyerConstants.DISABLE_ADVERTISING_IDENTIFIER] =
-          options[AppsflyerConstants.DISABLE_ADVERTISING_IDENTIFIER];
+      options[AppsflyerConstants.DISABLE_ADVERTISING_IDENTIFIER];
     } else {
       afOptions[AppsflyerConstants.DISABLE_ADVERTISING_IDENTIFIER] = false;
     }
 
     if (Platform.isIOS) {
       if (options[
-              AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION] !=
+      AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION] !=
           null) {
         dynamic timeToWaitForATTUserAuthorization = options[
-            AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION];
+        AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION];
         assert(timeToWaitForATTUserAuthorization is double);
 
         afOptions[
-                AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION] =
+        AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION] =
             timeToWaitForATTUserAuthorization;
       }
 
@@ -140,9 +142,9 @@ class AppsflyerSdk {
     }
 
     afOptions[AppsflyerConstants.AF_IS_DEBUG] =
-        options.containsKey(AppsflyerConstants.AF_IS_DEBUG)
-            ? options[AppsflyerConstants.AF_IS_DEBUG]
-            : false;
+    options.containsKey(AppsflyerConstants.AF_IS_DEBUG)
+        ? options[AppsflyerConstants.AF_IS_DEBUG]
+        : false;
 
     return afOptions;
   }
@@ -150,8 +152,8 @@ class AppsflyerSdk {
   ///initialize the SDK, using the options initialized from the constructor|
   Future<dynamic> initSdk(
       {bool registerConversionDataCallback = false,
-      bool registerOnAppOpenAttributionCallback = false,
-      bool registerOnDeepLinkingCallback = false}) async {
+        bool registerOnAppOpenAttributionCallback = false,
+        bool registerOnDeepLinkingCallback = false}) async {
     return Future.delayed(Duration(seconds: 0)).then((_) {
       Map<String, dynamic>? validatedOptions;
       if (mapOptions != null) {
@@ -170,6 +172,7 @@ class AppsflyerSdk {
     });
   }
 
+  /// Retrieves the current SDK version.
   Future<String?> getSDKVersion() async {
     return _methodChannel.invokeMethod("getSDKVersion");
   }
@@ -183,6 +186,8 @@ class AppsflyerSdk {
         "logEvent", {'eventName': eventName, 'eventValues': eventValues});
   }
 
+  /// Sets the host name and the host prefix.
+  /// This is only relevant if you need to switch between HTTPS environments.
   void setHost(String hostPrefix, String hostName) {
     _methodChannel.invokeMethod(
         "setHost", {'hostPrefix': hostPrefix, 'hostName': hostName});
@@ -203,24 +208,32 @@ class AppsflyerSdk {
         .invokeMethod("setCollectAndroidId", {'isCollect': isCollect});
   }
 
+  /// Retrieves the host name.
   Future<String?> getHostName() async {
     return await _methodChannel.invokeMethod("getHostName");
   }
 
+  /// Retrieves the host prefix.
   Future<String?> getHostPrefix() async {
     return await _methodChannel.invokeMethod("getHostPrefix");
   }
 
+  /// Sets Android ID.
   void setAndroidIdData(String androidId) {
     _methodChannel.invokeMethod("setAndroidIdData", {'androidId': androidId});
   }
 
+  /// Set the minimum time between sessions.
+  /// Any app launches that happen within this minimum threshold will be
+  /// attributed to the current session. Launches that occur after
+  /// this threshold has been crossed will be counted as a separate session.
   void setMinTimeBetweenSessions(int seconds) {
     assert(seconds >= 0, "the minimum timeout must be a positive number");
     _methodChannel
         .invokeMethod("setMinTimeBetweenSessions", {'seconds': seconds});
   }
 
+  /// Sets the IMEI for the device.
   void setImeiData(String imei) {
     _methodChannel.invokeMethod("setImeiData", {'imei': imei});
   }
@@ -250,8 +263,8 @@ class AppsflyerSdk {
     _methodChannel.invokeMethod("stop", {'isStopped': isStopped});
   }
 
-  ///Please use updateServerUninstallToken instead
-  @deprecated
+  ///Please use updateServerUninstallToken instead (deprecated)
+  @Deprecated("use updateServerUninstallToken instead")
   void enableUninstallTracking(String senderId) {
     print("Please use updateServerUninstallToken instead");
   }
@@ -291,6 +304,7 @@ class AppsflyerSdk {
     _methodChannel.invokeMethod("addPushNotificationDeepLinkPath", deeplinkPath);
   }
 
+  /// Validate and log the In-App Purchase for Android on AppsFlyer's dashboard.
   Future<dynamic> validateAndLogInAppAndroidPurchase(
       String publicKey,
       String signature,
@@ -336,11 +350,12 @@ class AppsflyerSdk {
         .invokeMethod("setAdditionalData", {'customData': customData});
   }
 
+  /// Generates an invite link using the specified parameters, aka User Invite feature
   void generateInviteLink(
-    AppsFlyerInviteLinkParams? parameters,
-    Function success,
-    Function error,
-  ) {
+      AppsFlyerInviteLinkParams? parameters,
+      Function success,
+      Function error,
+      ) {
     Map<String, Object?>? paramsMap;
     if (parameters != null) {
       paramsMap = _translateInviteLinkParamsToMap(parameters);
@@ -352,6 +367,7 @@ class AppsflyerSdk {
     _methodChannel.invokeMethod("generateInviteLink", paramsMap);
   }
 
+  /// Translates invite link parameters into a map for sending over the method channel.
   Map<String, Object?> _translateInviteLinkParamsToMap(
       AppsFlyerInviteLinkParams params) {
     Map<String, Object?> inviteLinkParamsMap = <String, Object?>{};
@@ -395,57 +411,71 @@ class AppsflyerSdk {
     });
   }
 
+  /// Sets custom domain for OneLink aka Branded Domains
   void setOneLinkCustomDomain(List<String> brandDomains) {
     _methodChannel.invokeMethod("setOneLinkCustomDomain", brandDomains);
   }
 
+  /// Is push notification enabled or not (deprecated)
+  @Deprecated("use sendPushNotificationData instead")
   void setPushNotification(bool isEnabled) {
     _methodChannel.invokeMethod("setPushNotification", isEnabled);
   }
 
+  /// Sends push notification data.
   void sendPushNotificationData(Map? userInfo) {
     _methodChannel.invokeMethod("sendPushNotificationData", userInfo);
   }
 
+  /// Enables or disables Facebook deferred deep links.
   void enableFacebookDeferredApplinks(bool isEnabled) {
     _methodChannel.invokeMethod("enableFacebookDeferredApplinks",
         {'isFacebookDeferredApplinksEnabled': isEnabled});
   }
 
+  /// Disables SKAdNetwork (iOS 14 attribution framework).
   void disableSKAdNetwork(bool isEnabled) {
     _methodChannel.invokeMethod("disableSKAdNetwork", isEnabled);
   }
 
+  /// Disables tracking of advertising identifiers.
   void setDisableAdvertisingIdentifiers(bool isEnabled) {
     _methodChannel.invokeMethod("setDisableAdvertisingIdentifiers", isEnabled);
   }
 
+  /// Listens for conversion data following app install.
   void onInstallConversionData(Function callback) async {
     startListening(
         callback as void Function(dynamic), "onInstallConversionData");
   }
 
+  /// Listens for attribution data following app open.
   void onAppOpenAttribution(Function callback) async {
     startListening(callback as void Function(dynamic), "onAppOpenAttribution");
   }
 
+  /// Handles deep link result.
   void onDeepLinking(Function(DeepLinkResult) callback) async {
     startListeningToUDL(callback, "onDeepLinking");
   }
 
+  /// Validates purchase.
   void onPurchaseValidation(Function callback) async {
     startListening(callback as void Function(dynamic), "validatePurchase");
   }
 
+  /// Sets the current device language.
   void setCurrentDeviceLanguage(String language) async {
     _methodChannel.invokeMethod("setCurrentDeviceLanguage", language);
   }
 
+  /// Sets sharing filter for specific partners (deprecated).
   @Deprecated("use setSharingFilterForPartners instead")
   void setSharingFilter(List<String> partners) {
     setSharingFilterForPartners(partners);
   }
 
+  /// Sets sharing filter for all partners (deprecated).
   @Deprecated("use setSharingFilterForPartners instead")
   void setSharingFilterForAllPartners() {
     setSharingFilterForPartners(["all"]);
@@ -457,23 +487,28 @@ class AppsflyerSdk {
     _methodChannel.invokeMethod("setSharingFilterForPartners", partners);
   }
 
+  /// Sets out of store app install source.
   void setOutOfStore(String sourceName) async {
     _methodChannel.invokeMethod("setOutOfStore", sourceName);
   }
 
+  /// Gets out of store app install source.
   Future<String?> getOutOfStore() async {
     return await _methodChannel.invokeMethod("getOutOfStore");
   }
 
+  /// Sets the partner-specific data.
   void setPartnerData(String partnerId, Map<String, Object> partnerData) async {
     _methodChannel.invokeMethod("setPartnerData",
         {'partnerId': partnerId, 'partnersData': partnerData});
   }
 
+  /// Sets URLs to deep link into the app when the app is first installed.
   void setResolveDeepLinkURLs(List<String> urls) async {
     _methodChannel.invokeMethod("setResolveDeepLinkURLs", urls);
   }
 
+  /// Disables transfer of user-specific data over the network.
   void setDisableNetworkData(bool disable) {
     _methodChannel.invokeMethod("setDisableNetworkData", disable);
   }

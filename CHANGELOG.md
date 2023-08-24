@@ -1,4 +1,9 @@
 # Versions
+## 6.12.2
+- Update to Android SDK to v6.12.2 & iOS SDK to v6.12.2
+- Deprecated CreateOneLinkHttpTask updated to LinkGenerator
+- Fixed Gradle 8.0 issue
+- Documented API and removed unused imports
 ## 6.11.3
 - null pointer exception fix for android, push notification bug fix & ios sdk 6.11.2
 ## 6.11.2
