@@ -16,6 +16,7 @@ class MainPageState extends State<MainPage> {
   AppsflyerSdk _appsflyerSdk;
   Map _deepLinkData;
   Map _gcd;
+
   // called on every foreground
   @override
   void initState() {

@@ -14,7 +14,6 @@ import com.appsflyer.AppsFlyerConversionListener;
 import com.appsflyer.AppsFlyerInAppPurchaseValidatorListener;
 import com.appsflyer.AppsFlyerLib;
 import com.appsflyer.AppsFlyerProperties;
-import com.appsflyer.CreateOneLinkHttpTask;
 import com.appsflyer.deeplink.DeepLinkListener;
 import com.appsflyer.deeplink.DeepLinkResult;
 import com.appsflyer.share.CrossPromotionHelper;
@@ -536,8 +535,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         if (customParams != null && !customParams.equals("")) {
             linkGenerator.addParameters(customParams);
         }
-
-        CreateOneLinkHttpTask.ResponseListener listener = new CreateOneLinkHttpTask.ResponseListener() {
+        LinkGenerator.ResponseListener listener = new LinkGenerator.ResponseListener() {
             final JSONObject obj = new JSONObject();
 
             @Override

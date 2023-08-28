@@ -18,15 +18,15 @@ AppsFlyerOptions appsFlyerOptions = AppsFlyerOptions(
 AppsflyerSdk appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
 ```
 
-| Setting  | Type   | Description   |
-| -------- | -------- | ------------- |
-| devKey   | String | Your application's [devKey](https://support.appsflyer.com/hc/en-us/articles/207032066-Basic-SDK-integration-guide#retrieving-the-dev-key) provided by AppsFlyer (required)  |
-| appId      | String | Your application's [App ID](https://support.appsflyer.com/hc/en-us/articles/207377436-Adding-a-new-app#available-in-the-app-store-google-play-store-windows-phone-store)  (required for iOS only) that you configured in your AppsFlyer dashboard  |
-| showDebug    | bool | Debug mode - set to `true` for testing only, do not release to production with this parameter set to `true`! |
-| timeToWaitForATTUserAuthorization  | double | Delays the SDK start for x seconds until the user either accepts the consent dialog, declines it, or the timer runs out. |
-| appInviteOneLink    | String | The [OneLink template ID](https://support.appsflyer.com/hc/en-us/articles/115004480866-User-invite-attribution#parameters) that is used to generate a User Invite, this is not a required field in the `AppsFlyerOptions`, you may choose to set it later via the appropriate API. |
-| disableAdvertisingIdentifier| bool | Opt-out of the collection of Advertising Identifiers, which include OAID, AAID, GAID and IDFA. |
-| disableCollectASA | bool | Opt-out of the Apple Search Ads attributions. |
+| Setting  | Type   | Description                                                                                                                                                                                                                                                                         |
+| -------- | -------- |-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| devKey   | String | Your application's [devKey](https://support.appsflyer.com/hc/en-us/articles/207032066-Basic-SDK-integration-guide#retrieving-the-dev-key) provided by AppsFlyer (required)                                                                                                          |
+| appId      | String | Your application's [App ID](https://support.appsflyer.com/hc/en-us/articles/207377436-Adding-a-new-app#available-in-the-app-store-google-play-store-windows-phone-store)  (required for iOS only) that you configured in your AppsFlyer dashboard should be without the 'id' prefix |
+| showDebug    | bool | Debug mode - set to `true` for testing only, do not release to production with this parameter set to `true`!                                                                                                                                                                        |
+| timeToWaitForATTUserAuthorization  | double | Delays the SDK start for x seconds until the user either accepts the consent dialog, declines it, or the timer runs out.                                                                                                                                                            |
+| appInviteOneLink    | String | The [OneLink template ID](https://support.appsflyer.com/hc/en-us/articles/115004480866-User-invite-attribution#parameters) that is used to generate a User Invite, this is not a required field in the `AppsFlyerOptions`, you may choose to set it later via the appropriate API.  |
+| disableAdvertisingIdentifier| bool | Opt-out of the collection of Advertising Identifiers, which include OAID, AAID, GAID and IDFA.                                                                                                                                                                                      |
+| disableCollectASA | bool | Opt-out of the Apple Search Ads attributions.                                                                                                                                                                                                                                       |
 
 The next step is to call `initSdk` which have the optional boolean parameters `registerConversionDataCallback` and the deeplink callbacks: `registerOnAppOpenAttributionCallback` 
 `registerOnDeepLinkingCallback`
