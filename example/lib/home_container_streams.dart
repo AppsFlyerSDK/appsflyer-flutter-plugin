@@ -1,17 +1,20 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+
 import 'app_constants.dart';
 import 'text_border.dart';
 import 'utils.dart';
-
 
 class HomeContainerStreams extends StatefulWidget {
   final Stream<Map> onData;
   final Stream<Map> onAttribution;
   final Future<bool> Function(String, Map) logEvent;
 
-  HomeContainerStreams({this.onData, this.onAttribution, this.logEvent});
+  HomeContainerStreams(
+      {required this.onData,
+      required this.onAttribution,
+      required this.logEvent});
 
   @override
   _HomeContainerStreamsState createState() => _HomeContainerStreamsState();
