@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -13,17 +14,17 @@ class MainPage extends StatefulWidget {
 }
 
 class MainPageState extends State<MainPage> {
-  AppsflyerSdk _appsflyerSdk;
-  Map _deepLinkData;
-  Map _gcd;
+  late AppsflyerSdk _appsflyerSdk;
+  late Map _deepLinkData;
+  late Map _gcd;
 
   // called on every foreground
   @override
   void initState() {
     super.initState();
     final AppsFlyerOptions options = AppsFlyerOptions(
-        afDevKey: DotEnv().env["DEV_KEY"],
-        appId: DotEnv().env["APP_ID"],
+        afDevKey: DotEnv().env["DEV_KEY"] ?? '',
+        appId: DotEnv().env["APP_ID"] ?? '',
         showDebug: true,
         timeToWaitForATTUserAuthorization: 15);
     _appsflyerSdk = AppsflyerSdk(options);
@@ -70,9 +71,11 @@ class MainPageState extends State<MainPage> {
             children: <Widget>[
               Text('AppsFlyer SDK example app'),
               FutureBuilder<String>(
-                  builder: (BuildContext context, AsyncSnapshot snapshot) {
-                return Text(snapshot.hasData ? snapshot.data : "");
-              }),
+                builder: (BuildContext context, AsyncSnapshot snapshot) {
+                  return Text(snapshot.hasData ? snapshot.data : "");
+                },
+                future: null,
+              ),
             ],
           ),
         ),
@@ -98,7 +101,7 @@ class MainPageState extends State<MainPage> {
             }));
   }
 
-  Future<bool> logEvent(String eventName, Map eventValues) {
+  Future<bool?> logEvent(String eventName, Map eventValues) {
     return _appsflyerSdk.logEvent(eventName, eventValues);
   }
 }
