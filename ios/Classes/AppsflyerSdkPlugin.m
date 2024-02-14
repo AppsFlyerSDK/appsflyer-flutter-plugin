@@ -90,7 +90,7 @@ static BOOL _isSKADEnabled = false;
     }else if([@"setCustomerIdAndLogSession" isEqualToString:call.method]){
         [self setCustomerUserId:call result:result];
     }else if([@"setCurrencyCode" isEqualToString:call.method ]){
-        //
+        [self setCurrencyCode:call result:result];
     }else if([@"setMinTimeBetweenSessions" isEqualToString:call.method]){
         [self setMinTimeBetweenSessions:call result:result];
     }else if([@"getHostPrefix" isEqualToString:call.method]){
@@ -143,10 +143,39 @@ static BOOL _isSKADEnabled = false;
         [self setResolveDeepLinkURLs:call result:result];
     }else if([@"addPushNotificationDeepLinkPath" isEqualToString:call.method]){
         [self addPushNotificationDeepLinkPath:call result:result];
+    }else if([@"enableTCFDataCollection" isEqualToString:call.method]){
+        [self enableTCFDataCollection:call result:result];
+    }else if([@"setConsentData" isEqualToString:call.method]){
+        [self setConsentData:call result:result];
     }
     else{
         result(FlutterMethodNotImplemented);
     }
+}
+
+- (void)setConsentData:(FlutterMethodCall*)call result:(FlutterResult)result {
+    NSDictionary* consentDict = call.arguments[@"consentData"];
+   
+    BOOL isUserSubjectToGDPR = [consentDict[@"isUserSubjectToGDPR"] boolValue];
+    BOOL hasConsentForDataUsage = [consentDict[@"hasConsentForDataUsage"] boolValue];
+    BOOL hasConsentForAdsPersonalization = [consentDict[@"hasConsentForAdsPersonalization"] boolValue];
+  
+    AppsFlyerConsent *consentData;
+    if(isUserSubjectToGDPR){
+        consentData = [[AppsFlyerConsent alloc] initForGDPRUserWithHasConsentForDataUsage:hasConsentForDataUsage
+                                                            hasConsentForAdsPersonalization:hasConsentForAdsPersonalization];
+    }else{
+        consentData = [[AppsFlyerConsent alloc] initNonGDPRUser];
+    }
+       
+    [[AppsFlyerLib shared] setConsentData:consentData];
+    result(nil);
+}
+
+- (void)enableTCFDataCollection:(FlutterMethodCall*)call result:(FlutterResult)result {
+    BOOL shouldCollect = [call.arguments[@"shouldCollect"] boolValue];
+    [[AppsFlyerLib shared] enableTCFDataCollection:shouldCollect];
+    result(nil);
 }
 
 - (void)addPushNotificationDeepLinkPath:(FlutterMethodCall*)call result:(FlutterResult)result{
@@ -460,6 +489,12 @@ static BOOL _isSKADEnabled = false;
 - (void)setCustomerUserId:(FlutterMethodCall*)call result:(FlutterResult)result{
     NSString* userId = call.arguments[@"id"];
     [[AppsFlyerLib shared] setCustomerUserID:userId];
+    result(nil);
+}
+
+- (void)setCurrencyCode:(FlutterMethodCall*)call result:(FlutterResult)result{
+    NSString* currencyCode = call.arguments[@"currencyCode"];
+    [[AppsFlyerLib shared] setCurrencyCode:currencyCode];
     result(nil);
 }
 

@@ -31,6 +31,16 @@ class AppsflyerSdk {
     return _instance!;
   }
 
+  AppsFlyerConsent forGDPRUser({required bool hasConsentForDataUsage, required bool hasConsentForAdsPersonalization}) {
+    return AppsFlyerConsent.forGDPRUser(
+        hasConsentForDataUsage: hasConsentForDataUsage,
+        hasConsentForAdsPersonalization: hasConsentForAdsPersonalization);
+  }
+
+  AppsFlyerConsent nonGDPRUser() {
+    return AppsFlyerConsent.nonGDPRUser();
+  }
+
   @visibleForTesting
   AppsflyerSdk.private(this._methodChannel, this._eventChannel,
       {this.afOptions, this.mapOptions});
@@ -244,6 +254,15 @@ class AppsflyerSdk {
   void setCurrencyCode(String currencyCode) {
     _methodChannel
         .invokeMethod("setCurrencyCode", {'currencyCode': currencyCode});
+  }
+
+  /// Setting whether the SDK should collect tcf data automatically from SharedPreferences/UserDefaults
+  void enableTCFDataCollection(bool shouldCollect){
+    _methodChannel.invokeListMethod("enableTCFDataCollection", {'shouldCollect': shouldCollect});
+  }
+
+  void setConsentData(AppsFlyerConsent consentData) {
+    _methodChannel.invokeMethod('setConsentData', <String, dynamic>{'consentData': consentData.toMap()});
   }
 
   /// Setting your own customer ID enables you to cross-reference your own unique ID with AppsFlyer’s unique ID and the other devices’ IDs.

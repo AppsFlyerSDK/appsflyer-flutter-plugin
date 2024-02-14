@@ -37,6 +37,8 @@
 - [addPushNotificationDeepLinkPath](#addPushNotificationDeepLinkPath)
 - [User Invite](#userInvite)
 - [enableFacebookDeferredApplinks](#enableFacebookDeferredApplinks)
+- [enableTCFDataCollection](#enableTCFDataCollection)  <!-- New addition -->
+- [setConsentData](#setConsentData)
 - [disableSKAdNetwork](#disableSKAdNetwork)
 - [getAppsFlyerUID](#getAppsFlyerUID)
 - [setCurrentDeviceLanguage](#setCurrentDeviceLanguage)
@@ -258,6 +260,74 @@ _Example:_
 ```dart
 appsFlyerSdk.enableLocationCollection(true);
 ```
+---
+#### `<a id="enableTCFDataCollection"> enableTCFDataCollection(bool shouldCollect)`
+
+The `enableTCFDataCollection` method is employed to control the automatic collection of the Transparency and Consent Framework (TCF) data. By setting this flag to `true`, the system is instructed to automatically garner TCF data. Conversely, setting it to `false` prevents such data collection.
+
+_Example:_
+```dart
+appsFlyerSdk.enableTCFDataCollection(true);
+```
+---
+#### `<a id="setConsentData"> setConsentData(Map<String, Object> consentData)`
+
+The `AppsflyerConsent` object helps manage user consent settings. By using the setConsentData we able to manually collect the TCF data. You can create an instance for users subject to GDPR or otherwise:
+
+1. Users subjected to GDPR:
+
+```dart
+var forGdpr = _appsflyerSdk.forGDPRUser(
+    hasConsentForDataUsage: true, 
+    hasConsentForAdsPersonalization: true
+);
+_appsflyerSdk.setConsentData(forGdpr);
+```
+
+2. Users not subject to GDPR:
+
+```dart
+var nonGdpr = _appsflyerSdk.nonGDPRUser();
+_appsflyerSdk.setConsentData(nonGdpr);
+```
+
+The `_appsflyerSdk` handles consent data with `setConsentData` method, where you can pass the desired `AppsflyerConsent` instance.
+
+---
+To reflect TCF data in the conversion (first launch) payload, it's crucial to configure `enableTCFDataCollection` or `setConsentData` between the SDK initialization and start phase. Follow the example provided:
+
+```dart
+// Initialize SDK
+final AppsFlyerOptions options = AppsFlyerOptions(
+        afDevKey: dotenv.env["DEV_KEY"]!,
+        appId: dotenv.env["APP_ID"]!,
+        showDebug: true,
+        timeToWaitForATTUserAuthorization: 15);
+
+_appsflyerSdk = AppsflyerSdk(options);
+
+// Set configurations to the SDK
+// Enable TCF Data Collection
+_appsflyerSdk.enableTCFDataCollection(true);
+
+// Set Consent Data
+// If user is subject to GDPR
+// var forGdpr = _appsflyerSdk.forGDPRUser(hasConsentForDataUsage: true, hasConsentForAdsPersonalization: true);
+// _appsflyerSdk.setConsentData(forGdpr);
+
+// If user is not subject to GDPR
+var nonGdpr = _appsflyerSdk.nonGDPRUser();
+_appsflyerSdk.setConsentData(nonGdpr);
+
+// Start the AppsFlyer SDK
+await _appsflyerSdk.initSdk(
+        registerConversionDataCallback: true,
+        registerOnAppOpenAttributionCallback: true,
+        registerOnDeepLinkingCallback: true);
+```
+
+Following this sequence ensures that the consent configurations take effect before the AppsFlyer SDK starts, providing accurate consent data in the first launch payload.
+
 ---
 **<a id="setCustomerUserId"> `void setCustomerUserId(String userId)`**
 

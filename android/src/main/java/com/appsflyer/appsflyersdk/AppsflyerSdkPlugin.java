@@ -10,6 +10,7 @@ import android.os.Looper;
 import android.util.Log;
 
 import com.appsflyer.AFLogger;
+import com.appsflyer.AppsFlyerConsent;
 import com.appsflyer.AppsFlyerConversionListener;
 import com.appsflyer.AppsFlyerInAppPurchaseValidatorListener;
 import com.appsflyer.AppsFlyerLib;
@@ -217,6 +218,12 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "setCurrencyCode":
                 setCurrencyCode(call, result);
                 break;
+            case "enableTCFDataCollection":
+                enableTCFDataCollection(call, result);
+                break;
+            case "setConsentData":
+                setConsentData(call, result);
+                break;
             case "setIsUpdate":
                 setIsUpdate(call, result);
                 break;
@@ -330,7 +337,33 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                 break;
         }
     }
-    
+
+    public void setConsentData(MethodCall call, Result result) {
+        Map<String, Object> arguments = (Map<String, Object>) call.arguments;
+        Map<String, Object> consentDict = (Map<String, Object>) arguments.get("consentData");
+
+        boolean isUserSubjectToGDPR = (boolean) consentDict.get("isUserSubjectToGDPR");
+        Boolean hasConsentForDataUsage = (Boolean) consentDict.get("hasConsentForDataUsage");
+        Boolean hasConsentForAdsPersonalization = (Boolean) consentDict.get("hasConsentForAdsPersonalization");
+
+        AppsFlyerConsent consentData;
+        if (isUserSubjectToGDPR && hasConsentForDataUsage != null && hasConsentForAdsPersonalization != null) {
+            consentData = AppsFlyerConsent.forGDPRUser(hasConsentForDataUsage, hasConsentForAdsPersonalization);
+        } else {
+            consentData = AppsFlyerConsent.forNonGDPRUser();
+        }
+
+        AppsFlyerLib.getInstance().setConsentData(consentData);
+
+
+        result.success(null);
+    }
+    private void enableTCFDataCollection(MethodCall call, Result result) {
+        boolean shouldCollect = (boolean) call.argument("shouldCollect");
+        AppsFlyerLib.getInstance().enableTCFDataCollection(shouldCollect);
+        result.success(null);
+    }
+
     private void addPushNotificationDeepLinkPath(MethodCall call, Result result) {
         if(call.arguments != null){
             ArrayList<String> depplinkPath = (ArrayList<String>) call.arguments;
