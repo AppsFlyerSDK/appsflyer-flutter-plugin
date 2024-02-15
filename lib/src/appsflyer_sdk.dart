@@ -49,6 +49,9 @@ class AppsflyerSdk {
   Map<String, dynamic> _validateAFOptions(AppsFlyerOptions options) {
     Map<String, dynamic> validatedOptions = {};
 
+    bool? manualStart = options.manualStart;
+    validatedOptions[AppsflyerConstants.AF_MANUAL_START] = manualStart;
+
     //validations
     dynamic devKey = options.afDevKey;
     assert(devKey != null);
@@ -180,6 +183,10 @@ class AppsflyerSdk {
 
       return _methodChannel.invokeMethod("initSdk", validatedOptions);
     });
+  }
+
+  void startSDK(){
+     _methodChannel.invokeMethod("startSDK");
   }
 
   /// Retrieves the current SDK version.

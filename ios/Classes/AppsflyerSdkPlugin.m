@@ -67,15 +67,15 @@ static BOOL _isSKADEnabled = false;
         [self initSdkWithCall:call result:result];
     }else if([@"getSDKVersion" isEqualToString:call.method]){
         [self getSDKVersion:result];
-    }
-    else if([@"logEvent" isEqualToString:call.method]){
+    }else if([@"startSDK" isEqualToString:call.method]){
+        [self startSDK:call result:result];
+    } else if([@"logEvent" isEqualToString:call.method]){
         [self logEventWithCall:call result:result];
     }else if([@"waitForCustomerUserId" isEqualToString:call.method]){
         [self waitForCustomerId:call result:result];
     }else if([@"setUserEmails" isEqualToString:call.method]){
         [self setUserEmails:call result:result];
-    }
-    else if([@"updateServerUninstallToken" isEqualToString:call.method]){
+    }else if([@"updateServerUninstallToken" isEqualToString:call.method]){
         [self updateServerUninstallToken:call result:result];
     }else if([@"enableUninstallTracking" isEqualToString:call.method]){
         //
@@ -151,6 +151,11 @@ static BOOL _isSKADEnabled = false;
     else{
         result(FlutterMethodNotImplemented);
     }
+}
+
+-(void)startSDK:(FlutterMethodCall*)call result:(FlutterResult)result {
+    [[AppsFlyerLib shared] start];
+    result(nil);
 }
 
 - (void)setConsentData:(FlutterMethodCall*)call result:(FlutterResult)result {
@@ -543,6 +548,7 @@ static BOOL _isSKADEnabled = false;
     NSString* devKey = nil;
     NSString* appId = nil;
     NSString* appInviteOneLink = nil;
+    BOOL manualStart = NO;
     BOOL disableCollectASA = NO;
     BOOL disableAdvertisingIdentifier = NO;
     NSTimeInterval timeToWaitForATTUserAuthorization = 0;
@@ -559,7 +565,9 @@ static BOOL _isSKADEnabled = false;
     devKey = call.arguments[afDevKey];
     appId = call.arguments[afAppId];
     timeToWaitForATTUserAuthorization = [(id)call.arguments[afTimeToWaitForATTUserAuthorization] doubleValue];
-    
+    manualStart = call.arguments[afManualStart];
+    [self setIsManualStart:manualStart];
+
     isDebugValue = call.arguments[afIsDebug];
     if ([isDebugValue isKindOfClass:[NSNumber class]]) {
         // isDebug is a boolean that will come through as an NSNumber
@@ -625,8 +633,15 @@ static BOOL _isSKADEnabled = false;
         [[AppsFlyerLib shared] waitForATTUserAuthorizationWithTimeoutInterval:timeToWaitForATTUserAuthorization];
     }
     
-    [[AppsFlyerLib shared] start];
-    
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                                     selector:@selector(sendLaunch:)
+                                                         name:UIApplicationDidBecomeActiveNotification
+                                                       object:nil];
+
+    if (!manualStart){
+        [[AppsFlyerLib shared] start];
+    }
+
     //post notification for the deep link object that the bridge is set and he can handle deep link
     [AppsFlyerAttribution shared].isBridgeReady = YES;
     [[NSNotificationCenter defaultCenter] postNotificationName:AF_BRIDGE_SET object:self];
@@ -634,6 +649,12 @@ static BOOL _isSKADEnabled = false;
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
     
     result(@{@"status": @"OK"});
+}
+
+-(void)sendLaunch:(UIApplication *)application {
+    if (![self isManualStart]) {
+        [[AppsFlyerLib shared] start];
+    }
 }
 
 -(void)logEventWithCall:(FlutterMethodCall*)call result:(FlutterResult)result{

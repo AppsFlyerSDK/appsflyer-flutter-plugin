@@ -209,6 +209,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "initSdk":
                 initSdk(call, result);
                 break;
+            case "startSDK":
+                startSDK(call, result);
+                break;
             case "logEvent":
                 logEvent(call, result);
                 break;
@@ -336,6 +339,11 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                 result.notImplemented();
                 break;
         }
+    }
+
+    private void startSDK(MethodCall call, Result result) {
+        AppsFlyerLib instance = AppsFlyerLib.getInstance();
+        instance.start(activity);
     }
 
     public void setConsentData(MethodCall call, Result result) {
@@ -809,6 +817,8 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         DeepLinkListener udlListener = null;
         AppsFlyerLib instance = AppsFlyerLib.getInstance();
 
+        boolean isManualStartMode = (boolean) call.argument(AppsFlyerConstants.AF_MANUAL_START);
+
         String afDevKey = (String) call.argument(AppsFlyerConstants.AF_DEV_KEY);
         if (afDevKey == null || afDevKey.equals("")) {
             result.error(null, "AF Dev Key is empty", "AF dev key cannot be empty");
@@ -847,7 +857,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             instance.setAppInviteOneLink(appInviteOneLink);
         }
 
-        instance.start(activity);
+        if (!isManualStartMode) {
+            instance.start(activity);
+        }
 
         if (saveCallbacks) {
             saveCallbacks = false;

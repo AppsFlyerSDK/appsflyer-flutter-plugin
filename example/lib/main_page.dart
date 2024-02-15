@@ -24,12 +24,13 @@ class MainPageState extends State<MainPage> {
   }
 
   void afStart() async {
-    // Init SDK
+    // SDK Options
     final AppsFlyerOptions options = AppsFlyerOptions(
         afDevKey: dotenv.env["DEV_KEY"]!,
         appId: dotenv.env["APP_ID"]!,
         showDebug: true,
-        timeToWaitForATTUserAuthorization: 15);
+        timeToWaitForATTUserAuthorization: 15,
+        manualStart: true);
     _appsflyerSdk = AppsflyerSdk(options);
 
     //Setting configuration to the SDK
@@ -40,7 +41,7 @@ class MainPageState extends State<MainPage> {
     var nonGdpr = _appsflyerSdk.nonGDPRUser();
     _appsflyerSdk.setConsentData(nonGdpr);
 
-    // Start of AppsFlyer SDK
+    // Init of AppsFlyer SDK
     await _appsflyerSdk.initSdk(
         registerConversionDataCallback: true,
         registerOnAppOpenAttributionCallback: true,
@@ -91,35 +92,35 @@ class MainPageState extends State<MainPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: Text('AppsFlyer SDK example app'),
-          centerTitle: true,
-          backgroundColor: Colors.green,
-        ),
-        body: Builder(
-          builder: (context) {
-            if ( _gcd.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center, // <- Center the Column's children
-                  children: [
-                    CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
-                    ),
-                    SizedBox(height: 12,),
-                    Text("Fetching Data...")
-                  ],
+      appBar: AppBar(
+        title: Text('AppsFlyer SDK example app'),
+        centerTitle: true,
+        backgroundColor: Colors.green,
+      ),
+      body: Builder(
+        builder: (context) {
+          return SafeArea(
+            child: Column(
+              children: <Widget>[
+                Expanded(
+                  child: HomeContainer(
+                    onData: _gcd,
+                    deepLinkData: _deepLinkData,
+                    logEvent: logEvent,
+                  ),
                 ),
-              );
-            } else {
-              return HomeContainer(
-                onData: _gcd,
-                deepLinkData: _deepLinkData,
-                logEvent: logEvent,
-              );
-            }
-          },
-        ));
+                ElevatedButton(
+                  onPressed: () {
+                    _appsflyerSdk.startSDK();
+                  },
+                  child: Text("START SDK"),
+                )
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Future<bool?> logEvent(String eventName, Map eventValues) async {

@@ -12,7 +12,7 @@ class HomeContainer extends StatefulWidget {
   HomeContainer({
     required this.onData,
     required this.deepLinkData,
-    required this.logEvent
+    required this.logEvent,
   });
 
   @override
