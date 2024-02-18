@@ -1,4 +1,9 @@
 # Versions
+## 6.13.0 
+- Added enableTCFDataCollection , setConsentData with AppsFlyerConsent class
+- Added new boolean option to AppsFlyerOption class , manualStart
+- Added startSDK API
+- Updated readme and elaborated on the new APIs
 ## 6.12.2
 - Update to Android SDK to v6.12.2 & iOS SDK to v6.12.2
 - Deprecated CreateOneLinkHttpTask updated to LinkGenerator
