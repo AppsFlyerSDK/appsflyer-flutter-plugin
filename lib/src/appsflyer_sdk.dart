@@ -31,6 +31,16 @@ class AppsflyerSdk {
     return _instance!;
   }
 
+  AppsFlyerConsent forGDPRUser({required bool hasConsentForDataUsage, required bool hasConsentForAdsPersonalization}) {
+    return AppsFlyerConsent.forGDPRUser(
+        hasConsentForDataUsage: hasConsentForDataUsage,
+        hasConsentForAdsPersonalization: hasConsentForAdsPersonalization);
+  }
+
+  AppsFlyerConsent nonGDPRUser() {
+    return AppsFlyerConsent.nonGDPRUser();
+  }
+
   @visibleForTesting
   AppsflyerSdk.private(this._methodChannel, this._eventChannel,
       {this.afOptions, this.mapOptions});
@@ -38,6 +48,9 @@ class AppsflyerSdk {
   /// Validates [AppsFlyerOptions] and converts them to a map acceptable for the AppsFlyer SDK.
   Map<String, dynamic> _validateAFOptions(AppsFlyerOptions options) {
     Map<String, dynamic> validatedOptions = {};
+
+    bool? manualStart = options.manualStart;
+    validatedOptions[AppsflyerConstants.AF_MANUAL_START] = manualStart;
 
     //validations
     dynamic devKey = options.afDevKey;
@@ -172,6 +185,10 @@ class AppsflyerSdk {
     });
   }
 
+  void startSDK(){
+     _methodChannel.invokeMethod("startSDK");
+  }
+
   /// Retrieves the current SDK version.
   Future<String?> getSDKVersion() async {
     return _methodChannel.invokeMethod("getSDKVersion");
@@ -244,6 +261,15 @@ class AppsflyerSdk {
   void setCurrencyCode(String currencyCode) {
     _methodChannel
         .invokeMethod("setCurrencyCode", {'currencyCode': currencyCode});
+  }
+
+  /// Setting whether the SDK should collect tcf data automatically from SharedPreferences/UserDefaults
+  void enableTCFDataCollection(bool shouldCollect){
+    _methodChannel.invokeListMethod("enableTCFDataCollection", {'shouldCollect': shouldCollect});
+  }
+
+  void setConsentData(AppsFlyerConsent consentData) {
+    _methodChannel.invokeMethod('setConsentData', <String, dynamic>{'consentData': consentData.toMap()});
   }
 
   /// Setting your own customer ID enables you to cross-reference your own unique ID with AppsFlyer’s unique ID and the other devices’ IDs.

@@ -4,20 +4,23 @@ import './app_constants.dart';
 import 'text_border.dart';
 import 'utils.dart';
 
-// ignore: must_be_immutable
 class HomeContainer extends StatefulWidget {
   final Map onData;
-  final Future<bool> Function(String, Map) logEvent;
+  final Future<bool?> Function(String, Map) logEvent;
   Object deepLinkData;
 
-  HomeContainer({this.onData, this.deepLinkData, this.logEvent});
+  HomeContainer({
+    required this.onData,
+    required this.deepLinkData,
+    required this.logEvent,
+  });
 
   @override
   _HomeContainerState createState() => _HomeContainerState();
 }
 
 class _HomeContainerState extends State<HomeContainer> {
-  final String eventName = "purchase";
+  final String eventName = "Purchase Event";
 
   final Map eventValues = {
     "af_content_id": "id123",
@@ -25,89 +28,118 @@ class _HomeContainerState extends State<HomeContainer> {
     "af_revenue": "20"
   };
 
-  String _logEventResponse = "No event have been sent";
+  String _logEventResponse = "Awaiting event status";
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       child: Container(
-        child: Padding(
-          padding: EdgeInsets.all(AppConstants.CONTAINER_PADDING),
-          child: Column(
-            children: <Widget>[
-              Text(
-                "AF SDK",
-                style: TextStyle(fontWeight: FontWeight.bold),
+        padding: const EdgeInsets.all(AppConstants.CONTAINER_PADDING),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+        Container(
+        padding: EdgeInsets.all(20.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(
+              color: Colors.blueGrey,
+              width: 0.5
+          ),
+          borderRadius: BorderRadius.circular(5),
+        ),child: Column(
+          children: [
+            Text(
+              "APPSFLYER SDK",
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.black,
+                fontWeight: FontWeight.w500,
               ),
-              Padding(
-                padding: EdgeInsets.only(top: AppConstants.TOP_PADDING),
+            ),
+            SizedBox(height: AppConstants.TOP_PADDING),
+            TextBorder(
+              controller: TextEditingController(
+                text: widget.onData.isNotEmpty
+                    ? Utils.formatJson(widget.onData)
+                    : "Waiting for conversion data...",
               ),
-              TextBorder(
-                controller: TextEditingController(
-                    text: widget.onData != null
-                        ? Utils.formatJson(widget.onData)
-                        : "No conversion data"),
-                labelText: "Conversion Data:",
+              labelText: "CONVERSION DATA",
+            ),
+            SizedBox(height: 12.0),
+            TextBorder(
+              controller: TextEditingController(
+                text: widget.deepLinkData != null
+                    ? Utils.formatJson(widget.deepLinkData)
+                    : "Waiting for attribution data...",
               ),
-              Padding(
-                padding: EdgeInsets.only(top: 12.0),
-              ),
-              TextBorder(
-                controller: TextEditingController(
-                     text: widget.deepLinkData != null ? 
-                            Utils.formatJson(widget.deepLinkData) : 
-                            "No Attribution data"),
-                labelText: "Attribution Data:",
-              ),
-              Padding(
-                padding: EdgeInsets.only(top: 12.0),
-              ),
-              Container(
-                padding: EdgeInsets.all(20.0),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Colors.grey,
-                  ),
+              labelText: "ATTRIBUTION DATA",
+            ),
+          ],
+        ),
+        ),
+            SizedBox(height: 12.0),
+            Container(
+              padding: EdgeInsets.all(20.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(
+                    color: Colors.blueGrey,
+                    width: 0.5
                 ),
-                child: Column(children: <Widget>[
-                  Center(
-                    child: Text("Log event"),
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: Column(
+                children: <Widget>[
+                  Text(
+                    "EVENT LOGGER",
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.black,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                  Padding(
-                    padding: EdgeInsets.only(top: 12.0),
-                  ),
+                  SizedBox(height: 12.0),
                   TextBorder(
                     controller: TextEditingController(
-                        text:
-                            "event name: $eventName\nevent values: $eventValues"),
-                    labelText: "Event Request",
+                        text: "Event Name: $eventName\nEvent Values: $eventValues"
+                    ),
+                    labelText: "EVENT REQUEST",
                   ),
-                  Padding(
-                    padding: EdgeInsets.only(top: 12.0),
-                  ),
+                  SizedBox(height: 12.0),
                   TextBorder(
-                      labelText: "Server response",
-                      controller:
-                          TextEditingController(text: _logEventResponse)),
+                    labelText: "SERVER RESPONSE",
+                    controller: TextEditingController(
+                        text: _logEventResponse
+                    ),
+                  ),
+                  SizedBox(height: 20.0),
                   ElevatedButton(
                     onPressed: () {
-                      print("Pressed");
                       widget.logEvent(eventName, eventValues).then((onValue) {
                         setState(() {
-                          _logEventResponse = onValue.toString();
+                          _logEventResponse = "Event Status: " + onValue.toString();
                         });
                       }).catchError((onError) {
                         setState(() {
-                          _logEventResponse = onError.toString();
+                          _logEventResponse = "Error: " + onError.toString();
                         });
                       });
                     },
-                    child: Text("Send purchase event"),
+                    child: Text("Trigger Purchase Event"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      textStyle: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
                   ),
-                ]),
-              )
-            ],
-          ),
+                ],
+              ),
+            )
+          ],
         ),
       ),
     );

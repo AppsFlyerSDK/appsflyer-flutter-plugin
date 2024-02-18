@@ -9,11 +9,13 @@ class AppsFlyerOptions {
   final String? appInviteOneLink;
   final bool? disableAdvertisingIdentifier;
   final bool? disableCollectASA;
+  final bool? manualStart;
 
   /// Creates an [AppsFlyerOptions] instance.
   /// Requires [afDevKey] and [appId] as mandatory Named parameters.
   /// All other parameters are optional, it's allows greater flexibility
   /// when invoking the constructor.
+  /// When manual start is true the startSDK must be called
   AppsFlyerOptions({
     required this.afDevKey,
     this.showDebug = false,
@@ -22,5 +24,6 @@ class AppsFlyerOptions {
     this.appInviteOneLink,
     this.disableAdvertisingIdentifier,
     this.disableCollectASA,
+    this.manualStart = false,
   });
 }

@@ -7,6 +7,7 @@
 
 ## Methods
 - [initSdk](#initSdk)
+- [startSDK](#startSDK)
 - [onAppOpenAttribution](#onAppOpenAttribution)
 - [onInstallConversionData](#onInstallConversionData)
 - [onDeepLinking](#onDeepLinking)
@@ -37,6 +38,8 @@
 - [addPushNotificationDeepLinkPath](#addPushNotificationDeepLinkPath)
 - [User Invite](#userInvite)
 - [enableFacebookDeferredApplinks](#enableFacebookDeferredApplinks)
+- [enableTCFDataCollection](#enableTCFDataCollection)  <!-- New addition -->
+- [setConsentData](#setConsentData)
 - [disableSKAdNetwork](#disableSKAdNetwork)
 - [getAppsFlyerUID](#getAppsFlyerUID)
 - [setCurrentDeviceLanguage](#setCurrentDeviceLanguage)
@@ -64,11 +67,13 @@
 | -------- | -------- | ------------- |
 | devKey   | String | Your application's [devKey](https://support.appsflyer.com/hc/en-us/articles/207032066-Basic-SDK-integration-guide#retrieving-the-dev-key) provided by AppsFlyer (required)  |
 | appId      | String | Your application's [App ID](https://support.appsflyer.com/hc/en-us/articles/207377436-Adding-a-new-app#available-in-the-app-store-google-play-store-windows-phone-store)  (required for iOS only) that you configured in your AppsFlyer dashboard  |
-| showDebug    | bool | Debug mode - set to `true` for testing only, do not release to production with this parameter set to `true`! |
-| timeToWaitForATTUserAuthorization  | double | Delays the SDK start for x seconds until the user either accepts the consent dialog, declines it, or the timer runs out. |
-| appInviteOneLink    | String | The [OneLink template ID](https://support.appsflyer.com/hc/en-us/articles/115004480866-User-invite-attribution#parameters) that is used to generate a User Invite, this is not a required field in the `AppsFlyerOptions`, you may choose to set it later via the appropriate API. |
+| showDebug   | bool | Debug mode - set to `true` for testing only, do not release to production with this parameter set to `true`! |
+| timeToWaitForATTUserAuthorization | double | Delays the SDK start for x seconds until the user either accepts the consent dialog, declines it, or the timer runs out. |
+| appInviteOneLink | String | The [OneLink template ID](https://support.appsflyer.com/hc/en-us/articles/115004480866-User-invite-attribution#parameters) that is used to generate a User Invite, this is not a required field in the `AppsFlyerOptions`, you may choose to set it later via the appropriate API. |
 | disableAdvertisingIdentifier| bool | Opt-out of the collection of Advertising Identifiers, which include OAID, AAID, GAID and IDFA. |
 | disableCollectASA | bool | Opt-out of the Apple Search Ads attributions. |
+| manualStart | bool | Prevents from the SDK from sending the launch request after using appsFlyer.initSdk(...). When using this property, the apps needs to manually trigger the appsFlyer.startSdk() API to report the app launch.|
+
 
 
 
@@ -128,6 +133,12 @@ _appsflyerSdk.initSdk(
   registerOnDeepLinkingCallback: true)
 ```
 
+---
+##### <a id="startSDK"> **`startSDK()` (Added in 6.13.0)**
+In version 6.13.0 of the appslfyer-flutter-plugin SDK we added the option of splitting between the initialization stage and start stage. All you need to do is add the property manualStart: true to the init object, and later call appsFlyer.startSdk() whenever you decide. If this property is set to false or doesn’t exist, the sdk will start after calling appsFlyer.initSdk(...).
+```dart
+_appsflyerSdk.startSDK();
+```
 ---
 #### <a id="onAppOpenAttribution"> **`onAppOpenAttribution(Func)`
 - Trigger callback when onAppOpenAttribution is activated on the native side
@@ -258,6 +269,78 @@ _Example:_
 ```dart
 appsFlyerSdk.enableLocationCollection(true);
 ```
+---
+**<a id="enableTCFDataCollection"> `enableTCFDataCollection(bool shouldCollect)`**
+
+The `enableTCFDataCollection` method is employed to control the automatic collection of the Transparency and Consent Framework (TCF) data. By setting this flag to `true`, the system is instructed to automatically collect TCF data. Conversely, setting it to `false` prevents such data collection.
+
+_Example:_
+```dart
+appsFlyerSdk.enableTCFDataCollection(true);
+```
+---
+**<a id="setConsentData"> `setConsentData(Map<String, Object> consentData)`**
+
+The `AppsflyerConsent` object helps manage user consent settings. By using the setConsentData we able to manually collect the TCF data. You can create an instance for users subject to GDPR or otherwise:
+
+1. Users subjected to GDPR:
+
+```dart
+var forGdpr = _appsflyerSdk.forGDPRUser(
+    hasConsentForDataUsage: true, 
+    hasConsentForAdsPersonalization: true
+);
+_appsflyerSdk.setConsentData(forGdpr);
+```
+
+2. Users not subject to GDPR:
+
+```dart
+var nonGdpr = _appsflyerSdk.nonGDPRUser();
+_appsflyerSdk.setConsentData(nonGdpr);
+```
+
+The `_appsflyerSdk` handles consent data with `setConsentData` method, where you can pass the desired `AppsflyerConsent` instance.
+
+---
+To reflect TCF data in the conversion (first launch) payload, it's crucial to configure `enableTCFDataCollection` **or** `setConsentData` between the SDK initialization and start phase. Follow the example provided:
+
+```dart
+// Set AppsFlyerOption - make sure to set manualStart to true
+final AppsFlyerOptions options = AppsFlyerOptions(
+        afDevKey: dotenv.env["DEV_KEY"]!,
+        appId: dotenv.env["APP_ID"]!,
+        showDebug: true,
+        timeToWaitForATTUserAuthorization: 15,
+        manualStart: true);
+_appsflyerSdk = AppsflyerSdk(options);
+
+// Init the AppsFlyer SDK
+_appsflyerSdk.initSdk(
+    registerConversionDataCallback: true,
+    registerOnAppOpenAttributionCallback: true,
+    registerOnDeepLinkingCallback: true);
+
+// Set configurations to the SDK
+// Enable TCF Data Collection
+_appsflyerSdk.enableTCFDataCollection(true);
+
+// Set Consent Data
+// If user is subject to GDPR
+// var forGdpr = _appsflyerSdk.forGDPRUser(hasConsentForDataUsage: true, hasConsentForAdsPersonalization: true);
+// _appsflyerSdk.setConsentData(forGdpr);
+
+// If user is not subject to GDPR
+var nonGdpr = _appsflyerSdk.nonGDPRUser();
+_appsflyerSdk.setConsentData(nonGdpr);
+
+// Here we start a session
+_appsflyerSdk.startSDK(); 
+```
+
+Following this sequence ensures that the consent configurations take effect before the AppsFlyer SDK starts, providing accurate consent data in the first launch payload.
+Note: You need to use either `enableTCFDataCollection` or `setConsentData` if you use both of them our backend will prioritize the provided consent data from `setConsentData`.
+
 ---
 **<a id="setCustomerUserId"> `void setCustomerUserId(String userId)`**
 

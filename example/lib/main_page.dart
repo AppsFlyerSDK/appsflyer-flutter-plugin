@@ -13,32 +13,57 @@ class MainPage extends StatefulWidget {
 }
 
 class MainPageState extends State<MainPage> {
-  AppsflyerSdk _appsflyerSdk;
-  Map _deepLinkData;
-  Map _gcd;
+  late AppsflyerSdk _appsflyerSdk;
+  Map _deepLinkData = {};
+  Map _gcd = {};
 
-  // called on every foreground
   @override
   void initState() {
     super.initState();
+    afStart();
+  }
+
+  void afStart() async {
+    // SDK Options
     final AppsFlyerOptions options = AppsFlyerOptions(
-        afDevKey: DotEnv().env["DEV_KEY"],
-        appId: DotEnv().env["APP_ID"],
+        afDevKey: dotenv.env["DEV_KEY"]!,
+        appId: dotenv.env["APP_ID"]!,
         showDebug: true,
-        timeToWaitForATTUserAuthorization: 15);
+        timeToWaitForATTUserAuthorization: 15,
+        manualStart: true);
     _appsflyerSdk = AppsflyerSdk(options);
-    _appsflyerSdk.onAppOpenAttribution((res) {
-      print("onAppOpenAttribution res: " + res.toString());
-      setState(() {
-        _deepLinkData = res;
-      });
-    });
+
+    //Setting configuration to the SDK
+    _appsflyerSdk.setCurrencyCode("USD");
+    _appsflyerSdk.enableTCFDataCollection(true);
+    // var forGdpr = _appsflyerSdk.forGDPRUser(hasConsentForDataUsage: true, hasConsentForAdsPersonalization: true);
+    // _appsflyerSdk.setConsentData(forGdpr);
+    var nonGdpr = _appsflyerSdk.nonGDPRUser();
+    _appsflyerSdk.setConsentData(nonGdpr);
+
+    // Init of AppsFlyer SDK
+    await _appsflyerSdk.initSdk(
+        registerConversionDataCallback: true,
+        registerOnAppOpenAttributionCallback: true,
+        registerOnDeepLinkingCallback: true);
+
+    // Conversion data callback
     _appsflyerSdk.onInstallConversionData((res) {
       print("onInstallConversionData res: " + res.toString());
       setState(() {
         _gcd = res;
       });
     });
+
+    // App open attribution callback
+    _appsflyerSdk.onAppOpenAttribution((res) {
+      print("onAppOpenAttribution res: " + res.toString());
+      setState(() {
+        _deepLinkData = res;
+      });
+    });
+
+    // Deep linking callback
     _appsflyerSdk.onDeepLinking((DeepLinkResult dp) {
       switch (dp.status) {
         case Status.FOUND:
@@ -60,45 +85,52 @@ class MainPageState extends State<MainPage> {
         _deepLinkData = dp.toJson();
       });
     });
+
+    setState(() {}); // Call setState to rebuild the widget
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: Column(
-            children: <Widget>[
-              Text('AppsFlyer SDK example app'),
-              FutureBuilder<String>(
-                  builder: (BuildContext context, AsyncSnapshot snapshot) {
-                return Text(snapshot.hasData ? snapshot.data : "");
-              }),
-            ],
-          ),
-        ),
-        body: FutureBuilder<dynamic>(
-            future: _appsflyerSdk.initSdk(
-                registerConversionDataCallback: true,
-                registerOnAppOpenAttributionCallback: false,
-                registerOnDeepLinkingCallback: true),
-            builder: (BuildContext context, AsyncSnapshot snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return Center(child: CircularProgressIndicator());
-              } else {
-                if (snapshot.hasData) {
-                  return HomeContainer(
+      appBar: AppBar(
+        title: Text('AppsFlyer SDK example app'),
+        centerTitle: true,
+        backgroundColor: Colors.green,
+      ),
+      body: Builder(
+        builder: (context) {
+          return SafeArea(
+            child: Column(
+              children: <Widget>[
+                Expanded(
+                  child: HomeContainer(
                     onData: _gcd,
                     deepLinkData: _deepLinkData,
                     logEvent: logEvent,
-                  );
-                } else {
-                  return Center(child: Text("Error initializing sdk"));
-                }
-              }
-            }));
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    _appsflyerSdk.startSDK();
+                  },
+                  child: Text("START SDK"),
+                )
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
-  Future<bool> logEvent(String eventName, Map eventValues) {
-    return _appsflyerSdk.logEvent(eventName, eventValues);
+  Future<bool?> logEvent(String eventName, Map eventValues) async {
+    bool? logResult;
+    try {
+      logResult = await _appsflyerSdk.logEvent(eventName, eventValues);
+      print("Event logged");
+    } catch (e) {
+      print("Failed to log event: $e");
+    }
+    return logResult;
   }
 }

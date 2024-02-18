@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'src/appsflyer_consent.dart';
 import 'src/callbacks.dart';
 
 part 'src/appsflyer_constants.dart';

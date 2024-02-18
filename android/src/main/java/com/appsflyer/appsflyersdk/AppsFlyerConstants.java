@@ -1,11 +1,12 @@
 package com.appsflyer.appsflyersdk;
 
 public class AppsFlyerConstants {
-    final static String PLUGIN_VERSION                          = "6.12.2";
+    final static String PLUGIN_VERSION                          = "6.13.0";
     final static String AF_APP_INVITE_ONE_LINK                  = "appInviteOneLink";
     final static String AF_HOST_PREFIX                          = "hostPrefix";
     final static String AF_HOST_NAME                            = "hostName";
     final static String AF_IS_DEBUG                             = "isDebug";
+    final static String AF_MANUAL_START                         = "manualStart";
     final static String AF_DEV_KEY                              = "afDevKey";
     final static String AF_EVENT_NAME                           = "eventName";
     final static String AF_EVENT_VALUES                         = "eventValues";

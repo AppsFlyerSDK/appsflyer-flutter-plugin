@@ -8,6 +8,8 @@
 
 @interface AppsflyerSdkPlugin: NSObject<FlutterPlugin>
 
+@property (readwrite, nonatomic) BOOL isManualStart;
+
 + (FlutterMethodChannel*)callbackChannel;
 + (BOOL)gcdCallback;
 + (BOOL)oaoaCallback;
@@ -16,10 +18,11 @@
 @end
 
 // Appsflyer JS objects
-#define kAppsFlyerPluginVersion             @"6.12.2"
+#define kAppsFlyerPluginVersion             @"6.13.0"
 #define afDevKey                            @"afDevKey"
 #define afAppId                             @"afAppId"
 #define afIsDebug                           @"isDebug"
+#define afManualStart                       @"manualStart"
 #define afTimeToWaitForATTUserAuthorization @"timeToWaitForATTUserAuthorization"
 #define afEventName                         @"eventName"
 #define afEventValues                       @"eventValues"
