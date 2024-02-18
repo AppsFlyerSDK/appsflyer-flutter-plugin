@@ -31,16 +31,6 @@ class AppsflyerSdk {
     return _instance!;
   }
 
-  AppsFlyerConsent forGDPRUser({required bool hasConsentForDataUsage, required bool hasConsentForAdsPersonalization}) {
-    return AppsFlyerConsent.forGDPRUser(
-        hasConsentForDataUsage: hasConsentForDataUsage,
-        hasConsentForAdsPersonalization: hasConsentForAdsPersonalization);
-  }
-
-  AppsFlyerConsent nonGDPRUser() {
-    return AppsFlyerConsent.nonGDPRUser();
-  }
-
   @visibleForTesting
   AppsflyerSdk.private(this._methodChannel, this._eventChannel,
       {this.afOptions, this.mapOptions});

@@ -1,5 +1,5 @@
 # Versions
-## 6.13.0 
+## 6.13.0+1
 - Added enableTCFDataCollection , setConsentData with AppsFlyerConsent class
 - Added new boolean option to AppsFlyerOption class , manualStart
 - Added startSDK API

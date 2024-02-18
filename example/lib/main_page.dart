@@ -36,9 +36,9 @@ class MainPageState extends State<MainPage> {
     //Setting configuration to the SDK
     _appsflyerSdk.setCurrencyCode("USD");
     _appsflyerSdk.enableTCFDataCollection(true);
-    // var forGdpr = _appsflyerSdk.forGDPRUser(hasConsentForDataUsage: true, hasConsentForAdsPersonalization: true);
+    // var forGdpr = AppsFlyerConsent.forGDPRUser(hasConsentForDataUsage: true, hasConsentForAdsPersonalization: true);
     // _appsflyerSdk.setConsentData(forGdpr);
-    var nonGdpr = _appsflyerSdk.nonGDPRUser();
+    var nonGdpr = AppsFlyerConsent.nonGDPRUser();
     _appsflyerSdk.setConsentData(nonGdpr);
 
     // Init of AppsFlyer SDK

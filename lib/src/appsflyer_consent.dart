@@ -1,3 +1,5 @@
+part of appsflyer_sdk;
+
 class AppsFlyerConsent {
   final bool isUserSubjectToGDPR;
   final bool hasConsentForDataUsage;

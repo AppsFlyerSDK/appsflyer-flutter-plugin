@@ -286,7 +286,7 @@ The `AppsflyerConsent` object helps manage user consent settings. By using the s
 1. Users subjected to GDPR:
 
 ```dart
-var forGdpr = _appsflyerSdk.forGDPRUser(
+var forGdpr = AppsFlyerConsent.forGDPRUser(
     hasConsentForDataUsage: true, 
     hasConsentForAdsPersonalization: true
 );
@@ -296,7 +296,7 @@ _appsflyerSdk.setConsentData(forGdpr);
 2. Users not subject to GDPR:
 
 ```dart
-var nonGdpr = _appsflyerSdk.nonGDPRUser();
+var nonGdpr = AppsFlyerConsent.nonGDPRUser();
 _appsflyerSdk.setConsentData(nonGdpr);
 ```
 
@@ -327,11 +327,11 @@ _appsflyerSdk.enableTCFDataCollection(true);
 
 // Set Consent Data
 // If user is subject to GDPR
-// var forGdpr = _appsflyerSdk.forGDPRUser(hasConsentForDataUsage: true, hasConsentForAdsPersonalization: true);
+// var forGdpr = AppsFlyerConsent.forGDPRUser(hasConsentForDataUsage: true, hasConsentForAdsPersonalization: true);
 // _appsflyerSdk.setConsentData(forGdpr);
 
 // If user is not subject to GDPR
-var nonGdpr = _appsflyerSdk.nonGDPRUser();
+var nonGdpr = AppsFlyerConsent.nonGDPRUser();
 _appsflyerSdk.setConsentData(nonGdpr);
 
 // Here we start a session
