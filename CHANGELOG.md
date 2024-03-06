@@ -1,4 +1,6 @@
 # Versions
+## 6.13.0+2
+- Update to iOS SDK to v6.13.1
 ## 6.13.0+1
 - Added enableTCFDataCollection , setConsentData with AppsFlyerConsent class
 - Added new boolean option to AppsFlyerOption class , manualStart
