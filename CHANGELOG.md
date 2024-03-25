@@ -1,4 +1,6 @@
 # Versions
+## 6.13.2
+- Added new APIs such as anonymizeUser , performOnDeepLinking
 ## 6.13.0+2
 - Update to iOS SDK to v6.13.1
 ## 6.13.0+1

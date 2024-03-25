@@ -129,6 +129,8 @@ static BOOL _isSKADEnabled = false;
         [self useReceiptValidationSandbox:call result:result];
     }else if([@"enableFacebookDeferredApplinks" isEqualToString:call.method]){
         [self enableFacebookDeferredApplinks:call result:result];
+    }else if([@"anonymizeUser" isEqualToString:call.method]){
+        [self anonymizeUser:call result:result];
     }else if([@"disableSKAdNetwork" isEqualToString:call.method]){
         [self disableSKAdNetwork:call result:result];
     }else if([@"setCurrentDeviceLanguage" isEqualToString:call.method]){
@@ -255,7 +257,14 @@ static BOOL _isSKADEnabled = false;
             [[AppsFlyerLib shared] enableFacebookDeferredApplinksWithClass:NSClassFromString(@"FBSDKAppLinkUtility")];
         }
     }
-    
+    result(nil);
+}
+
+- (void)anonymizeUser:(FlutterMethodCall*)call result:(FlutterResult)result {
+    id shouldAnonymize = call.arguments[@"shouldAnonymize"];
+    if ([shouldAnonymize isKindOfClass:[NSNumber class]]) {
+        [AppsFlyerLib shared].anonymizeUser = [(NSNumber*)shouldAnonymize boolValue];
+    }
     result(nil);
 }
 

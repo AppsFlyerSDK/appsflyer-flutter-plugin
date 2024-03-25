@@ -175,6 +175,7 @@ class AppsflyerSdk {
     });
   }
 
+  /// Start the SDK
   void startSDK(){
      _methodChannel.invokeMethod("startSDK");
   }
@@ -260,6 +261,16 @@ class AppsflyerSdk {
 
   void setConsentData(AppsFlyerConsent consentData) {
     _methodChannel.invokeMethod('setConsentData', <String, dynamic>{'consentData': consentData.toMap()});
+  }
+
+  /// Opt-out logging for specific user
+  void anonymizeUser(bool shouldAnonymize){
+    _methodChannel.invokeMethod("anonymizeUser", {'shouldAnonymize': shouldAnonymize});
+  }
+
+  /// Opt-out logging for specific user
+  void performOnDeepLinking(){
+    _methodChannel.invokeMethod("performOnDeepLinking");
   }
 
   /// Setting your own customer ID enables you to cross-reference your own unique ID with AppsFlyer’s unique ID and the other devices’ IDs.

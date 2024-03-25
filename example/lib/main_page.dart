@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -40,7 +41,6 @@ class MainPageState extends State<MainPage> {
     // _appsflyerSdk.setConsentData(forGdpr);
     var nonGdpr = AppsFlyerConsent.nonGDPRUser();
     _appsflyerSdk.setConsentData(nonGdpr);
-
     // Init of AppsFlyer SDK
     await _appsflyerSdk.initSdk(
         registerConversionDataCallback: true,
@@ -85,6 +85,11 @@ class MainPageState extends State<MainPage> {
         _deepLinkData = dp.toJson();
       });
     });
+
+    //_appsflyerSdk.anonymizeUser(true);
+    if(Platform.isAndroid){
+      _appsflyerSdk.performOnDeepLinking();
+    }
 
     setState(() {}); // Call setState to rebuild the widget
   }

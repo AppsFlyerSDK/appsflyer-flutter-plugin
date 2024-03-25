@@ -12,7 +12,7 @@
 - [onInstallConversionData](#onInstallConversionData)
 - [onDeepLinking](#onDeepLinking)
 - [logEvent](#logEvent)
-
+- [anonymizeUser](#anonymizeUser)
 - [setUserEmails](#setUserEmails)
 - [setMinTimeBetweenSessions](#setMinTimeBetweenSessions)
 - [stop](#stop)
@@ -51,6 +51,8 @@
 - [setOutOfStore](#setOutOfStore)
 - [getOutOfStore](#getOutOfStore)
 - [setDisableNetworkData](#setDisableNetworkData)
+- [performOnDeepLinking](#performondeeplinking)
+
 
 ---
 
@@ -201,7 +203,19 @@ Future<bool?> logEvent(String eventName, Map? eventValues) async {
 ---
 
 ## Other functionalities:
+**<a id="anonymizeUser"> `anonymizeUser(shouldAnonymize)`**
 
+It is possible to anonymize specific user identifiers within AppsFlyer analytics. This complies with both the latest privacy requirements (GDPR, COPPA) and Facebook's data and privacy policies. To anonymize an app user.
+| parameter                   | type     | description                                                |
+| ----------                  |----------|------------------                                          |
+| shouldAnonymize             | boolean  | True if want Anonymize user Data (default value is false). |
+| callback                    | function | success callback                                           |
+
+_Example:_
+```dart
+appsFlyerSdk.anonymizeUser(true);
+```
+---
 **<a id="setUserEmails"> `setUserEmails(List<String> emails, [EmailCryptType cryptType])`**
 
 Set the user emails with the given encryption (`EmailCryptTypeNone, EmailCryptTypeSHA256`). the default encryption is `EmailCryptTypeNone`.
@@ -739,3 +753,73 @@ _Example:_
   }
 ```
 ---
+
+**<a id="performOnDeepLinking"> `void performOnDeepLinking()`**
+
+**Android Only!**
+
+Enables manual triggering of deep link resolution. This method allows apps that are delaying the call to `appsflyerSdk.startSDK()` to resolve deep links before the SDK starts.<br>
+Note:<br>This API will trigger the `appsflyerSdk.onDeepLink` callback. In the following example, we check if `res.deepLinkStatus` is equal to “FOUND” inside `appsflyerSdk.onDeepLink` callback to extract the deeplink parameters.
+
+```dart
+  void afStart() async {
+    // SDK Options
+    final AppsFlyerOptions options = AppsFlyerOptions(
+        afDevKey: dotenv.env["DEV_KEY"]!,
+        appId: dotenv.env["APP_ID"]!,
+        showDebug: true,
+        timeToWaitForATTUserAuthorization: 15,
+        manualStart: true);
+    _appsflyerSdk = AppsflyerSdk(options);
+    
+    // Init of AppsFlyer SDK
+    await _appsflyerSdk.initSdk(
+        registerConversionDataCallback: true,
+        registerOnAppOpenAttributionCallback: true,
+        registerOnDeepLinkingCallback: true);
+
+    // Conversion data callback
+    _appsflyerSdk.onInstallConversionData((res) {
+      print("onInstallConversionData res: " + res.toString());
+      setState(() {
+        _gcd = res;
+      });
+    });
+
+    // App open attribution callback
+    _appsflyerSdk.onAppOpenAttribution((res) {
+      print("onAppOpenAttribution res: " + res.toString());
+      setState(() {
+        _deepLinkData = res;
+      });
+    });
+
+    // Deep linking callback
+    _appsflyerSdk.onDeepLinking((DeepLinkResult dp) {
+      switch (dp.status) {
+        case Status.FOUND:
+          print(dp.deepLink?.toString());
+          print("deep link value: ${dp.deepLink?.deepLinkValue}");
+          break;
+        case Status.NOT_FOUND:
+          print("deep link not found");
+          break;
+        case Status.ERROR:
+          print("deep link error: ${dp.error}");
+          break;
+        case Status.PARSE_ERROR:
+          print("deep link status parsing error");
+          break;
+      }
+      print("onDeepLinking res: " + dp.toString());
+      setState(() {
+        _deepLinkData = dp.toJson();
+      });
+    });
+
+    if(Platform.isAndroid){
+      _appsflyerSdk.performOnDeepLinking();
+    }
+    _appsflyerSdk.startSDK();
+  }
+```

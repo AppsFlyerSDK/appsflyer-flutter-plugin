@@ -311,6 +311,12 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "enableFacebookDeferredApplinks":
                 enableFacebookDeferredApplinks(call, result);
                 break;
+            case "anonymizeUser":
+                anonymizeUser(call, result);
+                break;
+            case "performOnDeepLinking":
+                performOnDeepLinking(call, result);
+                break;
             case "setDisableAdvertisingIdentifiers":
                 setDisableAdvertisingIdentifiers(call, result);
                 break;
@@ -339,6 +345,28 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                 result.notImplemented();
                 break;
         }
+    }
+
+    private void performOnDeepLinking(MethodCall call, Result result) {
+        if (activity != null) {
+            Intent intent = mIntent;
+            if (intent != null) {
+                AppsFlyerLib.getInstance().performOnDeepLinking(intent, mApplication);
+                result.success(null);
+            } else {
+                Log.d("AppsFlyer", "performOnDeepLinking: intent is null!");
+                result.error("NO_INTENT", "The intent is null", null);
+            }
+        } else {
+            Log.d("AppsFlyer", "performOnDeepLinking: activity is null!");
+            result.error("NO_ACTIVITY", "The current activity is null", null);
+        }
+    }
+
+    private void anonymizeUser(MethodCall call, Result result) {
+        boolean shouldAnonymize = (boolean) call.argument("shouldAnonymize");
+        AppsFlyerLib.getInstance().anonymizeUser(shouldAnonymize);
+        result.success(null); // indicate that the method invocation is complete
     }
 
     private void startSDK(MethodCall call, Result result) {
