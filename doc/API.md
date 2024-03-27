@@ -205,11 +205,11 @@ Future<bool?> logEvent(String eventName, Map? eventValues) async {
 ## Other functionalities:
 **<a id="anonymizeUser"> `anonymizeUser(shouldAnonymize)`**
 
-It is possible to anonymize specific user identifiers within AppsFlyer analytics. This complies with both the latest privacy requirements (GDPR, COPPA) and Facebook's data and privacy policies. To anonymize an app user.
+It is possible to anonymize specific user identifiers within AppsFlyer analytics.</br>
+This complies with both the latest privacy requirements (GDPR, COPPA) and Facebook's data and privacy policies. To anonymize an app user.
 | parameter                   | type     | description                                                |
 | ----------                  |----------|------------------                                          |
 | shouldAnonymize             | boolean  | True if want Anonymize user Data (default value is false). |
-| callback                    | function | success callback                                           |
 
 _Example:_
 ```dart

@@ -30,17 +30,20 @@ class MainPageState extends State<MainPage> {
         afDevKey: dotenv.env["DEV_KEY"]!,
         appId: dotenv.env["APP_ID"]!,
         showDebug: true,
-        timeToWaitForATTUserAuthorization: 15,
+        timeToWaitForATTUserAuthorization: 1,
         manualStart: true);
     _appsflyerSdk = AppsflyerSdk(options);
 
-    //Setting configuration to the SDK
+    /*
+    Setting configuration to the SDK:
     _appsflyerSdk.setCurrencyCode("USD");
     _appsflyerSdk.enableTCFDataCollection(true);
-    // var forGdpr = AppsFlyerConsent.forGDPRUser(hasConsentForDataUsage: true, hasConsentForAdsPersonalization: true);
-    // _appsflyerSdk.setConsentData(forGdpr);
+    var forGdpr = AppsFlyerConsent.forGDPRUser(hasConsentForDataUsage: true, hasConsentForAdsPersonalization: true);
+    _appsflyerSdk.setConsentData(forGdpr);
     var nonGdpr = AppsFlyerConsent.nonGDPRUser();
     _appsflyerSdk.setConsentData(nonGdpr);
+     */
+
     // Init of AppsFlyer SDK
     await _appsflyerSdk.initSdk(
         registerConversionDataCallback: true,
@@ -87,7 +90,7 @@ class MainPageState extends State<MainPage> {
     });
 
     //_appsflyerSdk.anonymizeUser(true);
-    if(Platform.isAndroid){
+    if (Platform.isAndroid) {
       _appsflyerSdk.performOnDeepLinking();
     }
 
@@ -116,7 +119,14 @@ class MainPageState extends State<MainPage> {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    _appsflyerSdk.startSDK();
+                    _appsflyerSdk.startSDK(
+                      onSuccess: () {
+                        showMessage("AppsFlyer SDK initialized successfully.");
+                      },
+                      onError: (int errorCode, String errorMessage) {
+                        showMessage("Error initializing AppsFlyer SDK: Code $errorCode - $errorMessage");
+                      },
+                    );
                   },
                   child: Text("START SDK"),
                 )
@@ -138,4 +148,14 @@ class MainPageState extends State<MainPage> {
     }
     return logResult;
   }
+
+  void showMessage(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(
+      content:
+      Text(message),
+    ));
+  }
 }
+
+

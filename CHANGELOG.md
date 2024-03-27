@@ -1,6 +1,8 @@
 # Versions
 ## 6.13.2
-- Added new APIs such as anonymizeUser , performOnDeepLinking
+- Added new APIs such as `anonymizeUser` , `performOnDeepLinking`
+- Added to the `startSDK` API, `onSuccess` and `onError` callbacks
+- Update to iOS SDK to v6.13.2
 ## 6.13.0+2
 - Update to iOS SDK to v6.13.1
 ## 6.13.0+1

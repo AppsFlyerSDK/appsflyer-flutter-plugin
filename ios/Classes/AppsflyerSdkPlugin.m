@@ -15,6 +15,7 @@ typedef void (*bypassWaitForATTUserAuthorization)(id, SEL, NSTimeInterval);
 }
 static NSMutableArray* _callbackById;
 static FlutterMethodChannel* _callbackChannel;
+static FlutterMethodChannel* _methodChannel;
 static BOOL _gcdCallback = false;
 static BOOL _oaoaCallback = false;
 static BOOL _udpCallback = false;
@@ -25,6 +26,10 @@ static BOOL _isSKADEnabled = false;
 
 + (FlutterMethodChannel*)callbackChannel{
     return _callbackChannel;
+}
+
++ (FlutterMethodChannel*)methodChannel{
+    return _methodChannel;
 }
 
 + (BOOL)gcdCallback{
@@ -45,6 +50,7 @@ static BOOL _isSKADEnabled = false;
         _streamHandler = [[AppsFlyerStreamHandler alloc] init];
         _callbackChannel = [FlutterMethodChannel methodChannelWithName:afCallbacksMethodChannel binaryMessenger:messenger];
         _eventChannel = [FlutterEventChannel eventChannelWithName:afEventChannel binaryMessenger:messenger];
+        _methodChannel = [FlutterMethodChannel methodChannelWithName:afMethodChannel binaryMessenger:messenger];
     }
     return self;
 }
@@ -155,9 +161,28 @@ static BOOL _isSKADEnabled = false;
     }
 }
 
--(void)startSDK:(FlutterMethodCall*)call result:(FlutterResult)result {
-    [[AppsFlyerLib shared] start];
-    result(nil);
+- (void)startSDK:(FlutterMethodCall*)call result:(FlutterResult)result {
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
+    
+    [[AppsFlyerLib shared] startWithCompletionHandler:^(NSDictionary<NSString *,id> *dictionary, NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (error) {
+                [_methodChannel invokeMethod:@"onError" arguments:@{@"errorCode": @(error.code), @"errorMessage": error.localizedDescription ?: @"Unknown error"}];
+                result([FlutterError errorWithCode:[NSString stringWithFormat:@"Error %ld", (long)error.code]
+                                               message:error.localizedDescription
+                                               details:nil]);
+            } else if (dictionary) {
+                [_methodChannel invokeMethod:@"onSuccess" arguments:dictionary];
+                result(dictionary);
+            } else {
+                NSString *genericErrorMsg = @"SDK started without error or success data";
+                [_methodChannel invokeMethod:@"onError" arguments:@{@"errorCode": @(0), @"errorMessage": genericErrorMsg}];
+                result([FlutterError errorWithCode:@"UNEXPECTED_RESPONSE"
+                                               message:genericErrorMsg
+                                               details:nil]);
+            }
+        });
+    }];
 }
 
 - (void)setConsentData:(FlutterMethodCall*)call result:(FlutterResult)result {
@@ -641,13 +666,9 @@ static BOOL _isSKADEnabled = false;
     if (timeToWaitForATTUserAuthorization != 0) {
         [[AppsFlyerLib shared] waitForATTUserAuthorizationWithTimeoutInterval:timeToWaitForATTUserAuthorization];
     }
-    
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                                     selector:@selector(sendLaunch:)
-                                                         name:UIApplicationDidBecomeActiveNotification
-                                                       object:nil];
 
     if (!manualStart){
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
         [[AppsFlyerLib shared] start];
     }
 
@@ -655,15 +676,8 @@ static BOOL _isSKADEnabled = false;
     [AppsFlyerAttribution shared].isBridgeReady = YES;
     [[NSNotificationCenter defaultCenter] postNotificationName:AF_BRIDGE_SET object:self];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
     
     result(@{@"status": @"OK"});
-}
-
--(void)sendLaunch:(UIApplication *)application {
-    if (![self isManualStart]) {
-        [[AppsFlyerLib shared] start];
-    }
 }
 
 -(void)logEventWithCall:(FlutterMethodCall*)call result:(FlutterResult)result{
