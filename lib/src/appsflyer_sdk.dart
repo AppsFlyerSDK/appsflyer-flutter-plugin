@@ -4,6 +4,7 @@ class AppsflyerSdk {
   EventChannel _eventChannel;
   static AppsflyerSdk? _instance;
   final MethodChannel _methodChannel;
+  bool _isSdkStarted = false;
 
   AppsFlyerOptions? afOptions;
   Map? mapOptions;
@@ -175,8 +176,38 @@ class AppsflyerSdk {
     });
   }
 
-  void startSDK(){
-     _methodChannel.invokeMethod("startSDK");
+  /// Initializes the SDK and sets up a method call handler to listen for native callbacks.
+  /// Guards against multiple initializations with `_isSdkStarted`
+  void startSDK({
+    RequestSuccessListener? onSuccess,
+    RequestErrorListener? onError,
+  }) {
+    if (_isSdkStarted) {
+      print('SDK is already started');
+      return;
+    }
+    _methodChannel.setMethodCallHandler((call) async {
+      switch (call.method) {
+        case 'onSuccess':
+          if (!_isSdkStarted) {
+            onSuccess?.call();
+            _isSdkStarted = true;
+          }
+          break;
+        case 'onError':
+          if (!_isSdkStarted) {
+            final int errorCode = call.arguments['errorCode'];
+            final String errorMessage = call.arguments['errorMessage'];
+            onError?.call(errorCode, errorMessage);
+            _isSdkStarted = true;
+          }
+          break;
+        default:
+          print('Unknown method called from the native side.');
+          break;
+      }
+    });
+    _methodChannel.invokeMethod('startSDK');
   }
 
   /// Retrieves the current SDK version.
@@ -262,6 +293,16 @@ class AppsflyerSdk {
     _methodChannel.invokeMethod('setConsentData', <String, dynamic>{'consentData': consentData.toMap()});
   }
 
+  /// Opt-out logging for specific user
+  void anonymizeUser(bool shouldAnonymize){
+    _methodChannel.invokeMethod("anonymizeUser", {'shouldAnonymize': shouldAnonymize});
+  }
+
+  /// Opt-out logging for specific user
+  void performOnDeepLinking(){
+    _methodChannel.invokeMethod("performOnDeepLinking");
+  }
+
   /// Setting your own customer ID enables you to cross-reference your own unique ID with AppsFlyer’s unique ID and the other devices’ IDs.
   /// This ID is available in AppsFlyer CSV reports along with Postback APIs for cross-referencing with your internal IDs.
   void setCustomerUserId(String id) {
@@ -276,6 +317,7 @@ class AppsflyerSdk {
   /// In some extreme cases you might want to shut down all SDK activity due to legal and privacy compliance.
   /// This can be achieved with the stop API.
   void stop(bool isStopped) {
+    _isSdkStarted = false;
     _methodChannel.invokeMethod("stop", {'isStopped': isStopped});
   }
 

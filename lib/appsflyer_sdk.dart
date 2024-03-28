@@ -17,3 +17,4 @@ part 'src/appsflyer_sdk.dart';
 part 'src/udl/deep_link_result.dart';
 part 'src/udl/deeplink.dart';
 part 'src/appsflyer_consent.dart';
+part 'src/appsflyer_request_listener.dart';
