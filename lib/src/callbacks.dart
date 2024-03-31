@@ -23,7 +23,6 @@ Future<void> _methodCallHandler(MethodCall call) async {
       try {
         dynamic callMap = jsonDecode(call.arguments);
         switch (callMap["id"]) {
-          case "startSDK":
           case "onAppOpenAttribution":
           case "onInstallConversionData":
           case "validatePurchase":

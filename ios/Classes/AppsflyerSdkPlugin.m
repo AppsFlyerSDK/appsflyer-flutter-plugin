@@ -168,19 +168,13 @@ static BOOL _isSKADEnabled = false;
         dispatch_async(dispatch_get_main_queue(), ^{
             if (error) {
                 [_methodChannel invokeMethod:@"onError" arguments:@{@"errorCode": @(error.code), @"errorMessage": error.localizedDescription ?: @"Unknown error"}];
-                result([FlutterError errorWithCode:[NSString stringWithFormat:@"Error %ld", (long)error.code]
-                                               message:error.localizedDescription
-                                               details:nil]);
             } else if (dictionary) {
                 [_methodChannel invokeMethod:@"onSuccess" arguments:dictionary];
-                result(dictionary);
             } else {
                 NSString *genericErrorMsg = @"SDK started without error or success data";
                 [_methodChannel invokeMethod:@"onError" arguments:@{@"errorCode": @(0), @"errorMessage": genericErrorMsg}];
-                result([FlutterError errorWithCode:@"UNEXPECTED_RESPONSE"
-                                               message:genericErrorMsg
-                                               details:nil]);
             }
+            result(nil);
         });
     }];
 }

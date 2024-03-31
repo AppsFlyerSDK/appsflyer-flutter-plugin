@@ -8,8 +8,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
-import java.util.concurrent.atomic.AtomicBoolean;
-import androidx.annotation.NonNull;
 
 import com.appsflyer.AFLogger;
 import com.appsflyer.AppsFlyerConsent;
@@ -31,7 +29,6 @@ import org.json.JSONObject;
 
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -352,7 +349,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     private void performOnDeepLinking(MethodCall call, Result result) {
         if (activity != null) {
-            Intent intent = mIntent;
+            Intent intent = activity.getIntent();
             if (intent != null) {
                 AppsFlyerLib.getInstance().performOnDeepLinking(intent, mApplication);
                 result.success(null);
@@ -377,45 +374,35 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
      * only submitted once, preventing the "Reply already submitted" exception in Flutter.
      */
     private void startSDK(MethodCall call, final Result result) {
-        final AtomicBoolean isResultSubmitted = new AtomicBoolean(false);
-
         try {
             final AppsFlyerLib instance = AppsFlyerLib.getInstance();
-            String afDevKey = call.argument(AppsFlyerConstants.AF_DEV_KEY);
-            instance.start(activity, afDevKey, new AppsFlyerRequestListener() {
+            instance.start(activity, null, new AppsFlyerRequestListener() {
                 @Override
                 public void onSuccess() {
-                    new Handler(Looper.getMainLooper()).post(new Runnable() {
+                    uiThreadHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            if (!isResultSubmitted.getAndSet(true)) {
-                                mMethodChannel.invokeMethod("onSuccess", null);
-                                result.success(null);
-                            }
+                            mMethodChannel.invokeMethod("onSuccess", null);
                         }
                     });
                 }
 
                 @Override
                 public void onError(final int errorCode, final String errorMessage) {
-                    new Handler(Looper.getMainLooper()).post(new Runnable() {
+                    uiThreadHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            if (!isResultSubmitted.getAndSet(true)) {
-                                HashMap<String, Object> errorDetails = new HashMap<>();
-                                errorDetails.put("errorCode", errorCode);
-                                errorDetails.put("errorMessage", errorMessage);
-                                mMethodChannel.invokeMethod("onError", errorDetails);
-                                result.error(String.valueOf(errorCode), errorMessage, null);
-                            }
+                            HashMap<String, Object> errorDetails = new HashMap<>();
+                            errorDetails.put("errorCode", errorCode);
+                            errorDetails.put("errorMessage", errorMessage);
+                            mMethodChannel.invokeMethod("onError", errorDetails);
                         }
                     });
                 }
             });
+            result.success(null);
         } catch (Exception e) {
-            if (!isResultSubmitted.getAndSet(true)) {
-                result.error("UNEXPECTED_ERROR", e.getMessage(), null);
-            }
+            result.error("UNEXPECTED_ERROR", e.getMessage(), null);
         }
     }
     public void setConsentData(MethodCall call, Result result) {

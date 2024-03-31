@@ -171,7 +171,10 @@ class AppsflyerSdk {
               registerOnAppOpenAttributionCallback;
       validatedOptions?[AppsflyerConstants.AF_UDL] =
           registerOnDeepLinkingCallback;
-
+      //Means that we automatically starting the SDK
+      if(afOptions!.manualStart! == false){
+        _isSdkStarted = true;
+      }
       return _methodChannel.invokeMethod("initSdk", validatedOptions);
     });
   }
@@ -183,28 +186,27 @@ class AppsflyerSdk {
     RequestErrorListener? onError,
   }) {
     if (_isSdkStarted) {
-      print('SDK is already started');
       return;
     }
     _methodChannel.setMethodCallHandler((call) async {
-      switch (call.method) {
-        case 'onSuccess':
-          if (!_isSdkStarted) {
+      if (!_isSdkStarted) {
+        _isSdkStarted = true;
+        switch (call.method) {
+          case 'onSuccess':
             onSuccess?.call();
-            _isSdkStarted = true;
-          }
-          break;
-        case 'onError':
-          if (!_isSdkStarted) {
+            _methodChannel.setMethodCallHandler(null);
+            break;
+          case 'onError':
             final int errorCode = call.arguments['errorCode'];
             final String errorMessage = call.arguments['errorMessage'];
             onError?.call(errorCode, errorMessage);
-            _isSdkStarted = true;
-          }
-          break;
-        default:
-          print('Unknown method called from the native side.');
-          break;
+            _methodChannel.setMethodCallHandler(null);
+            break;
+          default:
+            print('Unknown method called from the native side.');
+            _isSdkStarted = false;
+            break;
+        }
       }
     });
     _methodChannel.invokeMethod('startSDK');
@@ -317,7 +319,6 @@ class AppsflyerSdk {
   /// In some extreme cases you might want to shut down all SDK activity due to legal and privacy compliance.
   /// This can be achieved with the stop API.
   void stop(bool isStopped) {
-    _isSdkStarted = false;
     _methodChannel.invokeMethod("stop", {'isStopped': isStopped});
   }
 
