@@ -30,7 +30,7 @@ class MainPageState extends State<MainPage> {
         afDevKey: dotenv.env["DEV_KEY"]!,
         appId: dotenv.env["APP_ID"]!,
         showDebug: true,
-        timeToWaitForATTUserAuthorization: 1,
+        timeToWaitForATTUserAuthorization: 15,
         manualStart: true);
     _appsflyerSdk = AppsflyerSdk(options);
 
