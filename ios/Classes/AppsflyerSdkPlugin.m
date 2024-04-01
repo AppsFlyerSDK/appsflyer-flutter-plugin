@@ -75,6 +75,8 @@ static BOOL _isSKADEnabled = false;
         [self getSDKVersion:result];
     }else if([@"startSDK" isEqualToString:call.method]){
         [self startSDK:call result:result];
+    }else if([@"startSDKwithHandler" isEqualToString:call.method]){
+        [self startSDKwithHandler:call result:result];
     } else if([@"logEvent" isEqualToString:call.method]){
         [self logEventWithCall:call result:result];
     }else if([@"waitForCustomerUserId" isEqualToString:call.method]){
@@ -161,7 +163,7 @@ static BOOL _isSKADEnabled = false;
     }
 }
 
-- (void)startSDK:(FlutterMethodCall*)call result:(FlutterResult)result {
+-(void)startSDKwithHandler:(FlutterMethodCall*)call result:(FlutterResult)result {
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
     
     [[AppsFlyerLib shared] startWithCompletionHandler:^(NSDictionary<NSString *,id> *dictionary, NSError *error) {
@@ -177,6 +179,12 @@ static BOOL _isSKADEnabled = false;
             result(nil);
         });
     }];
+}
+
+- (void)startSDK:(FlutterMethodCall*)call result:(FlutterResult)result {
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
+    [[AppsFlyerLib shared] start];
+    result(nil);
 }
 
 - (void)setConsentData:(FlutterMethodCall*)call result:(FlutterResult)result {

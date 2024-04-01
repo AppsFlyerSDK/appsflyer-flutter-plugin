@@ -212,6 +212,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "startSDK":
                 startSDK(call, result);
                 break;
+            case "startSDKwithHandler":
+                startSDKwithHandler(call, result);
+                break;
             case "logEvent":
                 logEvent(call, result);
                 break;
@@ -369,11 +372,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         result.success(null); // indicate that the method invocation is complete
     }
 
-    /**
-     * Initiates the AppsFlyer SDK. The AtomicBoolean isResultSubmitted ensures the result is
-     * only submitted once, preventing the "Reply already submitted" exception in Flutter.
-     */
-    private void startSDK(MethodCall call, final Result result) {
+    private void startSDKwithHandler(MethodCall call, final Result result) {
         try {
             final AppsFlyerLib instance = AppsFlyerLib.getInstance();
             instance.start(activity, null, new AppsFlyerRequestListener() {
@@ -405,6 +404,17 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             result.error("UNEXPECTED_ERROR", e.getMessage(), null);
         }
     }
+
+    /**
+     * Initiates the AppsFlyer SDK. The AtomicBoolean isResultSubmitted ensures the result is
+     * only submitted once, preventing the "Reply already submitted" exception in Flutter.
+     */
+    private void startSDK(MethodCall call, final Result result) {
+        final AppsFlyerLib instance = AppsFlyerLib.getInstance();
+        instance.start(activity);
+        result.success(null);
+    }
+
     public void setConsentData(MethodCall call, Result result) {
         Map<String, Object> arguments = (Map<String, Object>) call.arguments;
         Map<String, Object> consentDict = (Map<String, Object>) arguments.get("consentData");
