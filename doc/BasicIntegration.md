@@ -51,8 +51,13 @@ appsflyerSdk.initSdk(
 | registerOnDeepLinkingCallback | Set a listener for the [UDL](https://dev.appsflyer.com/hc/docs/unified-deep-linking-udl) response |
 
 ### startSdk
-`startSDK()`
-In version 6.13.0 of the appslfyer-flutter-plugin SDK we added the option of splitting between the initialization stage and start stage. All you need to do is add the property manualStart: true to the init object, and later call appsFlyer.startSdk() whenever you decide. If this property is set to false or doesn’t exist, the sdk will start after calling appsFlyer.initSdk(...).
+`startSDK({RequestSuccessListener? onSuccess, RequestErrorListener? onError})`
+Version 6.13.0+ of the AppsFlyer Flutter plugin introduces the option to manually start the SDK. </br>
+To utilise this feature, set the property `manualStart: true` within the initialization configuration. </br>
+Once the `manualStart` option is activated, you can call `appsFlyer.startSdk()` at your discretion. If the `manualStart` property is omitted or set to false, the SDK will start immediately after calling `appsFlyer.initSdk(...)`.
+
+`onSuccess`: An optional callback that is triggered after a successful initialization of the SDK.
+`onError`: An optional callback that is fired in case of an error during SDK initialization, providing an error code and an error message.
 
 ```dart
     // SDK Options
@@ -64,12 +69,33 @@ In version 6.13.0 of the appslfyer-flutter-plugin SDK we added the option of spl
         manualStart: true);
     _appsflyerSdk = AppsflyerSdk(options);
     
-    // Init of AppsFlyer SDK
+    // Initialization of the AppsFlyer SDK
     _appsflyerSdk.initSdk(
         registerConversionDataCallback: true,
         registerOnAppOpenAttributionCallback: true,
         registerOnDeepLinkingCallback: true);
     
-    //Here we start the SDK
-    _appsflyerSdk.startSDK();
+    // Starting the SDK with optional success and error callbacks
+    _appsflyerSdk.startSDK(
+        onSuccess: () {
+            showMessage("AppsFlyer SDK initialized successfully.");
+        },
+        onError: (int errorCode, String errorMessage) {
+            showMessage("Error initializing AppsFlyer SDK: Code $errorCode - $errorMessage");
+        },
+    );
+```
+
+Use the `onSuccess` callback to perform actions after successful SDK initialization, and the `onError` callback to handle initialization errors. </br>
+Here's an example from the demo app.
+
+```dart
+_appsflyerSdk.startSDK(
+  onSuccess: () {
+    showMessage("AppsFlyer SDK initialized successfully.");
+  },
+  onError: (int errorCode, String errorMessage) {
+    showMessage("Error initializing AppsFlyer SDK: Code $errorCode - $errorMessage");
+  },
+);
 ```

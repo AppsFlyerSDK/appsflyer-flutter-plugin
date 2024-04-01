@@ -10,6 +10,8 @@ const _channel = MethodChannel('callbacks');
 typedef MultiUseCallback = void Function(dynamic msg);
 typedef UDLCallback = void Function(DeepLinkResult deepLinkResult);
 typedef CancelListening = void Function();
+typedef RequestSuccessListener = void Function();
+typedef RequestErrorListener = void Function(int errorCode, String errorMessage);
 
 Map<String, MultiUseCallback> _callbacksById = <String, void Function(dynamic)>{
 };

@@ -15,6 +15,7 @@ typedef void (*bypassWaitForATTUserAuthorization)(id, SEL, NSTimeInterval);
 }
 static NSMutableArray* _callbackById;
 static FlutterMethodChannel* _callbackChannel;
+static FlutterMethodChannel* _methodChannel;
 static BOOL _gcdCallback = false;
 static BOOL _oaoaCallback = false;
 static BOOL _udpCallback = false;
@@ -25,6 +26,10 @@ static BOOL _isSKADEnabled = false;
 
 + (FlutterMethodChannel*)callbackChannel{
     return _callbackChannel;
+}
+
++ (FlutterMethodChannel*)methodChannel{
+    return _methodChannel;
 }
 
 + (BOOL)gcdCallback{
@@ -45,6 +50,7 @@ static BOOL _isSKADEnabled = false;
         _streamHandler = [[AppsFlyerStreamHandler alloc] init];
         _callbackChannel = [FlutterMethodChannel methodChannelWithName:afCallbacksMethodChannel binaryMessenger:messenger];
         _eventChannel = [FlutterEventChannel eventChannelWithName:afEventChannel binaryMessenger:messenger];
+        _methodChannel = [FlutterMethodChannel methodChannelWithName:afMethodChannel binaryMessenger:messenger];
     }
     return self;
 }
@@ -69,6 +75,8 @@ static BOOL _isSKADEnabled = false;
         [self getSDKVersion:result];
     }else if([@"startSDK" isEqualToString:call.method]){
         [self startSDK:call result:result];
+    }else if([@"startSDKwithHandler" isEqualToString:call.method]){
+        [self startSDKwithHandler:call result:result];
     } else if([@"logEvent" isEqualToString:call.method]){
         [self logEventWithCall:call result:result];
     }else if([@"waitForCustomerUserId" isEqualToString:call.method]){
@@ -129,6 +137,8 @@ static BOOL _isSKADEnabled = false;
         [self useReceiptValidationSandbox:call result:result];
     }else if([@"enableFacebookDeferredApplinks" isEqualToString:call.method]){
         [self enableFacebookDeferredApplinks:call result:result];
+    }else if([@"anonymizeUser" isEqualToString:call.method]){
+        [self anonymizeUser:call result:result];
     }else if([@"disableSKAdNetwork" isEqualToString:call.method]){
         [self disableSKAdNetwork:call result:result];
     }else if([@"setCurrentDeviceLanguage" isEqualToString:call.method]){
@@ -153,7 +163,26 @@ static BOOL _isSKADEnabled = false;
     }
 }
 
--(void)startSDK:(FlutterMethodCall*)call result:(FlutterResult)result {
+-(void)startSDKwithHandler:(FlutterMethodCall*)call result:(FlutterResult)result {
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
+    
+    [[AppsFlyerLib shared] startWithCompletionHandler:^(NSDictionary<NSString *,id> *dictionary, NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (error) {
+                [_methodChannel invokeMethod:@"onError" arguments:@{@"errorCode": @(error.code), @"errorMessage": error.localizedDescription ?: @"Unknown error"}];
+            } else if (dictionary) {
+                [_methodChannel invokeMethod:@"onSuccess" arguments:dictionary];
+            } else {
+                NSString *genericErrorMsg = @"SDK started without error or success data";
+                [_methodChannel invokeMethod:@"onError" arguments:@{@"errorCode": @(0), @"errorMessage": genericErrorMsg}];
+            }
+            result(nil);
+        });
+    }];
+}
+
+- (void)startSDK:(FlutterMethodCall*)call result:(FlutterResult)result {
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
     [[AppsFlyerLib shared] start];
     result(nil);
 }
@@ -255,7 +284,14 @@ static BOOL _isSKADEnabled = false;
             [[AppsFlyerLib shared] enableFacebookDeferredApplinksWithClass:NSClassFromString(@"FBSDKAppLinkUtility")];
         }
     }
-    
+    result(nil);
+}
+
+- (void)anonymizeUser:(FlutterMethodCall*)call result:(FlutterResult)result {
+    id shouldAnonymize = call.arguments[@"shouldAnonymize"];
+    if ([shouldAnonymize isKindOfClass:[NSNumber class]]) {
+        [AppsFlyerLib shared].anonymizeUser = [(NSNumber*)shouldAnonymize boolValue];
+    }
     result(nil);
 }
 
@@ -632,13 +668,9 @@ static BOOL _isSKADEnabled = false;
     if (timeToWaitForATTUserAuthorization != 0) {
         [[AppsFlyerLib shared] waitForATTUserAuthorizationWithTimeoutInterval:timeToWaitForATTUserAuthorization];
     }
-    
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                                     selector:@selector(sendLaunch:)
-                                                         name:UIApplicationDidBecomeActiveNotification
-                                                       object:nil];
 
     if (!manualStart){
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
         [[AppsFlyerLib shared] start];
     }
 
@@ -646,15 +678,8 @@ static BOOL _isSKADEnabled = false;
     [AppsFlyerAttribution shared].isBridgeReady = YES;
     [[NSNotificationCenter defaultCenter] postNotificationName:AF_BRIDGE_SET object:self];
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
     
     result(@{@"status": @"OK"});
-}
-
--(void)sendLaunch:(UIApplication *)application {
-    if (![self isManualStart]) {
-        [[AppsFlyerLib shared] start];
-    }
 }
 
 -(void)logEventWithCall:(FlutterMethodCall*)call result:(FlutterResult)result{

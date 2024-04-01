@@ -22,13 +22,13 @@ import com.appsflyer.share.LinkGenerator;
 import com.appsflyer.share.ShareInviteHelper;
 import com.appsflyer.internal.platform_extension.Plugin;
 import com.appsflyer.internal.platform_extension.PluginInfo;
+import com.appsflyer.attribution.AppsFlyerRequestListener;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -80,7 +80,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private Boolean isFacebookDeferredApplinksEnabled = false;
     private Boolean isSetDisableAdvertisingIdentifiersEnable = false;
     private Map<String, Map<String, Object>> mCallbacks = new HashMap<>();
-    
+
     PluginRegistry.NewIntentListener onNewIntentListener = new PluginRegistry.NewIntentListener() {
         @Override
         public boolean onNewIntent(Intent intent) {
@@ -200,7 +200,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onMethodCall(MethodCall call, Result result) {
-        if(activity == null){
+        if (activity == null) {
             Log.d("AppsFlyer", "Activity isn't attached to the flutter engine");
             return;
         }
@@ -211,6 +211,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                 break;
             case "startSDK":
                 startSDK(call, result);
+                break;
+            case "startSDKwithHandler":
+                startSDKwithHandler(call, result);
                 break;
             case "logEvent":
                 logEvent(call, result);
@@ -311,6 +314,12 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "enableFacebookDeferredApplinks":
                 enableFacebookDeferredApplinks(call, result);
                 break;
+            case "anonymizeUser":
+                anonymizeUser(call, result);
+                break;
+            case "performOnDeepLinking":
+                performOnDeepLinking(call, result);
+                break;
             case "setDisableAdvertisingIdentifiers":
                 setDisableAdvertisingIdentifiers(call, result);
                 break;
@@ -341,9 +350,69 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
     }
 
-    private void startSDK(MethodCall call, Result result) {
-        AppsFlyerLib instance = AppsFlyerLib.getInstance();
+    private void performOnDeepLinking(MethodCall call, Result result) {
+        if (activity != null) {
+            Intent intent = activity.getIntent();
+            if (intent != null) {
+                AppsFlyerLib.getInstance().performOnDeepLinking(intent, mApplication);
+                result.success(null);
+            } else {
+                Log.d("AppsFlyer", "performOnDeepLinking: intent is null!");
+                result.error("NO_INTENT", "The intent is null", null);
+            }
+        } else {
+            Log.d("AppsFlyer", "performOnDeepLinking: activity is null!");
+            result.error("NO_ACTIVITY", "The current activity is null", null);
+        }
+    }
+
+    private void anonymizeUser(MethodCall call, Result result) {
+        boolean shouldAnonymize = (boolean) call.argument("shouldAnonymize");
+        AppsFlyerLib.getInstance().anonymizeUser(shouldAnonymize);
+        result.success(null); // indicate that the method invocation is complete
+    }
+
+    private void startSDKwithHandler(MethodCall call, final Result result) {
+        try {
+            final AppsFlyerLib instance = AppsFlyerLib.getInstance();
+            instance.start(activity, null, new AppsFlyerRequestListener() {
+                @Override
+                public void onSuccess() {
+                    uiThreadHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            mMethodChannel.invokeMethod("onSuccess", null);
+                        }
+                    });
+                }
+
+                @Override
+                public void onError(final int errorCode, final String errorMessage) {
+                    uiThreadHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            HashMap<String, Object> errorDetails = new HashMap<>();
+                            errorDetails.put("errorCode", errorCode);
+                            errorDetails.put("errorMessage", errorMessage);
+                            mMethodChannel.invokeMethod("onError", errorDetails);
+                        }
+                    });
+                }
+            });
+            result.success(null);
+        } catch (Exception e) {
+            result.error("UNEXPECTED_ERROR", e.getMessage(), null);
+        }
+    }
+
+    /**
+     * Initiates the AppsFlyer SDK. The AtomicBoolean isResultSubmitted ensures the result is
+     * only submitted once, preventing the "Reply already submitted" exception in Flutter.
+     */
+    private void startSDK(MethodCall call, final Result result) {
+        final AppsFlyerLib instance = AppsFlyerLib.getInstance();
         instance.start(activity);
+        result.success(null);
     }
 
     public void setConsentData(MethodCall call, Result result) {
@@ -366,6 +435,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
         result.success(null);
     }
+
     private void enableTCFDataCollection(MethodCall call, Result result) {
         boolean shouldCollect = (boolean) call.argument("shouldCollect");
         AppsFlyerLib.getInstance().enableTCFDataCollection(shouldCollect);
@@ -373,13 +443,13 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     }
 
     private void addPushNotificationDeepLinkPath(MethodCall call, Result result) {
-        if(call.arguments != null){
+        if (call.arguments != null) {
             ArrayList<String> depplinkPath = (ArrayList<String>) call.arguments;
             String[] depplinkPathArr = depplinkPath.toArray(new String[depplinkPath.size()]);
             AppsFlyerLib.getInstance().addPushNotificationDeepLinkPath(depplinkPathArr);
         }
         result.success(null);
-    }    
+    }
 
     private void setDisableNetworkData(MethodCall call, Result result) {
         boolean disableNetworkData = (boolean) call.arguments;
@@ -392,10 +462,10 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     }
 
     private void setOutOfStore(MethodCall call, Result result) {
-            String sourceName = (String) call.arguments;
-            if (sourceName != null) {
-                AppsFlyerLib.getInstance().setOutOfStore(sourceName);
-            }
+        String sourceName = (String) call.arguments;
+        if (sourceName != null) {
+            AppsFlyerLib.getInstance().setOutOfStore(sourceName);
+        }
         result.success(null);
     }
 
@@ -410,14 +480,14 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private void setPartnerData(MethodCall call, Result result) {
         String partnerId = (String) call.argument("partnerId");
         HashMap<String, Object> partnerData = (HashMap<String, Object>) call.argument("partnersData");
-        if(partnerData != null){
+        if (partnerData != null) {
             AppsFlyerLib.getInstance().setPartnerData(partnerId, partnerData);
         }
         result.success(null);
     }
 
     private void setSharingFilterForPartners(MethodCall call, Result result) {
-        if(call.arguments != null){
+        if (call.arguments != null) {
             ArrayList<String> partnersInput = (ArrayList<String>) call.arguments;
             String[] partners = partnersInput.toArray(new String[partnersInput.size()]);
             AppsFlyerLib.getInstance().setSharingFilterForPartners(partners);
@@ -437,7 +507,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     private void enableFacebookDeferredApplinks(MethodCall call, Result result) {
         isFacebookDeferredApplinksEnabled = (boolean) call.argument("isFacebookDeferredApplinksEnabled");
-        
+
         if (isFacebookDeferredApplinksEnabled) {
             AppsFlyerLib.getInstance().enableFacebookDeferredApplinks(true);
         } else {
@@ -456,7 +526,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         String errorMsg = null;
         Bundle bundle;
 
-        if(pushPayload == null){
+        if (pushPayload == null) {
             Log.d("AppsFlyer", "Push payload is null");
             return;
         }
@@ -481,13 +551,14 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             errorMsg = "The activity is null. Push payload has not been sent!";
         }
 
-        if(errorMsg != null){
+        if (errorMsg != null) {
             Log.d("AppsFlyer", errorMsg);
             return;
         }
 
         result.success(null);
     }
+
     private static Bundle jsonToBundle(JSONObject jsonObject) throws JSONException {
         Bundle bundle = new Bundle();
         Iterator iter = jsonObject.keys();
@@ -498,6 +569,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
         return bundle;
     }
+
     private void setOneLinkCustomDomain(MethodCall call, Result result) {
         ArrayList<String> brandDomains = (ArrayList<String>) call.arguments;
         String[] brandDomainsArray = brandDomains.toArray(new String[brandDomains.size()]);
@@ -740,11 +812,11 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private void setUserEmails(MethodCall call, Result result) {
         List<String> emails = call.argument("emails");
         int cryptTypeInt = call.argument("cryptType");
-        
+
         AppsFlyerProperties.EmailsCryptType cryptType = null;
-        if (cryptTypeInt == 0){
+        if (cryptTypeInt == 0) {
             cryptType = AppsFlyerProperties.EmailsCryptType.NONE;
-        } else if (cryptTypeInt == 1){
+        } else if (cryptTypeInt == 1) {
             cryptType = AppsFlyerProperties.EmailsCryptType.SHA256;
         } else {
             throw new InvalidParameterException("You can use only NONE or SHA256 for EmailsCryptType on android");

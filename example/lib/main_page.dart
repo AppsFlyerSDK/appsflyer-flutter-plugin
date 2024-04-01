@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -33,13 +34,15 @@ class MainPageState extends State<MainPage> {
         manualStart: true);
     _appsflyerSdk = AppsflyerSdk(options);
 
-    //Setting configuration to the SDK
+    /*
+    Setting configuration to the SDK:
     _appsflyerSdk.setCurrencyCode("USD");
     _appsflyerSdk.enableTCFDataCollection(true);
-    // var forGdpr = AppsFlyerConsent.forGDPRUser(hasConsentForDataUsage: true, hasConsentForAdsPersonalization: true);
-    // _appsflyerSdk.setConsentData(forGdpr);
+    var forGdpr = AppsFlyerConsent.forGDPRUser(hasConsentForDataUsage: true, hasConsentForAdsPersonalization: true);
+    _appsflyerSdk.setConsentData(forGdpr);
     var nonGdpr = AppsFlyerConsent.nonGDPRUser();
     _appsflyerSdk.setConsentData(nonGdpr);
+     */
 
     // Init of AppsFlyer SDK
     await _appsflyerSdk.initSdk(
@@ -86,6 +89,11 @@ class MainPageState extends State<MainPage> {
       });
     });
 
+    //_appsflyerSdk.anonymizeUser(true);
+    if (Platform.isAndroid) {
+      _appsflyerSdk.performOnDeepLinking();
+    }
+
     setState(() {}); // Call setState to rebuild the widget
   }
 
@@ -111,7 +119,14 @@ class MainPageState extends State<MainPage> {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    _appsflyerSdk.startSDK();
+                    _appsflyerSdk.startSDK(
+                      onSuccess: () {
+                        showMessage("AppsFlyer SDK initialized successfully.");
+                      },
+                      onError: (int errorCode, String errorMessage) {
+                        showMessage("Error initializing AppsFlyer SDK: Code $errorCode - $errorMessage");
+                      },
+                    );
                   },
                   child: Text("START SDK"),
                 )
@@ -133,4 +148,14 @@ class MainPageState extends State<MainPage> {
     }
     return logResult;
   }
+
+  void showMessage(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(
+      content:
+      Text(message),
+    ));
+  }
 }
+
+
