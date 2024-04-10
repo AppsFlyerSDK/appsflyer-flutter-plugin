@@ -597,12 +597,18 @@ static BOOL _isSKADEnabled = false;
     id isUDPValue = nil;
     id isDisableCollectASA = nil;
     id isDisableAdvertisingIdentifier = nil;
+    id isManualStart = nil;
     
     devKey = call.arguments[afDevKey];
     appId = call.arguments[afAppId];
     timeToWaitForATTUserAuthorization = [(id)call.arguments[afTimeToWaitForATTUserAuthorization] doubleValue];
-    manualStart = call.arguments[afManualStart];
-    [self setIsManualStart:manualStart];
+    
+    isManualStart = call.arguments[afManualStart];
+    if([isManualStart isKindOfClass:[NSNumber class]]){
+        manualStart = [(NSNumber*)isManualStart boolValue];
+        [self setIsManualStart:manualStart];
+    }
+    
 
     isDebugValue = call.arguments[afIsDebug];
     if ([isDebugValue isKindOfClass:[NSNumber class]]) {
@@ -669,7 +675,7 @@ static BOOL _isSKADEnabled = false;
         [[AppsFlyerLib shared] waitForATTUserAuthorizationWithTimeoutInterval:timeToWaitForATTUserAuthorization];
     }
 
-    if (!manualStart){
+    if (manualStart == NO){
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
         [[AppsFlyerLib shared] start];
     }
