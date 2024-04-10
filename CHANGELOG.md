@@ -1,4 +1,6 @@
 # Versions
+## 6.13.2+1
+- Hotfix for manualStart on iOS
 ## 6.13.2
 - Added new APIs such as `anonymizeUser` , `performOnDeepLinking`
 - Added to the `startSDK` API, `onSuccess` and `onError` callbacks
