@@ -1,6 +1,6 @@
 # Versions
-## 6.14.1
-- Bump version to iOS v6.14.1 and Android v6.14.0
+## 6.14.2
+- Bump version to iOS v6.14.2 and Android v6.14.0
 - Added Privacy Manifest to support Apple latest changes: https://developer.apple.com/documentation/bundleresources/privacy_manifest_files 
 ## 6.13.2+1
 - Hotfix for manualStart on iOS
