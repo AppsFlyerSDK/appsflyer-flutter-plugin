@@ -41,7 +41,9 @@ class AppsflyerSdk {
     Map<String, dynamic> validatedOptions = {};
 
     bool? manualStart = options.manualStart;
-    validatedOptions[AppsflyerConstants.AF_MANUAL_START] = manualStart;
+    if (manualStart != null) {
+      validatedOptions[AppsflyerConstants.AF_MANUAL_START] = manualStart;
+    }
 
     //validations
     dynamic devKey = options.afDevKey;

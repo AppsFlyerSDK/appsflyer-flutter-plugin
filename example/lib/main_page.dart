@@ -93,7 +93,6 @@ class MainPageState extends State<MainPage> {
     if (Platform.isAndroid) {
       _appsflyerSdk.performOnDeepLinking();
     }
-
     setState(() {}); // Call setState to rebuild the widget
   }
 
