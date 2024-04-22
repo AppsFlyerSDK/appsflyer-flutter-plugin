@@ -447,6 +447,7 @@ class AppsflyerSdk {
     inviteLinkParamsMap['referrerName'] = params.referrerName;
     inviteLinkParamsMap['channel'] = params.channel;
     inviteLinkParamsMap['campaign'] = params.campaign;
+    if(params.ttl != null) inviteLinkParamsMap['ttl'] = params.ttl;
 
     return inviteLinkParamsMap;
   }
