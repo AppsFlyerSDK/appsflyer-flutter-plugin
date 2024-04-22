@@ -9,6 +9,7 @@ class AppsFlyerInviteLinkParams {
   final String? customerID;
   final String? baseDeepLink;
   final String? brandDomain;
+  final String? ttl;
   final Map<String?, String?>? customParams;
 
   /// Creates an [AppsFlyerInviteLinkParams] instance.
@@ -22,6 +23,7 @@ class AppsFlyerInviteLinkParams {
     this.brandDomain,
     this.customerID,
     this.referreImageUrl,
+    this.ttl,
     this.customParams
   });
 }
