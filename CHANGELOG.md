@@ -1,4 +1,8 @@
 # Versions
+## 6.14.3
+- Fixed mapOptions issue with manualStart
+- Inherit Privacy Manifest from the native iOS SDK via Cocoapods
+- Bump iOS version to 6.14.3
 ## 6.14.2
 - Bump version to iOS v6.14.2 and Android v6.14.0
 - Added Privacy Manifest to support Apple latest changes: https://developer.apple.com/documentation/bundleresources/privacy_manifest_files 

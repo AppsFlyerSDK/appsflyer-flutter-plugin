@@ -112,6 +112,12 @@ class AppsflyerSdk {
       assert(appInviteOneLink is String);
     }
 
+    if (options[AppsflyerConstants.AF_MANUAL_START] != null) {
+      afOptions[AppsflyerConstants.AF_MANUAL_START] = options[AppsflyerConstants.AF_MANUAL_START];
+    }else{
+      afOptions[AppsflyerConstants.AF_MANUAL_START] = false;
+    }
+
     afOptions[AppsflyerConstants.APP_INVITE_ONE_LINK] = appInviteOneLink;
 
     if (options[AppsflyerConstants.DISABLE_COLLECT_ASA] != null) {
@@ -174,7 +180,7 @@ class AppsflyerSdk {
       validatedOptions?[AppsflyerConstants.AF_UDL] =
           registerOnDeepLinkingCallback;
       //Means that we automatically starting the SDK
-      if (afOptions!.manualStart! == false) {
+      if (validatedOptions?[AppsflyerConstants.AF_MANUAL_START] == false) {
         _isSdkStarted = true;
       }
       return _methodChannel.invokeMethod("initSdk", validatedOptions);
