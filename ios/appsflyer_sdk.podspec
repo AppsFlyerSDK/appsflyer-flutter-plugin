@@ -14,7 +14,7 @@ AppsFlyer is the market leader in mobile advertising attribution & analytics, he
   s.source           = { :git => "https://github.com/AppsFlyerSDK/flutter_appsflyer_sdk.git", :tag => s.version.to_s }
 
 
-  s.ios.deployment_target = '9.0'
+  s.ios.deployment_target = '12.0'
   s.requires_arc = true
   s.static_framework = true
   
