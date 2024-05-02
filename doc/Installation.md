@@ -11,6 +11,10 @@ flutter pub add appsflyer_sdk
 This will download the AppsFlyer flutter plugin to your project, you may observe the changes in your `pubspec.yaml` file.
 
 ---
+## Huawei Referrer
+Huawei Referrer is supported in SDK v6.14.0 and above.
+Due to changes in the Huawei AppGallery store, previous versions of the AppsFlyer SDK are not able to fetch the referrer from the store. [Learn more](https://dev.appsflyer.com/hc/docs/install-android-sdk#huawei-install-referrer).
+---
 
 ## <a id="strictMode">👨‍👩‍👧‍👦  Strict mode for Kids Apps
 

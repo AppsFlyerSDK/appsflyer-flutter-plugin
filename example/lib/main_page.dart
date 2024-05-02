@@ -32,6 +32,16 @@ class MainPageState extends State<MainPage> {
         showDebug: true,
         timeToWaitForATTUserAuthorization: 15,
         manualStart: true);
+    /*
+    final Map? map = {
+      'afDevKey': dotenv.env["DEV_KEY"]!,
+      'appId': dotenv.env["APP_ID"]!,
+      'isDebug': true,
+      'timeToWaitForATTUserAuthorization': 15.0//,
+      //'manualStart': false
+    };
+    _appsflyerSdk = AppsflyerSdk(map);
+     */
     _appsflyerSdk = AppsflyerSdk(options);
 
     /*
