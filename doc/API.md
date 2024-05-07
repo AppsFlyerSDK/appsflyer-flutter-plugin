@@ -129,7 +129,7 @@ import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 
 AppsflyerSdk _appsflyerSdk = AppsflyerSdk({...});
 
-_appsflyerSdk.initSdk(   
+await _appsflyerSdk.initSdk(   
   registerConversionDataCallback: true, 
   registerOnAppOpenAttributionCallback: true, 
   registerOnDeepLinkingCallback: true)

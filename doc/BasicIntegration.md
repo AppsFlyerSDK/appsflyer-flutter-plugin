@@ -37,7 +37,7 @@ Please keep in mind that registering the `registerOnDeepLinkingCallback` will ov
 After we call `initSdk` we can use all of AppsFlyer SDK features.
 
 ```dart
-appsflyerSdk.initSdk(
+await appsflyerSdk.initSdk(
     registerConversionDataCallback: true,
     registerOnAppOpenAttributionCallback: true,
     registerOnDeepLinkingCallback: true
