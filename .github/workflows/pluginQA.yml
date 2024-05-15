@@ -28,9 +28,9 @@ jobs:
           VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
           echo "PACKAGE_VERSION=$VERSION" >> $GITHUB_ENV
 
-      - name: Extract iOS SDK version
+      - name: Extract iOS SDK version from podspec
         run: |
-          IOS_SDK_VERSION=$(cat ios/appsflyer_sdk.podspec | grep '\'AppsFlyerFramework\'' | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
+          IOS_SDK_VERSION=$(grep 's.ios.dependency '"'"'AppsFlyerFramework'"'"',' ios/appsflyer_sdk.podspec | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
           echo "IOS_SDK_VERSION=$IOS_SDK_VERSION" >> $GITHUB_ENV
 
       - name: Extract Android SDK version
