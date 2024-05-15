@@ -12,13 +12,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install CocoaPods
         run: |
           cd example
           flutter pub get
-
-      - name: Install CocoaPods
-        run: sudo gem install cocoapods
+          cd ios
+          sudo gem install cocoapods
 
       - name: Install Pods
         run: |
