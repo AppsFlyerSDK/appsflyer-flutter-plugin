@@ -23,4 +23,12 @@ jobs:
     needs: [ Build-Sample-Apps-Android, Build-Sample-Apps-iOS ]
     runs-on: ubuntu-latest
     steps:
-      #need to add steps
+      - name: Notify with SLack
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+              "version": "6.14.3"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.CI_SLACK_WEBHOOK_URL }}
