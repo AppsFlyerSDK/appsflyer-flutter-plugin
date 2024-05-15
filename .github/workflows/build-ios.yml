@@ -23,14 +23,13 @@ jobs:
         run: |
           cd example
           flutter clean
-          cd ios
-          rm -rf Pods 
-          rm Podfile.lock 
           flutter pub get
+          flutter create --platforms=ios
+          cd ios
           sudo gem install cocoapods
           pod install --repo-update
 
       - name: Build iOS app
-        run: |
+        run: |            
           cd example
           flutter build ios --release --no-codesign
