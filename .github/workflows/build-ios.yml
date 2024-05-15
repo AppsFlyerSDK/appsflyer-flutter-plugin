@@ -19,16 +19,12 @@ jobs:
           flutter-version: 3.19.0
       - run: flutter --version
 
-      - name: Install CocoaPods
+      - name: Install dependencies and CocoaPods
         run: |
           cd example
           flutter pub get
           cd ios
           sudo gem install cocoapods
-
-      - name: Install Pods
-        run: |
-          cd example/ios
           pod install --repo-update
 
       - name: Build iOS app
