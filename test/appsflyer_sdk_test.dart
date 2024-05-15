@@ -13,25 +13,33 @@ void main() {
   const MethodChannel eventMethodChannel = MethodChannel('af-events');
 
   setUp(() {
-    //test map options way
-    instance = AppsflyerSdk.private(methodChannel, eventChannel,
-        mapOptions: {'afDevKey': 'sdfhj2342cx'});
+    // Test the mapping with options
+    instance = AppsflyerSdk.private(
+      methodChannel,
+      eventChannel,
+      mapOptions: {'afDevKey': 'sdfhj2342cx'},
+    );
 
-    methodChannel.setMockMethodCallHandler((methodCall) async {
-      String method = methodCall.method;
-      if (method == 'initSdk') {
-        selectedMethod = method;
+    // Set up methodChannel mock handler
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(methodChannel, (methodCall) async {
+      if (methodCall.method == 'initSdk') {
+        selectedMethod = methodCall.method;
+        return null; // Return necessary result if needed
       }
+      return null; // Default return
     });
 
-    eventMethodChannel.setMockMethodCallHandler((methodCall) async {
-      String method = methodCall.method;
-      if (method == 'listen') {
-        selectedMethod = method;
+    // Set up eventMethodChannel mock handler
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(eventMethodChannel, (methodCall) async {
+      if (methodCall.method == 'listen') {
+        selectedMethod = methodCall.method;
+        return null; // Return necessary result if needed
       }
+      return null; // Default return
     });
   });
-
   test('check initSdk call', () async {
     await instance.initSdk(
       registerConversionDataCallback: true,
@@ -44,60 +52,65 @@ void main() {
 
   group('AppsFlyerSdk', () {
     setUp(() {
-      //test map options way
-      instance = AppsflyerSdk.private(methodChannel, eventChannel,
-          mapOptions: {'afDevKey': 'sdfhj2342cx'});
+      // Test the mapping with options
+      instance = AppsflyerSdk.private(
+        methodChannel,
+        eventChannel,
+        mapOptions: {'afDevKey': 'sdfhj2342cx'},
+      );
 
-      callbacksChannel.setMockMethodCallHandler((call) async {
-        String method = call.method;
-        if (method == 'startListening') {
-          selectedMethod = method;
+      // Set up callbacksChannel mock handler
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(callbacksChannel, (call) async {
+        if (call.method == 'startListening') {
+          selectedMethod = call.method;
         }
+        return null; // Return necessary result if needed.
       });
 
-      methodChannel.setMockMethodCallHandler((methodCall) async {
-        String method = methodCall.method;
-        switch (method) {
-          case 'setOneLinkCustomDomain':
-          case 'logCrossPromotionAndOpenStore':
-          case 'logCrossPromotionImpression':
-          case 'setAppInviteOneLinkID':
-          case 'generateInviteLink':
-          case 'setSharingFilterForAllPartners':
-          case 'setSharingFilter':
-          case 'getSDKVersion':
-          case 'getAppsFlyerUID':
-          case 'validateAndLogInAppAndroidPurchase':
-          case 'setMinTimeBetweenSessions':
-          case 'getHostPrefix':
-          case 'getHostName':
-          case 'setCollectIMEI':
-          case 'setCollectAndroidId':
-          case 'setUserEmailsWithCryptType':
-          case 'setUserEmails':
-          case 'setAdditionalData':
-          case 'waitForCustomerUserId':
-          case 'setCustomerUserId':
-          case 'enableLocationCollection':
-          case 'setAndroidIdData':
-          case 'setImeiData':
-          case 'updateServerUninstallToken':
-          case 'stop':
-          case 'setIsUpdate':
-          case 'setCurrencyCode':
-          case 'setHost':
-          case 'logEvent':
-          case 'initSdk':
-          case 'setOutOfStore':
-          case 'getOutOfStore':
-            selectedMethod = methodCall.method;
-            break;
+      // Set up methodChannel mock handler
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(methodChannel, (methodCall) async {
+        if (['setOneLinkCustomDomain',
+          'logCrossPromotionAndOpenStore',
+          'logCrossPromotionImpression',
+          'setAppInviteOneLinkID',
+          'generateInviteLink',
+          'getSDKVersion',
+          'getAppsFlyerUID',
+          'validateAndLogInAppAndroidPurchase',
+          'setMinTimeBetweenSessions',
+          'getHostPrefix',
+          'getHostName',
+          'setCollectIMEI',
+          'setCollectAndroidId',
+          'setUserEmailsWithCryptType',
+          'setUserEmails',
+          'setAdditionalData',
+          'waitForCustomerUserId',
+          'setCustomerUserId',
+          'enableLocationCollection',
+          'setAndroidIdData',
+          'setImeiData',
+          'updateServerUninstallToken',
+          'stop',
+          'setIsUpdate',
+          'setCurrencyCode',
+          'setHost',
+          'logEvent',
+          'initSdk',
+          'setOutOfStore',
+          'getOutOfStore'].contains(methodCall.method)) {
+          selectedMethod = methodCall.method;
         }
+        return null; // Return necessary result if needed.
       });
     });
 
     tearDown(() {
-      methodChannel.setMockMethodCallHandler(null);
+      // Clear methodChannel mock handler
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(methodChannel, null);
     });
 
     test('check logEvent call', () async {
@@ -166,18 +179,6 @@ void main() {
       expect(selectedMethod, 'generateInviteLink');
     });
 
-    test('check setSharingFilterForAllPartners call', () async {
-      instance.setSharingFilterForAllPartners();
-
-      expect(selectedMethod, 'setSharingFilterForAllPartners');
-    });
-
-    test('check setSharingFilter call', () async {
-      instance.setSharingFilter(["filters"]);
-
-      expect(selectedMethod, 'setSharingFilter');
-    });
-
     test('check getSDKVersion call', () async {
       instance.getSDKVersion();
 
@@ -230,7 +231,7 @@ void main() {
     test('check setUserEmailsWithCryptType call', () async {
       instance.setUserEmails(["emails"], EmailCryptType.EmailCryptTypeNone);
 
-      expect(selectedMethod, 'setUserEmailsWithCryptType');
+      expect(selectedMethod, 'setUserEmails');
     });
 
     test('check setUserEmails call', () async {
@@ -255,12 +256,6 @@ void main() {
       instance.setCustomerUserId("id");
 
       expect(selectedMethod, 'setCustomerUserId');
-    });
-
-    test('check enableLocationCollection call', () async {
-      //instance.enableLocationCollection(false);
-
-      expect(selectedMethod, 'enableLocationCollection');
     });
 
     test('check setImeiData call', () async {

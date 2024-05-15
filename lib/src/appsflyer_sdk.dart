@@ -1,6 +1,7 @@
 part of appsflyer_sdk;
 
 class AppsflyerSdk {
+  // ignore: unused_field
   EventChannel _eventChannel;
   static AppsflyerSdk? _instance;
   final MethodChannel _methodChannel;

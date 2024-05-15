@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'dart:io';
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 import 'package:flutter/material.dart';
@@ -62,7 +63,7 @@ class MainPageState extends State<MainPage> {
 
     // Conversion data callback
     _appsflyerSdk.onInstallConversionData((res) {
-      print("onInstallConversionData res: " + res.toString());
+      log("onInstallConversionData res: $res");
       setState(() {
         _gcd = res;
       });
@@ -70,7 +71,7 @@ class MainPageState extends State<MainPage> {
 
     // App open attribution callback
     _appsflyerSdk.onAppOpenAttribution((res) {
-      print("onAppOpenAttribution res: " + res.toString());
+      log("onAppOpenAttribution res: $res");
       setState(() {
         _deepLinkData = res;
       });
@@ -80,20 +81,20 @@ class MainPageState extends State<MainPage> {
     _appsflyerSdk.onDeepLinking((DeepLinkResult dp) {
       switch (dp.status) {
         case Status.FOUND:
-          print(dp.deepLink?.toString());
-          print("deep link value: ${dp.deepLink?.deepLinkValue}");
+          log(dp.deepLink!.toString());
+          log("deep link value: ${dp.deepLink?.deepLinkValue}");
           break;
         case Status.NOT_FOUND:
-          print("deep link not found");
+          log("deep link not found");
           break;
         case Status.ERROR:
-          print("deep link error: ${dp.error}");
+          log("deep link error: ${dp.error}");
           break;
         case Status.PARSE_ERROR:
-          print("deep link status parsing error");
+          log("deep link status parsing error");
           break;
       }
-      print("onDeepLinking res: " + dp.toString());
+      log("onDeepLinking res: $dp");
       setState(() {
         _deepLinkData = dp.toJson();
       });
@@ -110,7 +111,7 @@ class MainPageState extends State<MainPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('AppsFlyer SDK example app'),
+        title: const Text('AppsFlyer SDK example app'),
         centerTitle: true,
         backgroundColor: Colors.green,
       ),
@@ -137,7 +138,7 @@ class MainPageState extends State<MainPage> {
                       },
                     );
                   },
-                  child: Text("START SDK"),
+                  child: const Text("START SDK"),
                 )
               ],
             ),
@@ -151,9 +152,9 @@ class MainPageState extends State<MainPage> {
     bool? logResult;
     try {
       logResult = await _appsflyerSdk.logEvent(eventName, eventValues);
-      print("Event logged");
+      log("Event logged");
     } catch (e) {
-      print("Failed to log event: $e");
+      log("Failed to log event: $e");
     }
     return logResult;
   }

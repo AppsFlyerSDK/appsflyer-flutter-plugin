@@ -50,13 +50,13 @@ enum Status {
 
 extension ParseStatusToString on Status {
   String toShortString() {
-    return this.toString().split('.').last;
+    return toString().split('.').last;
   }
 }
 
 extension ParseErrorToString on Error {
   String toShortString() {
-    return this.toString().split('.').last;
+    return toString().split('.').last;
   }
 }
 

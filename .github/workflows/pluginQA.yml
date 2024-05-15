@@ -1,0 +1,26 @@
+name: Plugin QA
+
+on:
+  push:
+    branches:
+      - releases/[0-9].x.x/[0-9].[0-9]+.x/[0-9].[0-9]+.[0-9]+-rc[0-9]+
+      - testWorkflow
+      - CI-Actions
+
+jobs:
+  Run-Unit-Tests:
+    uses: ./.github/workflows/runTest.yml
+
+  Build-Sample-Apps-Android:
+    needs: [ Run-Unit-Tests ]
+    uses: ./.github/workflows/build-android.yml
+
+  Build-Sample-Apps-iOS:
+    needs: [ Run-Unit-Tests ]
+    uses: ./.github/workflows/build-ios.yml
+
+  Deploy-To-QA:
+    needs: [ Build-Sample-Apps-Android, Build-Sample-Apps-iOS ]
+    runs-on: ubuntu-latest
+    steps:
+      #need to add steps
