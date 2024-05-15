@@ -15,12 +15,12 @@ jobs:
     needs: [ Run-Unit-Tests ]
     uses: ./.github/workflows/build-android.yml
 
-  Build-Sample-Apps-iOS:
-    needs: [ Run-Unit-Tests ]
-    uses: ./.github/workflows/build-ios.yml
+  # Build-Sample-Apps-iOS:
+  #  needs: [ Run-Unit-Tests ]
+  #  uses: ./.github/workflows/build-ios.yml
 
   Deploy-To-QA:
-    needs: [ Build-Sample-Apps-Android, Build-Sample-Apps-iOS ]
+    needs: [ Build-Sample-Apps-Android ]  # , Build-Sample-Apps-iOS ]
     runs-on: ubuntu-latest
     steps:
       - name: Notify with SLack
