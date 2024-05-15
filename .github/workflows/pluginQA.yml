@@ -30,7 +30,7 @@ jobs:
 
       - name: Extract iOS SDK version
         run: |
-          IOS_SDK_VERSION=$(cat react-native-appsflyer.podspec | grep '\'AppsFlyerFramework\'' | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
+          IOS_SDK_VERSION=$(cat ios/appsflyer_sdk.podspec | grep '\'AppsFlyerFramework\'' | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
           echo "IOS_SDK_VERSION=$IOS_SDK_VERSION" >> $GITHUB_ENV
 
       - name: Extract Android SDK version
