@@ -26,4 +26,5 @@ jobs:
 
       - name: Building IPA
         run: |
+          cd example/ios
           xcodebuild build -scheme Runner -workspace Runner.xcworkspace -destination 'platform=iOS Simulator,name=iPhone 15'
