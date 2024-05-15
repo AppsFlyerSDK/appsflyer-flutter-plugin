@@ -22,4 +22,6 @@ jobs:
       - run: flutter pub get
 
       - name: Building IPA
-        run: flutter build ipa
+        run: |
+          cd example
+          flutter build ipa
