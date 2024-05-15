@@ -17,11 +17,21 @@ jobs:
         with:
           channel: stable
           flutter-version: 3.19.0
-      - run: flutter --version
 
-      - run: flutter pub get
+      - name: Flutter version
+        run: flutter --version
 
-      - name: Building IPA
+      - name: Install Flutter dependencies
         run: |
           cd example
-          flutter build ipa
+          flutter pub get
+
+      - name: Install CocoaPods dependencies
+        run: |
+          cd example/ios 
+          pod install --repo-update
+
+      - name: Build iOS app (testing build)
+        run: |
+          cd example 
+          flutter build ios --debug --no-codesign
