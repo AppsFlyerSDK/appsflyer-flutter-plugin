@@ -24,7 +24,6 @@ jobs:
           cd example
           flutter clean
           flutter pub get
-          flutter create --project-name=Runner --org=com.example --platforms=ios --ios-language=objc
           cd ios
           sudo gem install cocoapods
           pod install --repo-update
