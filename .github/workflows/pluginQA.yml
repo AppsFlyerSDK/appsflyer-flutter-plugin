@@ -23,12 +23,30 @@ jobs:
     needs: [ Build-Sample-Apps-Android ]  # , Build-Sample-Apps-iOS ]
     runs-on: ubuntu-latest
     steps:
+      - name: Extract version from pubspec.yaml
+        run: |
+          VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
+          echo "PACKAGE_VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Extract iOS SDK version
+        run: |
+          IOS_SDK_VERSION=$(cat react-native-appsflyer.podspec | grep '\'AppsFlyerFramework\'' | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
+          echo "IOS_SDK_VERSION=$IOS_SDK_VERSION" >> $GITHUB_ENV
+
+      - name: Extract Android SDK version
+        run: |
+          ANDROID_SDK_VERSION=$(cat android/build.gradle | grep 'com.appsflyer:af-android-sdk' | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
+          echo "ANDROID_SDK_VERSION=$ANDROID_SDK_VERSION" >> $GITHUB_ENV
       - name: Notify with SLack
         uses: slackapi/slack-github-action@v1.23.0
         with:
           payload: |
             {
-              "version": "6.14.3"
+              "version": "${{ env.PACKAGE_VERSION }}",
+              "branch" : "${{ github.ref }}",
+              "github-link" : "https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin",
+              "iOS-version": "${{ env.IOS_SDK_VERSION }}",
+              "android-version": "${{ env.ANDROID_SDK_VERSION }}"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.CI_SLACK_WEBHOOK_URL }}
