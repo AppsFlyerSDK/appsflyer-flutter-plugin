@@ -22,9 +22,10 @@ jobs:
       - name: Install dependencies and CocoaPods
         run: |
           cd example
-          flutter pub get
+          flutter clean
           cd ios
           sudo gem install cocoapods
+          flutter pub get
           pod install --repo-update
 
       - name: Build iOS app
