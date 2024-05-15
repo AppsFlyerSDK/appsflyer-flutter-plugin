@@ -23,7 +23,8 @@ jobs:
         run: |
           cd example
           flutter clean
-          flutter pub get
+          rm -rf ios
+          flutter create --platforms=ios
           cd ios
           sudo gem install cocoapods
           pod install --repo-update
