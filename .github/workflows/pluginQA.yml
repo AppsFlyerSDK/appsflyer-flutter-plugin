@@ -23,22 +23,29 @@ jobs:
     needs: [ Build-Sample-Apps-Android ]  # , Build-Sample-Apps-iOS ]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Extract version from pubspec.yaml
         run: |
           VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
           echo "PACKAGE_VERSION=$VERSION"
+        shell: bash
 
       - name: Extract iOS SDK version from podspec
         run: |
           cd ios
           ios_sdk_version=$(grep "s.ios.dependency 'AppsFlyerFramework'" appsflyer_sdk.podspec | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
           echo "IOS_SDK_VERSION=$ios_sdk_version"
+        shell: bash
 
       - name: Extract Android SDK version
         run: |
           cd android
           ANDROID_SDK_VERSION=$(cat build.gradle | grep 'com.appsflyer:af-android-sdk' | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+') 
           echo "ANDROID_SDK_VERSION=$ANDROID_SDK_VERSION"
+        shell: bash
+
       - name: Notify with SLack
         uses: slackapi/slack-github-action@v1.23.0
         with:
