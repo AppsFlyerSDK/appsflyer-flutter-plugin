@@ -29,21 +29,21 @@ jobs:
       - name: Extract version from pubspec.yaml
         run: |
           VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
-          echo "PACKAGE_VERSION=$VERSION"
+          echo "PACKAGE_VERSION=$VERSION" $GITHUB_ENV
         shell: bash
 
       - name: Extract iOS SDK version from podspec
         run: |
           cd ios
           ios_sdk_version=$(grep "s.ios.dependency 'AppsFlyerFramework'" appsflyer_sdk.podspec | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
-          echo "IOS_SDK_VERSION=$ios_sdk_version"
+          echo "IOS_SDK_VERSION=$ios_sdk_version" >> $GITHUB_ENV
         shell: bash
 
       - name: Extract Android SDK version
         run: |
           cd android
-          ANDROID_SDK_VERSION=$(cat build.gradle | grep 'com.appsflyer:af-android-sdk' | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+') 
-          echo "ANDROID_SDK_VERSION=$ANDROID_SDK_VERSION"
+          android_sdk_version=$(cat build.gradle | grep 'com.appsflyer:af-android-sdk' | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+') 
+          echo "ANDROID_SDK_VERSION=android_sdk_version" $GITHUB_ENV
         shell: bash
 
       - name: Notify with SLack
@@ -51,11 +51,11 @@ jobs:
         with:
           payload: |
             {
-              "version": "${{ env.PACKAGE_VERSION }}",
+              "version": "${{ env.VERSION }}",
               "branch" : "${{ github.ref }}",
               "github-link" : "https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin",
               "iOS-version": "${{ env.ios_sdk_version }}",
-              "android-version": "${{ env.ANDROID_SDK_VERSION }}"
+              "android-version": "${{ env.android_sdk_version }}"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.CI_SLACK_WEBHOOK_URL }}
