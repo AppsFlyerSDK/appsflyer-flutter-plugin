@@ -15,10 +15,9 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.3.10'
-      - run: |
-          git config --global --add safe.directory /opt/hostedtoolcache/flutter/stable-3.3.10-x64
-          flutter build bundle
+          channel: stable
+          flutter-version: 3.19.0
+      - run: flutter --version
 
       - name: Install dependencies
         run: flutter pub get
