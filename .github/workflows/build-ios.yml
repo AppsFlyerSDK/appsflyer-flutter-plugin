@@ -21,11 +21,8 @@ jobs:
 
       - name: Install dependencies and CocoaPods
         run: |
-          cd example
-          flutter clean
-          rm -rf ios
-          flutter create --platforms=ios
-          cd ios
+          cd example/ios
+          flutter pub get
           sudo gem install cocoapods
           pod install --repo-update
 
