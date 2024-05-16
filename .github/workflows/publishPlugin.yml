@@ -1,0 +1,34 @@
+name: Publish Package
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  tag-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Extract version from pubspec.yaml
+        run: |
+          VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
+          echo "PACKAGE_VERSION=$VERSION" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Create Release Tag
+        run: |
+          TAG=v${{ steps.extract_version.outputs.PACKAGE_VERSION }}
+          echo "Creating new tag $TAG"
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag $TAG
+          git push origin $TAG
+
+      - name: Publish to pub.dev
+        run: flutter pub publish --dry-run
+        env:
+          PUB_CREDENTIALS: ${{ secrets.PUB_CREDENTIALS }}
