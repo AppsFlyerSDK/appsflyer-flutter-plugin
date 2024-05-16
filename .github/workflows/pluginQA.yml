@@ -54,7 +54,9 @@ jobs:
           $0 ~ "^## " ver { printing = 1; next; }
           printing { print; }
           ' CHANGELOG.md)
+          echo "PACKAGE_CHANGES<<EOF" >> $GITHUB_ENV
           echo "$PACKAGE_CHANGES" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
         shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
 
       - name: Notify with SLack
