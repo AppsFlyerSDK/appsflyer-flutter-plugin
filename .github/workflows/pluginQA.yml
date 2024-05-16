@@ -68,7 +68,7 @@ jobs:
               "branch" : "${{ github.ref }}",
               "github-link" : "https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin",
               "iOS-version": "${{ env.IOS_SDK_VERSION }}",
-              "android-version": "${{ env.ANDROID_SDK_VERSION }}"
+              "android-version": "${{ env.ANDROID_SDK_VERSION }}",
               "changelog" : "${{ env.PACKAGE_CHANGES }}"
             }
         env:
