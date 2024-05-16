@@ -48,7 +48,7 @@ jobs:
         shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
 
       - name: Notify with Slack
-        uses: slackapi/slack-github-action@v1.26.0
+        uses: slackapi/slack-github-action@v1.23.0
         with:
           payload: |
             {
