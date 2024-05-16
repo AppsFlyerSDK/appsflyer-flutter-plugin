@@ -54,8 +54,11 @@ jobs:
           $0 ~ "^## " ver { printing = 1; next; }
           printing { print; }
           ' CHANGELOG.md)
+          PACKAGE_CHANGES="${PACKAGE_CHANGES//'%'/'%25'}"
+          PACKAGE_CHANGES="${PACKAGE_CHANGES//$'\n'/'%0A'}"
+          PACKAGE_CHANGES="${PACKAGE_CHANGES//$'\r'/'%0D'}"
           echo "PACKAGE_CHANGES=$PACKAGE_CHANGES" >> $GITHUB_ENV
-        shell: bash
+        shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
 
       - name: Notify with SLack
         uses: slackapi/slack-github-action@v1.23.0
