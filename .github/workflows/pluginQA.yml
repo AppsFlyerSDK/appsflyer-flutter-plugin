@@ -54,37 +54,21 @@ jobs:
           $0 ~ "^## " ver { printing = 1; next; }
           printing { print; }
           ' CHANGELOG.md)
-          PACKAGE_CHANGES="${PACKAGE_CHANGES//'%'/'%25'}"
-          PACKAGE_CHANGES="${PACKAGE_CHANGES//$'\n'/'%0A'}"
-          PACKAGE_CHANGES="${PACKAGE_CHANGES//$'\r'/'%0D'}"
-          echo "PACKAGE_CHANGES=$PACKAGE_CHANGES" >> $GITHUB_ENV
+          echo "CHANGES:" >> $GITHUB_ENV
+          echo "$PACKAGE_CHANGES" >> $GITHUB_ENV
         shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
 
-      - name: Prepare payload for Slack notification
-        id: slack_payload
-        run: |
-          changelog=$(echo "${{ env.PACKAGE_CHANGES }}" | jq -aRs .)
-          json_payload=$(jq -n \
-                        --arg ver "${{ env.IOS_SDK_VERSION }}" \
-                        --arg branch "${{ github.ref }}" \
-                        --arg link "https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin" \
-                        --arg ios_version "${{ env.IOS_SDK_VERSION }}" \
-                        --arg android_version "${{ env.ANDROID_SDK_VERSION }}" \
-                        --arg changelog "$changelog" \
-                        '{
-                          "version": $ver,
-                          "branch" : $branch,
-                          "github-link" : $link,
-                          "iOS-version": $ios_version,
-                          "android-version": $android_version,
-                          "changelog" : $changelog
-                        }')
-          echo ::set-output name=payload::$json_payload
-        shell: bash
-
-      - name: Send notification to Slack
+      - name: Notify with SLack
         uses: slackapi/slack-github-action@v1.23.0
         with:
-          payload: ${{ steps.slack_payload.outputs.payload }}
+          payload: |
+            {
+              "version": "${{ env.PACKAGE_VERSION }}",
+              "branch" : "${{ github.ref }}",
+              "github-link" : "https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin",
+              "iOS-version": "${{ env.IOS_SDK_VERSION }}",
+              "android-version": "${{ env.ANDROID_SDK_VERSION }}"
+              "changelog" : "${{ env.PACKAGE_CHANGES }}"
+            }
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.CI_SLACK_WEBHOOK_URL }}
