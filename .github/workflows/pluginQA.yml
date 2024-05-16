@@ -48,12 +48,14 @@ jobs:
 
       - name: Extract CHANGELOG latest changes
         run: |
-          PACKAGE_CHANGES=$(awk -v ver="$PACKAGE_VERSION" '
+          PACKAGE_CHANGES=$(awk -v ver="$PACKAGE_VERSION" -v ORS=', ' '
           BEGIN { printing = 0; }
           printing && /^## / { exit; }
           $0 ~ "^## " ver { printing = 1; next; }
-          printing { sub(/^-\s*/, ""); print; }
+          printing && NF { sub(/^-\s*/, ""); print; }
+          END { printf "\n" } # To ensure it ends with a newline
           ' CHANGELOG.md)
+          PACKAGE_CHANGES="${PACKAGE_CHANGES%', '}"
           echo "PACKAGE_CHANGES<<EOF" >> $GITHUB_ENV
           echo "$PACKAGE_CHANGES" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
