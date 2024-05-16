@@ -12,9 +12,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       - name: Extract version from pubspec.yaml
         run: |
           VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
@@ -50,8 +47,8 @@ jobs:
           echo "EOF" >> $GITHUB_ENV
         shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
 
-      - name: Notify with SLack
-        uses: slackapi/slack-github-action@v1.23.0
+      - name: Notify with Slack
+        uses: slackapi/slack-github-action@v1.26.0
         with:
           payload: |
             {
