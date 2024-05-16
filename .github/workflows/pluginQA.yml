@@ -48,7 +48,7 @@ jobs:
 
       - name: Extract CHANGELOG latest changes
         run: |
-          PACKAGE_CHANGES=$(awk -v ver="${{ env.PACKAGE_VERSION }}" '
+          PACKAGE_CHANGES=$(awk -v ver="$PACKAGE_VERSION" '
           BEGIN { printing = 0; }
           printing && /^## / { exit; }
           $0 ~ "^## " ver { printing = 1; next; }
