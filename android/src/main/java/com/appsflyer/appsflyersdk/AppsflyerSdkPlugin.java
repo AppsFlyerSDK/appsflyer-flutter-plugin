@@ -1039,8 +1039,12 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onDetachedFromActivity() {
+        AppsFlyerLib.getInstance().unregisterConversionListener();
         activity = null;
         saveCallbacks = true;
+        mContext = null;
+        mApplication = null;
+        mIntent = null;
     }
 
 }
