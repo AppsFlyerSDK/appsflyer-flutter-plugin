@@ -1008,6 +1008,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     @Override
     public void onAttachedToEngine(FlutterPluginBinding binding) {
         onAttachedToEngine(binding.getApplicationContext(), binding.getBinaryMessenger());
+        AppsFlyerPurchaseConnector.INSTANCE.onAttachedToEngine(binding);
     }
 
     @Override
@@ -1016,6 +1017,8 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         mMethodChannel = null;
         mEventChannel.setStreamHandler(null);
         mEventChannel = null;
+        AppsFlyerPurchaseConnector.INSTANCE.onDetachedFromEngine(binding);
+
     }
 
     @Override

@@ -64,4 +64,5 @@ You can read more about it [here](https://dev.appsflyer.com/hc/docs/install-andr
 - [Advanced APIs](/doc/AdvancedAPI.md)
 - [Testing the integration](/doc/Testing.md)
 - [APIs](/doc/API.md)
+- [Purchase Connector](/doc/PurchaseConnector.md)
 - [Sample App](/example)
