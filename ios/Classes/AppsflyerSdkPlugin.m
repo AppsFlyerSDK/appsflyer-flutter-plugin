@@ -1,9 +1,10 @@
 #import "AppsflyerSdkPlugin.h"
 #import "AppsFlyerStreamHandler.h"
 #import <objc/message.h>
+
+#ifdef ENABLE_PURCHASE_CONNECTOR
 #import "appsflyer_sdk/appsflyer_sdk-Swift.h"
-
-
+#endif
 typedef void (*bypassDidFinishLaunchingWithOption)(id, SEL, NSInteger);
 typedef void (*bypassDisableAdvertisingIdentifier)(id, SEL, BOOL);
 typedef void (*bypassWaitForATTUserAuthorization)(id, SEL, NSTimeInterval);
