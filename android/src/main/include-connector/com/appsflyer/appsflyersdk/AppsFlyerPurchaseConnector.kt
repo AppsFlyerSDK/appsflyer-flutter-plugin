@@ -59,7 +59,7 @@ object AppsFlyerPurchaseConnector : FlutterPlugin, MethodChannel.MethodCallHandl
             }
         }
     }
-    private fun MethodChannel?.invokeMethodOnUI(method: String, args: Any) = this?.let {
+    private fun MethodChannel?.invokeMethodOnUI(method: String, args: Any?) = this?.let {
         handler.post {
             it.invokeMethod(method, args)
         }
