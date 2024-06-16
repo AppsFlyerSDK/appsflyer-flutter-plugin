@@ -135,7 +135,9 @@ extension PurchaseConnectorPlugin:  PurchaseRevenueDelegate {
             "validationInfo": validationInfo,
             "error" : error?.asDictionary
         ]
-        methodChannel?.invokeMethod("didReceivePurchaseRevenueValidationInfo", arguments: resMap.toJSONString())
+        DispatchQueue.main.async {
+            self.methodChannel?.invokeMethod("didReceivePurchaseRevenueValidationInfo", arguments: resMap.toJSONString())
+        }
     }
 }
 
