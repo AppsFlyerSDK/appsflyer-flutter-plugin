@@ -1,10 +1,14 @@
 package com.appsflyer.appsflyersdk
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.lang.ref.WeakReference
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * A Flutter plugin that establishes a bridge between the Flutter appsflyer SDK and the Native Android Purchase Connector.
@@ -22,19 +26,20 @@ object AppsFlyerPurchaseConnector : FlutterPlugin, MethodChannel.MethodCallHandl
     private var methodChannel: MethodChannel? = null
     private var contextRef: WeakReference<Context>? = null
     private var connectorWrapper: ConnectorWrapper? = null
+    private val handler by lazy { Handler(Looper.getMainLooper()) }
 
     private val arsListener: MappedValidationResultListener by lazy {
         object : MappedValidationResultListener {
             override fun onFailure(result: String, error: Throwable?) {
                 val resMap = mapOf("result" to result, "error" to error?.toMap())
-                methodChannel?.invokeMethod(
+                methodChannel?.invokeMethodOnUI(
                     "SubscriptionPurchaseValidationResultListener:onFailure",
                     resMap
                 )
             }
 
             override fun onResponse(p0: Map<String, Any>?) {
-                methodChannel?.invokeMethod(
+                methodChannel?.invokeMethodOnUI(
                     "SubscriptionPurchaseValidationResultListener:onResponse",
                     p0
                 )
@@ -46,14 +51,20 @@ object AppsFlyerPurchaseConnector : FlutterPlugin, MethodChannel.MethodCallHandl
         object : MappedValidationResultListener {
             override fun onFailure(result: String, error: Throwable?) {
                 val resMap = mapOf("result" to result, "error" to error?.toMap())
-                methodChannel?.invokeMethod("InAppValidationResultListener:onFailure", resMap)
+                methodChannel?.invokeMethodOnUI("InAppValidationResultListener:onFailure", resMap)
             }
 
             override fun onResponse(p0: Map<String, Any>?) {
-                methodChannel?.invokeMethod("InAppValidationResultListener:onResponse", p0)
+                methodChannel?.invokeMethodOnUI("InAppValidationResultListener:onResponse", p0)
             }
         }
     }
+    private fun MethodChannel?.invokeMethodOnUI(method: String, args: Any) = this?.let {
+        handler.post {
+            it.invokeMethod(method, args)
+        }
+    }
+
 
     /**
      * Called when the plugin is attached to the Flutter engine.
@@ -160,6 +171,7 @@ object AppsFlyerPurchaseConnector : FlutterPlugin, MethodChannel.MethodCallHandl
             result.error("404", "Connector not configured, did you called `configure` first?", null)
         }
     }
+
     /**
      * Converts a [Throwable] to a Map that can be returned to Flutter.
      *
