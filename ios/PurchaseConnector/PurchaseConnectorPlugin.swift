@@ -91,6 +91,7 @@ import Flutter
         connector!.autoLogPurchaseRevenue = options
         logOptions = options
         connector!.isSandbox = sandbox
+        connector!.purchaseRevenueDelegate = self
         
         /// Report a successful operation back to Dart.
         result(nil)
