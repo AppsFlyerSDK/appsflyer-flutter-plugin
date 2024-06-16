@@ -135,7 +135,7 @@ extension PurchaseConnectorPlugin:  PurchaseRevenueDelegate {
             "validationInfo": validationInfo,
             "error" : error?.asDictionary
         ]
-        methodChannel?.invokeMethod("didReceivePurchaseRevenueValidationInfo", arguments: resMap)
+        methodChannel?.invokeMethod("didReceivePurchaseRevenueValidationInfo", arguments: resMap.toJSONString())
     }
 }
 
@@ -149,4 +149,19 @@ extension Error {
         }
         return errorMap
     }
+}
+
+extension Dictionary {
+       
+   var jsonData: Data? {
+      return try? JSONSerialization.data(withJSONObject: self, options: [.prettyPrinted])
+   }
+       
+   func toJSONString() -> String? {
+      if let jsonData = jsonData {
+         let jsonString = String(data: jsonData, encoding: .utf8)
+         return jsonString
+      }
+      return nil
+   }
 }

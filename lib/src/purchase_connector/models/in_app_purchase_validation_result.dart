@@ -20,3 +20,14 @@ class InAppPurchaseValidationResult {
   Map<String, dynamic> toJson() => _$InAppPurchaseValidationResultToJson(this);
 
 }
+
+@JsonSerializable()
+class InAppPurchaseValidationResultMap{
+  Map<String, InAppPurchaseValidationResult> result;
+
+  InAppPurchaseValidationResultMap(this.result);
+  factory InAppPurchaseValidationResultMap.fromJson(Map<String, dynamic> json) => _$InAppPurchaseValidationResultMapFromJson(json);
+
+  Map<String, dynamic> toJson() => _$InAppPurchaseValidationResultMapToJson(this);
+
+}

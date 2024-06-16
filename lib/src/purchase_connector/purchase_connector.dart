@@ -1,9 +1,7 @@
 part of appsflyer_sdk;
 
-
 /// Interface representing a purchase connector.
 abstract class PurchaseConnector {
-
   /// Starts observing transactions.
   void startObservingTransactions();
 
@@ -40,13 +38,11 @@ abstract class PurchaseConnector {
       _PurchaseConnectorImpl(config: config);
 }
 
-
 /// The implementation of the PurchaseConnector.
 ///
 /// This class is responsible for establishing a connection with Appsflyer purchase connector,
 /// starting/stopping observing transactions, setting listeners for various validation results.
 class _PurchaseConnectorImpl implements PurchaseConnector {
-
   /// Singleton instance of the PurchaseConnectorImpl.
   static _PurchaseConnectorImpl? _instance;
 
@@ -55,12 +51,16 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
 
   /// Response handler for SubscriptionValidationResult (Android).
   OnResponse<SubscriptionValidationResult>? _arsOnResponse;
+
   /// Failure handler for SubscriptionValidationResult (Android).
   OnFailure? _arsOnFailure;
+
   /// Response handler for InAppPurchaseValidationResult (Android).
   OnResponse<InAppPurchaseValidationResult>? _viapOnResponse;
+
   /// Failure handler for InAppPurchaseValidationResult (Android).
   OnFailure? _viapOnFailure;
+
   /// Callback handler for receiving validation info for iOS.
   DidReceivePurchaseRevenueValidationInfo?
       _didReceivePurchaseRevenueValidationInfo;
@@ -146,28 +146,24 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
 
   /// Method call handler for different operations. Called by the _methodChannel.
   Future<void> _methodCallHandler(MethodCall call) async {
+    dynamic callMap = jsonDecode(call.arguments);
     switch (call.method) {
       case AppsflyerConstants
             .SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_RESPONSE:
-        _handleSubscriptionPurchaseValidationResultListenerOnResponse(
-            call.arguments as Map<String, Map<String, dynamic>>?);
+        _handleSubscriptionPurchaseValidationResultListenerOnResponse(callMap);
         break;
       case AppsflyerConstants
             .SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_FAILURE:
-        _handleSubscriptionPurchaseValidationResultListenerOnFailure(
-            call.arguments as Map<String, dynamic>);
+        _handleSubscriptionPurchaseValidationResultListenerOnFailure(callMap);
         break;
       case AppsflyerConstants.IN_APP_VALIDATION_RESULT_LISTENER_ON_RESPONSE:
-        _handleInAppValidationResultListenerOnResponse(
-            call.arguments as Map<String, Map<String, dynamic>>?);
+        _handleInAppValidationResultListenerOnResponse(callMap);
         break;
       case AppsflyerConstants.IN_APP_VALIDATION_RESULT_LISTENER_ON_FAILURE:
-        _handleInAppValidationResultListenerOnFailure(
-            call.arguments as Map<String, dynamic>);
+        _handleInAppValidationResultListenerOnFailure(callMap);
         break;
       case AppsflyerConstants.DID_RECEIVE_PURCHASE_REVENUE_VALIDATION_INFO:
-        _handleDidReceivePurchaseRevenueValidationInfo(
-            call.arguments as Map<String, dynamic>);
+        _handleDidReceivePurchaseRevenueValidationInfo(callMap);
         break;
       default:
         throw ArgumentError("Method not found.");
@@ -178,11 +174,11 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
   ///
   /// [callbackData] is the callback data expected in the form of a map.
   void _handleSubscriptionPurchaseValidationResultListenerOnResponse(
-      Map<String, Map<String, dynamic>>? callbackData) {
+      dynamic callbackData) {
     _handleValidationResultListenerOnResponse<SubscriptionValidationResult>(
-      callbackData,
+      {"result": callbackData},
       _arsOnResponse,
-      (value) => SubscriptionValidationResult.fromJson(value),
+      (value) => SubscriptionValidationResultMap.fromJson(value).result,
     );
   }
 
@@ -190,14 +186,13 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
   ///
   /// [callbackData] is the callback data expected in the form of a map.
   void _handleInAppValidationResultListenerOnResponse(
-      Map<String, Map<String, dynamic>>? callbackData) {
+      dynamic callbackData) {
     _handleValidationResultListenerOnResponse<InAppPurchaseValidationResult>(
-      callbackData,
+      {"result": callbackData},
       _viapOnResponse,
-      (value) => InAppPurchaseValidationResult.fromJson(value),
+      (value) => InAppPurchaseValidationResultMap.fromJson(value).result,
     );
   }
-
 
   /// Handles failure for the subscription purchase validation result listener.
   ///
@@ -210,16 +205,14 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
   /// Handles failure for the in-app validation result listener.
   ///
   /// [callbackData] is the callback data expected in the form of a map.
-  void _handleInAppValidationResultListenerOnFailure(
-      Map<String, dynamic> callbackData) {
+  void _handleInAppValidationResultListenerOnFailure(dynamic callbackData) {
     _handleValidationResultListenerOnFailure(callbackData, _viapOnFailure);
   }
 
   /// Handles the reception of purchase revenue validation info.
   ///
   /// [callbackData] is the callback data expected in the form of a map.
-  void _handleDidReceivePurchaseRevenueValidationInfo(
-      Map<String, dynamic> callbackData) {
+  void _handleDidReceivePurchaseRevenueValidationInfo(dynamic callbackData) {
     var validationInfo = callbackData[AppsflyerConstants.VALIDATION_INFO]
         as Map<String, dynamic>?;
     var errorMap =
@@ -235,19 +228,12 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
   /// [callbackData] is the callback data expected in the form of a map.
   /// [onResponse] is a function to be called upon response.
   /// [converter] is a function used for converting `[callbackData]` to result type `T`
-  void _handleValidationResultListenerOnResponse<T>(
-      Map<String, Map<String, dynamic>>? callbackData,
-      OnResponse<T>? onResponse,
-      T Function(Map<String, dynamic>) converter) {
-    Map<String, T>? res;
-    if (callbackData != null) {
-      res = {
-        for (var entry in callbackData.entries)
-          entry.key: converter(entry.value)
-      };
-    }
+  void _handleValidationResultListenerOnResponse<T>(dynamic callbackData,
+      OnResponse<T>? onResponse, Map<String, T>? Function(dynamic) converter) {
+    Map<String, T>? res = converter(callbackData);
     if (onResponse != null) {
       onResponse(res);
+    } else {
     }
   }
 
@@ -256,7 +242,7 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
   /// [callbackData] is the callback data expected in the form of a map.
   /// [onFailureCallback] is a function to be called on failure.
   void _handleValidationResultListenerOnFailure(
-      Map<String, dynamic> callbackData, OnFailure? onFailureCallback) {
+      dynamic callbackData, OnFailure? onFailureCallback) {
     var resultMsg = callbackData[AppsflyerConstants.RESULT] as String;
     var errorMap =
         callbackData[AppsflyerConstants.ERROR] as Map<String, dynamic>?;

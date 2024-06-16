@@ -6,9 +6,9 @@ import android.os.Looper
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import org.json.JSONObject
 import java.lang.ref.WeakReference
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
+
 
 /**
  * A Flutter plugin that establishes a bridge between the Flutter appsflyer SDK and the Native Android Purchase Connector.
@@ -59,9 +59,15 @@ object AppsFlyerPurchaseConnector : FlutterPlugin, MethodChannel.MethodCallHandl
             }
         }
     }
+
     private fun MethodChannel?.invokeMethodOnUI(method: String, args: Any?) = this?.let {
         handler.post {
-            it.invokeMethod(method, args)
+            val data = if (args is Map<*, *>) {
+                JSONObject(args).toString()
+            } else {
+                args
+            }
+            it.invokeMethod(method, data)
         }
     }
 

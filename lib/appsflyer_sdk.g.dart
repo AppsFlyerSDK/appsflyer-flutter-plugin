@@ -329,6 +329,21 @@ Map<String, dynamic> _$InAppPurchaseValidationResultToJson(
       'failureData': instance.failureData,
     };
 
+InAppPurchaseValidationResultMap _$InAppPurchaseValidationResultMapFromJson(
+        Map<String, dynamic> json) =>
+    InAppPurchaseValidationResultMap(
+      (json['result'] as Map<String, dynamic>).map(
+        (k, e) => MapEntry(k,
+            InAppPurchaseValidationResult.fromJson(e as Map<String, dynamic>)),
+      ),
+    );
+
+Map<String, dynamic> _$InAppPurchaseValidationResultMapToJson(
+        InAppPurchaseValidationResultMap instance) =>
+    <String, dynamic>{
+      'result': instance.result,
+    };
+
 ProductPurchase _$ProductPurchaseFromJson(Map<String, dynamic> json) =>
     ProductPurchase(
       json['kind'] as String,
@@ -385,6 +400,21 @@ Map<String, dynamic> _$SubscriptionValidationResultToJson(
       'success': instance.success,
       'subscriptionPurchase': instance.subscriptionPurchase,
       'failureData': instance.failureData,
+    };
+
+SubscriptionValidationResultMap _$SubscriptionValidationResultMapFromJson(
+        Map<String, dynamic> json) =>
+    SubscriptionValidationResultMap(
+      (json['result'] as Map<String, dynamic>).map(
+        (k, e) => MapEntry(k,
+            SubscriptionValidationResult.fromJson(e as Map<String, dynamic>)),
+      ),
+    );
+
+Map<String, dynamic> _$SubscriptionValidationResultMapToJson(
+        SubscriptionValidationResultMap instance) =>
+    <String, dynamic>{
+      'result': instance.result,
     };
 
 ValidationFailureData _$ValidationFailureDataFromJson(
