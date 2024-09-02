@@ -2,7 +2,7 @@ part of appsflyer_sdk;
 
 class AdRevenueData {
   final String monetizationNetwork;
-  final MediationNetwork mediationNetwork;
+  final String mediationNetwork;
   final String currencyIso4217Code;
   final double revenue;
   final Map<String, dynamic>? additionalParameters;

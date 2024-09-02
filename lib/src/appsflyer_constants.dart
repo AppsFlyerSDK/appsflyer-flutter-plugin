@@ -28,7 +28,7 @@ class AppsflyerConstants {
       "disableAdvertisingIdentifier";
 }
 
-enum MediationNetwork {
+enum AFMediationNetwork {
   ironSource,
   applovinMax,
   googleAdMob,
@@ -46,33 +46,33 @@ enum MediationNetwork {
 
   String get value {
     switch (this) {
-      case MediationNetwork.ironSource:
+      case AFMediationNetwork.ironSource:
         return "ironsource";
-      case MediationNetwork.applovinMax:
+      case AFMediationNetwork.applovinMax:
         return "applovinmax";
-      case MediationNetwork.googleAdMob:
+      case AFMediationNetwork.googleAdMob:
         return "googleadmob";
-      case MediationNetwork.fyber:
+      case AFMediationNetwork.fyber:
         return "fyber";
-      case MediationNetwork.appodeal:
+      case AFMediationNetwork.appodeal:
         return "appodeal";
-      case MediationNetwork.admost:
+      case AFMediationNetwork.admost:
         return "Admost";
-      case MediationNetwork.topon:
+      case AFMediationNetwork.topon:
         return "Topon";
-      case MediationNetwork.tradplus:
+      case AFMediationNetwork.tradplus:
         return "Tradplus";
-      case MediationNetwork.yandex:
+      case AFMediationNetwork.yandex:
         return "Yandex";
-      case MediationNetwork.chartboost:
+      case AFMediationNetwork.chartboost:
         return "chartboost";
-      case MediationNetwork.unity:
+      case AFMediationNetwork.unity:
         return "Unity";
-      case MediationNetwork.toponPte:
+      case AFMediationNetwork.toponPte:
         return "toponpte";
-      case MediationNetwork.customMediation:
+      case AFMediationNetwork.customMediation:
         return "customMediation";
-      case MediationNetwork.directMonetizationNetwork:
+      case AFMediationNetwork.directMonetizationNetwork:
         return "directMonetizationNetwork";
     }
   }
