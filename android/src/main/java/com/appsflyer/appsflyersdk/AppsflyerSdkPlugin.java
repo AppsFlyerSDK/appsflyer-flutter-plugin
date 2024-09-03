@@ -961,30 +961,12 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     private void logAdRevenue(MethodCall call, Result result) {
         try {
-            String monetizationNetwork = requireNonNullArgument(call, result, "monetizationNetwork", "NULL_MONETIZATION_NETWORK");
-            if (monetizationNetwork == null) return;
+            String monetizationNetwork = requireNonNullArgument(call, "monetizationNetwork");
+            String currencyIso4217Code = requireNonNullArgument(call, "currencyIso4217Code");
+            double revenue = requireNonNullArgument(call,"revenue");
+            String mediationNetworkString = requireNonNullArgument(call,"mediationNetwork");
 
-            String currencyIso4217Code = requireNonNullArgument(call, result, "currencyIso4217Code", "NULL_CURRENCY_CODE");
-            if (currencyIso4217Code == null) return;
-
-            Double revenueValue = requireNonNullArgument(call, result, "revenue", "NULL_REVENUE");
-            if (revenueValue == null) return;
-            double revenue = revenueValue; // Auto-unboxing to primitive double type
-
-            String mediationNetworkString = requireNonNullArgument(call, result, "mediationNetwork", "NULL_MEDIATION_NETWORK");
-            if (mediationNetworkString == null) return;
-            MediationNetwork mediationNetwork = null;
-            for (MediationNetwork network : MediationNetwork.values()) {
-                if (network.getValue().equalsIgnoreCase(mediationNetworkString)) {
-                    mediationNetwork = network;
-                    break;
-                }
-            }
-            if (mediationNetwork == null) {
-                result.error("INVALID_MEDIATION_NETWORK", "Invalid mediation network: " + mediationNetworkString + ". Please use the mediation networks provided by AFMediationNetwork.", null);
-                Log.e("AppsFlyer", "Invalid mediation network: " + mediationNetworkString);
-                return;
-            }
+            MediationNetwork mediationNetwork = MediationNetwork.valueOf(mediationNetworkString.toUpperCase());
 
             // No null check for additionalParameters since it's acceptable for it to be null (optional data)
             Map<String, Object> additionalParameters = call.argument("additionalParameters");
@@ -997,34 +979,35 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             );
 
             AppsFlyerLib.getInstance().logAdRevenue(adRevenueData, additionalParameters);
-
             result.success(true);
 
-        } catch (Exception e) {
-            result.error("UNEXPECTED_ERROR", "[logAdRevenue]: An error occurred retrieving method arguments: " + e.getMessage(), null);
-            Log.e("AppsFlyer", "Exception occurred: [logAdRevenue]:", e);
+        } catch (IllegalArgumentException e) {
+            // The IllegalArgumentException could come from either requireNonNullArgument or valueOf methods.
+            result.error("INVALID_ARGUMENT_PROVIDED", e.getMessage(), null);
+        }
+        catch (Throwable t) {
+            result.error("UNEXPECTED_ERROR", "[logAdRevenue]: An unexpected error occurred: " + t.getMessage(), null);
+            Log.e("AppsFlyer", "Unexpected exception occurred: [logAdRevenue]", t);
         }
     }
 
     /**
      * Utility method to ensure that an argument with the specified name is not null.
-     * If the argument is null, this method will log an error, send an error response to the Flutter side,
-     * and return null. The calling method can then terminate immediately without further processing.
+     * If the argument is null, this method will throw an IllegalArgumentException.
+     * The calling method can then terminate immediately without further processing.
      *
      * @param call         The MethodCall from Flutter, containing all the arguments.
-     * @param result       The Result to send responses back to the calling Dart code in Flutter.
      * @param argumentName The name of the argument expected in the MethodCall.
-     * @param errorCode    The error code to use when reporting a null argument error.
      * @param <T>          The type of the argument being checked for nullity.
-     * @return The argument value if it is not null; null otherwise.
+     * @return The argument value if it is not null; throw IllegalArgumentException otherwise.
      */
-    private <T> T requireNonNullArgument(MethodCall call, Result result, String argumentName, String errorCode) {
-        T value = call.argument(argumentName);
-        if (value == null) {
-            result.error(errorCode, argumentName + " must not be null", null);
+    private <T> T requireNonNullArgument(MethodCall call, String argumentName) throws IllegalArgumentException {
+        T argument = call.argument(argumentName);
+        if (argument == null) {
             Log.e("AppsFlyer", "Exception occurred when trying to: " + call.method + "->" + argumentName + " must not be null");
+            throw new IllegalArgumentException("[" + call.method + "]: " + argumentName + " must not be null");
         }
-        return value;
+        return argument;
     }
 
     //RD-65582
