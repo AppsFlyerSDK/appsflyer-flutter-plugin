@@ -9,12 +9,14 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import com.appsflyer.AFAdRevenueData;
 import com.appsflyer.AFLogger;
 import com.appsflyer.AppsFlyerConsent;
 import com.appsflyer.AppsFlyerConversionListener;
 import com.appsflyer.AppsFlyerInAppPurchaseValidatorListener;
 import com.appsflyer.AppsFlyerLib;
 import com.appsflyer.AppsFlyerProperties;
+import com.appsflyer.MediationNetwork;
 import com.appsflyer.deeplink.DeepLinkListener;
 import com.appsflyer.deeplink.DeepLinkResult;
 import com.appsflyer.share.CrossPromotionHelper;
@@ -343,6 +345,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                 break;
             case "addPushNotificationDeepLinkPath":
                 addPushNotificationDeepLinkPath(call, result);
+                break;
+            case "logAdRevenue":
+                logAdRevenue(call, result);
                 break;
             default:
                 result.notImplemented();
@@ -952,6 +957,57 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         instance.logEvent(mContext, eventName, eventValues);
 
         result.success(true);
+    }
+
+    private void logAdRevenue(MethodCall call, Result result) {
+        try {
+            String monetizationNetwork = requireNonNullArgument(call, "monetizationNetwork");
+            String currencyIso4217Code = requireNonNullArgument(call, "currencyIso4217Code");
+            double revenue = requireNonNullArgument(call,"revenue");
+            String mediationNetworkString = requireNonNullArgument(call,"mediationNetwork");
+
+            MediationNetwork mediationNetwork = MediationNetwork.valueOf(mediationNetworkString.toUpperCase());
+
+            // No null check for additionalParameters since it's acceptable for it to be null (optional data)
+            Map<String, Object> additionalParameters = call.argument("additionalParameters");
+
+            AFAdRevenueData adRevenueData = new AFAdRevenueData(
+                    monetizationNetwork,
+                    mediationNetwork,
+                    currencyIso4217Code,
+                    revenue
+            );
+
+            AppsFlyerLib.getInstance().logAdRevenue(adRevenueData, additionalParameters);
+            result.success(true);
+
+        } catch (IllegalArgumentException e) {
+            // The IllegalArgumentException could come from either requireNonNullArgument or valueOf methods.
+            result.error("INVALID_ARGUMENT_PROVIDED", e.getMessage(), null);
+        }
+        catch (Throwable t) {
+            result.error("UNEXPECTED_ERROR", "[logAdRevenue]: An unexpected error occurred: " + t.getMessage(), null);
+            Log.e("AppsFlyer", "Unexpected exception occurred: [logAdRevenue]", t);
+        }
+    }
+
+    /**
+     * Utility method to ensure that an argument with the specified name is not null.
+     * If the argument is null, this method will throw an IllegalArgumentException.
+     * The calling method can then terminate immediately without further processing.
+     *
+     * @param call         The MethodCall from Flutter, containing all the arguments.
+     * @param argumentName The name of the argument expected in the MethodCall.
+     * @param <T>          The type of the argument being checked for nullity.
+     * @return The argument value if it is not null; throw IllegalArgumentException otherwise.
+     */
+    private <T> T requireNonNullArgument(MethodCall call, String argumentName) throws IllegalArgumentException {
+        T argument = call.argument(argumentName);
+        if (argument == null) {
+            Log.e("AppsFlyer", "Exception occurred when trying to: " + call.method + "->" + argumentName + " must not be null");
+            throw new IllegalArgumentException("[" + call.method + "]: " + argumentName + " must not be null");
+        }
+        return argument;
     }
 
     //RD-65582

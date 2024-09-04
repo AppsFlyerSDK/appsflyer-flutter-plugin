@@ -18,3 +18,4 @@ part 'src/udl/deep_link_result.dart';
 part 'src/udl/deeplink.dart';
 part 'src/appsflyer_consent.dart';
 part 'src/appsflyer_request_listener.dart';
+part 'src/appsflyer_ad_revenue_data.dart';
