@@ -1,4 +1,9 @@
 # Versions
+## 6.15.1
+- Implementation of the new logAdRevenue API for iOS and Android
+- Documentation update for the new logAdRevenue API
+- Update iOS version to 6.15.1
+- Update Android version to 6.15.1
 ## 6.14.3
 - Fixed mapOptions issue with manualStart
 - Inherit Privacy Manifest from the native iOS SDK via Cocoapods
