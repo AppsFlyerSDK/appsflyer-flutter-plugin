@@ -4,6 +4,8 @@
 
 ## Types
 - [AppsFlyerOptions](#appsflyer-options)
+- [AdRevenueData](#AdRevenueData)
+- [AFMediationNetwork](#AFMediationNetwork)
 
 ## Methods
 - [initSdk](#initSdk)
@@ -52,11 +54,12 @@
 - [getOutOfStore](#getOutOfStore)
 - [setDisableNetworkData](#setDisableNetworkData)
 - [performOnDeepLinking](#performondeeplinking)
+- [logAdRevenue](#logAdRevenue)  - Since 6.15.1
 
 
 ---
 
-##### <a id="appsflyer-options"> **`AppsflyerSdk(Map options)`** 
+##### <a id="appsflyer-options"> **`AppsflyerSdk(Map options)`**
 
 | parameter | type  | description       |
 | --------- | ----- | ----------------- |
@@ -115,6 +118,42 @@ final AppsFlyerOptions options = AppsFlyerOptions(afDevKey: "af dev key",
 Once `AppsflyerSdk` object is created, you can call `initSdk` method.
 
 ---
+
+##### <a id="AdRevenueData"> **`AdRevenueData`**
+
+| parameter | type                | description       |
+| --------- | ------------------ | ----------------- |
+| `monetizationNetwork` | `String` |  |    
+| `mediationNetwork` | `String` | value must be taken from `AFMediationNetwork` |    
+| `currencyIso4217Code` | `String` |  |    
+| `revenue` | `double` |  | 
+| `additionalParameters` | `Map<String, dynamic>?` |  |    
+    
+---
+
+##### <a id="AFMediationNetwork"> **`AFMediationNetwork`**
+an enumeration that includes the supported mediation networks by AppsFlyer.
+
+
+| networks | 
+| -------- |
+| ironSource
+applovinMax
+googleAdMob
+fyber
+appodeal
+admost
+topon
+tradplus
+yandex
+chartboost
+unity
+toponPte
+customMediation
+directMonetizationNetwork     |
+
+---
+
 
 ##### <a id="initSdk"> **`initSdk({bool registerConversionDataCallback, bool registerOnAppOpenAttributionCallback}) async` (Changed in 1.2.2)**
 
@@ -561,7 +600,7 @@ This call matches the following payload structure:
 
 1. First define the Onelink ID (find it in the AppsFlyer dashboard in the onelink section:
 
-  **`Future<void> setAppInviteOneLinkID(String oneLinkID, Function callback)`**
+**`Future<void> setAppInviteOneLinkID(String oneLinkID, Function callback)`**
 
 2. Set the AppsFlyerInviteLinkParams class to set the query params in the user invite link:
 
@@ -579,7 +618,7 @@ class AppsFlyerInviteLinkParams {
 
 3. Call the generateInviteLink API to generate the user invite link. Use the success and error callbacks for handling.
 
-  **`void generateInviteLink(AppsFlyerInviteLinkParams parameters, Function success, Function error)`**
+**`void generateInviteLink(AppsFlyerInviteLinkParams parameters, Function success, Function error)`**
 
 
 _Example:_
@@ -653,7 +692,7 @@ appsFlyerSdk.setCurrentDeviceLanguage("en");
 ---
 **<a id="setSharingFilterForPartners"> `void setSharingFilterForPartners(List<String> partners)`**
 
-`setSharingFilter` & `setSharingFilterForAllPartners` APIs were deprecated! 
+`setSharingFilter` & `setSharingFilterForAllPartners` APIs were deprecated!
 
 Use `setSharingFilterForPartners` instead.
 
@@ -672,9 +711,9 @@ appsFlyerSdk.setSharingFilterForPartners(['googleadwords_int', 'all']);         
 ---
 **<a id="setOneLinkCustomDomain"> `void setOneLinkCustomDomain(List<String> brandDomains)`**
 
-Use this API in order to set branded domains. 
+Use this API in order to set branded domains.
 
-Find more information in the [following article on branded domains](https://support.appsflyer.com/hc/en-us/articles/360002329137-Implementing-Branded-Links). 
+Find more information in the [following article on branded domains](https://support.appsflyer.com/hc/en-us/articles/360002329137-Implementing-Branded-Links).
 
 _Example:_
 ```dart
@@ -823,3 +862,53 @@ Note:<br>This API will trigger the `appsflyerSdk.onDeepLink` callback. In the fo
     _appsflyerSdk.startSDK();
   }
 ```
+
+---
+
+### **<a id="logAdRevenue"> `void logAdRevenue(AdRevenueData adRevenueData)`**
+
+The logAdRevenue API is designed to simplify the process of logging ad revenue events to AppsFlyer from your Flutter application. This API tracks revenue generated from advertisements, enriching your monetization analytics. Below you will find instructions on how to use this API correctly, along with detailed descriptions and examples for various input scenarios.
+
+### **Usage:**
+To use the logAdRevenue method, you must:
+
+1. Prepare an instance of `AdRevenueData` with the required information about the ad revenue event.
+1. Call `logAdRevenue` with the `AdRevenueData` instance.
+
+**AdRevenueData Class**
+[AdRevenueData](#AdRevenueData) is a data class representing all the relevant information about an ad revenue event:
+
+* `monetizationNetwork`: The source network from which the revenue was generated (e.g., AdMob, Unity Ads).
+* `mediationNetwork`: The mediation platform managing the ad (use AFMediationNetwork enum for supported networks).
+* `currencyIso4217Code`: The ISO 4217 currency code representing the currency of the revenue amount (e.g., "USD", "EUR").
+* `revenue`: The amount of revenue generated from the ad.
+* `additionalParameters`: Additional parameters related to the ad revenue event (optional).
+
+
+**AFMediationNetwork Enum**
+[AFMediationNetwork](#AFMediationNetwork) is an enumeration that includes the supported mediation networks by AppsFlyer. It's important to use this enum to ensure you provide a valid network identifier to the logAdRevenue API.
+
+### Example:
+```dart
+// Instantiate AdRevenueData with the ad revenue details.
+AdRevenueData adRevenueData = AdRevenueData(
+  monetizationNetwork: "GoogleAdMob", // Replace with your actual monetization network.
+  mediationNetwork: AFMediationNetwork.applovinMax.value, // Use the value from the enum.
+  currencyIso4217Code: "USD", 
+  revenue: 1.23,
+  additionalParameters: {
+    // Optional additional parameters can be added here. This is an example, can be discard if not needed.
+    'adUnitId': 'ca-app-pub-XXXX/YYYY', 
+    'ad_network_click_id': '12345'
+  }
+);
+
+// Log the ad revenue event.
+logAdRevenue(adRevenueData);
+```
+
+**Additional Points**
+* Mediation network input must be from the provided [AFMediationNetwork](#AFMediationNetwork)
+  enum to ensure proper processing by AppsFlyer. For instance, use `AFMediationNetwork.googleAdMob.value` to denote Google AdMob as the Mediation Network.
+* The `additionalParameters` map is optional. Use it to pass any extra information you have regarding the ad revenue event; this information could be useful for more refined analytics.
+* Make sure the `currencyIso4217Code` adheres to the appropriate standard. Misconfigured currency code may result in incorrect revenue tracking.  

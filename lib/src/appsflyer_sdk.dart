@@ -237,6 +237,12 @@ class AppsflyerSdk {
         "logEvent", {'eventName': eventName, 'eventValues': eventValues});
   }
 
+
+  /// Log ad revenue API.
+  void logAdRevenue(AdRevenueData adRevenueData) {
+    _methodChannel.invokeMethod("logAdRevenue", adRevenueData.toMap());
+  }
+
   /// Sets the host name and the host prefix.
   /// This is only relevant if you need to switch between HTTPS environments.
   void setHost(String hostPrefix, String hostName) {
