@@ -255,20 +255,20 @@ static BOOL _isSKADEnabled = false;
 
 - (AppsFlyerAdRevenueMediationNetworkType)getEnumValueFromString:(NSString *)mediationNetworkString {
     NSDictionary<NSString *, NSNumber *> *stringToEnumMap = @{
-        @"googleadmob": @(AppsFlyerAdRevenueMediationNetworkTypeGoogleAdMob),
+        @"google_admob": @(AppsFlyerAdRevenueMediationNetworkTypeGoogleAdMob),
         @"ironsource": @(AppsFlyerAdRevenueMediationNetworkTypeIronSource),
-        @"applovinmax": @(AppsFlyerAdRevenueMediationNetworkTypeApplovinMax),
+        @"applovin_max": @(AppsFlyerAdRevenueMediationNetworkTypeApplovinMax),
         @"fyber": @(AppsFlyerAdRevenueMediationNetworkTypeFyber),
         @"appodeal": @(AppsFlyerAdRevenueMediationNetworkTypeAppodeal),
-        @"Admost": @(AppsFlyerAdRevenueMediationNetworkTypeAdmost),
-        @"Topon": @(AppsFlyerAdRevenueMediationNetworkTypeTopon),
-        @"Tradplus": @(AppsFlyerAdRevenueMediationNetworkTypeTradplus),
-        @"Yandex": @(AppsFlyerAdRevenueMediationNetworkTypeYandex),
+        @"admost": @(AppsFlyerAdRevenueMediationNetworkTypeAdmost),
+        @"topon": @(AppsFlyerAdRevenueMediationNetworkTypeTopon),
+        @"tradplus": @(AppsFlyerAdRevenueMediationNetworkTypeTradplus),
+        @"yandex": @(AppsFlyerAdRevenueMediationNetworkTypeYandex),
         @"chartboost": @(AppsFlyerAdRevenueMediationNetworkTypeChartBoost),
-        @"Unity": @(AppsFlyerAdRevenueMediationNetworkTypeUnity),
-        @"toponpte": @(AppsFlyerAdRevenueMediationNetworkTypeToponPte),
-        @"customMediation": @(AppsFlyerAdRevenueMediationNetworkTypeCustom),
-        @"directMonetizationNetwork": @(AppsFlyerAdRevenueMediationNetworkTypeDirectMonetization)
+        @"unity": @(AppsFlyerAdRevenueMediationNetworkTypeUnity),
+        @"topon_pte": @(AppsFlyerAdRevenueMediationNetworkTypeToponPte),
+        @"custom_mediation": @(AppsFlyerAdRevenueMediationNetworkTypeCustom),
+        @"direct_monetization_network": @(AppsFlyerAdRevenueMediationNetworkTypeDirectMonetization)
     };
     
     NSNumber *enumValueNumber = stringToEnumMap[mediationNetworkString];
