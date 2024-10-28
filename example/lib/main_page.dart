@@ -124,6 +124,7 @@ class MainPageState extends State<MainPage> {
                     onData: _gcd,
                     deepLinkData: _deepLinkData,
                     logEvent: logEvent,
+                    logAdRevenueEvent: logAdRevenueEvent,
                   ),
                 ),
                 ElevatedButton(
@@ -133,7 +134,8 @@ class MainPageState extends State<MainPage> {
                         showMessage("AppsFlyer SDK initialized successfully.");
                       },
                       onError: (int errorCode, String errorMessage) {
-                        showMessage("Error initializing AppsFlyer SDK: Code $errorCode - $errorMessage");
+                        showMessage(
+                            "Error initializing AppsFlyer SDK: Code $errorCode - $errorMessage");
                       },
                     );
                   },
@@ -158,13 +160,29 @@ class MainPageState extends State<MainPage> {
     return logResult;
   }
 
+  void logAdRevenueEvent() {
+    try {
+      Map<String, String> customParams = {
+        'ad_platform': 'Admob',
+        'ad_currency': 'USD',
+      };
+
+      AdRevenueData adRevenueData = AdRevenueData(
+          monetizationNetwork: 'SpongeBob',
+          mediationNetwork: AFMediationNetwork.googleAdMob.value,
+          currencyIso4217Code: 'USD',
+          revenue: 100.3,
+          additionalParameters: customParams);
+      _appsflyerSdk.logAdRevenue(adRevenueData);
+      print("Ad Revenue event logged with no errors");
+    } catch (e) {
+      print("Failed to log event: $e");
+    }
+  }
+
   void showMessage(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(
-      content:
-      Text(message),
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
     ));
   }
 }
-
-
