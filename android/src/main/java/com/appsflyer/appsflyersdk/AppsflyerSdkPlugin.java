@@ -386,7 +386,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                     uiThreadHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            mMethodChannel.invokeMethod("onSuccess", null);
+                            if (mMethodChannel != null) {
+                                mMethodChannel.invokeMethod("onSuccess", null);
+                            }
                         }
                     });
                 }
@@ -396,10 +398,12 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                     uiThreadHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            HashMap<String, Object> errorDetails = new HashMap<>();
-                            errorDetails.put("errorCode", errorCode);
-                            errorDetails.put("errorMessage", errorMessage);
-                            mMethodChannel.invokeMethod("onError", errorDetails);
+                            if (mMethodChannel != null) {
+                                HashMap<String, Object> errorDetails = new HashMap<>();
+                                errorDetails.put("errorCode", errorCode);
+                                errorDetails.put("errorMessage", errorMessage);
+                                mMethodChannel.invokeMethod("onError", errorDetails);
+                            }
                         }
                     });
                 }
@@ -963,8 +967,8 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         try {
             String monetizationNetwork = requireNonNullArgument(call, "monetizationNetwork");
             String currencyIso4217Code = requireNonNullArgument(call, "currencyIso4217Code");
-            double revenue = requireNonNullArgument(call,"revenue");
-            String mediationNetworkString = requireNonNullArgument(call,"mediationNetwork");
+            double revenue = requireNonNullArgument(call, "revenue");
+            String mediationNetworkString = requireNonNullArgument(call, "mediationNetwork");
 
             MediationNetwork mediationNetwork = MediationNetwork.valueOf(mediationNetworkString.toUpperCase());
 
@@ -984,8 +988,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         } catch (IllegalArgumentException e) {
             // The IllegalArgumentException could come from either requireNonNullArgument or valueOf methods.
             result.error("INVALID_ARGUMENT_PROVIDED", e.getMessage(), null);
-        }
-        catch (Throwable t) {
+        } catch (Throwable t) {
             result.error("UNEXPECTED_ERROR", "[logAdRevenue]: An unexpected error occurred: " + t.getMessage(), null);
             Log.e("AppsFlyer", "Unexpected exception occurred: [logAdRevenue]", t);
         }
