@@ -7,12 +7,14 @@ import 'utils.dart';
 class HomeContainer extends StatefulWidget {
   final Map onData;
   final Future<bool?> Function(String, Map) logEvent;
+  final void Function() logAdRevenueEvent;
   Object deepLinkData;
 
   HomeContainer({
     required this.onData,
     required this.deepLinkData,
     required this.logEvent,
+    required this.logAdRevenueEvent,
   });
 
   @override
@@ -127,6 +129,20 @@ class _HomeContainerState extends State<HomeContainer> {
                       });
                     },
                     child: Text("Trigger Purchase Event"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      textStyle: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      widget.logAdRevenueEvent();
+                    },
+                    child: Text("Trigger AdRevenue Event"),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
