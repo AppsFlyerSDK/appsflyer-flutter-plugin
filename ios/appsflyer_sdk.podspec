@@ -21,12 +21,12 @@ Pod::Spec.new do |s|
     ss.source_files = 'Classes/**/*'
     ss.public_header_files = 'Classes/**/*.h'
     ss.dependency 'Flutter'
-    ss.ios.dependency 'AppsFlyerFramework','6.14.3'
+    ss.ios.dependency 'AppsFlyerFramework','6.15.2'
   end
 
   s.subspec 'PurchaseConnector' do |ss|
     ss.dependency 'Flutter'
-    ss.ios.dependency 'PurchaseConnector', '6.14.3'
+    ss.ios.dependency 'PurchaseConnector', '6.15.2'
     ss.source_files = 'PurchaseConnector/**/*'
     ss.public_header_files = 'PurchaseConnector/**/*.h'
   
