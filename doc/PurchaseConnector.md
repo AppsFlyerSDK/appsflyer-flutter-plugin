@@ -44,7 +44,7 @@ support@appsflyer.com
 The Purchase Connector feature of the AppsFlyer SDK depends on specific libraries provided by Google and Apple for managing in-app purchases:
 
 -   For Android, it depends on the  [Google Play Billing Library](https://developer.android.com/google/play/billing/integrate) (Supported versions: 5.x.x - 6.x.x).
--   For iOS, it depends on  [StoreKit](https://developer.apple.com/documentation/storekit).
+-   For iOS, it depends on  [StoreKit](https://developer.apple.com/documentation/storekit). (Supported version is StoreKit V1)
 
 However, these dependencies aren't actively included with the SDK. This means that the responsibility of managing these dependencies and including the necessary libraries in your project falls on you as the consumer of the SDK.
 
