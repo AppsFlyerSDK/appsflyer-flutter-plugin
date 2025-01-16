@@ -9,12 +9,14 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import com.appsflyer.AFAdRevenueData;
 import com.appsflyer.AFLogger;
 import com.appsflyer.AppsFlyerConsent;
 import com.appsflyer.AppsFlyerConversionListener;
 import com.appsflyer.AppsFlyerInAppPurchaseValidatorListener;
 import com.appsflyer.AppsFlyerLib;
 import com.appsflyer.AppsFlyerProperties;
+import com.appsflyer.MediationNetwork;
 import com.appsflyer.deeplink.DeepLinkListener;
 import com.appsflyer.deeplink.DeepLinkResult;
 import com.appsflyer.share.CrossPromotionHelper;
@@ -47,6 +49,7 @@ import io.flutter.plugin.common.PluginRegistry;
 
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_EVENTS_CHANNEL;
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_FAILURE;
+import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_PLUGIN_TAG;
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_SUCCESS;
 
 /**
@@ -201,7 +204,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     @Override
     public void onMethodCall(MethodCall call, Result result) {
         if (activity == null) {
-            Log.d("AppsFlyer", "Activity isn't attached to the flutter engine");
+            Log.d(AF_PLUGIN_TAG, LogMessages.ACTIVITY_NOT_ATTACHED_TO_ENGINE);
             return;
         }
         final String method = call.method;
@@ -344,6 +347,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "addPushNotificationDeepLinkPath":
                 addPushNotificationDeepLinkPath(call, result);
                 break;
+            case "logAdRevenue":
+                logAdRevenue(call, result);
+                break;
             default:
                 result.notImplemented();
                 break;
@@ -357,11 +363,11 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                 AppsFlyerLib.getInstance().performOnDeepLinking(intent, mApplication);
                 result.success(null);
             } else {
-                Log.d("AppsFlyer", "performOnDeepLinking: intent is null!");
+                Log.d(AF_PLUGIN_TAG, "performOnDeepLinking: intent is null!");
                 result.error("NO_INTENT", "The intent is null", null);
             }
         } else {
-            Log.d("AppsFlyer", "performOnDeepLinking: activity is null!");
+            Log.d(AF_PLUGIN_TAG, "performOnDeepLinking: activity is null!");
             result.error("NO_ACTIVITY", "The current activity is null", null);
         }
     }
@@ -374,34 +380,37 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     private void startSDKwithHandler(MethodCall call, final Result result) {
         try {
-            final AppsFlyerLib instance = AppsFlyerLib.getInstance();
-            instance.start(activity, null, new AppsFlyerRequestListener() {
+            final AppsFlyerLib appsFlyerLib = AppsFlyerLib.getInstance();
+
+            appsFlyerLib.start(activity, null, new AppsFlyerRequestListener() {
                 @Override
                 public void onSuccess() {
-                    uiThreadHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            mMethodChannel.invokeMethod("onSuccess", null);
-                        }
-                    });
+                    if (mMethodChannel != null) {
+                        uiThreadHandler.post(() -> mMethodChannel.invokeMethod("onSuccess", null));
+                    } else {
+                        Log.e(AF_PLUGIN_TAG, LogMessages.METHOD_CHANNEL_IS_NULL);
+                        result.error("NULL_OBJECT", LogMessages.METHOD_CHANNEL_IS_NULL, null);
+                    }
                 }
 
                 @Override
                 public void onError(final int errorCode, final String errorMessage) {
-                    uiThreadHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
+                    if (mMethodChannel != null) {
+                        uiThreadHandler.post(() -> {
                             HashMap<String, Object> errorDetails = new HashMap<>();
                             errorDetails.put("errorCode", errorCode);
                             errorDetails.put("errorMessage", errorMessage);
                             mMethodChannel.invokeMethod("onError", errorDetails);
-                        }
-                    });
+                        });
+                    } else {
+                        Log.e(AF_PLUGIN_TAG, LogMessages.METHOD_CHANNEL_IS_NULL);
+                        result.error("NULL_OBJECT", LogMessages.METHOD_CHANNEL_IS_NULL, null);
+                    }
                 }
             });
             result.success(null);
-        } catch (Exception e) {
-            result.error("UNEXPECTED_ERROR", e.getMessage(), null);
+        } catch (Throwable t) {
+            result.error("UNEXPECTED_ERROR", t.getMessage(), null);
         }
     }
 
@@ -527,14 +536,14 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         Bundle bundle;
 
         if (pushPayload == null) {
-            Log.d("AppsFlyer", "Push payload is null");
+            Log.d(AF_PLUGIN_TAG, "Push payload is null");
             return;
         }
 
         try {
             bundle = this.jsonToBundle(new JSONObject(pushPayload));
         } catch (JSONException e) {
-            Log.d("AppsFlyer", "Can't parse pushPayload to bundle");
+            Log.d(AF_PLUGIN_TAG, "Can't parse pushPayload to bundle");
             return;
         }
 
@@ -552,7 +561,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
 
         if (errorMsg != null) {
-            Log.d("AppsFlyer", errorMsg);
+            Log.d(AF_PLUGIN_TAG, errorMsg);
             return;
         }
 
@@ -952,6 +961,56 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         instance.logEvent(mContext, eventName, eventValues);
 
         result.success(true);
+    }
+
+    private void logAdRevenue(MethodCall call, Result result) {
+        try {
+            String monetizationNetwork = requireNonNullArgument(call, "monetizationNetwork");
+            String currencyIso4217Code = requireNonNullArgument(call, "currencyIso4217Code");
+            double revenue = requireNonNullArgument(call, "revenue");
+            String mediationNetworkString = requireNonNullArgument(call, "mediationNetwork");
+
+            MediationNetwork mediationNetwork = MediationNetwork.valueOf(mediationNetworkString.toUpperCase());
+
+            // No null check for additionalParameters since it's acceptable for it to be null (optional data)
+            Map<String, Object> additionalParameters = call.argument("additionalParameters");
+
+            AFAdRevenueData adRevenueData = new AFAdRevenueData(
+                    monetizationNetwork,
+                    mediationNetwork,
+                    currencyIso4217Code,
+                    revenue
+            );
+
+            AppsFlyerLib.getInstance().logAdRevenue(adRevenueData, additionalParameters);
+            result.success(true);
+
+        } catch (IllegalArgumentException e) {
+            // The IllegalArgumentException could come from either requireNonNullArgument or valueOf methods.
+            result.error("INVALID_ARGUMENT_PROVIDED", e.getMessage(), null);
+        } catch (Throwable t) {
+            result.error("UNEXPECTED_ERROR", "[logAdRevenue]: An unexpected error occurred: " + t.getMessage(), null);
+            Log.e(AF_PLUGIN_TAG, "Unexpected exception occurred: [logAdRevenue]", t);
+        }
+    }
+
+    /**
+     * Utility method to ensure that an argument with the specified name is not null.
+     * If the argument is null, this method will throw an IllegalArgumentException.
+     * The calling method can then terminate immediately without further processing.
+     *
+     * @param call         The MethodCall from Flutter, containing all the arguments.
+     * @param argumentName The name of the argument expected in the MethodCall.
+     * @param <T>          The type of the argument being checked for nullity.
+     * @return The argument value if it is not null; throw IllegalArgumentException otherwise.
+     */
+    private <T> T requireNonNullArgument(MethodCall call, String argumentName) throws IllegalArgumentException {
+        T argument = call.argument(argumentName);
+        if (argument == null) {
+            Log.e(AF_PLUGIN_TAG, "Exception occurred when trying to: " + call.method + "->" + argumentName + " must not be null");
+            throw new IllegalArgumentException("[" + call.method + "]: " + argumentName + " must not be null");
+        }
+        return argument;
     }
 
     //RD-65582

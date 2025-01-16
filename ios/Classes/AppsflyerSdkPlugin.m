@@ -99,7 +99,7 @@ static BOOL _isSKADEnabled = false;
     }else if([@"setIsUpdate" isEqualToString:call.method]){
         //
     }else if([@"setCustomerUserId" isEqualToString:call.method]){
-        [self setCustomerUserId:call result:result];    
+        [self setCustomerUserId:call result:result];
     }else if([@"setCustomerIdAndLogSession" isEqualToString:call.method]){
         [self setCustomerUserId:call result:result];
     }else if([@"setCurrencyCode" isEqualToString:call.method ]){
@@ -135,7 +135,7 @@ static BOOL _isSKADEnabled = false;
     }else if([@"setOneLinkCustomDomain" isEqualToString:call.method]){
         [self setOneLinkCustomDomain:call result:result];
     }else if([@"setPushNotification" isEqualToString:call.method]){
-        [self setPushNotification:call result:result];    
+        [self setPushNotification:call result:result];
     }else if([@"sendPushNotificationData" isEqualToString:call.method]){
         [self sendPushNotificationData:call result:result];
     }else if([@"useReceiptValidationSandbox" isEqualToString:call.method]){
@@ -162,6 +162,8 @@ static BOOL _isSKADEnabled = false;
         [self enableTCFDataCollection:call result:result];
     }else if([@"setConsentData" isEqualToString:call.method]){
         [self setConsentData:call result:result];
+    }else if([@"logAdRevenue" isEqualToString:call.method]){
+        [self logAdRevenue:call result:result];
     }
     else{
         result(FlutterMethodNotImplemented);
@@ -194,20 +196,103 @@ static BOOL _isSKADEnabled = false;
 
 - (void)setConsentData:(FlutterMethodCall*)call result:(FlutterResult)result {
     NSDictionary* consentDict = call.arguments[@"consentData"];
-   
+    
     BOOL isUserSubjectToGDPR = [consentDict[@"isUserSubjectToGDPR"] boolValue];
     BOOL hasConsentForDataUsage = [consentDict[@"hasConsentForDataUsage"] boolValue];
     BOOL hasConsentForAdsPersonalization = [consentDict[@"hasConsentForAdsPersonalization"] boolValue];
     AppsFlyerConsent *consentData;
     if(isUserSubjectToGDPR){
         consentData = [[AppsFlyerConsent alloc] initForGDPRUserWithHasConsentForDataUsage:hasConsentForDataUsage
-                                                            hasConsentForAdsPersonalization:hasConsentForAdsPersonalization];
+                                                          hasConsentForAdsPersonalization:hasConsentForAdsPersonalization];
     }else{
         consentData = [[AppsFlyerConsent alloc] initNonGDPRUser];
     }
-       
+    
     [[AppsFlyerLib shared] setConsentData:consentData];
     result(nil);
+}
+
+- (void)logAdRevenue:(FlutterMethodCall*)call result:(FlutterResult)result {
+    @try {
+        NSString *monetizationNetwork = [self requireNonNullArgumentWithCall:call result:result argumentName:@"monetizationNetwork" errorCode:@"NULL_MONETIZATION_NETWORK"];
+        if (monetizationNetwork == nil) return;
+        
+        NSString *currencyIso4217Code = [self requireNonNullArgumentWithCall:call result:result argumentName:@"currencyIso4217Code" errorCode:@"NULL_CURRENCY_CODE"];
+        if (currencyIso4217Code == nil) return;
+        
+        NSNumber *revenueValue = [self requireNonNullArgumentWithCall:call result:result argumentName:@"revenue" errorCode:@"NULL_REVENUE"];
+        if (revenueValue == nil) return;
+        
+        NSString *mediationNetworkString = [self requireNonNullArgumentWithCall:call result:result argumentName:@"mediationNetwork" errorCode:@"NULL_MEDIATION_NETWORK"];
+        if (mediationNetworkString == nil) return;
+        
+        // Fetching the actual mediationNetwork Enum
+        AppsFlyerAdRevenueMediationNetworkType mediationNetwork = [self getEnumValueFromString:mediationNetworkString];
+        if (mediationNetwork == -1) { //mediation network not found.
+            result([FlutterError errorWithCode:@"INVALID_MEDIATION_NETWORK"
+                                       message:@"The provided mediation network is not supported."
+                                       details:nil]);
+            return;
+        }
+        
+        NSDictionary *additionalParameters = call.arguments[@"additionalParameters"];
+        if ([additionalParameters isEqual:[NSNull null]]) {
+            additionalParameters = nil;  // Set to nil to avoid sending NSNull to the SDK which cannot be proseesed.
+        }
+        
+        AFAdRevenueData *adRevenueData = [[AFAdRevenueData alloc]
+                                          initWithMonetizationNetwork:monetizationNetwork
+                                          mediationNetwork:mediationNetwork 
+                                          currencyIso4217Code:currencyIso4217Code
+                                          eventRevenue:revenueValue];
+        
+        [[AppsFlyerLib shared] logAdRevenue:adRevenueData additionalParameters:additionalParameters];
+        
+    } @catch (NSException *exception) {
+        result([FlutterError errorWithCode:@"UNEXPECTED_ERROR"
+                                   message:[NSString stringWithFormat:@"[logAdRevenue]: An error occurred retrieving method arguments: %@", exception.reason]
+                                   details:nil]);
+        NSLog(@"AppsFlyer, Exception occurred in [logAdRevenue]: %@", exception.reason);
+    }
+    
+}
+
+- (AppsFlyerAdRevenueMediationNetworkType)getEnumValueFromString:(NSString *)mediationNetworkString {
+    NSDictionary<NSString *, NSNumber *> *stringToEnumMap = @{
+        @"google_admob": @(AppsFlyerAdRevenueMediationNetworkTypeGoogleAdMob),
+        @"ironsource": @(AppsFlyerAdRevenueMediationNetworkTypeIronSource),
+        @"applovin_max": @(AppsFlyerAdRevenueMediationNetworkTypeApplovinMax),
+        @"fyber": @(AppsFlyerAdRevenueMediationNetworkTypeFyber),
+        @"appodeal": @(AppsFlyerAdRevenueMediationNetworkTypeAppodeal),
+        @"admost": @(AppsFlyerAdRevenueMediationNetworkTypeAdmost),
+        @"topon": @(AppsFlyerAdRevenueMediationNetworkTypeTopon),
+        @"tradplus": @(AppsFlyerAdRevenueMediationNetworkTypeTradplus),
+        @"yandex": @(AppsFlyerAdRevenueMediationNetworkTypeYandex),
+        @"chartboost": @(AppsFlyerAdRevenueMediationNetworkTypeChartBoost),
+        @"unity": @(AppsFlyerAdRevenueMediationNetworkTypeUnity),
+        @"topon_pte": @(AppsFlyerAdRevenueMediationNetworkTypeToponPte),
+        @"custom_mediation": @(AppsFlyerAdRevenueMediationNetworkTypeCustom),
+        @"direct_monetization_network": @(AppsFlyerAdRevenueMediationNetworkTypeDirectMonetization)
+    };
+    
+    NSNumber *enumValueNumber = stringToEnumMap[mediationNetworkString];
+    if (enumValueNumber) {
+        return (AppsFlyerAdRevenueMediationNetworkType)[enumValueNumber integerValue];
+    } else {
+        return -1;
+    }
+}
+
+- (id)requireNonNullArgumentWithCall:(FlutterMethodCall*)call result:(FlutterResult)result argumentName:(NSString *)argumentName errorCode:(NSString *)errorCode {
+    id value = call.arguments[argumentName];
+    if (value == nil) {
+        result([FlutterError 
+                errorWithCode:errorCode
+                message:[NSString stringWithFormat:@"%@ must not be null", argumentName]
+                details:nil]);
+        NSLog(@"AppsFlyer, %@ must not be null", argumentName);
+    }
+    return value;
 }
 
 - (void)enableTCFDataCollection:(FlutterMethodCall*)call result:(FlutterResult)result {
@@ -662,7 +747,7 @@ static BOOL _isSKADEnabled = false;
     }
     
     [[AppsFlyerLib shared] setPluginInfoWith:AFSDKPluginFlutter pluginVersion:kAppsFlyerPluginVersion additionalParams:nil];
-
+    
     [AppsFlyerLib shared].appleAppID = appId;
     [AppsFlyerLib shared].appsFlyerDevKey = devKey;
     [AppsFlyerLib shared].isDebug = isDebug;
@@ -678,12 +763,12 @@ static BOOL _isSKADEnabled = false;
     if (timeToWaitForATTUserAuthorization != 0) {
         [[AppsFlyerLib shared] waitForATTUserAuthorizationWithTimeoutInterval:timeToWaitForATTUserAuthorization];
     }
-
+    
     if (manualStart == NO){
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
         [[AppsFlyerLib shared] start];
     }
-
+    
     //post notification for the deep link object that the bridge is set and he can handle deep link
     [AppsFlyerAttribution shared].isBridgeReady = YES;
     [[NSNotificationCenter defaultCenter] postNotificationName:AF_BRIDGE_SET object:self];
@@ -695,7 +780,7 @@ static BOOL _isSKADEnabled = false;
 -(void)logEventWithCall:(FlutterMethodCall*)call result:(FlutterResult)result{
     NSString *eventName =  call.arguments[afEventName];
     NSDictionary *eventValues = call.arguments[afEventValues];
-
+    
     // Explicitily setting the values to be nil if call.arguments[afEventValues] returns <null>.
     if (eventValues == [NSNull null]) {
         eventValues = nil;

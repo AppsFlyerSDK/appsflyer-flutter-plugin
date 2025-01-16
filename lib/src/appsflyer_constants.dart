@@ -1,9 +1,6 @@
 part of appsflyer_sdk;
 
-enum EmailCryptType {
-  EmailCryptTypeNone,
-  EmailCryptTypeSHA256
-}
+enum EmailCryptType { EmailCryptTypeNone, EmailCryptTypeSHA256 }
 
 class AppsflyerConstants {
 
@@ -55,4 +52,54 @@ class AppsflyerConstants {
   static const String LOG_SUBS_KEY = "logSubscriptions";
   static const String LOG_IN_APP_KEY = "logInApps";
   static const String SANDBOX_KEY = "sandbox";
+}
+
+enum AFMediationNetwork {
+  ironSource,
+  applovinMax,
+  googleAdMob,
+  fyber,
+  appodeal,
+  admost,
+  topon,
+  tradplus,
+  yandex,
+  chartboost,
+  unity,
+  toponPte,
+  customMediation,
+  directMonetizationNetwork;
+
+  String get value {
+    switch (this) {
+      case AFMediationNetwork.ironSource:
+        return "ironsource";
+      case AFMediationNetwork.applovinMax:
+        return "applovin_max";
+      case AFMediationNetwork.googleAdMob:
+        return "google_admob";
+      case AFMediationNetwork.fyber:
+        return "fyber";
+      case AFMediationNetwork.appodeal:
+        return "appodeal";
+      case AFMediationNetwork.admost:
+        return "admost";
+      case AFMediationNetwork.topon:
+        return "topon";
+      case AFMediationNetwork.tradplus:
+        return "tradplus";
+      case AFMediationNetwork.yandex:
+        return "yandex";
+      case AFMediationNetwork.chartboost:
+        return "chartboost";
+      case AFMediationNetwork.unity:
+        return "unity";
+      case AFMediationNetwork.toponPte:
+        return "topon_pte";
+      case AFMediationNetwork.customMediation:
+        return "custom_mediation";
+      case AFMediationNetwork.directMonetizationNetwork:
+        return "direct_monetization_network";
+    }
+  }
 }
