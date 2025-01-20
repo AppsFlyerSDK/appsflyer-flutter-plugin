@@ -18,8 +18,9 @@ AppsFlyer is the market leader in mobile advertising attribution & analytics, he
   s.requires_arc = true
   s.static_framework = true
   
-  s.source_files = 'Classes/**/*'
-  s.public_header_files = 'Classes/**/*.h'
+  s.source_files = 'appsflyer_sdk/Sources/**/*.{h,m}'
+  s.public_header_files = 'appsflyer_sdk/Sources/appsflyer_sdk/include/**/*.h'
+  s.module_map = 'appsflyer_sdk/Sources/appsflyer_sdk/include/appsflyer_sdk.modulemap'
   s.dependency 'Flutter'
   s.ios.dependency 'AppsFlyerFramework','6.15.3'
 end
