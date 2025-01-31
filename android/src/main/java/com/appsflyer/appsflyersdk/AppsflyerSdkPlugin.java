@@ -205,6 +205,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     public void onMethodCall(MethodCall call, Result result) {
         if (activity == null) {
             Log.d(AF_PLUGIN_TAG, LogMessages.ACTIVITY_NOT_ATTACHED_TO_ENGINE);
+            result.error("NO_ACTIVITY", "The current activity is null", null);
             return;
         }
         final String method = call.method;
