@@ -114,9 +114,4 @@ node_modules/
 covBadgeGen.js
 coverage/
 .env
-example/windows/*
-example/macos/*
-example/linux/*
-example/web/*
-example/analysis_options.yaml
 
