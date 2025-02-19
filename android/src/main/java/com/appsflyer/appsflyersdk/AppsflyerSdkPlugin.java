@@ -72,7 +72,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     //private FlutterView mFlutterView;
     private Context mContext;
     private Application mApplication;
-    private Intent mIntent;
     private MethodChannel mMethodChannel;
     private MethodChannel mCallbackChannel;
     private Activity activity;
@@ -175,7 +174,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         mMethodChannel.setMethodCallHandler(this);
         mCallbackChannel = new MethodChannel(messenger, AppsFlyerConstants.AF_CALLBACK_CHANNEL);
         mCallbackChannel.setMethodCallHandler(callbacksHandler);
-
     }
 
 
@@ -1077,32 +1075,33 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         mEventChannel.setStreamHandler(null);
         mEventChannel = null;
         AppsFlyerPurchaseConnector.INSTANCE.onDetachedFromEngine(binding);
-
+        mContext = null;
+        mApplication = null;
     }
 
     @Override
     public void onAttachedToActivity(ActivityPluginBinding binding) {
         activity = binding.getActivity();
-        mIntent = binding.getActivity().getIntent();
         mApplication = binding.getActivity().getApplication();
         binding.addOnNewIntentListener(onNewIntentListener);
     }
 
     @Override
     public void onDetachedFromActivityForConfigChanges() {
-
+        this.activity = null;
     }
 
     @Override
     public void onReattachedToActivityForConfigChanges(ActivityPluginBinding binding) {
         sendCachedCallbacksToDart();
         binding.addOnNewIntentListener(onNewIntentListener);
+        activity = binding.getActivity();
     }
 
     @Override
     public void onDetachedFromActivity() {
         activity = null;
         saveCallbacks = true;
+        AppsFlyerLib.getInstance().unregisterConversionListener();
     }
-
 }
