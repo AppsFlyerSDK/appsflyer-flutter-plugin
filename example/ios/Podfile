@@ -3,7 +3,7 @@
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
-
+$AppsFlyerPurchaseConnector = true
 project 'Runner', {
   'Debug' => :debug,
   'Profile' => :release,
@@ -30,7 +30,7 @@ flutter_ios_podfile_setup
 target 'Runner' do
   use_frameworks!
   use_modular_headers!
-
+  # Include appsflyer_sdk/PurchaseConnector as a pod dependency
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
   target 'RunnerTests' do
     inherit! :search_paths

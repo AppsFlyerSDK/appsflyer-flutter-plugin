@@ -22,9 +22,10 @@ public final class AppsFlyerConstants {
     final static String AF_UDL_CALLBACK = "onDeepLinking";
     final static String DISABLE_ADVERTISING_IDENTIFIER = "disableAdvertisingIdentifier";
 
-    final static String AF_EVENTS_CHANNEL = "af-events";
-    final static String AF_METHOD_CHANNEL = "af-api";
-    final static String AF_CALLBACK_CHANNEL = "callbacks";
+    final static String AF_EVENTS_CHANNEL                       = "af-events";
+    final static String AF_METHOD_CHANNEL                       = "af-api";
+    final static String AF_PURCHASE_CONNECTOR_CHANNEL           = "af-purchase-connector";
+    final static String AF_CALLBACK_CHANNEL                     = "callbacks";
 
     final static String AF_BROADCAST_ACTION_NAME = "com.appsflyer.appsflyersdk";
 
