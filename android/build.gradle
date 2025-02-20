@@ -21,7 +21,7 @@ def includeConnector = project.findProperty('appsflyer.enable_purchase_connector
 android {
     defaultConfig {
         minSdkVersion 19
-        compileSdk 33
+        compileSdk 35
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         multiDexEnabled true
@@ -38,6 +38,12 @@ android {
         }
         includeConnector ? ['src/main/include-connector'] : ['src/main/exlude-connector']
     }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
     kotlinOptions {
         jvmTarget = '17'
     }
