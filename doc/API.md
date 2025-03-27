@@ -613,7 +613,7 @@ Call handlePendingPush() during app startup (e.g., in your main() or inside your
     
 Registers a **custom key path** for resolving deep links inside **custom JSON payloads** in push notifications.
 
-> This is the recommended method of integrating AppsFlyer with push notifications. [Learn more here.](https://support.appsflyer.com/hc/en-us/articles/207364076-Measuring-Push-Notification-Re-Engagement-Campaigns) </br>
+This is the recommended method of integrating AppsFlyer with push notifications. [Learn more here.](https://support.appsflyer.com/hc/en-us/articles/207364076-Measuring-Push-Notification-Re-Engagement-Campaigns) </br>
 > ⚠️ This method must be called BEFORE the AppsFlyer SDK is started — either before calling appsFlyerSdk.initSdk() (if using default auto-start), or before appsFlyerSdk.startSDK() (if using manual start mode). ⚠️ 
 
 
