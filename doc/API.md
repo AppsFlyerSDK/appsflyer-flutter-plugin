@@ -35,7 +35,6 @@
 - [getHostPrefix](#getHostPrefix)
 - [updateServerUninstallToken](#updateServerUninstallToken)
 - [Validate Purchase](#validatePurchase)
-- [setPushNotification](#setPushNotification)[DEPRECATED]
 - [sendPushNotificationData](#sendPushNotificationData)
 - [addPushNotificationDeepLinkPath](#addPushNotificationDeepLinkPath)
 - [User Invite](#userInvite)
@@ -543,48 +542,87 @@ appsflyerSdk.onPurchaseValidation((res){
 ```
 
 ---
-**<a id="setPushNotification"> `void setPushNotification(bool isEnabled)`[DEPRECATED]**
+## **<a id="sendPushNotificationData"> `void sendPushNotificationData(Map? userInfo)`**
 
-_Example:_
-```dart
-appsFlyerSdk.setPushNotification(true);
+Push-notification campaigns are used to create re-engagements with existing users -> [Learn more here](https://support.appsflyer.com/hc/en-us/articles/207364076-Measuring-Push-Notification-Re-Engagement-Campaigns)
+
+🟩 **Android:**</br>
+The AppsFlyer SDK **requires a** **valid Activity context** to process the push payload.
+**Do NOT call this method from the background isolate** (e.g., _firebaseMessagingBackgroundHandler), as the activity is not yet created.
+Instead, **delay calling this method** until the Flutter app is fully resumed and the activity is alive.
+
+🍎 **iOS:**</br>
+This method can be safely called at any point during app launch or when receiving a push notification.
+
+
+_**Usage example with Firebase Cloud Messaging:**_</br>
+Given the fact that push message data contains custom key called `af` that contains the attribution data you want to send to AppsFlyer in JSON format. The following attribution parameters are required: `pid`, `is_retargeting`, `c`.
+
+📦 **Example Push Message Payload**
+```json
+{
+ "af": {
+    "c": "test_campaign",
+    "is_retargeting": true,
+    "pid": "push_provider_int",
+  },
+  "aps": {
+    "alert": "Get 5000 Coins",
+    "badge": "37",
+    "sound": "default"
+  }
+}
 ```
----
-**<a id="sendPushNotificationData"> `void sendPushNotificationData(Map? userInfo)`**
 
-Push-notification campaigns are used to create fast re-engagements with existing users.
-
-[Learn more](https://support.appsflyer.com/hc/en-us/articles/207364076-Measuring-Push-Notification-Re-Engagement-Campaigns)
-
-For Android: AppsFlyer SDK uses the activity in order to process the push payload. Make sure you call this api when the app's activity is available (NOT dead state).
-
-_Example:_
+1️⃣ Handle Foreground Messages
 ```dart
-final Map userInfo = {
-            "af":{
-                "c": "test_campaign",
-                "is_retargeting": true,
-                "pid": "push_provider_int",
-            },
-            "aps":{
-                "alert": "Get 5000 Coins",
-                "badge": "37",
-                "sound": "default"
-            }
-        };
-
-appsFlyerSdk.sendPushNotificationData(userInfo);
+FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+  appsFlyerSdk.sendPushNotificationData(message.data);
+});
 ```
+2️⃣ Handle Notification Taps (App in Background)
+```dart
+FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+  appsFlyerSdk.sendPushNotificationData(message.data);
+});
+```
+3️⃣ Handle App Launch from Push (Terminated State)
+Store the payload using `_firebaseMessagingBackgroundHandler`, then pass it to AppsFlyer once the app is resumed.
+```dart
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString('pending_af_push', jsonEncode(message.data));
+}
 
+// In your main() or splash screen after Flutter is initialized:
+void handlePendingPush() async {
+  final prefs = await SharedPreferences.getInstance();
+  final json = prefs.getString('pending_af_push');
+  if (json != null) {
+    final payload = jsonDecode(json);
+    appsFlyerSdk.sendPushNotificationData(payload);
+    await prefs.remove('pending_af_push');
+  }
+}
+```
+Call handlePendingPush() during app startup (e.g., in your main() or inside your splash screen after ensuring Flutter is initialized).
+
+    
 ---
-**<a id="addPushNotificationDeepLinkPath"> `void addPushNotificationDeepLinkPath(List<String> deeplinkPath)`**
+## **<a id="addPushNotificationDeepLinkPath"> `void addPushNotificationDeepLinkPath(List<String> deeplinkPath)`**
+    
+Registers a **custom key path** for resolving deep links inside **custom JSON payloads** in push notifications.
+
+This is the recommended method of integrating AppsFlyer with push notifications. [Learn more here.](https://support.appsflyer.com/hc/en-us/articles/207364076-Measuring-Push-Notification-Re-Engagement-Campaigns) </br>
+> ⚠️ This method must be called BEFORE the AppsFlyer SDK is started — either before calling appsFlyerSdk.initSdk() (if using default auto-start), or before appsFlyerSdk.startSDK() (if using manual start mode). ⚠️ 
+
 
 _Example:_
 ```dart
 appsFlyerSdk.addPushNotificationDeepLinkPath(["deeply", "nested", "deep_link"]);
 ```
 
-This call matches the following payload structure:
+With this configuration, the SDK will extract the URL from the following push payload:
 
 ```json
 {
@@ -595,6 +633,7 @@ This call matches the following payload structure:
   }
 }
 ```
+
 ---
 **<a id="userInvite"> User Invite**
 
