@@ -560,7 +560,7 @@ Given the fact that push message data contains custom key called `af` that conta
 
 📦 **Example Push Message Payload**
 ```json
-}
+{
  "af": {
     "c": "test_campaign",
     "is_retargeting": true,
