@@ -542,7 +542,7 @@ appsflyerSdk.onPurchaseValidation((res){
 ```
 
 ---
-**<a id="sendPushNotificationData"> `void sendPushNotificationData(Map? userInfo)`**
+## **<a id="sendPushNotificationData"> `void sendPushNotificationData(Map? userInfo)`**
 
 Push-notification campaigns are used to create re-engagements with existing users -> [Learn more here](https://support.appsflyer.com/hc/en-us/articles/207364076-Measuring-Push-Notification-Re-Engagement-Campaigns)
 
@@ -560,7 +560,7 @@ Given the fact that push message data contains custom key called `af` that conta
 
 📦 **Example Push Message Payload**
 ```json
-}    
+}
  "af": {
     "c": "test_campaign",
     "is_retargeting": true,
@@ -571,7 +571,7 @@ Given the fact that push message data contains custom key called `af` that conta
     "badge": "37",
     "sound": "default"
   }
-};
+}
 ```
 
 1️⃣ Handle Foreground Messages
@@ -587,7 +587,7 @@ FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
 });
 ```
 3️⃣ Handle App Launch from Push (Terminated State)
-Store the payload using _firebaseMessagingBackgroundHandler, then pass it to AppsFlyer once the app is resumed.
+Store the payload using `_firebaseMessagingBackgroundHandler`, then pass it to AppsFlyer once the app is resumed.
 ```dart
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   final prefs = await SharedPreferences.getInstance();
@@ -609,7 +609,7 @@ Call handlePendingPush() during app startup (e.g., in your main() or inside your
 
     
 ---
-**<a id="addPushNotificationDeepLinkPath"> `void addPushNotificationDeepLinkPath(List<String> deeplinkPath)`**
+## **<a id="addPushNotificationDeepLinkPath"> `void addPushNotificationDeepLinkPath(List<String> deeplinkPath)`**
     
 Registers a **custom key path** for resolving deep links inside **custom JSON payloads** in push notifications.
 
