@@ -39,7 +39,7 @@ checkout_branch() {
   git pull origin "$branch"
 }
 
-setGutHubToken(){
+setGitHubToken(){
   echo "==> Setting GitHub token..."
   git remote set-url origin https://$CI_GITHUB_TOKEN@github.com/AppsFlyerSDK/appsflyer-flutter-plugin.git
 }
@@ -70,10 +70,26 @@ create_tag() {
   git tag -a "v$NEW_VERSION" -m "Release version $NEW_VERSION"
 }
 
+create_release() {
+  echo "==> Creating GitHub release for tag v$NEW_VERSION..."
+
+  API_JSON=$(jq -n \
+    --arg tag "v$NEW_VERSION" \
+    --arg name "Release v$NEW_VERSION" \
+    --arg body "Automated release of version $NEW_VERSION" \
+    '{ tag_name: $tag, name: $name, body: $body, draft: false, prerelease: false }')
+
+  curl -s -X POST "https://api.github.com/repos/AppsFlyerSDK/appsflyer-flutter-plugin/releases" \
+    -H "Authorization: token $CI_GITHUB_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$API_JSON"
+}
+
 # Function: Push changes and tags to the remote repository.
 push_changes() {
+  local branch=$1
   echo "==> Pushing changes and tags to GitHub..."
-  git push origin "$RC_BRANCH"
+  git push origin "$branch"
 }
 
 # Function: Publish the Flutter package to pub.dev.
@@ -83,28 +99,27 @@ publish_package() {
 }
 
 # Main Release Function: Run all steps in order.
-release_flutter_sdk() {
-  echo "==> Starting release process..."
+QA_release_flutter_sdk() {
+  echo "==> Starting release process to QA..."
   checkout_branch "$RC_BRANCH"
-  setGutHubToken
-  # # dry_run_publish
+  setGitHubToken
   ./.github/scripts/bump_sdk.sh "$NEW_VERSION" "$IOS_AFSDK" "$ANDROID_AFSDK"
   commit_changes
-  push_changes
-  # if [[ "$IS_BETA" != "no" ]]; then
-  #   create_tag
-  #   create_release  
-  #   dry_run_publish
-  #   publish_package
-  # fi
-  # echo "==> Release process complete!"
+  push_changes "$RC_BRANCH"
 }
+
+# Prod_release_flutter_sdk() {
+#   echo "==> Starting release process to Production..."
+#   checkout_branch "$master"
+#   setGitHubToken
+#   create_tag
+#   create_release
+#   dry_run_publish
+#   publish_package
+# }
 
 # Execute the release process.
 
-# if [[ "IS_BETA" = "yes" ]]: then
-#     checkout_branch $RC_BRANCH
-#     ./bump_sdk_sh "$NEW_VERSION"-qa "$IOS_AFSDK" "$ANDROID_AFSDK"
-#     commit_changes
-# fi
-release_flutter_sdk
+if [[ "IS_BETA" = "yes" ]]: then
+    QA_release_flutter_sdk
+fi
