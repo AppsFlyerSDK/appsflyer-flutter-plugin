@@ -1,0 +1,43 @@
+name: Manual SDK Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      IOS_VERSION:
+        description: 'iOS SDK version'
+        required: true
+        type: string
+      ANDROID_VERSION:
+        description: 'Android SDK version'
+        required: true
+        type: string
+
+jobs:
+  release_sdk:
+    if: startsWith(github.ref, 'refs/heads/releases/')
+    runs-on: ubuntu-latest
+    name: Run Manual SDK Release
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Validate branch pattern
+        id: validate
+        run: |
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          echo "Current branch: $BRANCH_NAME"
+          if [[ ! "$BRANCH_NAME" =~ ^releases/[0-9]+\.x\.x/[0-9]+\.[0-9]+\.x/[0-9]+\.[0-9]+\.[0-9]+_rc[0-9]+$ ]]; then
+            echo "Branch name does not match release pattern"
+            exit 1
+          fi
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.x" # adjust as needed
+
+      - name: Run SDK Release Script
+        env:
+          CI_GITHUB_TOKEN: ${{ secrets.CI_GITHUB_TOKEN }}
+        run: |
+          ./github_release.sh "yes" "${GITHUB_REF#refs/heads/}" "${{ inputs.IOS_VERSION }}" "${{ inputs.ANDROID_VERSION }}"
