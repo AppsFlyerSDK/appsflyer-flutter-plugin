@@ -84,7 +84,7 @@ release_flutter_sdk() {
   # # dry_run_publish
   ./.github/scripts/bump_sdk.sh "$NEW_VERSION" "$IOS_AFSDK" "$ANDROID_AFSDK"
   commit_changes
-  # push_changes
+  push_changes
   # if [[ "$IS_BETA" != "no" ]]; then
   #   create_tag
   #   create_release  
