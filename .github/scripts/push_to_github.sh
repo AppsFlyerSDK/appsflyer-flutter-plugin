@@ -39,6 +39,11 @@ checkout_branch() {
   git pull origin "$branch"
 }
 
+setGutHubToken(){
+  echo "==> Setting GitHub token..."
+  git remote set-url origin https://$CI_GITHUB_TOKEN@github.com/AppsFlyerSDK/appsflyer-flutter-plugin.git
+}
+
 # Function: Run Flutter tests.
 run_tests() {
   echo "==> Running Flutter tests..."
@@ -81,6 +86,7 @@ publish_package() {
 release_flutter_sdk() {
   echo "==> Starting release process..."
   checkout_branch "$RC_BRANCH"
+  setGutHubToken
   # # dry_run_publish
   ./.github/scripts/bump_sdk.sh "$NEW_VERSION" "$IOS_AFSDK" "$ANDROID_AFSDK"
   commit_changes
