@@ -6,16 +6,15 @@ set -e
 # Usage: ./github_release.sh <version>
 # Example: ./github_release.sh 6.6.6
 
-if [ "$#" -ne 5 ]; then
+if [ "$#" -ne 4 ]; then
   echo "Usage: $0 VERSION IS_BETA RC_BRANCH IOS_AFSDK ANDROID_AFSDK"
   exit 1
 fi
 
-VERSION=$1
-IS_BETA=$2
-RC_BRANCH=$3
-IOS_AFSDK=$4
-ANDROID_AFSDK=$5
+IS_BETA=$1
+RC_BRANCH=$2
+IOS_AFSDK=$3
+ANDROID_AFSDK=$4
 
 # Extract the version from RC_BRANCH.
 # Expected RC_BRANCH format: releases/[...]/[...]/<version>_rc<number>
@@ -56,19 +55,19 @@ commit_changes() {
   echo "==> Committing changes..."
   git add .
   # If there are no changes, this will fail, so we ignore the error.
-  git commit -m "Release version $VERSION" || echo "No changes to commit."
+  git commit -m "Release version $NEW_VERSION" || echo "No changes to commit."
 }
 
 # Function: Create a Git tag for the new release.
 create_tag() {
-  echo "==> Creating Git tag v$VERSION..."
-  git tag -a "v$VERSION" -m "Release version $VERSION"
+  echo "==> Creating Git tag v$NEW_VERSION..."
+  git tag -a "v$NEW_VERSION" -m "Release version $NEW_VERSION"
 }
 
 # Function: Push changes and tags to the remote repository.
 push_changes() {
   echo "==> Pushing changes and tags to GitHub..."
-  git push origin master --tags
+  git push origin "$RC_BRANCH"
 }
 
 # Function: Publish the Flutter package to pub.dev.
@@ -79,20 +78,25 @@ publish_package() {
 
 # Main Release Function: Run all steps in order.
 release_flutter_sdk() {
-  checkout_branch RC_BRANCH
+  checkout_branch "$RC_BRANCH"
   # dry_run_publish
   ./bump_sdk_sh "$NEW_VERSION" "$IOS_AFSDK" "$ANDROID_AFSDK"
-  # commit_changes
-  # create_tag
+  commit_changes
   # push_changes
-  # publish_package
+  # if [[ "$IS_BETA" != "no" ]]; then
+  #   create_tag
+  #   create_release  
+  #   dry_run_publish
+  #   publish_package
+  # fi
   # echo "==> Release process complete!"
 }
 
 # Execute the release process.
 
-if [[ "IS_BETA" = "yes" ]]: then
-    checkout_branch $RC_BRANCH
-    ./bump_sdk_sh "$NEW_VERSION"-qa "$IOS_AFSDK" "$ANDROID_AFSDK"
-    commit_changes
-fi
+# if [[ "IS_BETA" = "yes" ]]: then
+#     checkout_branch $RC_BRANCH
+#     ./bump_sdk_sh "$NEW_VERSION"-qa "$IOS_AFSDK" "$ANDROID_AFSDK"
+#     commit_changes
+# fi
+release_flutter_sdk
