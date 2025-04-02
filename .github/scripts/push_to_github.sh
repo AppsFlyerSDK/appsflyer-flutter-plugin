@@ -120,6 +120,6 @@ QA_release_flutter_sdk() {
 
 # Execute the release process.
 
-if [[ "IS_BETA" = "yes" ]]; then
+if [[ "IS_BETA" == "yes" ]]; then
     QA_release_flutter_sdk
 fi
