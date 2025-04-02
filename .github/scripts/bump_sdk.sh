@@ -3,22 +3,13 @@ set -e
 
 # Check for required arguments
 if [ "$#" -ne 3 ]; then
-    echo "Usage: $0 RC_BRANCH IOS_AFSDK ANDROID_AFSDK"
+    echo "Usage: $0 NEW_VERSION IOS_AFSDK ANDROID_AFSDK"
     exit 1
 fi
 
-RC_BRANCH=$1
+NEW_VERSION=$1
 IOS_AFSDK=$2
 ANDROID_AFSDK=$3
-
-# Extract the version from RC_BRANCH.
-# Expected RC_BRANCH format: releases/[...]/[...]/<version>_rc<number>
-if [[ $RC_BRANCH =~ .*/([0-9]+\.[0-9]+\.[0-9]+)_rc[0-9]+$ ]]; then
-    NEW_VERSION="${BASH_REMATCH[1]}"
-else
-    echo "Error: RC_BRANCH does not match expected format."
-    exit 1
-fi
 
 echo "New version: $NEW_VERSION"
 echo "iOS AFSDK: $IOS_AFSDK"

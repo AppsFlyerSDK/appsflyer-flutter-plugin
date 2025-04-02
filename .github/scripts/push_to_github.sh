@@ -18,7 +18,7 @@ ANDROID_AFSDK=$4
 
 # Extract the version from RC_BRANCH.
 # Expected RC_BRANCH format: releases/[...]/[...]/<version>_rc<number>
-if [[ $RC_BRANCH =~ .*/([0-9]+\.[0-9]+\.[0-9]+)_rc[0-9]+$ ]]; then
+if [[ $RC_BRANCH =~ .*/([0-9]+\.[0-9]+\.[0-9]+)_rc[0-9]+ ]]; then
     NEW_VERSION="${BASH_REMATCH[1]}"
 else
     echo "$RC_BRANCH" 
@@ -79,10 +79,11 @@ publish_package() {
 
 # Main Release Function: Run all steps in order.
 release_flutter_sdk() {
+  echo "==> Starting release process..."
   checkout_branch "$RC_BRANCH"
-  # dry_run_publish
+  # # dry_run_publish
   ./.github/scripts/bump_sdk.sh "$NEW_VERSION" "$IOS_AFSDK" "$ANDROID_AFSDK"
-  commit_changes
+  # commit_changes
   # push_changes
   # if [[ "$IS_BETA" != "no" ]]; then
   #   create_tag
