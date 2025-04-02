@@ -21,6 +21,7 @@ ANDROID_AFSDK=$4
 if [[ $RC_BRANCH =~ .*/([0-9]+\.[0-9]+\.[0-9]+)_rc[0-9]+$ ]]; then
     NEW_VERSION="${BASH_REMATCH[1]}"
 else
+    echo "$RC_BRANCH" 
     echo "Error: RC_BRANCH does not match expected format."
     exit 1
 fi
@@ -80,7 +81,7 @@ publish_package() {
 release_flutter_sdk() {
   checkout_branch "$RC_BRANCH"
   # dry_run_publish
-  ./bump_sdk_sh "$NEW_VERSION" "$IOS_AFSDK" "$ANDROID_AFSDK"
+  ./.github/scripts/bump_sdk.sh "$NEW_VERSION" "$IOS_AFSDK" "$ANDROID_AFSDK"
   commit_changes
   # push_changes
   # if [[ "$IS_BETA" != "no" ]]; then
