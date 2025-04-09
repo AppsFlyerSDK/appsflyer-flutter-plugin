@@ -2,9 +2,7 @@
 #import "AppsFlyerStreamHandler.h"
 #import <objc/message.h>
 
-#ifdef ENABLE_PURCHASE_CONNECTOR
-#import "appsflyer_sdk/appsflyer_sdk-Swift.h"
-#endif
+
 typedef void (*bypassDidFinishLaunchingWithOption)(id, SEL, NSInteger);
 typedef void (*bypassDisableAdvertisingIdentifier)(id, SEL, BOOL);
 typedef void (*bypassWaitForATTUserAuthorization)(id, SEL, NSTimeInterval);
@@ -58,9 +56,6 @@ static BOOL _isSKADEnabled = false;
 }
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
-#ifdef ENABLE_PURCHASE_CONNECTOR
-    [PurchaseConnectorPlugin registerWithRegistrar:registrar];
-#endif
     id<FlutterBinaryMessenger> messenger = [registrar messenger];
     FlutterMethodChannel *channel = [FlutterMethodChannel methodChannelWithName:afMethodChannel binaryMessenger:messenger];
     FlutterMethodChannel *callbackChannel = [FlutterMethodChannel methodChannelWithName:afCallbacksMethodChannel binaryMessenger:messenger];
@@ -200,6 +195,7 @@ static BOOL _isSKADEnabled = false;
     BOOL isUserSubjectToGDPR = [consentDict[@"isUserSubjectToGDPR"] boolValue];
     BOOL hasConsentForDataUsage = [consentDict[@"hasConsentForDataUsage"] boolValue];
     BOOL hasConsentForAdsPersonalization = [consentDict[@"hasConsentForAdsPersonalization"] boolValue];
+    
     AppsFlyerConsent *consentData;
     if(isUserSubjectToGDPR){
         consentData = [[AppsFlyerConsent alloc] initForGDPRUserWithHasConsentForDataUsage:hasConsentForDataUsage

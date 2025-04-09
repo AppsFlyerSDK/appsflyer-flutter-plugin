@@ -15,7 +15,7 @@ class AppsFlyerOptions {
   /// Requires [afDevKey] and [appId] as mandatory Named parameters.
   /// All other parameters are optional, it's allows greater flexibility
   /// when invoking the constructor.
-  /// When [manualStart] is true the startSDK method must be called
+  /// When manual start is true the startSDK must be called
   AppsFlyerOptions({
     required this.afDevKey,
     this.showDebug = false,
