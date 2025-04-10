@@ -5,7 +5,7 @@ class AppsFlyerInviteLinkParams {
   final String? channel;
   final String? campaign;
   final String? referrerName;
-  final String? referreImageUrl;
+  final String? referrerImageUrl;
   final String? customerID;
   final String? baseDeepLink;
   final String? brandDomain;

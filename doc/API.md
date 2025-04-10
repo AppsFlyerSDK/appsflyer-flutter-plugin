@@ -175,7 +175,7 @@ await _appsflyerSdk.initSdk(
 
 ---
 ##### <a id="startSDK"> **`startSDK()` (Added in 6.13.0)**
-In version 6.13.0 of the appslfyer-flutter-plugin SDK we added the option of splitting between the initialization stage and start stage. All you need to do is add the property manualStart: true to the init object, and later call appsFlyer.startSdk() whenever you decide. If this property is set to false or doesn’t exist, the sdk will start after calling appsFlyer.initSdk(...).
+In version 6.13.0 of the appslfyer-flutter-plugin SDK we added the option of splitting between the initialization stage and start stage. All you need to do is add the property manualStart: true to the init object, and later call appsFlyer.startSdk() whenever you decide. If this property is set to false or doesn't exist, the sdk will start after calling appsFlyer.initSdk(...).
 ```dart
 _appsflyerSdk.startSDK();
 ```
@@ -648,7 +648,7 @@ class AppsFlyerInviteLinkParams {
   final String channel;
   final String campaign;
   final String referrerName;
-  final String referreImageUrl;
+  final String referrerImageUrl;
   final String customerID;
   final String baseDeepLink;
   final String brandDomain;
@@ -673,7 +673,7 @@ AppsFlyerInviteLinkParams inviteLinkParams = new AppsFlyerInviteLinkParams(
       baseDeepLink: "",
       brandDomain: "",
       customerID: "",
-      referreImageUrl: "",
+      referrerImageUrl: "",
       campaign: "",
       customParams: {"key":"value"}
 );
@@ -837,7 +837,7 @@ _Example:_
 **Android Only!**
 
 Enables manual triggering of deep link resolution. This method allows apps that are delaying the call to `appsflyerSdk.startSDK()` to resolve deep links before the SDK starts.<br>
-Note:<br>This API will trigger the `appsflyerSdk.onDeepLink` callback. In the following example, we check if `res.deepLinkStatus` is equal to “FOUND” inside `appsflyerSdk.onDeepLink` callback to extract the deeplink parameters.
+Note:<br>This API will trigger the `appsflyerSdk.onDeepLink` callback. In the following example, we check if `res.deepLinkStatus` is equal to "FOUND" inside `appsflyerSdk.onDeepLink` callback to extract the deeplink parameters.
 
 ```dart
   void afStart() async {

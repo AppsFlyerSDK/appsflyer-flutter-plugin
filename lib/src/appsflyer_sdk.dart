@@ -113,8 +113,9 @@ class AppsflyerSdk {
     }
 
     if (options[AppsflyerConstants.AF_MANUAL_START] != null) {
-      afOptions[AppsflyerConstants.AF_MANUAL_START] = options[AppsflyerConstants.AF_MANUAL_START];
-    }else{
+      afOptions[AppsflyerConstants.AF_MANUAL_START] =
+          options[AppsflyerConstants.AF_MANUAL_START];
+    } else {
       afOptions[AppsflyerConstants.AF_MANUAL_START] = false;
     }
 
@@ -237,7 +238,6 @@ class AppsflyerSdk {
         "logEvent", {'eventName': eventName, 'eventValues': eventValues});
   }
 
-
   /// Log ad revenue API.
   void logAdRevenue(AdRevenueData adRevenueData) {
     _methodChannel.invokeMethod("logAdRevenue", adRevenueData.toMap());
@@ -325,7 +325,7 @@ class AppsflyerSdk {
     _methodChannel.invokeMethod("performOnDeepLinking");
   }
 
-  /// Setting your own customer ID enables you to cross-reference your own unique ID with AppsFlyer’s unique ID and the other devices’ IDs.
+  /// Setting your own customer ID enables you to cross-reference your own unique ID with AppsFlyer's unique ID and the other devices' IDs.
   /// This ID is available in AppsFlyer CSV reports along with Postback APIs for cross-referencing with your internal IDs.
   void setCustomerUserId(String id) {
     _methodChannel.invokeMethod("setCustomerUserId", {'id': id});
@@ -452,7 +452,7 @@ class AppsflyerSdk {
       AppsFlyerInviteLinkParams params) {
     Map<String, Object?> inviteLinkParamsMap = <String, Object?>{};
     inviteLinkParamsMap['customParams'] = params.customParams;
-    inviteLinkParamsMap['referrerImageUrl'] = params.referreImageUrl;
+    inviteLinkParamsMap['referrerImageUrl'] = params.referrerImageUrl;
     inviteLinkParamsMap['customerID'] = params.customerID;
     inviteLinkParamsMap['brandDomain'] = params.brandDomain;
     inviteLinkParamsMap['baseDeeplink'] = params.baseDeepLink;
