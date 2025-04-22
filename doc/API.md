@@ -395,7 +395,10 @@ Following this sequence ensures that the consent configurations take effect befo
 Note: You need to use either `enableTCFDataCollection` or `setConsentData` if you use both of them our backend will prioritize the provided consent data from `setConsentData`.
 
 ---
-**<a id="setConsentDataV2"> `setConsentDataV2({bool? isUserSubjectToGDPR, bool? consentForDataUsage, bool? consentForAdsPersonalization, bool? hasConsentForAdStorage})`**
+**<a id="setConsentDataV2"> `setConsentDataV2({bool? isUserSubjectToGDPR,
+                                               bool? consentForDataUsage,
+                                               bool? consentForAdsPersonalization,
+                                               bool? hasConsentForAdStorage})`**
 
 Sets the user's consent preferences for GDPR and ad personalization. All parameters are optional; only include the ones you need.
 For more detailed information please visit [DMA compliance documentation](DMA.md).
