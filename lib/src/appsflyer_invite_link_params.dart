@@ -21,7 +21,7 @@ class AppsFlyerInviteLinkParams {
     this.baseDeepLink,
     this.brandDomain,
     this.customerID,
-    this.referreImageUrl,
+    this.referrerImageUrl,
     this.customParams
   });
 }
