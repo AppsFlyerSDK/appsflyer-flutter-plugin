@@ -395,13 +395,24 @@ Following this sequence ensures that the consent configurations take effect befo
 Note: You need to use either `enableTCFDataCollection` or `setConsentData` if you use both of them our backend will prioritize the provided consent data from `setConsentData`.
 
 ---
-**<a id="setConsentDataV2"> `setConsentDataV2({bool? isUserSubjectToGDPR,
-                                               bool? consentForDataUsage,
-                                               bool? consentForAdsPersonalization,
-                                               bool? hasConsentForAdStorage})`**
+**<a id="setConsentDataV2"> `setConsentDataV2({bool? isUserSubjectToGDPR, bool? consentForDataUsage, bool? consentForAdsPersonalization, bool? hasConsentForAdStorage})`**
 
-Sets the user's consent preferences for GDPR and ad personalization. All parameters are optional; only include the ones you need.
-For more detailed information please visit [DMA compliance documentation](DMA.md).
+### Sets user consent preferences for GDPR and ad personalization
+
+> ⚠️ This method replaces the deprecated `setConsentData` - for a complete migration guide, see our [DMA compliance documentation](DMA.md).
+
+Use this method to provide the user's consent settings to the AppsFlyer SDK. All parameters are optional - you only need to include the ones relevant to your use case.
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `isUserSubjectToGDPR` | `bool?` | Whether the user is subject to GDPR regulations |
+| `consentForDataUsage` | `bool?` | Whether the user consents to data usage by AppsFlyer |
+| `consentForAdsPersonalization` | `bool?` | Whether the user consents to personalized advertising |
+| `hasConsentForAdStorage` | `bool?` | Whether the user consents to ad storage |
+
+> 📝 **Note:** Setting a parameter to `null` indicates the user hasn't explicitly provided consent for that option.
 
 _Example:_
 ```dart
