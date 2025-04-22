@@ -399,7 +399,7 @@ Note: You need to use either `enableTCFDataCollection` or `setConsentData` if yo
 
 ### Sets user consent preferences for GDPR and ad personalization
 
-> ⚠️ This method replaces the deprecated `setConsentData` - for a complete migration guide, see our [DMA compliance documentation](DMA.md).
+> ⚠️ This method replaces the deprecated `setConsentData` - for a complete guide, see our [DMA compliance documentation](DMA.md).
 
 Use this method to provide the user's consent settings to the AppsFlyer SDK. All parameters are optional - you only need to include the ones relevant to your use case.
 
