@@ -40,7 +40,8 @@
 - [User Invite](#userInvite)
 - [enableFacebookDeferredApplinks](#enableFacebookDeferredApplinks)
 - [enableTCFDataCollection](#enableTCFDataCollection)  <!-- New addition -->
-- [setConsentData](#setConsentData)
+- [setConsentData](#setConsentData) - [DEPRECATED]
+- [setConsentDataV2](#setConsentDataV2)
 - [disableSKAdNetwork](#disableSKAdNetwork)
 - [getAppsFlyerUID](#getAppsFlyerUID)
 - [setCurrentDeviceLanguage](#setCurrentDeviceLanguage)
@@ -331,7 +332,7 @@ _Example:_
 appsFlyerSdk.enableTCFDataCollection(true);
 ```
 ---
-**<a id="setConsentData"> `setConsentData(Map<String, Object> consentData)`**
+**<a id="setConsentData"> `setConsentData(Map<String, Object> consentData)`** *Deprecated*
 
 The `AppsflyerConsent` object helps manage user consent settings. By using the setConsentData we able to manually collect the TCF data. You can create an instance for users subject to GDPR or otherwise:
 
@@ -393,6 +394,21 @@ _appsflyerSdk.startSDK();
 Following this sequence ensures that the consent configurations take effect before the AppsFlyer SDK starts, providing accurate consent data in the first launch payload.
 Note: You need to use either `enableTCFDataCollection` or `setConsentData` if you use both of them our backend will prioritize the provided consent data from `setConsentData`.
 
+---
+**<a id="setConsentDataV2"> `setConsentDataV2({bool? isUserSubjectToGDPR, bool? consentForDataUsage, bool? consentForAdsPersonalization, bool? hasConsentForAdStorage})`**
+
+Sets the user's consent preferences for GDPR and ad personalization. All parameters are optional; only include the ones you need.
+For more detailed information please visit [DMA compliance documentation](DMA.md).
+
+_Example:_
+```dart
+appsflyerSdk.setConsentDataV2(
+  isUserSubjectToGDPR: true,
+  consentForDataUsage: true,
+  consentForAdsPersonalization: false,
+  hasConsentForAdStorage: true,
+);
+```
 ---
 **<a id="setCustomerUserId"> `void setCustomerUserId(String userId)`**
 
