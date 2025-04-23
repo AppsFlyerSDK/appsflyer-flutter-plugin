@@ -6,10 +6,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:meta/meta.dart';
 
 import 'src/callbacks.dart';
-import 'src/version.g.dart';
 
 part 'src/appsflyer_ad_revenue_data.dart';
 part 'src/appsflyer_constants.dart';
