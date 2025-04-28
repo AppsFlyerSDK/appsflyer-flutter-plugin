@@ -113,8 +113,9 @@ class AppsflyerSdk {
     }
 
     if (options[AppsflyerConstants.AF_MANUAL_START] != null) {
-      afOptions[AppsflyerConstants.AF_MANUAL_START] = options[AppsflyerConstants.AF_MANUAL_START];
-    }else{
+      afOptions[AppsflyerConstants.AF_MANUAL_START] =
+          options[AppsflyerConstants.AF_MANUAL_START];
+    } else {
       afOptions[AppsflyerConstants.AF_MANUAL_START] = false;
     }
 
@@ -237,7 +238,6 @@ class AppsflyerSdk {
         "logEvent", {'eventName': eventName, 'eventValues': eventValues});
   }
 
-
   /// Log ad revenue API.
   void logAdRevenue(AdRevenueData adRevenueData) {
     _methodChannel.invokeMethod("logAdRevenue", adRevenueData.toMap());
@@ -309,9 +309,29 @@ class AppsflyerSdk {
         "enableTCFDataCollection", {'shouldCollect': shouldCollect});
   }
 
+  @Deprecated('Use setConsentDataV2 instead')
   void setConsentData(AppsFlyerConsent consentData) {
     _methodChannel.invokeMethod('setConsentData',
         <String, dynamic>{'consentData': consentData.toMap()});
+  }
+
+  /// Sets the user consent data.
+  ///
+  /// [isUserSubjectToGDPR] - Indicates whether the user is subject to GDPR regulations.
+  /// [consentForDataUsage] - Indicates whether the user consents to data usage by AppsFlyer.
+  /// [consentForAdsPersonalization] - Indicates whether the user consents to ad personalization.
+  /// [hasConsentForAdStorage] - Indicates whether the user consents to ad storage.
+  void setConsentDataV2(
+      {bool? isUserSubjectToGDPR,
+      bool? consentForDataUsage,
+      bool? consentForAdsPersonalization,
+      bool? hasConsentForAdStorage}) {
+    _methodChannel.invokeMethod('setConsentDataV2', <String, dynamic>{
+      'isUserSubjectToGDPR': isUserSubjectToGDPR,
+      'consentForDataUsage': consentForDataUsage,
+      'consentForAdsPersonalization': consentForAdsPersonalization,
+      'hasConsentForAdStorage': hasConsentForAdStorage,
+    });
   }
 
   /// Opt-out logging for specific user
@@ -325,7 +345,7 @@ class AppsflyerSdk {
     _methodChannel.invokeMethod("performOnDeepLinking");
   }
 
-  /// Setting your own customer ID enables you to cross-reference your own unique ID with AppsFlyer’s unique ID and the other devices’ IDs.
+  /// Setting your own customer ID enables you to cross-reference your own unique ID with AppsFlyer's unique ID and the other devices' IDs.
   /// This ID is available in AppsFlyer CSV reports along with Postback APIs for cross-referencing with your internal IDs.
   void setCustomerUserId(String id) {
     _methodChannel.invokeMethod("setCustomerUserId", {'id': id});
@@ -452,7 +472,7 @@ class AppsflyerSdk {
       AppsFlyerInviteLinkParams params) {
     Map<String, Object?> inviteLinkParamsMap = <String, Object?>{};
     inviteLinkParamsMap['customParams'] = params.customParams;
-    inviteLinkParamsMap['referrerImageUrl'] = params.referreImageUrl;
+    inviteLinkParamsMap['referrerImageUrl'] = params.referrerImageUrl;
     inviteLinkParamsMap['customerID'] = params.customerID;
     inviteLinkParamsMap['brandDomain'] = params.brandDomain;
     inviteLinkParamsMap['baseDeeplink'] = params.baseDeepLink;
@@ -591,5 +611,10 @@ class AppsflyerSdk {
   /// Disables transfer of user-specific data over the network.
   void setDisableNetworkData(bool disable) {
     _methodChannel.invokeMethod("setDisableNetworkData", disable);
+  }
+
+  /// Retrieves the current plugin version.
+  String getVersionNumber() {
+    return AppsflyerConstants.PLUGIN_VERSION;
   }
 }

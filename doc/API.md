@@ -35,13 +35,13 @@
 - [getHostPrefix](#getHostPrefix)
 - [updateServerUninstallToken](#updateServerUninstallToken)
 - [Validate Purchase](#validatePurchase)
-- [setPushNotification](#setPushNotification)[DEPRECATED]
 - [sendPushNotificationData](#sendPushNotificationData)
 - [addPushNotificationDeepLinkPath](#addPushNotificationDeepLinkPath)
 - [User Invite](#userInvite)
 - [enableFacebookDeferredApplinks](#enableFacebookDeferredApplinks)
 - [enableTCFDataCollection](#enableTCFDataCollection)  <!-- New addition -->
-- [setConsentData](#setConsentData)
+- [setConsentData](#setConsentData) - [DEPRECATED]
+- [setConsentDataV2](#setConsentDataV2)
 - [disableSKAdNetwork](#disableSKAdNetwork)
 - [getAppsFlyerUID](#getAppsFlyerUID)
 - [setCurrentDeviceLanguage](#setCurrentDeviceLanguage)
@@ -176,7 +176,7 @@ await _appsflyerSdk.initSdk(
 
 ---
 ##### <a id="startSDK"> **`startSDK()` (Added in 6.13.0)**
-In version 6.13.0 of the appslfyer-flutter-plugin SDK we added the option of splitting between the initialization stage and start stage. All you need to do is add the property manualStart: true to the init object, and later call appsFlyer.startSdk() whenever you decide. If this property is set to false or doesn’t exist, the sdk will start after calling appsFlyer.initSdk(...).
+In version 6.13.0 of the appslfyer-flutter-plugin SDK we added the option of splitting between the initialization stage and start stage. All you need to do is add the property manualStart: true to the init object, and later call appsFlyer.startSdk() whenever you decide. If this property is set to false or doesn't exist, the sdk will start after calling appsFlyer.initSdk(...).
 ```dart
 _appsflyerSdk.startSDK();
 ```
@@ -332,7 +332,7 @@ _Example:_
 appsFlyerSdk.enableTCFDataCollection(true);
 ```
 ---
-**<a id="setConsentData"> `setConsentData(Map<String, Object> consentData)`**
+**<a id="setConsentData"> `setConsentData(Map<String, Object> consentData)`** *Deprecated*
 
 The `AppsflyerConsent` object helps manage user consent settings. By using the setConsentData we able to manually collect the TCF data. You can create an instance for users subject to GDPR or otherwise:
 
@@ -394,6 +394,35 @@ _appsflyerSdk.startSDK();
 Following this sequence ensures that the consent configurations take effect before the AppsFlyer SDK starts, providing accurate consent data in the first launch payload.
 Note: You need to use either `enableTCFDataCollection` or `setConsentData` if you use both of them our backend will prioritize the provided consent data from `setConsentData`.
 
+---
+**<a id="setConsentDataV2"> `setConsentDataV2({bool? isUserSubjectToGDPR, bool? consentForDataUsage, bool? consentForAdsPersonalization, bool? hasConsentForAdStorage})`**
+
+### Sets user consent preferences for GDPR and ad personalization
+
+> ⚠️ This method replaces the deprecated `setConsentData` - for a complete guide, see our [DMA compliance documentation](DMA.md).
+
+Use this method to provide the user's consent settings to the AppsFlyer SDK. All parameters are optional - you only need to include the ones relevant to your use case.
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `isUserSubjectToGDPR` | `bool?` | Whether the user is subject to GDPR regulations |
+| `consentForDataUsage` | `bool?` | Whether the user consents to data usage by AppsFlyer |
+| `consentForAdsPersonalization` | `bool?` | Whether the user consents to personalized advertising |
+| `hasConsentForAdStorage` | `bool?` | Whether the user consents to ad storage |
+
+> 📝 **Note:** Setting a parameter to `null` indicates the user hasn't explicitly provided consent for that option.
+
+_Example:_
+```dart
+appsflyerSdk.setConsentDataV2(
+  isUserSubjectToGDPR: true,
+  consentForDataUsage: true,
+  consentForAdsPersonalization: false,
+  hasConsentForAdStorage: true,
+);
+```
 ---
 **<a id="setCustomerUserId"> `void setCustomerUserId(String userId)`**
 
@@ -543,48 +572,87 @@ appsflyerSdk.onPurchaseValidation((res){
 ```
 
 ---
-**<a id="setPushNotification"> `void setPushNotification(bool isEnabled)`[DEPRECATED]**
+## **<a id="sendPushNotificationData"> `void sendPushNotificationData(Map? userInfo)`**
 
-_Example:_
-```dart
-appsFlyerSdk.setPushNotification(true);
+Push-notification campaigns are used to create re-engagements with existing users -> [Learn more here](https://support.appsflyer.com/hc/en-us/articles/207364076-Measuring-Push-Notification-Re-Engagement-Campaigns)
+
+🟩 **Android:**</br>
+The AppsFlyer SDK **requires a** **valid Activity context** to process the push payload.
+**Do NOT call this method from the background isolate** (e.g., _firebaseMessagingBackgroundHandler), as the activity is not yet created.
+Instead, **delay calling this method** until the Flutter app is fully resumed and the activity is alive.
+
+🍎 **iOS:**</br>
+This method can be safely called at any point during app launch or when receiving a push notification.
+
+
+_**Usage example with Firebase Cloud Messaging:**_</br>
+Given the fact that push message data contains custom key called `af` that contains the attribution data you want to send to AppsFlyer in JSON format. The following attribution parameters are required: `pid`, `is_retargeting`, `c`.
+
+📦 **Example Push Message Payload**
+```json
+{
+ "af": {
+    "c": "test_campaign",
+    "is_retargeting": true,
+    "pid": "push_provider_int",
+  },
+  "aps": {
+    "alert": "Get 5000 Coins",
+    "badge": "37",
+    "sound": "default"
+  }
+}
 ```
----
-**<a id="sendPushNotificationData"> `void sendPushNotificationData(Map? userInfo)`**
 
-Push-notification campaigns are used to create fast re-engagements with existing users.
-
-[Learn more](https://support.appsflyer.com/hc/en-us/articles/207364076-Measuring-Push-Notification-Re-Engagement-Campaigns)
-
-For Android: AppsFlyer SDK uses the activity in order to process the push payload. Make sure you call this api when the app's activity is available (NOT dead state).
-
-_Example:_
+1️⃣ Handle Foreground Messages
 ```dart
-final Map userInfo = {
-            "af":{
-                "c": "test_campaign",
-                "is_retargeting": true,
-                "pid": "push_provider_int",
-            },
-            "aps":{
-                "alert": "Get 5000 Coins",
-                "badge": "37",
-                "sound": "default"
-            }
-        };
-
-appsFlyerSdk.sendPushNotificationData(userInfo);
+FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+  appsFlyerSdk.sendPushNotificationData(message.data);
+});
 ```
+2️⃣ Handle Notification Taps (App in Background)
+```dart
+FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+  appsFlyerSdk.sendPushNotificationData(message.data);
+});
+```
+3️⃣ Handle App Launch from Push (Terminated State)
+Store the payload using `_firebaseMessagingBackgroundHandler`, then pass it to AppsFlyer once the app is resumed.
+```dart
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString('pending_af_push', jsonEncode(message.data));
+}
 
+// In your main() or splash screen after Flutter is initialized:
+void handlePendingPush() async {
+  final prefs = await SharedPreferences.getInstance();
+  final json = prefs.getString('pending_af_push');
+  if (json != null) {
+    final payload = jsonDecode(json);
+    appsFlyerSdk.sendPushNotificationData(payload);
+    await prefs.remove('pending_af_push');
+  }
+}
+```
+Call handlePendingPush() during app startup (e.g., in your main() or inside your splash screen after ensuring Flutter is initialized).
+
+    
 ---
-**<a id="addPushNotificationDeepLinkPath"> `void addPushNotificationDeepLinkPath(List<String> deeplinkPath)`**
+## **<a id="addPushNotificationDeepLinkPath"> `void addPushNotificationDeepLinkPath(List<String> deeplinkPath)`**
+    
+Registers a **custom key path** for resolving deep links inside **custom JSON payloads** in push notifications.
+
+This is the recommended method of integrating AppsFlyer with push notifications. [Learn more here.](https://support.appsflyer.com/hc/en-us/articles/207364076-Measuring-Push-Notification-Re-Engagement-Campaigns) </br>
+> ⚠️ This method must be called BEFORE the AppsFlyer SDK is started — either before calling appsFlyerSdk.initSdk() (if using default auto-start), or before appsFlyerSdk.startSDK() (if using manual start mode). ⚠️ 
+
 
 _Example:_
 ```dart
 appsFlyerSdk.addPushNotificationDeepLinkPath(["deeply", "nested", "deep_link"]);
 ```
 
-This call matches the following payload structure:
+With this configuration, the SDK will extract the URL from the following push payload:
 
 ```json
 {
@@ -595,6 +663,7 @@ This call matches the following payload structure:
   }
 }
 ```
+
 ---
 **<a id="userInvite"> User Invite**
 
@@ -609,7 +678,7 @@ class AppsFlyerInviteLinkParams {
   final String channel;
   final String campaign;
   final String referrerName;
-  final String referreImageUrl;
+  final String referrerImageUrl;
   final String customerID;
   final String baseDeepLink;
   final String brandDomain;
@@ -634,7 +703,7 @@ AppsFlyerInviteLinkParams inviteLinkParams = new AppsFlyerInviteLinkParams(
       baseDeepLink: "",
       brandDomain: "",
       customerID: "",
-      referreImageUrl: "",
+      referrerImageUrl: "",
       campaign: "",
       customParams: {"key":"value"}
 );
@@ -798,7 +867,7 @@ _Example:_
 **Android Only!**
 
 Enables manual triggering of deep link resolution. This method allows apps that are delaying the call to `appsflyerSdk.startSDK()` to resolve deep links before the SDK starts.<br>
-Note:<br>This API will trigger the `appsflyerSdk.onDeepLink` callback. In the following example, we check if `res.deepLinkStatus` is equal to “FOUND” inside `appsflyerSdk.onDeepLink` callback to extract the deeplink parameters.
+Note:<br>This API will trigger the `appsflyerSdk.onDeepLink` callback. In the following example, we check if `res.deepLinkStatus` is equal to "FOUND" inside `appsflyerSdk.onDeepLink` callback to extract the deeplink parameters.
 
 ```dart
   void afStart() async {

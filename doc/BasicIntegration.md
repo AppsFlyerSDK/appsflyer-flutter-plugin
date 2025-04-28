@@ -31,11 +31,13 @@ AppsflyerSdk appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
 | manualStart                       | bool | Prevents from the SDK from sending the launch request after using appsFlyer.initSdk(...). When using this property, the apps needs to manually trigger the appsFlyer.startSdk() API to report the app launch.                                                                                                                                                                |
 
 The next step is to call `initSdk` which have the optional boolean parameters `registerConversionDataCallback` and the deeplink callbacks: `registerOnAppOpenAttributionCallback` 
-`registerOnDeepLinkingCallback`
-Please keep in mind that registering the `registerOnDeepLinkingCallback` will override the `registerOnAppOpenAttributionCallback`, as the latter is a Legacy callback used for direct deep-linking, please read more about this in our DeepLinking guide.
+`registerOnDeepLinkingCallback`.
+> These are **all set to false by default**, meaning listeners will only be registered if you explicitly pass true.
+
+> Please keep in mind that registering the `registerOnDeepLinkingCallback` will override the `registerOnAppOpenAttributionCallback`, as the latter is a Legacy callback used for direct deep-linking, please read more about this in our DeepLinking guide.
 
 After we call `initSdk` we can use all of AppsFlyer SDK features.
-
+Here’s an example of how to register all three:
 ```dart
 await appsflyerSdk.initSdk(
     registerConversionDataCallback: true,

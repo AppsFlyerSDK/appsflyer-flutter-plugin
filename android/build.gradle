@@ -14,10 +14,12 @@ rootProject.allprojects {
     }
 }
 apply plugin: 'com.android.library'
+apply plugin: 'org.jetbrains.kotlin.android'
+
 android {
     defaultConfig {
-        minSdkVersion 16
-        compileSdk 31
+        minSdkVersion 19
+        compileSdk 35
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         multiDexEnabled true
@@ -26,11 +28,21 @@ android {
         disable 'InvalidPackage'
     }
     namespace 'com.appsflyer.appsflyersdk'
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation 'androidx.appcompat:appcompat:1.0.0'
-    implementation 'com.appsflyer:af-android-sdk:6.15.2'
+    implementation 'com.appsflyer:af-android-sdk:6.16.2'
     implementation 'com.android.installreferrer:installreferrer:2.1'
 }
