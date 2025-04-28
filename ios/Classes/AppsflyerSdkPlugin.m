@@ -157,6 +157,8 @@ static BOOL _isSKADEnabled = false;
         [self enableTCFDataCollection:call result:result];
     }else if([@"setConsentData" isEqualToString:call.method]){
         [self setConsentData:call result:result];
+    }else if([@"setConsentDataV2" isEqualToString:call.method]){
+        [self setConsentDataV2:call result:result];
     }else if([@"logAdRevenue" isEqualToString:call.method]){
         [self logAdRevenue:call result:result];
     }
@@ -201,11 +203,52 @@ static BOOL _isSKADEnabled = false;
         consentData = [[AppsFlyerConsent alloc] initForGDPRUserWithHasConsentForDataUsage:hasConsentForDataUsage
                                                           hasConsentForAdsPersonalization:hasConsentForAdsPersonalization];
     }else{
-        consentData = [[AppsFlyerConsent alloc] initNonGDPRUser];
+        consentData = [[AppsFlyerConsent alloc] initWithNonGDPRUser];
     }
     
     [[AppsFlyerLib shared] setConsentData:consentData];
     result(nil);
+}
+
+- (void)setConsentDataV2:(FlutterMethodCall*)call result:(FlutterResult)result {
+    @try {
+        // Extract the parameters directly from the arguments
+        NSNumber *isUserSubjectToGDPR = call.arguments[@"isUserSubjectToGDPR"];
+        if ([isUserSubjectToGDPR isKindOfClass:[NSNull class]]) {
+            isUserSubjectToGDPR = nil;
+        }
+        
+        NSNumber *consentForDataUsage = call.arguments[@"consentForDataUsage"];
+        if ([consentForDataUsage isKindOfClass:[NSNull class]]) {
+            consentForDataUsage = nil;
+        }
+        
+        NSNumber *consentForAdsPersonalization = call.arguments[@"consentForAdsPersonalization"]; 
+        if ([consentForAdsPersonalization isKindOfClass:[NSNull class]]) {
+            consentForAdsPersonalization = nil;
+        }
+        
+        NSNumber *hasConsentForAdStorage = call.arguments[@"hasConsentForAdStorage"];
+        if ([hasConsentForAdStorage isKindOfClass:[NSNull class]]) {
+            hasConsentForAdStorage = nil;
+        }
+        
+        // Create the consent object
+        AppsFlyerConsent *consentData = [[AppsFlyerConsent alloc] initWithIsUserSubjectToGDPR:isUserSubjectToGDPR 
+                                                              hasConsentForDataUsage:consentForDataUsage
+                                                    hasConsentForAdsPersonalization:consentForAdsPersonalization
+                                                              hasConsentForAdStorage:hasConsentForAdStorage];
+        
+        // Set the consent data using AppsFlyer SDK
+        [[AppsFlyerLib shared] setConsentData:consentData];
+        result(nil);
+    }
+    @catch (NSException *exception) {
+        NSLog(@"AppsFlyer: Error setting consent data v2: %@", exception.reason);
+        result([FlutterError errorWithCode:@"CONSENT_ERROR"
+                                   message:[NSString stringWithFormat:@"Failed to set consent data v2: %@", exception.reason]
+                                   details:nil]);
+    }
 }
 
 - (void)logAdRevenue:(FlutterMethodCall*)call result:(FlutterResult)result {

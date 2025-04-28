@@ -40,7 +40,8 @@
 - [User Invite](#userInvite)
 - [enableFacebookDeferredApplinks](#enableFacebookDeferredApplinks)
 - [enableTCFDataCollection](#enableTCFDataCollection)  <!-- New addition -->
-- [setConsentData](#setConsentData)
+- [setConsentData](#setConsentData) - [DEPRECATED]
+- [setConsentDataV2](#setConsentDataV2)
 - [disableSKAdNetwork](#disableSKAdNetwork)
 - [getAppsFlyerUID](#getAppsFlyerUID)
 - [setCurrentDeviceLanguage](#setCurrentDeviceLanguage)
@@ -331,7 +332,7 @@ _Example:_
 appsFlyerSdk.enableTCFDataCollection(true);
 ```
 ---
-**<a id="setConsentData"> `setConsentData(Map<String, Object> consentData)`**
+**<a id="setConsentData"> `setConsentData(Map<String, Object> consentData)`** *Deprecated*
 
 The `AppsflyerConsent` object helps manage user consent settings. By using the setConsentData we able to manually collect the TCF data. You can create an instance for users subject to GDPR or otherwise:
 
@@ -393,6 +394,35 @@ _appsflyerSdk.startSDK();
 Following this sequence ensures that the consent configurations take effect before the AppsFlyer SDK starts, providing accurate consent data in the first launch payload.
 Note: You need to use either `enableTCFDataCollection` or `setConsentData` if you use both of them our backend will prioritize the provided consent data from `setConsentData`.
 
+---
+**<a id="setConsentDataV2"> `setConsentDataV2({bool? isUserSubjectToGDPR, bool? consentForDataUsage, bool? consentForAdsPersonalization, bool? hasConsentForAdStorage})`**
+
+### Sets user consent preferences for GDPR and ad personalization
+
+> ⚠️ This method replaces the deprecated `setConsentData` - for a complete guide, see our [DMA compliance documentation](DMA.md).
+
+Use this method to provide the user's consent settings to the AppsFlyer SDK. All parameters are optional - you only need to include the ones relevant to your use case.
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `isUserSubjectToGDPR` | `bool?` | Whether the user is subject to GDPR regulations |
+| `consentForDataUsage` | `bool?` | Whether the user consents to data usage by AppsFlyer |
+| `consentForAdsPersonalization` | `bool?` | Whether the user consents to personalized advertising |
+| `hasConsentForAdStorage` | `bool?` | Whether the user consents to ad storage |
+
+> 📝 **Note:** Setting a parameter to `null` indicates the user hasn't explicitly provided consent for that option.
+
+_Example:_
+```dart
+appsflyerSdk.setConsentDataV2(
+  isUserSubjectToGDPR: true,
+  consentForDataUsage: true,
+  consentForAdsPersonalization: false,
+  hasConsentForAdStorage: true,
+);
+```
 ---
 **<a id="setCustomerUserId"> `void setCustomerUserId(String userId)`**
 

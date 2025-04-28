@@ -52,6 +52,8 @@ import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_FAILURE;
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_PLUGIN_TAG;
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_SUCCESS;
 
+import androidx.annotation.NonNull;
+
 /**
  * AppsflyerSdkPlugin
  */
@@ -232,6 +234,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "setConsentData":
                 setConsentData(call, result);
                 break;
+            case "setConsentDataV2":
+                setConsentDataV2(call, result);
+                break;    
             case "setIsUpdate":
                 setIsUpdate(call, result);
                 break;
@@ -423,6 +428,11 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         result.success(null);
     }
 
+    /**
+     * Sets the user consent data for tracking.
+     * @deprecated Use {@link #setConsentDataV2(MethodCall, Result)} instead.
+     */
+    @Deprecated
     public void setConsentData(MethodCall call, Result result) {
         Map<String, Object> arguments = (Map<String, Object>) call.arguments;
         Map<String, Object> consentDict = (Map<String, Object>) arguments.get("consentData");
@@ -442,6 +452,35 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
 
         result.success(null);
+    }
+
+    /**
+     * Sets the user consent data for tracking with flexible parameters.
+     */
+    public void setConsentDataV2(MethodCall call, Result result) {
+        try {
+            AppsFlyerConsent consent = getAppsFlyerConsentFromCall(call);
+            AppsFlyerLib.getInstance().setConsentData(consent);
+            result.success(null);
+        } catch (Exception e) {
+            Log.e(AF_PLUGIN_TAG, LogMessages.ERROR_WHILE_SETTING_CONSENT + e.getMessage(), e);
+            result.error("CONSENT_ERROR", LogMessages.ERROR_WHILE_SETTING_CONSENT + e.getMessage(), null);
+        }
+    }
+
+    @NonNull
+    @SuppressWarnings("unchecked")
+    private AppsFlyerConsent getAppsFlyerConsentFromCall(MethodCall call) {
+        Map<String, Object> args = (Map<String, Object>) call.arguments;
+
+        // Extract nullable Boolean arguments
+        Boolean isUserSubjectToGDPR = (Boolean) args.get("isUserSubjectToGDPR");
+        Boolean consentForDataUsage = (Boolean) args.get("consentForDataUsage");
+        Boolean consentForAdsPersonalization = (Boolean) args.get("consentForAdsPersonalization");
+        Boolean hasConsentForAdStorage = (Boolean) args.get("hasConsentForAdStorage");
+
+        // Create and return AppsFlyerConsent object with the given parameters
+        return new AppsFlyerConsent(isUserSubjectToGDPR, consentForDataUsage, consentForAdsPersonalization, hasConsentForAdStorage);
     }
 
     private void enableTCFDataCollection(MethodCall call, Result result) {
