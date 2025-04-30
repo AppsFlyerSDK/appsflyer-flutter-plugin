@@ -52,6 +52,8 @@ import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_FAILURE;
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_PLUGIN_TAG;
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_SUCCESS;
 
+import androidx.annotation.NonNull;
+
 /**
  * AppsflyerSdkPlugin
  */
@@ -72,7 +74,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     //private FlutterView mFlutterView;
     private Context mContext;
     private Application mApplication;
-    private Intent mIntent;
     private MethodChannel mMethodChannel;
     private MethodChannel mCallbackChannel;
     private Activity activity;
@@ -175,7 +176,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         mMethodChannel.setMethodCallHandler(this);
         mCallbackChannel = new MethodChannel(messenger, AppsFlyerConstants.AF_CALLBACK_CHANNEL);
         mCallbackChannel.setMethodCallHandler(callbacksHandler);
-
     }
 
 
@@ -205,6 +205,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     public void onMethodCall(MethodCall call, Result result) {
         if (activity == null) {
             Log.d(AF_PLUGIN_TAG, LogMessages.ACTIVITY_NOT_ATTACHED_TO_ENGINE);
+            result.error("NO_ACTIVITY", "The current activity is null", null);
             return;
         }
         final String method = call.method;
@@ -233,6 +234,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "setConsentData":
                 setConsentData(call, result);
                 break;
+            case "setConsentDataV2":
+                setConsentDataV2(call, result);
+                break;    
             case "setIsUpdate":
                 setIsUpdate(call, result);
                 break;
@@ -424,6 +428,11 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         result.success(null);
     }
 
+    /**
+     * Sets the user consent data for tracking.
+     * @deprecated Use {@link #setConsentDataV2(MethodCall, Result)} instead.
+     */
+    @Deprecated
     public void setConsentData(MethodCall call, Result result) {
         Map<String, Object> arguments = (Map<String, Object>) call.arguments;
         Map<String, Object> consentDict = (Map<String, Object>) arguments.get("consentData");
@@ -443,6 +452,35 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
 
         result.success(null);
+    }
+
+    /**
+     * Sets the user consent data for tracking with flexible parameters.
+     */
+    public void setConsentDataV2(MethodCall call, Result result) {
+        try {
+            AppsFlyerConsent consent = getAppsFlyerConsentFromCall(call);
+            AppsFlyerLib.getInstance().setConsentData(consent);
+            result.success(null);
+        } catch (Exception e) {
+            Log.e(AF_PLUGIN_TAG, LogMessages.ERROR_WHILE_SETTING_CONSENT + e.getMessage(), e);
+            result.error("CONSENT_ERROR", LogMessages.ERROR_WHILE_SETTING_CONSENT + e.getMessage(), null);
+        }
+    }
+
+    @NonNull
+    @SuppressWarnings("unchecked")
+    private AppsFlyerConsent getAppsFlyerConsentFromCall(MethodCall call) {
+        Map<String, Object> args = (Map<String, Object>) call.arguments;
+
+        // Extract nullable Boolean arguments
+        Boolean isUserSubjectToGDPR = (Boolean) args.get("isUserSubjectToGDPR");
+        Boolean consentForDataUsage = (Boolean) args.get("consentForDataUsage");
+        Boolean consentForAdsPersonalization = (Boolean) args.get("consentForAdsPersonalization");
+        Boolean hasConsentForAdStorage = (Boolean) args.get("hasConsentForAdStorage");
+
+        // Create and return AppsFlyerConsent object with the given parameters
+        return new AppsFlyerConsent(isUserSubjectToGDPR, consentForDataUsage, consentForAdsPersonalization, hasConsentForAdStorage);
     }
 
     private void enableTCFDataCollection(MethodCall call, Result result) {
@@ -1075,31 +1113,33 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         mMethodChannel = null;
         mEventChannel.setStreamHandler(null);
         mEventChannel = null;
+        mContext = null;
+        mApplication = null;
     }
 
     @Override
     public void onAttachedToActivity(ActivityPluginBinding binding) {
         activity = binding.getActivity();
-        mIntent = binding.getActivity().getIntent();
         mApplication = binding.getActivity().getApplication();
         binding.addOnNewIntentListener(onNewIntentListener);
     }
 
     @Override
     public void onDetachedFromActivityForConfigChanges() {
-
+        this.activity = null;
     }
 
     @Override
     public void onReattachedToActivityForConfigChanges(ActivityPluginBinding binding) {
         sendCachedCallbacksToDart();
         binding.addOnNewIntentListener(onNewIntentListener);
+        activity = binding.getActivity();
     }
 
     @Override
     public void onDetachedFromActivity() {
         activity = null;
         saveCallbacks = true;
+        AppsFlyerLib.getInstance().unregisterConversionListener();
     }
-
 }

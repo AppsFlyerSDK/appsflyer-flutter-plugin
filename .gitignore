@@ -105,6 +105,8 @@ example/windows/*
 
 example/web/*
 
+example/android/app/.cxx
+
 example/\.metadata
 example/analysis_options.yaml
 
@@ -114,9 +116,3 @@ node_modules/
 covBadgeGen.js
 coverage/
 .env
-example/windows/*
-example/macos/*
-example/linux/*
-example/web/*
-example/analysis_options.yaml
-
