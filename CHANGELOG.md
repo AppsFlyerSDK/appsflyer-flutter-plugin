@@ -1,4 +1,14 @@
 # Versions
+## 6.16.2
+- setConsentData is now deprecated!
+- setConsentDataV2 is the new and recommended way to set manual user consent.
+- Added getVersionNumber, returns the plugin's version.
+- Fixed typos within the code.
+- Fixed and updated tests and their frameworks.
+- Push notification measurment API's documentation has been updated.
+- Closed a few potential memory leaks.
+- Update iOS version to 6.16.2
+- Update Android version to 6.16.2
 ## 6.15.2
 - Fixed NullPointerException issue on Android that some clients had.
 - Fixed Android MediationNetwork enum issue.
