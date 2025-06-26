@@ -7,6 +7,7 @@ void main() {
 
   late AppsflyerSdk instance;
   String selectedMethod = "";
+  dynamic capturedArguments;
   const MethodChannel methodChannel = MethodChannel('af-api');
   const MethodChannel callbacksChannel = MethodChannel('callbacks');
   const EventChannel eventChannel = EventChannel('af-events');
@@ -63,6 +64,7 @@ void main() {
         case 'disableSKAdNetwork':
         case 'setDisableAdvertisingIdentifiers':
           selectedMethod = method;
+          capturedArguments = methodCall.arguments;
           break;
       }
       return null;
@@ -73,7 +75,16 @@ void main() {
       String method = methodCall.method;
       if (method == 'listen') {
         selectedMethod = method;
+        capturedArguments = methodCall.arguments;
       }
+      return null;
+    });
+
+    // Mock handler for callbacks channel to avoid MissingPluginException during startListening
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(callbacksChannel, (methodCall) async {
+      selectedMethod = methodCall.method;
+      capturedArguments = methodCall.arguments;
       return null;
     });
   });
@@ -90,11 +101,14 @@ void main() {
   group('AppsFlyerSdk', () {
     setUp(() {
       selectedMethod = "";
+      capturedArguments = null;
     });
 
     tearDown(() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(methodChannel, null);
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(callbacksChannel, null);
     });
 
     test('check logEvent call', () async {
@@ -104,45 +118,56 @@ void main() {
     });
 
     test('check setHost call', () async {
-      instance.setHost("", "");
+      instance.setHost("prefix", "hostname");
 
       expect(selectedMethod, 'setHost');
+      expect(capturedArguments['hostPrefix'], 'prefix');
+      expect(capturedArguments['hostName'], 'hostname');
     });
 
     test('check setCurrencyCode call', () async {
-      instance.setCurrencyCode("currencyCode");
+      instance.setCurrencyCode("USD");
 
       expect(selectedMethod, 'setCurrencyCode');
+      expect(capturedArguments['currencyCode'], 'USD');
     });
 
     test('check setIsUpdate call', () async {
       instance.setIsUpdate(true);
 
       expect(selectedMethod, 'setIsUpdate');
+      expect(capturedArguments['isUpdate'], true);
     });
 
     test('check stop call', () async {
       instance.stop(true);
 
       expect(selectedMethod, 'stop');
+      expect(capturedArguments['isStopped'], true);
     });
 
     test('check updateServerUninstallToken call', () async {
-      instance.updateServerUninstallToken("token");
+      instance.updateServerUninstallToken("token123");
 
       expect(selectedMethod, 'updateServerUninstallToken');
+      expect(capturedArguments['token'], 'token123');
     });
 
     test('check setOneLinkCustomDomain call', () async {
       instance.setOneLinkCustomDomain(["brandDomains"]);
 
       expect(selectedMethod, 'setOneLinkCustomDomain');
+      expect(capturedArguments, isA<List>());
+      expect(capturedArguments, contains('brandDomains'));
     });
 
     test('check logCrossPromotionAndOpenStore call', () async {
-      instance.logCrossPromotionAndOpenStore("appId", "campaign", null);
+      instance.logCrossPromotionAndOpenStore("appId123", "campaignA", null);
 
       expect(selectedMethod, 'logCrossPromotionAndOpenStore');
+      expect(capturedArguments['appId'], 'appId123');
+      expect(capturedArguments['campaign'], 'campaignA');
+      expect(capturedArguments['params'], null);
     });
 
     test('check logCrossPromotionImpression call', () async {
@@ -177,9 +202,12 @@ void main() {
 
     test('check validateAndLogInAppPurchase call', () async {
       instance.validateAndLogInAppAndroidPurchase(
-          "publicKey", "signature", "purchaseData", "price", "currency", null);
+          "publicKey", "signature", "purchaseData", "9.99", "EUR", null);
 
       expect(selectedMethod, 'validateAndLogInAppAndroidPurchase');
+      expect(capturedArguments['publicKey'], 'publicKey');
+      expect(capturedArguments['price'], '9.99');
+      expect(capturedArguments['currency'], 'EUR');
     });
 
     test('check setMinTimeBetweenSessions call', () async {
@@ -213,9 +241,13 @@ void main() {
     });
 
     test('check setUserEmails call', () async {
-      instance.setUserEmails(["emails"], EmailCryptType.EmailCryptTypeNone);
+      instance.setUserEmails(
+          ["user@example.com"], EmailCryptType.EmailCryptTypeSHA256);
 
       expect(selectedMethod, 'setUserEmails');
+      expect(capturedArguments['emails'], contains('user@example.com'));
+      expect(capturedArguments['cryptType'],
+          EmailCryptType.values.indexOf(EmailCryptType.EmailCryptTypeSHA256));
     });
 
     test('check setAdditionalData call', () async {
@@ -262,17 +294,14 @@ void main() {
 
     test('check logAdRevenue call', () async {
       final adRevenueData = AdRevenueData(
-          monetizationNetwork: 'GoogleAdMob',
-          mediationNetwork: AFMediationNetwork.googleAdMob.value,
+          monetizationNetwork: 'Applovin',
+          mediationNetwork: AFMediationNetwork.applovinMax.value,
           currencyIso4217Code: 'USD',
-          revenue: 1.23,
-          additionalParameters: {
-            'adUnitId': 'ca-app-pub-XXXX/YYYY',
-            'ad_network_click_id': '12345'
-          });
+          revenue: 0.99);
       instance.logAdRevenue(adRevenueData);
 
       expect(selectedMethod, 'logAdRevenue');
+      expect(capturedArguments['mediationNetwork'], 'applovin_max');
     });
 
     test('check setConsentData call', () async {
@@ -301,12 +330,15 @@ void main() {
       instance.setPartnerData('partnerId', {'key': 'value'});
 
       expect(selectedMethod, 'setPartnerData');
+      expect(capturedArguments['partnerId'], 'partnerId');
+      expect(capturedArguments['partnersData']['key'], 'value');
     });
 
     test('check setResolveDeepLinkURLs call', () async {
       instance.setResolveDeepLinkURLs(['https://example.com']);
 
       expect(selectedMethod, 'setResolveDeepLinkURLs');
+      expect(capturedArguments, contains('https://example.com'));
     });
 
     test('check setPushNotification call', () async {
@@ -319,12 +351,14 @@ void main() {
       instance.sendPushNotificationData({'key': 'value'});
 
       expect(selectedMethod, 'sendPushNotificationData');
+      expect(capturedArguments['key'], 'value');
     });
 
     test('check enableFacebookDeferredApplinks call', () async {
       instance.enableFacebookDeferredApplinks(true);
 
       expect(selectedMethod, 'enableFacebookDeferredApplinks');
+      expect(capturedArguments['isFacebookDeferredApplinksEnabled'], true);
     });
 
     test('check disableSKAdNetwork call', () async {
@@ -337,6 +371,7 @@ void main() {
       instance.setDisableAdvertisingIdentifiers(true);
 
       expect(selectedMethod, 'setDisableAdvertisingIdentifiers');
+      expect(capturedArguments, true);
     });
   });
 }

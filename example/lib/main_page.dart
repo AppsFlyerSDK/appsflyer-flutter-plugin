@@ -169,7 +169,7 @@ class MainPageState extends State<MainPage> {
 
       AdRevenueData adRevenueData = AdRevenueData(
           monetizationNetwork: 'SpongeBob',
-          mediationNetwork: AFMediationNetwork.googleAdMob.value,
+          mediationNetwork: AFMediationNetwork.applovinMax.value,
           currencyIso4217Code: 'USD',
           revenue: 100.3,
           additionalParameters: customParams);
