@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
@@ -1008,7 +1009,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             double revenue = requireNonNullArgument(call, "revenue");
             String mediationNetworkString = requireNonNullArgument(call, "mediationNetwork");
 
-            MediationNetwork mediationNetwork = MediationNetwork.valueOf(mediationNetworkString.toUpperCase());
+            MediationNetwork mediationNetwork = MediationNetwork.valueOf(mediationNetworkString.toUpperCase(Locale.ENGLISH));
 
             // No null check for additionalParameters since it's acceptable for it to be null (optional data)
             Map<String, Object> additionalParameters = call.argument("additionalParameters");
