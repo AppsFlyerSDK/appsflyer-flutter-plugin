@@ -1,4 +1,7 @@
 # Versions
+## 6.16.21
+- Bug fix for users who reported Locale issue on Android, fixed Locale issue by forcing toUpperCase(Locale.ENGLISH)
+- Expanded the unit–tests
 ## 6.16.2
 - setConsentData is now deprecated!
 - setConsentDataV2 is the new and recommended way to set manual user consent.
