@@ -115,6 +115,7 @@ covBadgeGen.js
 coverage/
 .env
 example/windows/*
+example/android/app/.cxx/*
 example/macos/*
 example/linux/*
 example/web/*
