@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'appsflyer_sdk'
-  s.version          = '6.15.3'
+  s.version          = '6.17.1'
   s.summary          = 'AppsFlyer Integration for Flutter'
   s.description      = 'AppsFlyer is the market leader in mobile advertising attribution & analytics, helping marketers to pinpoint their targeting, optimize their ad spend and boost their ROI.'
   s.homepage         = 'https://github.com/AppsFlyerSDK/flutter_appsflyer_sdk'
@@ -12,21 +12,21 @@ Pod::Spec.new do |s|
   s.requires_arc = true
   s.static_framework = true
   if defined?($AppsFlyerPurchaseConnector)
-    s.default_subspecs = 'Core', 'PurchaseConnector' # add this line
+    s.default_subspecs = 'Core', 'PurchaseConnector' 
   else
-    s.default_subspecs = 'Core' # add this line
+    s.default_subspecs = 'Core' 
   end
 
   s.subspec 'Core' do |ss|
     ss.source_files = 'Classes/**/*'
     ss.public_header_files = 'Classes/**/*.h'
     ss.dependency 'Flutter'
-    ss.ios.dependency 'AppsFlyerFramework','6.15.3'
+    ss.ios.dependency 'AppsFlyerFramework','6.17.1'
   end
 
   s.subspec 'PurchaseConnector' do |ss|
     ss.dependency 'Flutter'
-    ss.ios.dependency 'PurchaseConnector', '6.15.3'
+    ss.ios.dependency 'PurchaseConnector', '6.17.1'
     ss.source_files = 'PurchaseConnector/**/*'
     ss.public_header_files = 'PurchaseConnector/**/*.h'
   
