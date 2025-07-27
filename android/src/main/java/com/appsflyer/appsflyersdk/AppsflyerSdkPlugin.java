@@ -237,7 +237,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                 break;
             case "setConsentDataV2":
                 setConsentDataV2(call, result);
-                break;    
+                break;        
             case "setIsUpdate":
                 setIsUpdate(call, result);
                 break;
@@ -431,7 +431,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     /**
      * Sets the user consent data for tracking.
-     * @deprecated Use {@link #setConsentDataV2(MethodCall, Result)} instead.
+     * @deprecated Use {@link #setConsentDataV2(MethodCall, Result)} instead!
      */
     @Deprecated
     public void setConsentData(MethodCall call, Result result) {
@@ -1106,6 +1106,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     @Override
     public void onAttachedToEngine(FlutterPluginBinding binding) {
         onAttachedToEngine(binding.getApplicationContext(), binding.getBinaryMessenger());
+        AppsFlyerPurchaseConnector.INSTANCE.onAttachedToEngine(binding);
     }
 
     @Override
@@ -1114,6 +1115,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         mMethodChannel = null;
         mEventChannel.setStreamHandler(null);
         mEventChannel = null;
+        AppsFlyerPurchaseConnector.INSTANCE.onDetachedFromEngine(binding);
         mContext = null;
         mApplication = null;
     }
@@ -1143,4 +1145,5 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         saveCallbacks = true;
         AppsFlyerLib.getInstance().unregisterConversionListener();
     }
+
 }

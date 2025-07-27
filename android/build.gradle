@@ -16,6 +16,8 @@ rootProject.allprojects {
 apply plugin: 'com.android.library'
 apply plugin: 'org.jetbrains.kotlin.android'
 
+def includeConnector = project.findProperty('appsflyer.enable_purchase_connector')?.toBoolean() ?: false
+
 android {
     defaultConfig {
         minSdkVersion 19
@@ -24,25 +26,37 @@ android {
 
         multiDexEnabled true
     }
+    
     lintOptions {
         disable 'InvalidPackage'
     }
     namespace 'com.appsflyer.appsflyersdk'
 
+    sourceSets {
+        main {
+            java.srcDirs = ['src/main/java']
+            java.srcDirs += includeConnector ? ['src/main/include-connector'] : ['src/main/exlude-connector']
+        }
+        includeConnector ? ['src/main/include-connector'] : ['src/main/exlude-connector']
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-
+    
     kotlinOptions {
         jvmTarget = '17'
     }
-
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation 'androidx.appcompat:appcompat:1.0.0'
-    implementation 'com.appsflyer:af-android-sdk:6.16.2'
-    implementation 'com.android.installreferrer:installreferrer:2.1'
+    implementation 'com.appsflyer:af-android-sdk:6.17.0'
+    implementation 'com.android.installreferrer:installreferrer:2.2'
+//    implementation 'androidx.core:core-ktx:1.13.1'
+    if (includeConnector) {
+        implementation 'com.appsflyer:purchase-connector:2.1.1'
+    }
 }

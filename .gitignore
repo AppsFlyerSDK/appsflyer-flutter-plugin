@@ -107,9 +107,10 @@ example/web/*
 
 example/android/app/.cxx
 
+example/android/app/.cxx/*
+
 example/\.metadata
 example/analysis_options.yaml
-
 
 node_modules/
 
