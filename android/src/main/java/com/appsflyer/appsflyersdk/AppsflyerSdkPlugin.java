@@ -390,27 +390,27 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             appsFlyerLib.start(activity, null, new AppsFlyerRequestListener() {
                 @Override
                 public void onSuccess() {
-                    if (mMethodChannel != null) {
-                        uiThreadHandler.post(() -> mMethodChannel.invokeMethod("onSuccess", null));
-                    } else {
-                        Log.e(AF_PLUGIN_TAG, LogMessages.METHOD_CHANNEL_IS_NULL);
-                        result.error("NULL_OBJECT", LogMessages.METHOD_CHANNEL_IS_NULL, null);
-                    }
+                    uiThreadHandler.post(() -> {
+                        if (mMethodChannel != null) {
+                            mMethodChannel.invokeMethod("onSuccess", null);
+                        } else {
+                            Log.e(AF_PLUGIN_TAG, LogMessages.METHOD_CHANNEL_IS_NULL + " - SDK started successfully but callback `onSuccess` failed");
+                        }
+                    });
                 }
 
                 @Override
                 public void onError(final int errorCode, final String errorMessage) {
-                    if (mMethodChannel != null) {
-                        uiThreadHandler.post(() -> {
+                    uiThreadHandler.post(() -> {
+                        if (mMethodChannel != null) {
                             HashMap<String, Object> errorDetails = new HashMap<>();
                             errorDetails.put("errorCode", errorCode);
                             errorDetails.put("errorMessage", errorMessage);
                             mMethodChannel.invokeMethod("onError", errorDetails);
-                        });
-                    } else {
-                        Log.e(AF_PLUGIN_TAG, LogMessages.METHOD_CHANNEL_IS_NULL);
-                        result.error("NULL_OBJECT", LogMessages.METHOD_CHANNEL_IS_NULL, null);
-                    }
+                        } else {
+                            Log.e(AF_PLUGIN_TAG, LogMessages.METHOD_CHANNEL_IS_NULL + " - SDK failed to start: " + errorMessage);
+                        }
+                    });
                 }
             });
             result.success(null);
@@ -734,29 +734,33 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                 new Runnable() {
                     @Override
                     public void run() {
-                        Log.d("Callbacks", "Calling invokeMethod with: " + data);
-                        JSONObject args = new JSONObject();
-                        try {
-                            args.put("id", callbackName);
-                            //return data for UDL
-                            if (callbackName.equals(AppsFlyerConstants.AF_UDL_CALLBACK)) {
-                                DeepLinkResult dp = (DeepLinkResult) data;
-                                args.put("deepLinkStatus", dp.getStatus().toString());
-                                if (dp.getError() != null) {
-                                    args.put("deepLinkError", dp.getError().toString());
+                        if (mCallbackChannel != null) {
+                            Log.d(AF_PLUGIN_TAG, "Calling invokeMethod with: " + data);
+                            JSONObject args = new JSONObject();
+                            try {
+                                args.put("id", callbackName);
+                                //return data for UDL
+                                if (callbackName.equals(AppsFlyerConstants.AF_UDL_CALLBACK)) {
+                                    DeepLinkResult dp = (DeepLinkResult) data;
+                                    args.put("deepLinkStatus", dp.getStatus().toString());
+                                    if (dp.getError() != null) {
+                                        args.put("deepLinkError", dp.getError().toString());
+                                    }
+                                    if (dp.getStatus() == DeepLinkResult.Status.FOUND) {
+                                        args.put("deepLinkObj", dp.getDeepLink().getClickEvent());
+                                    }
+                                } else { // return data for conversionData and OAOA
+                                    JSONObject dataJSON = (JSONObject) data;
+                                    args.put("status", status);
+                                    args.put("data", data.toString());
                                 }
-                                if (dp.getStatus() == DeepLinkResult.Status.FOUND) {
-                                    args.put("deepLinkObj", dp.getDeepLink().getClickEvent());
-                                }
-                            } else { // return data for conversionData and OAOA
-                                JSONObject dataJSON = (JSONObject) data;
-                                args.put("status", status);
-                                args.put("data", data.toString());
+                            } catch (JSONException e) {
+                                e.printStackTrace();
                             }
-                        } catch (JSONException e) {
-                            e.printStackTrace();
+                            mCallbackChannel.invokeMethod("callListener", args.toString());
+                        } else {
+                            Log.e(AF_PLUGIN_TAG, "CallbackChannel is null, cannot invoke method: " + callbackName);
                         }
-                        mCallbackChannel.invokeMethod("callListener", args.toString());
                     }
                 }
         );
@@ -941,7 +945,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
         String afDevKey = (String) call.argument(AppsFlyerConstants.AF_DEV_KEY);
         if (afDevKey == null || afDevKey.equals("")) {
-            result.error(null, "AF Dev Key is empty", "AF dev key cannot be empty");
+            Log.e(AF_PLUGIN_TAG, LogMessages.AF_DEV_KEY_IS_EMPTY);
+            result.error("INIT_ERROR", LogMessages.AF_DEV_KEY_IS_EMPTY, null);
+            return;
         }
 
         boolean advertiserIdDisabled = (boolean) call.argument(AppsFlyerConstants.DISABLE_ADVERTISING_IDENTIFIER);
