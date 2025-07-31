@@ -70,5 +70,6 @@ You can read more about it in the [Android SDK installation guide](https://dev.a
 - [Deep Linking](/doc/DeepLink.md)
 - [Advanced APIs](/doc/AdvancedAPI.md)
 - [Testing the integration](/doc/Testing.md)
+- [Purchase Connector](/doc/PurchaseConnector.md) <- **New addition**
 - [APIs](/doc/API.md)
 - [Sample App](/example)
