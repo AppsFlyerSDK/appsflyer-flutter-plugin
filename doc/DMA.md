@@ -49,7 +49,9 @@ if (cmpManager.hasConsent()) {
 
 ## Manually collect consent data
 
-### setConsentData is now **deprecated**. use [setConsentDataV2](#setconsentdatav2-recommended-api-for-manual-consent-collection---since-6162)
+<!-- markdownlint-disable MD033 -->
+### <span style="color: red">setConsentData is now **deprecated**. use [setConsentDataV2](#setconsentdatav2-recommended-api-for-manual-consent-collection---since-6162)</span>
+<!-- markdownlint-enable MD033 -->
 
 If your app does not use a CMP compatible with TCF v2.2, use the SDK API detailed below to provide the consent data directly to the SDK, distinguishing between cases when GDPR applies or not.
 
