@@ -53,6 +53,7 @@
 - [setOutOfStore](#setOutOfStore)
 - [getOutOfStore](#getOutOfStore)
 - [setDisableNetworkData](#setDisableNetworkData)
+- [disableAppSetId](#disableAppSetId)
 - [performOnDeepLinking](#performondeeplinking)
 - [logAdRevenue](#logAdRevenue)  - Since 6.15.1
 
@@ -858,6 +859,19 @@ _Example:_
 ```dart
   if(Platform.isAndroid){
     appsflyerSdk.setDisableNetworkData(true);
+  }
+```
+---
+**<a id="disableAppSetId"> `void disableAppSetId()`**
+
+**Android Only!**
+
+Disables AppSet ID collection. Starting with v6.17.0, the SDK can automatically collect the AppSet ID. Use this method to opt-out of AppSet ID collection for privacy compliance.
+
+_Example:_
+```dart
+  if(Platform.isAndroid){
+    appsflyerSdk.disableAppSetId();
   }
 ```
 ---

@@ -20,6 +20,7 @@ You can read more about iOS Uninstall Measurement in our [knowledge base](https:
 You can register the uninstall token with AppsFlyer by modifying your `AppDelegate.m` file, add the following function call with your uninstall token inside [didRegisterForRemoteNotificationsWithDeviceToken](https://developer.apple.com/reference/uikit/uiapplicationdelegate).
 
 **Example:**
+
 ```objective-c
 @import AppsFlyerLib;
 
@@ -59,6 +60,7 @@ A complete list of supported parameters is available [here](https://support.apps
   **`Future<void> setAppInviteOneLinkID(String oneLinkID, Function callback)`**
 
 2. Utilize the AppsFlyerInviteLinkParams class to set the query params in the user invite link:
+
 ```dart
 class AppsFlyerInviteLinkParams {
   final String channel;
@@ -75,6 +77,7 @@ class AppsFlyerInviteLinkParams {
 3. Call the generateInviteLink API to generate the user invite link. Use the success and error callbacks for handling.
 
 **Full example:**
+
 ```dart
 // Setting the OneLinkID
 appsFlyerSdk.setAppInviteOneLinkID('OnelinkID', 

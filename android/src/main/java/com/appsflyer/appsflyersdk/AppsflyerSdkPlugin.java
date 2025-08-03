@@ -355,6 +355,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             case "logAdRevenue":
                 logAdRevenue(call, result);
                 break;
+            case "disableAppSetId":
+                disableAppSetId(call, result);
+                break;
             default:
                 result.notImplemented();
                 break;
@@ -1108,6 +1111,10 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         return newMap;
     }
 
+    private void disableAppSetId(MethodCall call, Result result) {
+        AppsFlyerLib.getInstance().disableAppSetId();
+        result.success(null);
+    }
 
     @Override
     public void onAttachedToEngine(FlutterPluginBinding binding) {
