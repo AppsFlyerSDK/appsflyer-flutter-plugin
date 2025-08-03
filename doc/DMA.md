@@ -1,14 +1,18 @@
 # Set Consent For DMA Compliance
 
-Following the DMA regulations that were set by the European Commission, Google (and potentially other SRNs in the future) require to send them the user's consent data in order to interact with them during the attribution process. In our latest plugin update (6.16.2), we've introduced two new public APIs, enhancing our support for user consent and data collection preferences in line with evolving digital market regulations. 
+Following the DMA regulations that were set by the European Commission, Google (and potentially other SRNs in the future) require to send them the user's consent data in order to interact with them during the attribution process. In our latest plugin update (6.16.2), we've introduced two new public APIs, enhancing our support for user consent and data collection preferences in line with evolving digital market regulations.
 There are two alternative ways for gathering consent data:
 
 - Through a Consent Management Platform (CMP): If the app uses a CMP that complies with the Transparency and Consent Framework (TCF) v2.2 protocol, the SDK can automatically retrieve the consent details.
-### OR
+
+## OR
+
 - Through a dedicated SDK API: Developers can pass Google's required consent data directly to the SDK using a specific API designed for this purpose.
 
 ## Use CMP to collect consent data
+
 A CMP compatible with TCF v2.2 collects DMA consent data and stores it in NSUserDefaults (iOS) and SharedPreferences (Android). To enable the SDK to access this data and include it with every event, follow these steps:
+
 1. Call `appsflyerSdk.enableTCFDataCollection(true)`
 2. Initialize the SDK in manual start mode by setting `manualStart: true` in the `AppsFlyerOptions` when creating the AppsflyerSdk instance.
 3. Use the CMP to decide if you need the consent dialog in the current session to acquire the consent data. If you need the consent dialog move to step 4, otherwise move to step 5.
@@ -43,11 +47,14 @@ if (cmpManager.hasConsent()) {
 }
 ```
 
-## Manually collect consent data 
-### setConsentData is now **deprecated**. use <a href="#setconsentdatav2-recommended-api-for-manual-consent-collection---since-6162">setConsentDataV2</a>
+## Manually collect consent data
+
+### setConsentData is now **deprecated**. use [setConsentDataV2](#setconsentdatav2-recommended-api-for-manual-consent-collection---since-6162)
+
 If your app does not use a CMP compatible with TCF v2.2, use the SDK API detailed below to provide the consent data directly to the SDK, distinguishing between cases when GDPR applies or not.
 
 ### When GDPR applies to the user
+
 If GDPR applies to the user, perform the following:
 
 1. Given that GDPR is applicable to the user, determine whether the consent data is already stored for this session.
@@ -93,6 +100,7 @@ appsflyerSdk.initSdk(
 ### When GDPR does not apply to the user
 
 If GDPR doesn't apply to the user perform the following:
+
 1. Create an AppsFlyerConsent object using `nonGDPRUser` method that doesn't accept any parameters.
 2. Call `appsflyerSdk.setConsentData(consentData)` with the AppsFlyerConsent object.
 3. Initialize the SDK using `appsflyerSdk.initSdk()`.
@@ -122,6 +130,7 @@ appsflyerSdk.initSdk(
 ```
 
 ## setConsentDataV2 (Recommended API for Manual Consent Collection) - since 6.16.2
+
 🚀 **Why Use setConsentDataV2?**</br>
 The setConsentDataV2 API is the new and improved way to manually provide user consent data to the AppsFlyer SDK.
 
@@ -134,6 +143,7 @@ It replaces the now deprecated setConsentData method, offering several improveme
 If your app previously used setConsentData, it is highly recommended to migrate to setConsentDataV2 for a more flexible and robust solution.
 
 📌 **API Reference**
+
 ```dart
 void setConsentDataV2({
   bool? isUserSubjectToGDPR,
@@ -141,9 +151,10 @@ void setConsentDataV2({
   bool? consentForAdsPersonalization,
   bool? hasConsentForAdStorage
 })
-``` 
+```
 
-**Parameters**
+### Parameters
+
 | Parameter | Type | Description |
 | -------- | -------- | -------- |
 | isUserSubjectToGDPR            | bool?     | Indicates if the user is subject to GDPR regulations.     |
@@ -155,6 +166,7 @@ void setConsentDataV2({
 - These values should be collected from the user via an appropriate **UI or consent prompt** before calling this method.
 
 📌 **Example Usage**
+
 ```dart
 // Initialize AppsFlyerOptions with manualStart: true
 final AppsFlyerOptions options = AppsFlyerOptions(
@@ -184,7 +196,8 @@ appsflyerSdk.initSdk(
 
 // Start the SDK
 appsflyerSdk.startSDK();
-``` 
+```  
+
 📌 **Notes**</br>
 • You should call this method **before initializing the AppsFlyer SDK** if possible, or at least before `startSDK()` when using manual initialization.</br>
 • Ensure you collect consent **legally and transparently** from the user before passing these values.
