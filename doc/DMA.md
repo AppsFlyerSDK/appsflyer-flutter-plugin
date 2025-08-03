@@ -4,9 +4,7 @@ Following the DMA regulations that were set by the European Commission, Google (
 There are two alternative ways for gathering consent data:
 
 - Through a Consent Management Platform (CMP): If the app uses a CMP that complies with the Transparency and Consent Framework (TCF) v2.2 protocol, the SDK can automatically retrieve the consent details.
-
-## OR
-
+**OR**
 - Through a dedicated SDK API: Developers can pass Google's required consent data directly to the SDK using a specific API designed for this purpose.
 
 ## Use CMP to collect consent data
