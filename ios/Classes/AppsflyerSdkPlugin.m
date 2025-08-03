@@ -64,7 +64,14 @@ static BOOL _isSKADEnabled = false;
     [registrar addMethodCallDelegate:instance channel:callbackChannel];
     [registrar addApplicationDelegate:instance];
     
-    
+    // Register Purchase Connector plugin if enabled
+#ifdef ENABLE_PURCHASE_CONNECTOR
+    Class purchaseConnectorClass = NSClassFromString(@"PurchaseConnectorPlugin");
+    if (purchaseConnectorClass && [purchaseConnectorClass respondsToSelector:@selector(registerWithRegistrar:)]) {
+        [purchaseConnectorClass performSelector:@selector(registerWithRegistrar:) withObject:registrar];
+    }
+#endif
+
 }
 
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
