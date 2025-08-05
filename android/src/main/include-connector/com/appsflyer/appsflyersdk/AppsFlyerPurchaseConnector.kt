@@ -125,9 +125,9 @@ object AppsFlyerPurchaseConnector : FlutterPlugin, MethodChannel.MethodCallHandl
         if (connectorWrapper == null) {
             contextRef?.get()?.let { ctx ->
                 connectorWrapper = ConnectorWrapper(
-                    ctx, call.getBoolean("logSubscriptions"),
-                    call.getBoolean("logInApps"),
-                    call.getBoolean("sandbox"),
+                    ctx, call.getBoolean(AppsFlyerConstants.LOG_SUBS_KEY),
+                    call.getBoolean(AppsFlyerConstants.LOG_IN_APP_KEY),
+                    call.getBoolean(AppsFlyerConstants.SANDBOX_KEY),
                     arsListener, viapListener
                 )
                 result.success(null)
