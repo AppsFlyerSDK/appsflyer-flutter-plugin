@@ -124,10 +124,15 @@ object AppsFlyerPurchaseConnector : FlutterPlugin, MethodChannel.MethodCallHandl
     private fun configure(call: MethodCall, result: MethodChannel.Result) {
         if (connectorWrapper == null) {
             contextRef?.get()?.let { ctx ->
+                val logSubs = call.getBoolean(AppsFlyerConstants.LOG_SUBS_KEY)
+                val logInApps = call.getBoolean(AppsFlyerConstants.LOG_IN_APP_KEY)
+                val sandbox = call.getBoolean(AppsFlyerConstants.SANDBOX_KEY)
+                
+                android.util.Log.d("AppsFlyer_PC_Config", "Native received - logSubs: $logSubs, logInApps: $logInApps, sandbox: $sandbox")
+                android.util.Log.d("AppsFlyer_PC_Config", "Arguments received: ${call.arguments}")
+                
                 connectorWrapper = ConnectorWrapper(
-                    ctx, call.getBoolean(AppsFlyerConstants.LOG_SUBS_KEY),
-                    call.getBoolean(AppsFlyerConstants.LOG_IN_APP_KEY),
-                    call.getBoolean(AppsFlyerConstants.SANDBOX_KEY),
+                    ctx, logSubs, logInApps, sandbox,
                     arsListener, viapListener
                 )
                 result.success(null)
@@ -201,7 +206,15 @@ object AppsFlyerPurchaseConnector : FlutterPlugin, MethodChannel.MethodCallHandl
      * @param defValue The default value to be returned if the argument does not exist.
      * @return The value of the argument or the default value if the argument does not exist.
      */
-    private fun MethodCall.getBoolean(key: String, defValue: Boolean = false): Boolean =
-        runCatching { argument<Boolean>(key)!! }.getOrDefault(defValue)
+    private fun MethodCall.getBoolean(key: String, defValue: Boolean = false): Boolean {
+        return try {
+            val value = argument<Boolean>(key)
+            android.util.Log.d("AppsFlyer_PC_Config", "Extracted $key = $value")
+            value ?: defValue
+        } catch (e: Exception) {
+            android.util.Log.w("AppsFlyer_PC_Config", "Failed to extract $key, using default $defValue. Error: ${e.message}")
+            defValue
+        }
+    }
 
 }

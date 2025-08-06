@@ -69,11 +69,18 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
   _PurchaseConnectorImpl._internal(
       this._methodChannel, PurchaseConnectorConfiguration config) {
     _methodChannel.setMethodCallHandler(_methodCallHandler);
-    _methodChannel.invokeMethod(AppsflyerConstants.CONFIGURE_KEY, {
+
+    final configMap = {
       AppsflyerConstants.LOG_SUBS_KEY: config.logSubscriptions,
       AppsflyerConstants.LOG_IN_APP_KEY: config.logInApps,
       AppsflyerConstants.SANDBOX_KEY: config.sandbox,
-    });
+    };
+
+    print("[AppsFlyer_PC_Debug] Sending config to native: $configMap");
+    print(
+        "[AppsFlyer_PC_Debug] Keys being sent: ${AppsflyerConstants.LOG_SUBS_KEY}, ${AppsflyerConstants.LOG_IN_APP_KEY}, ${AppsflyerConstants.SANDBOX_KEY}");
+
+    _methodChannel.invokeMethod(AppsflyerConstants.CONFIGURE_KEY, configMap);
   }
 
   /// Factory constructor.
@@ -149,11 +156,11 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
     dynamic callMap = jsonDecode(call.arguments);
     switch (call.method) {
       case AppsflyerConstants
-            .SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_RESPONSE:
+          .SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_RESPONSE:
         _handleSubscriptionPurchaseValidationResultListenerOnResponse(callMap);
         break;
       case AppsflyerConstants
-            .SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_FAILURE:
+          .SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_FAILURE:
         _handleSubscriptionPurchaseValidationResultListenerOnFailure(callMap);
         break;
       case AppsflyerConstants.IN_APP_VALIDATION_RESULT_LISTENER_ON_RESPONSE:
@@ -185,8 +192,7 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
   /// Handles response for the in-app validation result listener.
   ///
   /// [callbackData] is the callback data expected in the form of a map.
-  void _handleInAppValidationResultListenerOnResponse(
-      dynamic callbackData) {
+  void _handleInAppValidationResultListenerOnResponse(dynamic callbackData) {
     _handleValidationResultListenerOnResponse<InAppPurchaseValidationResult>(
       {"result": callbackData},
       _viapOnResponse,
@@ -233,8 +239,7 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
     Map<String, T>? res = converter(callbackData);
     if (onResponse != null) {
       onResponse(res);
-    } else {
-    }
+    } else {}
   }
 
   /// Handles failure for a validation result listener.
