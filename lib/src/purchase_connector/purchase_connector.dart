@@ -105,6 +105,7 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
     } else if (_instance != null && config != null) {
       debugPrint(AppsflyerConstants.RE_CONFIGURE_ERROR_MSG);
     }
+
     return _instance!;
   }
 
@@ -154,6 +155,7 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
   /// Method call handler for different operations. Called by the _methodChannel.
   Future<void> _methodCallHandler(MethodCall call) async {
     dynamic callMap = jsonDecode(call.arguments);
+
     switch (call.method) {
       case AppsflyerConstants
           .SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_RESPONSE:
@@ -173,7 +175,7 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
         _handleDidReceivePurchaseRevenueValidationInfo(callMap);
         break;
       default:
-        throw ArgumentError("Method not found.");
+        throw ArgumentError("Method not found: ${call.method}");
     }
   }
 
@@ -224,6 +226,7 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
     var errorMap =
         callbackData[AppsflyerConstants.ERROR] as Map<String, dynamic>?;
     var error = errorMap != null ? IosError.fromJson(errorMap) : null;
+
     if (_didReceivePurchaseRevenueValidationInfo != null) {
       _didReceivePurchaseRevenueValidationInfo!(validationInfo, error);
     }

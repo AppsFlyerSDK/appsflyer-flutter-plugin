@@ -28,8 +28,8 @@ import Flutter
     private var logOptions: AutoLogPurchaseRevenueOptions = []
     
     /// Constants used in method channel for Flutter calls.
-    private let logSubscriptionsKey = "logSubscriptions"
-    private let logInAppsKey = "logInApps"
+    private let logSubscriptionsKey = "logSubscriptionPurchase"
+    private let logInAppsKey = "logInAppPurchase"
     private let sandboxKey = "sandbox"
     
     /// Private constructor, used to prevent direct instantiation of this class and ensure singleton behaviour.
@@ -38,9 +38,8 @@ import Flutter
     /// Mandatory method needed to register the plugin with iOS part of Flutter app.
     public static func register(with registrar: FlutterPluginRegistrar) {
         /// Create a new method channel with the registrar.
-            shared.methodChannel =  FlutterMethodChannel(name: AF_PURCHASE_CONNECTOR_CHANNEL, binaryMessenger: registrar.messenger())
-            shared.methodChannel!.setMethodCallHandler(shared.methodCallHandler)
-        
+        shared.methodChannel =  FlutterMethodChannel(name: AF_PURCHASE_CONNECTOR_CHANNEL, binaryMessenger: registrar.messenger())
+        shared.methodChannel!.setMethodCallHandler(shared.methodCallHandler)
     }
 
     /// Method called when a Flutter method call occurs. It handles and routes flutter method invocations.
@@ -103,7 +102,6 @@ import Flutter
             // From the docs:  If you called stopObservingTransactions API, set the autoLogPurchaseRevenue value before you call startObservingTransactions next time.
             connector.autoLogPurchaseRevenue = self.logOptions
             connector.startObservingTransactions()
-
         }
     }
 
@@ -128,7 +126,7 @@ import Flutter
 }
 
 /// Extension enabling `PurchaseConnectorPlugin` to conform to `PurchaseRevenueDelegate`
-extension PurchaseConnectorPlugin:  PurchaseRevenueDelegate {
+extension PurchaseConnectorPlugin: PurchaseRevenueDelegate {
     /// Implementation of the `didReceivePurchaseRevenueValidationInfo` delegate method.
     /// When the validation info comes back after a purchase, it is reported back to the Flutter via the method channel.
     public func didReceivePurchaseRevenueValidationInfo(_ validationInfo: [AnyHashable : Any]?, error: Error?) {

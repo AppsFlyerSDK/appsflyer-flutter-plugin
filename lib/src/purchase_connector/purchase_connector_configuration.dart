@@ -11,6 +11,6 @@ class PurchaseConnectorConfiguration {
 
   PurchaseConnectorConfiguration(
       {this.logSubscriptions = false,
-        this.logInApps = false,
-        this.sandbox = false});
+      this.logInApps = false,
+      this.sandbox = false});
 }
