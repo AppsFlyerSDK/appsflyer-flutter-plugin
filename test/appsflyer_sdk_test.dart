@@ -56,6 +56,7 @@ void main() {
         case 'setConsentData':
         case 'enableTCFDataCollection':
         case 'setDisableNetworkData':
+        case 'disableAppSetId':
         case 'setPartnerData':
         case 'setResolveDeepLinkURLs':
         case 'setPushNotification':
@@ -372,6 +373,12 @@ void main() {
 
       expect(selectedMethod, 'setDisableAdvertisingIdentifiers');
       expect(capturedArguments, true);
+    });
+
+    test('check disableAppSetId call', () async {
+      instance.disableAppSetId();
+
+      expect(selectedMethod, 'disableAppSetId');
     });
   });
 }

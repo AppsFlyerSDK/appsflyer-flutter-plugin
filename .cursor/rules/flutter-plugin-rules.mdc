@@ -1,0 +1,113 @@
+---
+description: Flutter & Federated‑Plugin Development Guidelines
+alwaysApply: true
+---
+
+## 1. Flutter Best Practices (App + Plugin)
+
+- Adapt to existing project architecture while maintaining clean‑code principles  
+- Use Flutter 3.x features and Material 3 design  
+- Implement clean architecture with the BLoC pattern  
+- Follow proper state‑management principles  
+- Use dependency injection where appropriate  
+- Implement robust error handling  
+- Follow platform‑specific design guidelines  
+- Apply proper localization techniques  
+- Provide a minimal, null‑safe Dart API surface that hides platform details  
+- Follow the federated‑plugin model (`platform_interface`, `+android`, `+ios` packages)  
+- Keep native code idiomatic for each platform (Kotlin/Swift/Obj‑C/Java/C·++)  
+- Expose asynchronous APIs via `Future`s/`Stream`s that map 1‑to‑1 with platform callbacks  
+- Use Pigeon or FFI when type safety or performance warrants it  
+- Guard platform‑specific calls with `Platform.isX` checks  
+- Publish clear documentation and an `example/` app that runs on all supported platforms  
+
+## 2. Reference Project Structure
+
+    packages/
+      my_plugin/                        # Public‑facing federated plugin
+        lib/
+          src/
+          my_plugin.dart
+        android/                        # Kotlin (preferred) or Java
+          src/main/kotlin/…/
+        ios/                            # Swift (preferred) or Obj‑C
+          Classes/…/
+        pigeon/                         # *.dart pigeon files (if used)
+        pubspec.yaml
+        CHANGELOG.md
+      my_plugin_platform_interface/     # Pure‑Dart platform interface
+      my_plugin_android/                # Android‑only implementation (if federated)
+      my_plugin_ios/                    # iOS‑only implementation (if federated)
+      example/                          # Runnable demo + integration tests
+        lib/
+        android/
+        ios/
+    tools/                              # Scripts: CI, code‑gen, coverage
+
+## 3. Coding Guidelines
+
+1. Use null‑safety throughout Dart; match Kotlin/Swift nullability annotations.  
+2. Keep the **platform_interface** API minimal; annotate internal items with `@visibleForTesting`.  
+3. Convert platform exceptions to Dart errors using an `Either`/sealed‑result pattern.  
+4. Follow semantic versioning; bump **MAJOR** for breaking Dart *or* native API changes.  
+5. Name `MethodChannel` constants `<plugin>.methods` and `EventChannel` constants `<plugin>.events`.  
+6. Document every public method with a platform‑support table (✓ / ✗ for Android, iOS, Web, macOS, …).  
+7. Use Gradle Version Catalog (`libs.versions.toml`) and Swift Package Manager to pin native SDKs.  
+8. Keep Android `minSdk`/`compileSdk` and iOS deployment target in sync with Flutter stable.  
+9. Provide dart‑doc examples and link to the example app for each API.  
+10. Practise TDD on both Dart and native sides (unit + integration).  
+
+## 4. Widget Guidelines (for the example app)
+
+- Keep widgets small and focused  
+- Use `const` constructors when possible  
+- Supply meaningful widget keys  
+- Follow sound layout principles  
+- Respect widget lifecycle methods  
+- Provide error boundaries  
+- Optimise with `const`/memoisation where feasible  
+- Meet accessibility requirements  
+
+## 5. Performance Guidelines
+
+1. Cache images; move heavy work off the main isolate.  
+2. Optimise `ListView`/sliver usage with `itemExtent`, `addAutomaticKeepAlives`, `cacheExtent`.  
+3. Minimise rebuilds via selective BLoC updates or `ValueListenableBuilder`s.  
+4. Avoid `MethodChannel` calls inside `build()`; batch or cache native look‑ups.  
+5. Prefer FFI for high‑frequency calls; benchmark against `MethodChannel`.  
+6. Initialise native SDKs lazily on first API call.  
+7. Shrink Android dependencies (R8) and strip unused ABIs; enable dead‑code stripping on iOS.  
+8. Use compile‑time flags such as `-O3` and `--split-debug-info`.  
+
+## 6. Testing Guidelines
+
+1. Write Dart unit tests for business logic (`platform_interface` + pure‑Dart code).  
+2. Provide widget tests for UI in the example app.  
+3. Add **integration_test** runs on Android emulator and iOS simulator in CI.  
+4. Generate `MethodChannel` mocks with Mockito or Pigeon test stubs.  
+5. On Android, add instrumentation tests to verify native SDK initialisation.  
+6. On iOS, add XCTests to confirm plugin registration through the registrar.  
+7. Maintain ≥ 80 % combined line coverage; block PRs that drop coverage.  
+8. Use test names like `<ClassUnderTest>_<behavior>_<expected>`.  
+9. Automate CI workflows for PR, release, and pub.dev/GitHub publishing.  
+
+## 7. Distribution & Maintenance
+
+- Run `dart pub publish --dry-run` in CI before tagging.  
+- Maintain a clear **CHANGELOG.md** grouped by *Added* / *Fixed* / *BREAKING*.  
+- Align Git tags (`vX.Y.Z`) with `pubspec.yaml` version.  
+- Show README badges: pub points, popularity, likes, CI status.  
+- Support both CocoaPods and Swift Package Manager (if applicable); document set‑up steps.  
+- If applicable, publish an AGP plugin to the Gradle Plugin Portal.  
+- Enforce `dart format`, `swiftformat`, `ktlint` in pre‑commit hooks.  
+- Audit licenses; include a `NOTICE` file when bundling third‑party code.  
+
+## 8. Platform Channel Design
+
+1. Prefer **Pigeon** for compile‑time safety; otherwise use `MethodChannel`/`EventChannel`.  
+2. Name channels uniquely in lower‑case: `com.company.plugin/methods`.  
+3. Do not pass large binary blobs through channels; use files or FFI.  
+4. Specify threading expectations—return results on the main/current isolate.  
+5. Map native error codes to dedicated Dart `Exception` subclasses.  
+6. When streaming via `EventChannel`, honour back‑pressure.  
+7. Keep DTOs JSON‑serialisable with explicit schema versioning.  

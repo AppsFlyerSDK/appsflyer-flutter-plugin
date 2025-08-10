@@ -5,16 +5,17 @@ import 'package:flutter/services.dart';
 
 import '../appsflyer_sdk.dart';
 
-const _channel = MethodChannel('callbacks');
+const _channel = MethodChannel(AppsflyerConstants.AF_CALLBACK_CHANNEL);
 
 typedef MultiUseCallback = void Function(dynamic msg);
 typedef UDLCallback = void Function(DeepLinkResult deepLinkResult);
 typedef CancelListening = void Function();
 typedef RequestSuccessListener = void Function();
-typedef RequestErrorListener = void Function(int errorCode, String errorMessage);
+typedef RequestErrorListener = void Function(
+    int errorCode, String errorMessage);
 
-Map<String, MultiUseCallback> _callbacksById = <String, void Function(dynamic)>{
-};
+Map<String, MultiUseCallback> _callbacksById =
+    <String, void Function(dynamic)>{};
 UDLCallback? _udlCallback;
 
 Future<void> _methodCallHandler(MethodCall call) async {
@@ -36,13 +37,13 @@ Future<void> _methodCallHandler(MethodCall call) async {
             _callbacksById[callMap["id"]]!(fullResponse);
             break;
           case "onDeepLinking":
-            Error? error = (callMap["deepLinkError"] as String?)
-                ?.errorFromString();
-            Status? status = (callMap["deepLinkStatus"] as String?)
-                ?.statusFromString() ?? Status.PARSE_ERROR;
-            Map<String, dynamic>? map = callMap["deepLinkObj"] as Map<
-                String,
-                dynamic>?;
+            Error? error =
+                (callMap["deepLinkError"] as String?)?.errorFromString();
+            Status? status =
+                (callMap["deepLinkStatus"] as String?)?.statusFromString() ??
+                    Status.PARSE_ERROR;
+            Map<String, dynamic>? map =
+                callMap["deepLinkObj"] as Map<String, dynamic>?;
             DeepLink? deepLink = map != null ? DeepLink(map) : null;
             var dp = DeepLinkResult(error, deepLink, status);
             if (_udlCallback != null) {
@@ -62,8 +63,8 @@ Future<void> _methodCallHandler(MethodCall call) async {
   }
 }
 
-Future<CancelListening> startListening(MultiUseCallback callback,
-    String callbackName) async {
+Future<CancelListening> startListening(
+    MultiUseCallback callback, String callbackName) async {
   _channel.setMethodCallHandler(_methodCallHandler);
 
   _callbacksById[callbackName] = callback;
@@ -76,8 +77,8 @@ Future<CancelListening> startListening(MultiUseCallback callback,
   };
 }
 
-Future<CancelListening> startListeningToUDL(UDLCallback callback,
-    String callbackName) async {
+Future<CancelListening> startListeningToUDL(
+    UDLCallback callback, String callbackName) async {
   _channel.setMethodCallHandler(_methodCallHandler);
 
   _udlCallback = callback;

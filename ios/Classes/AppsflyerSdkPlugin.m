@@ -2,7 +2,9 @@
 #import "AppsFlyerStreamHandler.h"
 #import <objc/message.h>
 
-
+#ifdef ENABLE_PURCHASE_CONNECTOR
+#import "appsflyer_sdk/appsflyer_sdk-Swift.h"
+#endif
 typedef void (*bypassDidFinishLaunchingWithOption)(id, SEL, NSInteger);
 typedef void (*bypassDisableAdvertisingIdentifier)(id, SEL, BOOL);
 typedef void (*bypassWaitForATTUserAuthorization)(id, SEL, NSTimeInterval);
@@ -56,6 +58,9 @@ static BOOL _isSKADEnabled = false;
 }
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
+#ifdef ENABLE_PURCHASE_CONNECTOR
+    [PurchaseConnectorPlugin registerWithRegistrar:registrar];
+#endif
     id<FlutterBinaryMessenger> messenger = [registrar messenger];
     FlutterMethodChannel *channel = [FlutterMethodChannel methodChannelWithName:afMethodChannel binaryMessenger:messenger];
     FlutterMethodChannel *callbackChannel = [FlutterMethodChannel methodChannelWithName:afCallbacksMethodChannel binaryMessenger:messenger];
@@ -64,7 +69,7 @@ static BOOL _isSKADEnabled = false;
     [registrar addMethodCallDelegate:instance channel:callbackChannel];
     [registrar addApplicationDelegate:instance];
     
-    
+
 }
 
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
