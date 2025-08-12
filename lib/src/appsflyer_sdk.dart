@@ -613,6 +613,13 @@ class AppsflyerSdk {
     _methodChannel.invokeMethod("setDisableNetworkData", disable);
   }
 
+  /// Disables AppSet ID collection (Android only).
+  /// Starting with v6.17.0, the SDK can automatically collect the AppSet ID.
+  /// Use this method to opt-out of AppSet ID collection.
+  void disableAppSetId() {
+    _methodChannel.invokeMethod("disableAppSetId");
+  }
+
   /// Retrieves the current plugin version.
   String getVersionNumber() {
     return AppsflyerConstants.PLUGIN_VERSION;
