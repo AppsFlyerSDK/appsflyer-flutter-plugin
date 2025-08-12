@@ -27,8 +27,7 @@ Pod::Spec.new do |s|
   s.subspec 'PurchaseConnector' do |ss|
     ss.dependency 'Flutter'
     ss.ios.dependency 'PurchaseConnector', '6.17.1'
-    ss.source_files = 'PurchaseConnector/**/*'
-    ss.public_header_files = 'PurchaseConnector/**/*.h'
+    ss.source_files = 'appsflyer_sdk/Sources/purchase_connector/**/*.{swift}'
     ss.pod_target_xcconfig = { 'GCC_PREPROCESSOR_DEFINITIONS' => '$(inherited) ENABLE_PURCHASE_CONNECTOR=1' }
   end
 end

@@ -1,5 +1,5 @@
-#import "AppsflyerSdkPlugin.h"
-#import "AppsFlyerStreamHandler.h"
+#import "./include/appsflyer_sdk/AppsflyerSdkPlugin.h"
+#import "./include/appsflyer_sdk/AppsFlyerStreamHandler.h"
 #import <objc/message.h>
 
 #ifdef ENABLE_PURCHASE_CONNECTOR
