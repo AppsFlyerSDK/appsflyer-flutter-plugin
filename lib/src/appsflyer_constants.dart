@@ -38,7 +38,7 @@ class AppsflyerConstants {
   static const String VALIDATION_INFO = "validationInfo";
   static const String ERROR = "error";
   static const String RESULT = "result";
-
+  static const String STORE_KIT_VERSION_KEY = "storeKitVersion";
   // Purchase Connector listeners
   static const String
       SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_RESPONSE =

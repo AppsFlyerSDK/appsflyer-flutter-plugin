@@ -21,6 +21,7 @@ part 'src/purchase_connector/purchase_connector.dart';
 part 'src/purchase_connector/connector_callbacks.dart';
 part 'src/purchase_connector/missing_configuration_exception.dart';
 part 'src/purchase_connector/purchase_connector_configuration.dart';
+part 'src/purchase_connector/store_kit_version.dart';
 part 'src/purchase_connector/models/subscription_purchase.dart';
 part 'src/purchase_connector/models/in_app_purchase_validation_result.dart';
 part 'src/purchase_connector/models/product_purchase.dart';
