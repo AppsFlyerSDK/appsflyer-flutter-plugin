@@ -34,6 +34,11 @@ class ConnectorWrapper(
     inAppListener: MappedValidationResultListener,
 ) :
     PurchaseClient {
+    
+    init {
+        android.util.Log.d("AppsFlyer_PC_ConnectorWrapper", "Creating connector with - logSubs: $logSubs, logInApps: $logInApps, sandbox: $sandbox")
+    }
+    
     private val connector =
         PurchaseClient.Builder(context, Store.GOOGLE).setSandbox(sandbox).logSubscriptions(logSubs)
             .autoLogInApps(logInApps).setSubscriptionValidationResultListener(object :

@@ -20,6 +20,7 @@ class AppsflyerConstants {
 
   static const String AF_EVENTS_CHANNEL = "af-events";
   static const String AF_METHOD_CHANNEL = "af-api";
+  static const String AF_CALLBACK_CHANNEL = "callbacks";
 
   static const String AF_VALIDATE_PURCHASE = "validatePurchase";
   static const String APP_INVITE_ONE_LINK = "appInviteOneLink";
@@ -34,7 +35,7 @@ class AppsflyerConstants {
   static const String LOG_SUBS_KEY = "logSubscriptionPurchase";
   static const String LOG_IN_APP_KEY = "logInAppPurchase";
   static const String SANDBOX_KEY = "sandbox";
-  static const String VALIDATION_INFO = "validation_info";
+  static const String VALIDATION_INFO = "validationInfo";
   static const String ERROR = "error";
   static const String RESULT = "result";
 
@@ -50,7 +51,7 @@ class AppsflyerConstants {
   static const String IN_APP_VALIDATION_RESULT_LISTENER_ON_FAILURE =
       "InAppValidationResultListener#onFailure";
   static const String DID_RECEIVE_PURCHASE_REVENUE_VALIDATION_INFO =
-      "DidReceivePurchaseRevenueValidationInfo";
+      "didReceivePurchaseRevenueValidationInfo";
 
   // Purchase Connector error messages
   static const String MISSING_CONFIGURATION_EXCEPTION_MSG =

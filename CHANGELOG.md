@@ -6,8 +6,7 @@
 - Android: added a new [disableAppSetId()](https://dev.appsflyer.com/hc/docs/android-sdk-reference-appsflyerlib#disableappsetid) method for AppSet ID opting-out.
 - iOS: Added support for Google Integrated Conversion ([ICM](https://support.google.com/google-ads/answer/16203286)) measurement.
 - Documentation small fixes.
-- Purchase Connector is rolled out to production.
-
+- Purchase Connector is rolled out to production (StoreKit2 support will be enrolled on next release).
 
 ## 6.16.21
 
