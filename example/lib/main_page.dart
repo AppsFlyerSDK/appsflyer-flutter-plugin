@@ -125,6 +125,7 @@ class MainPageState extends State<MainPage> {
                     deepLinkData: _deepLinkData,
                     logEvent: logEvent,
                     logAdRevenueEvent: logAdRevenueEvent,
+                    validatePurchase: validatePurchase,
                   ),
                 ),
                 ElevatedButton(
@@ -177,6 +178,36 @@ class MainPageState extends State<MainPage> {
       print("Ad Revenue event logged with no errors");
     } catch (e) {
       print("Failed to log event: $e");
+    }
+  }
+
+  Future<Map<String, dynamic>?> validatePurchase(
+      String purchaseToken, String productId) async {
+    try {
+      // Create purchase details
+      final purchaseDetails = AFPurchaseDetails(
+        purchaseType: AFPurchaseType.subscription,
+        purchaseToken: purchaseToken,
+        productId: productId,
+      );
+
+      // Additional parameters (optional)
+      Map<String, String> additionalParameters = {
+        'validation_source': 'flutter_example',
+        'app_version': '1.0.0',
+      };
+
+      // Validate the purchase
+      final result = await _appsflyerSdk.validateAndLogInAppPurchaseV2(
+        purchaseDetails,
+        additionalParameters: additionalParameters,
+      );
+
+      print("Purchase validation successful: $result");
+      return result as Map<String, dynamic>?;
+    } catch (e) {
+      print("Purchase validation failed: $e");
+      rethrow;
     }
   }
 

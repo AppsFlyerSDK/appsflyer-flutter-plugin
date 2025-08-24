@@ -438,6 +438,26 @@ class AppsflyerSdk {
     });
   }
 
+  /// Validates and logs in-app purchases using the new AppsFlyer validation API (V2).
+  /// This method validates a purchase using the [AFPurchaseDetails] object.
+  ///
+  /// [purchaseDetails] - The purchase details containing type, token, and product ID
+  /// [additionalParameters] - Optional additional parameters to send with the validation request
+  ///
+  /// Returns a Future that completes with the validation result or throws an error if validation fails.
+  Future<Map<String, dynamic>> validateAndLogInAppPurchaseV2(
+      AFPurchaseDetails purchaseDetails,
+      {Map<String, String>? additionalParameters}) async {
+    final arguments = {
+      'purchaseDetails': purchaseDetails.toMap(),
+      'additionalParameters': additionalParameters,
+    };
+
+    final result = await _methodChannel.invokeMethod(
+        "validateAndLogInAppPurchaseV2", arguments);
+    return Map<String, dynamic>.from(result);
+  }
+
   /// set sandbox for iOS purchase validation
   void useReceiptValidationSandbox(bool isSandboxEnabled) {
     _methodChannel.invokeMethod(

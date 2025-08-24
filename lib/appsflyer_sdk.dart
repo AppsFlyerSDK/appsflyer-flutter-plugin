@@ -33,3 +33,4 @@ part 'src/appsflyer_consent.dart';
 part 'src/appsflyer_request_listener.dart';
 part 'appsflyer_sdk.g.dart';
 part 'src/appsflyer_ad_revenue_data.dart';
+part 'src/af_purchase_details.dart';
