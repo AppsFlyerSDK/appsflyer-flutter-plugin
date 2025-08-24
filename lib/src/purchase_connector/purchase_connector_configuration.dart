@@ -9,8 +9,17 @@ class PurchaseConnectorConfiguration {
   bool logInApps;
   bool sandbox;
 
-  PurchaseConnectorConfiguration(
-      {this.logSubscriptions = false,
-      this.logInApps = false,
-      this.sandbox = false});
+  /// The StoreKit version to use on iOS.
+  ///
+  /// - [StoreKitVersion.SK1]: Use StoreKit 1 (legacy, compatible with all iOS versions)
+  /// - [StoreKitVersion.SK2]: Use StoreKit 2 (modern, iOS 15+ only, better performance)
+  StoreKitVersion storeKitVersion;
+
+  PurchaseConnectorConfiguration({
+    this.logSubscriptions = false,
+    this.logInApps = false,
+    this.sandbox = false,
+    this.storeKitVersion =
+        StoreKitVersion.SK1, // Default to SK1 for backwards compatibility
+  });
 }

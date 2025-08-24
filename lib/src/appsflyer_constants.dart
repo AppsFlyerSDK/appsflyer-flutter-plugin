@@ -3,7 +3,7 @@ part of appsflyer_sdk;
 enum EmailCryptType { EmailCryptTypeNone, EmailCryptTypeSHA256 }
 
 class AppsflyerConstants {
-  static const String PLUGIN_VERSION = "6.17.1";
+  static const String PLUGIN_VERSION = "6.17.3";
   static const String AF_DEV_KEY = "afDevKey";
   static const String AF_APP_Id = "afAppId";
   static const String AF_IS_DEBUG = "isDebug";
@@ -38,7 +38,7 @@ class AppsflyerConstants {
   static const String VALIDATION_INFO = "validationInfo";
   static const String ERROR = "error";
   static const String RESULT = "result";
-
+  static const String STORE_KIT_VERSION_KEY = "storeKitVersion";
   // Purchase Connector listeners
   static const String
       SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_RESPONSE =

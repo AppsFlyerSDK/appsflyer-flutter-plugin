@@ -31,7 +31,7 @@ import Flutter
     private let logSubscriptionsKey = "logSubscriptionPurchase"
     private let logInAppsKey = "logInAppPurchase"
     private let sandboxKey = "sandbox"
-    
+    private let storeKitVersionKey = "storeKitVersion"
     /// Private constructor, used to prevent direct instantiation of this class and ensure singleton behaviour.
     private override init() {}
 
@@ -74,7 +74,8 @@ import Flutter
         let logSubscriptions = arguments?[logSubscriptionsKey] as? Bool ?? false
         let logInApps = arguments?[logInAppsKey] as? Bool ?? false
         let sandbox = arguments?[sandboxKey] as? Bool ?? false
-
+        let storeKitVersion = arguments?[storeKitVersionKey] as? Int ?? 0   // 0 for StoreKit V1, 1 for StoreKit V2
+        
         /// Define an options variable to manage enabled options.
         var options: AutoLogPurchaseRevenueOptions = []
         
@@ -91,7 +92,17 @@ import Flutter
         logOptions = options
         connector!.isSandbox = sandbox
         connector!.purchaseRevenueDelegate = self
-        
+        // Set StoreKit version based on the configuration
+        if storeKitVersion == 1 {
+            if #available(iOS 15.0, *) {
+                connector!.setStoreKitVersion(.SK2)
+            } else {
+                print("[AppsFlyer_purchase] iOS: StoreKit 2 requested but iOS < 15.0, falling back to StoreKit 1")
+                connector!.setStoreKitVersion(.SK1)
+            }
+        } else {
+            connector!.setStoreKitVersion(.SK1)
+        }
         /// Report a successful operation back to Dart.
         result(nil)
     }

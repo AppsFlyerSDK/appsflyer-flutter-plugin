@@ -11,13 +11,13 @@
 
 ## SDK Versions
 
-- Android AppsFlyer SDK **v6.17.0**
-- iOS AppsFlyer SDK **v6.17.1**
+- Android AppsFlyer SDK **v6.17.3**
+- iOS AppsFlyer SDK **v6.17.3**
 
 ### Purchase Connector versions
 
 - Android 2.1.1
-- iOS 6.17.1
+- iOS 6.17.3
 
 ## ❗❗ Breaking changes when updating to v6.x.x❗❗
 
