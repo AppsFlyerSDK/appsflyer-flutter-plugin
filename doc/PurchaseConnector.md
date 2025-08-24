@@ -24,6 +24,10 @@ support@appsflyer.com
   - [Stop Observing Transactions](#stop)
   - [Log Subscriptions](#log-subscriptions)
   - [Log In App Purchases](#log-inapps)
+* [StoreKit Version Configuration (iOS)](#storekit-configuration)
+  - [Available StoreKit Versions](#storekit-versions)
+  - [Configuration Examples](#storekit-examples)
+  - [StoreKit 2 Benefits and Requirements](#storekit-notes)
 * [Register Validation Results Listeners](#validation-callbacks)
   - [Cross-Platform Considerations](#cross-platform-considerations)
   - [Android Callback Types](#android-callback-types)
@@ -85,6 +89,7 @@ To properly set up the configuration object, you must specify certain parameters
 - `logSubscriptions`: If set to `true`, the connector logs all subscription events.
 - `logInApps`: If set to `true`, the connector logs all in-app purchase events.
 - `sandbox`: If set to `true`, transactions are tested in a sandbox environment. Be sure to set this to `false` in production.
+- `storeKitVersion`: (iOS only) Specifies which StoreKit version to use. Defaults to `StoreKitVersion.storeKit1` if not specified.
 
 Here's an example usage:
 
@@ -95,6 +100,7 @@ void main() {
       logSubscriptions: true,   // Enables logging of subscription events
       logInApps: true,          // Enables logging of in-app purchase events
       sandbox: true,            // Enables testing in a sandbox environment
+      storeKitVersion: StoreKitVersion.storeKit1,  // iOS only: StoreKit version (defaults to storeKit1)
     ),
   );
 
@@ -114,6 +120,7 @@ void main() {
       logSubscriptions: true,
       logInApps: true,
       sandbox: true,
+      storeKitVersion: StoreKitVersion.storeKit1,  // Default StoreKit version
     ),
   );
 
@@ -124,6 +131,7 @@ void main() {
       logSubscriptions: false,
       logInApps: false,
       sandbox: false,
+      storeKitVersion: StoreKitVersion.storeKit2,  // This will be ignored
     ),
   );
 
@@ -178,6 +186,89 @@ final afPurchaseClient = PurchaseConnector(
     config: PurchaseConnectorConfiguration(logInApps: true));
 ```
 
+## <a id="storekit-configuration"> StoreKit Version Configuration (iOS)
+
+The Purchase Connector supports both StoreKit 1 and StoreKit 2 on iOS. You can configure which version to use via the `storeKitVersion` parameter in `PurchaseConnectorConfiguration`.
+
+### <a id="storekit-versions"> Available StoreKit Versions
+
+- **`StoreKitVersion.storeKit1`** (Default) - Uses the original StoreKit framework
+- **`StoreKitVersion.storeKit2`** - Uses the modern StoreKit 2 framework (iOS 15.0+)
+
+### <a id="storekit-examples"> Configuration Examples
+
+**Using StoreKit 1 (Default):**
+```dart
+final afPurchaseClient = PurchaseConnector(
+  config: PurchaseConnectorConfiguration(
+    logSubscriptions: true,
+    logInApps: true,
+    sandbox: true,
+    // StoreKit 1 is used by default, no need to specify
+  ),
+);
+```
+
+**Explicitly Using StoreKit 1:**
+```dart
+final afPurchaseClient = PurchaseConnector(
+  config: PurchaseConnectorConfiguration(
+    logSubscriptions: true,
+    logInApps: true,
+    sandbox: true,
+    storeKitVersion: StoreKitVersion.storeKit1,  // Explicitly set to StoreKit 1
+  ),
+);
+```
+
+**Using StoreKit 2:**
+```dart
+final afPurchaseClient = PurchaseConnector(
+  config: PurchaseConnectorConfiguration(
+    logSubscriptions: true,
+    logInApps: true,
+    sandbox: true,
+    storeKitVersion: StoreKitVersion.storeKit2,  // Use modern StoreKit 2
+  ),
+);
+```
+
+### <a id="storekit-notes"> StoreKit 2 Benefits and Requirements
+
+**Benefits of StoreKit 2:**
+- ✅ **Modern API**: Built with Swift's async/await patterns
+- ✅ **Better Performance**: More efficient transaction processing
+- ✅ **Enhanced Features**: Improved subscription management and transaction handling
+- ✅ **Future-Proof**: Apple's recommended approach for new apps
+
+**Requirements:**
+- 📱 **iOS 15.0+**: StoreKit 2 requires iOS 15.0 or later
+- 🔄 **Backward Compatibility**: Falls back to StoreKit 1 on older iOS versions automatically
+- 🧪 **Testing**: Thoroughly test on your target iOS versions
+
+**Example with Error Handling:**
+```dart
+try {
+  final afPurchaseClient = PurchaseConnector(
+    config: PurchaseConnectorConfiguration(
+      logSubscriptions: true,
+      logInApps: true,
+      sandbox: true,
+      storeKitVersion: StoreKitVersion.storeKit2,
+    ),
+  );
+  
+  // Start observing transactions
+  afPurchaseClient.startObservingTransactions();
+  
+  print("Purchase Connector initialized with StoreKit 2");
+} catch (e) {
+  print("Failed to initialize Purchase Connector: $e");
+  // Consider fallback to StoreKit 1 or handle error appropriately
+}
+```
+
+> 📝 **Note**: If you don't specify `storeKitVersion`, the connector defaults to `StoreKitVersion.storeKit1` for maximum compatibility. Only use StoreKit 2 if your app's minimum iOS version is 15.0 or higher, or if you've implemented proper fallback handling.
 
 ##  <a id="validation-callbacks"> Register Validation Results Listeners
 You can register listeners to get the validation results once getting a response from AppsFlyer servers to let you know if the purchase was validated successfully.</br>
@@ -245,6 +336,22 @@ Remember to switch the environment back to production (set `sandbox` to `false`)
 
 To test purchases in an iOS environment on a real device with a TestFlight sandbox account, you also need to set `sandbox` to `true`.
 
+**StoreKit Version Considerations for Testing:**
+- **StoreKit 1**: Works on all iOS versions, well-established testing procedures
+- **StoreKit 2**: Requires iOS 15.0+, provides enhanced testing capabilities and more detailed transaction information
+
+```dart
+// Example configuration for testing with StoreKit 2
+final purchaseConnector = PurchaseConnector(
+  config: PurchaseConnectorConfiguration(
+    sandbox: true,  // Enable sandbox for testing
+    storeKitVersion: StoreKitVersion.storeKit2,  // Use StoreKit 2 for enhanced testing
+    logSubscriptions: true,
+    logInApps: true,
+  ),
+);
+```
+
 > *IMPORTANT NOTE: Before releasing your app to production please be sure to set `sandbox` to `false`. If a production purchase event is sent in sandbox mode, your event will not be validated properly! *
 
 ### <a id="testing-config"> Dart Usage for Android and iOS
@@ -252,9 +359,24 @@ To test purchases in an iOS environment on a real device with a TestFlight sandb
 For both Android and iOS, you can set the sandbox environment using the `sandbox` parameter in the `PurchaseConnectorConfiguration` when you instantiate `PurchaseConnector` in your Dart code like this:
 
 ```dart
-// Testing in a sandbox environment
+// Testing in a sandbox environment with StoreKit 1 (default)
 final purchaseConnector = PurchaseConnector(
-  PurchaseConnectorConfiguration(sandbox: true)
+  config: PurchaseConnectorConfiguration(
+    sandbox: true,
+    logSubscriptions: true,
+    logInApps: true,
+    // storeKitVersion defaults to StoreKitVersion.storeKit1
+  )
+);
+
+// Testing in a sandbox environment with StoreKit 2 (iOS 15.0+)
+final purchaseConnectorSK2 = PurchaseConnector(
+  config: PurchaseConnectorConfiguration(
+    sandbox: true,
+    logSubscriptions: true,
+    logInApps: true,
+    storeKitVersion: StoreKitVersion.storeKit2,  // Enhanced testing capabilities
+  )
 );
 ```
 
@@ -275,7 +397,11 @@ Add following keep rules to your  `proguard-rules.pro`  file:
 ## <a id="example"> Full Code Example
 ```dart
 PurchaseConnectorConfiguration config = PurchaseConnectorConfiguration(  
-    logSubscriptions: true, logInApps: true, sandbox: false);  
+    logSubscriptions: true, 
+    logInApps: true, 
+    sandbox: false,
+    storeKitVersion: StoreKitVersion.storeKit2  // Use StoreKit 2 on iOS (requires iOS 15.0+)
+);  
 final afPurchaseClient = PurchaseConnector(config: config);  
   
 // set listeners for Android  

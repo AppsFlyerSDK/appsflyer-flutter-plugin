@@ -74,6 +74,7 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
       AppsflyerConstants.LOG_SUBS_KEY: config.logSubscriptions,
       AppsflyerConstants.LOG_IN_APP_KEY: config.logInApps,
       AppsflyerConstants.SANDBOX_KEY: config.sandbox,
+      AppsflyerConstants.STORE_KIT_VERSION_KEY: config.storeKitVersion.value,
     };
 
     print("[AppsFlyer_PC_Debug] Sending config to native: $configMap");
