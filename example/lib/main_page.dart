@@ -186,7 +186,7 @@ class MainPageState extends State<MainPage> {
     try {
       // Create purchase details
       final purchaseDetails = AFPurchaseDetails(
-        purchaseType: AFPurchaseType.subscription,
+        purchaseType: AFPurchaseType.oneTimePurchase,
         purchaseToken: purchaseToken,
         productId: productId,
       );
