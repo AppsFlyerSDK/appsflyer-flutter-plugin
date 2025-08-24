@@ -1,5 +1,11 @@
 # Versions
 
+## 6.17.3
+
+- Updated to AppsFlyer SDK v6.17.3 for both Android and iOS
+- Added validateAndLogV2 API for improved purchase validation while keeping existing legacy API
+- Maintains backward compatibility with existing purchase validation methods
+
 ## 6.17.1
 
 - Android: Bug fix for users who expirienced `NullPointerExceptions`.
