@@ -1,5 +1,8 @@
 # Versions
 
+## 6.17.5
+- Updated to AppsFlyer SDK v6.17.5 for iOS
+
 ## 6.17.3
 
 - Updated to AppsFlyer SDK v6.17.3 for both Android and iOS
