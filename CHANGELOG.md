@@ -1,5 +1,16 @@
 # Versions
 
+## 6.17.5
+- Updated to AppsFlyer SDK v6.17.5 for iOS
+
+## 6.17.3
+
+- Updated to AppsFlyer SDK v6.17.3 for both Android and iOS
+- Added validateAndLogInAppPurchaseV2 API (Beta) for improved cross-platform purchase validation
+- Unified AFPurchaseDetails data structure for type-safe purchase validation
+- Enhanced error handling and consistent API across Android and iOS
+- Maintains backward compatibility with existing purchase validation methods
+
 ## 6.17.1
 
 - Android: Bug fix for users who expirienced `NullPointerExceptions`.

@@ -6,6 +6,8 @@
 - [AppsFlyerOptions](#appsflyer-options)
 - [AdRevenueData](#AdRevenueData)
 - [AFMediationNetwork](#AFMediationNetwork)
+- [AFPurchaseDetails](#AFPurchaseDetails)
+- [AFPurchaseType](#AFPurchaseType)
 
 ## Methods
 - [initSdk](#initSdk)
@@ -35,6 +37,7 @@
 - [getHostPrefix](#getHostPrefix)
 - [updateServerUninstallToken](#updateServerUninstallToken)
 - [Validate Purchase](#validatePurchase)
+- [validateAndLogInAppPurchaseV2](#validatePurchaseV2)
 - [sendPushNotificationData](#sendPushNotificationData)
 - [addPushNotificationDeepLinkPath](#addPushNotificationDeepLinkPath)
 - [User Invite](#userInvite)
@@ -511,6 +514,54 @@ appsFlyerSdk.updateServerUninstallToken("token");
 ---
 **<a id="validatePurchase"> Validate Purchase**
 
+***Cross-Platform V2 API (Recommended - BETA):***
+
+> ⚠️ **BETA Feature**: This API is currently in beta. While it's stable and recommended for new implementations, please test thoroughly in your environment before production use.
+
+**`Future<Map<String, dynamic>> validateAndLogInAppPurchaseV2(AFPurchaseDetails purchaseDetails, {Map<String, String>? additionalParameters})`**
+
+The new unified purchase validation API that works across both Android and iOS platforms. This is the recommended approach for validating in-app purchases.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `purchaseDetails` | `AFPurchaseDetails` | Purchase details containing type, token, and product ID |
+| `additionalParameters` | `Map<String, String>?` | Optional additional parameters |
+
+**AFPurchaseDetails:**
+| Property | Type | Description |
+|----------|------|-------------|
+| `purchaseType` | `AFPurchaseType` | Type of purchase (oneTimePurchase or subscription) |
+| `purchaseToken` | `String` | Purchase token from the app store |
+| `productId` | `String` | Product identifier |
+
+**AFPurchaseType:**
+- `AFPurchaseType.oneTimePurchase` - For one-time in-app purchases
+- `AFPurchaseType.subscription` - For subscription purchases
+
+_Example:_
+```dart
+// Create purchase details
+AFPurchaseDetails purchaseDetails = AFPurchaseDetails(
+  purchaseType: AFPurchaseType.oneTimePurchase,
+  purchaseToken: "your_purchase_token",
+  productId: "your_product_id",
+);
+
+// Validate purchase
+try {
+  Map<String, dynamic> result = await appsFlyerSdk.validateAndLogInAppPurchaseV2(
+    purchaseDetails,
+    additionalParameters: {"custom_param": "value"}
+  );
+  print("Validation successful: $result");
+} catch (e) {
+  print("Validation failed: $e");
+}
+```
+
+---
+
+***Legacy APIs:***
 
 ***Android:***
 
@@ -571,6 +622,67 @@ appsflyerSdk.onPurchaseValidation((res){
   print("res: " + res.toString());
 });
 ```
+
+---
+
+##### <a id="validatePurchaseV2"> **validateAndLogInAppPurchaseV2 (Recommended - BETA)**
+
+> ⚠️ **BETA Feature**: This API is currently in beta. While it's stable and recommended for new implementations, please test thoroughly in your environment before production use.
+
+**`Future<Map<String, dynamic>> validateAndLogInAppPurchaseV2(AFPurchaseDetails purchaseDetails, {Map<String, String>? additionalParameters})`**
+
+The unified cross-platform purchase validation API introduced in SDK v6.17.3. This is the recommended approach for validating in-app purchases as it provides a consistent interface across Android and iOS.
+
+|| parameter | type  | description |
+|| --------- | ----- | ----------- |
+|| `purchaseDetails` | `AFPurchaseDetails` | Purchase details object containing purchase type, token, and product ID |
+|| `additionalParameters` | `Map<String, String>?` | Optional additional parameters to send with the validation request |
+
+**Returns:** `Future<Map<String, dynamic>>` - Validation result with detailed response information
+
+**AFPurchaseDetails Properties:**
+
+|| property | type  | description |
+|| -------- | ----- | ----------- |
+|| `purchaseType` | `AFPurchaseType` | Type of purchase (`AFPurchaseType.oneTimePurchase` or `AFPurchaseType.subscription`) |
+|| `purchaseToken` | `String` | Purchase token obtained from the app store |
+|| `productId` | `String` | Product identifier of the purchased item |
+
+_Example:_
+
+```dart
+// Create purchase details
+AFPurchaseDetails purchaseDetails = AFPurchaseDetails(
+  purchaseType: AFPurchaseType.subscription,
+  purchaseToken: "your_purchase_token_from_store",
+  productId: "premium_subscription_monthly",
+);
+
+// Validate the purchase
+try {
+  Map<String, dynamic> validationResult = await appsflyerSdk.validateAndLogInAppPurchaseV2(
+    purchaseDetails,
+    additionalParameters: {
+      "app_version": "1.2.0",
+      "validation_source": "flutter_example"
+    }
+  );
+  
+  print("✅ Purchase validation successful!");
+  print("Validation result: $validationResult");
+  
+} catch (e) {
+  print("❌ Purchase validation failed: $e");
+  // Handle validation error
+}
+```
+
+**Key Benefits:**
+- **Cross-platform compatibility**: Works on both Android and iOS with the same API
+- **Type safety**: Uses structured data classes instead of platform-specific parameters  
+- **Enhanced error handling**: Provides detailed error information in structured format
+- **Future-proof**: Built on AppsFlyer's latest V2 validation infrastructure
+- **Automatic routing**: Automatically routes to correct validation endpoints based on purchase type
 
 ---
 ## **<a id="sendPushNotificationData"> `void sendPushNotificationData(Map? userInfo)`**

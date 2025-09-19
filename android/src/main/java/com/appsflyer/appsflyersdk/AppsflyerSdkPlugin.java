@@ -11,9 +11,12 @@ import android.util.Log;
 
 import com.appsflyer.AFAdRevenueData;
 import com.appsflyer.AFLogger;
+import com.appsflyer.AFPurchaseDetails;
+import com.appsflyer.AFPurchaseType;
 import com.appsflyer.AppsFlyerConsent;
 import com.appsflyer.AppsFlyerConversionListener;
 import com.appsflyer.AppsFlyerInAppPurchaseValidatorListener;
+import com.appsflyer.AppsFlyerInAppPurchaseValidationCallback;
 import com.appsflyer.AppsFlyerLib;
 import com.appsflyer.AppsFlyerProperties;
 import com.appsflyer.MediationNetwork;
@@ -285,6 +288,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                 break;
             case "validateAndLogInAppAndroidPurchase":
                 validateAndLogInAppPurchase(call, result);
+                break;
+            case "validateAndLogInAppPurchaseV2":
+                validateAndLogInAppPurchaseV2(call, result);
                 break;
             case "getAppsFlyerUID":
                 getAppsFlyerUID(result);
@@ -794,6 +800,107 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         AppsFlyerLib.getInstance().validateAndLogInAppPurchase(mContext, publicKey, signature, purchaseData, price,
                 currency, additionalParameters);
         result.success(null);
+    }
+
+    private void validateAndLogInAppPurchaseV2(MethodCall call, Result result) {
+        try {
+            // Get the complete purchase details map
+            Map<String, Object> purchaseDetailsMap = (Map<String, Object>) call.argument("purchaseDetails");
+            Map<String, String> additionalParameters = (Map<String, String>) call.argument("additionalParameters");
+
+            if (purchaseDetailsMap == null) {
+                result.error("INVALID_ARGUMENTS", "Purchase details cannot be null", null);
+                return;
+            }
+
+            if (additionalParameters == null) {
+                additionalParameters = new HashMap<>();
+            }
+
+            // Extract fields from purchase details map
+            String purchaseTypeString = (String) purchaseDetailsMap.get("purchaseType");
+            String purchaseToken = (String) purchaseDetailsMap.get("purchaseToken");
+            String productId = (String) purchaseDetailsMap.get("productId");
+
+            // Validate required fields
+            if (purchaseTypeString == null || purchaseToken == null || productId == null) {
+                result.error("INVALID_ARGUMENTS", "Purchase details must contain purchaseType, purchaseToken, and productId", null);
+                return;
+            }
+
+            // Map Dart enum values to Android AFPurchaseType enum
+            AFPurchaseType purchaseType = mapPurchaseType(purchaseTypeString);
+            if (purchaseType == null) {
+                result.error("INVALID_PURCHASE_TYPE", "Invalid purchase type: " + purchaseTypeString + ". Expected: 'subscription' or 'one_time_purchase'", null);
+                return;
+            }
+
+            // Create AFPurchaseDetails object
+            AFPurchaseDetails purchaseDetails = new AFPurchaseDetails(
+                purchaseType,
+                purchaseToken,
+                productId
+            );
+
+            Log.d(AF_PLUGIN_TAG, "validateAndLogInAppPurchaseV2 called with " + purchaseDetailsMap);
+            
+            AppsFlyerLib.getInstance().validateAndLogInAppPurchase(
+                purchaseDetails,
+                additionalParameters,
+                new AppsFlyerInAppPurchaseValidationCallback() {
+                    @Override
+                    public void onInAppPurchaseValidationFinished(@NonNull Map<String, ?> validationFinishedResult) {
+                        Log.d(AF_PLUGIN_TAG, "Purchase validation V2 response arrived");
+                        
+                        // Convert the result to a format Flutter can understand
+                        Map<String, Object> flutterResult = new HashMap<>();
+                        for (Map.Entry<String, ?> entry : validationFinishedResult.entrySet()) {
+                            flutterResult.put(entry.getKey(), entry.getValue());
+                        }
+                        
+                        result.success(flutterResult);
+                    }
+
+                    @Override
+                    public void onInAppPurchaseValidationError(@NonNull Map<String, ?> validationErrorResult) {
+                        Log.d(AF_PLUGIN_TAG, "Purchase validation V2 returned error");
+                        
+                        String errorMessage = "Purchase validation failed";
+                        if (validationErrorResult.containsKey("error_message")) {
+                            errorMessage = (String) validationErrorResult.get("error_message");
+                        }
+                        
+                        // Convert error result to Flutter format
+                        Map<String, Object> flutterErrorResult = new HashMap<>();
+                        for (Map.Entry<String, ?> entry : validationErrorResult.entrySet()) {
+                            flutterErrorResult.put(entry.getKey(), entry.getValue());
+                        }
+                        
+                        result.error("VALIDATION_ERROR", errorMessage, flutterErrorResult);
+                    }
+                }
+            );
+            
+        } catch (Exception e) {
+            Log.e(AF_PLUGIN_TAG, "Error in validateAndLogInAppPurchaseV2: " + e.getMessage(), e);
+            result.error("VALIDATION_ERROR", "Purchase validation failed: " + e.getMessage(), null);
+        }
+    }
+
+    /**
+     * Maps Dart enum string to Android AFPurchaseType enum.
+     * @param purchaseTypeString The string representation from Dart
+     * @return AFPurchaseType enum or null if invalid
+     */
+    private AFPurchaseType mapPurchaseType(String purchaseTypeString) {
+        switch (purchaseTypeString) {
+            case "subscription":
+                return AFPurchaseType.SUBSCRIPTION;
+            case "one_time_purchase":
+                return AFPurchaseType.ONE_TIME_PURCHASE;
+            default:
+                return null;
+        }
     }
 
     private void registerValidatorListener() {
