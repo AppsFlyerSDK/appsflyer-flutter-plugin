@@ -1,8 +1,29 @@
 # Deep linking
 
+> ⚠️ **IMPORTANT: Flutter 3.27+ Breaking Change**
+>
+> Starting from Flutter 3.27, the default value for Flutter's deep linking option has changed from `false` to `true`. This means Flutter's built-in deep linking is now enabled by default, which can conflict with third-party deep linking plugins like AppsFlyer.
+>
+> **If you're using Flutter 3.27 or higher, you MUST disable Flutter's built-in deep linking** by adding the following configurations:
+>
+> **Android** - Add to your `AndroidManifest.xml` inside the `<activity>` tag:
+>
+> ```xml
+> <meta-data android:name="flutter_deeplinking_enabled" android:value="false" />
+> ```
+>
+> **iOS** - Add to your `Info.plist` file:
+>
+> ```xml
+> <key>FlutterDeepLinkingEnabled</key>
+> <false/>
+> ```
+>
+> For more details, see the [official Flutter documentation](https://docs.flutter.dev/release/breaking-changes/deep-links-flag-change).
+
 Deep Linking vs Deferred Deep Linking:
 
-A deep link is a special URL that routes to a specific spot, whether that’s on a website or in an app. A “mobile deep link” then, is a link that contains all the information needed to take a user directly into an app or a particular location within an app instead of just launching the app’s home page.
+A deep link is a special URL that routes to a specific spot, whether that's on a website or in an app. A "mobile deep link" then, is a link that contains all the information needed to take a user directly into an app or a particular location within an app instead of just launching the app's home page.
 
 If the app is installed on the user's device - the deep link routes them to the correct location in the app. But what if the app isn't installed? This is where Deferred Deep Linking is used. When the app isn't installed, clicking on the link routes the user to the store to download the app. Deferred Deep linking defer or delay the deep linking process until after the app has been downloaded, and ensures that after they install, the user gets to the right location in the app.
 
