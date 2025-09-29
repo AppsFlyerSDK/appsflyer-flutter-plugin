@@ -345,7 +345,7 @@ To test purchases in an iOS environment on a real device with a TestFlight sandb
 final purchaseConnector = PurchaseConnector(
   config: PurchaseConnectorConfiguration(
     sandbox: true,  // Enable sandbox for testing
-    storeKitVersion: StoreKitVersion.storeKit2,  // Use StoreKit 2 for enhanced testing
+    storeKitVersion: StoreKitVersion.storeKit2,  
     logSubscriptions: true,
     logInApps: true,
   ),
