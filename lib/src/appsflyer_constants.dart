@@ -3,7 +3,7 @@ part of appsflyer_sdk;
 enum EmailCryptType { EmailCryptTypeNone, EmailCryptTypeSHA256 }
 
 class AppsflyerConstants {
-  static const String PLUGIN_VERSION = "6.17.3";
+  static const String PLUGIN_VERSION = "6.17.6";
   static const String AF_DEV_KEY = "afDevKey";
   static const String AF_APP_Id = "afAppId";
   static const String AF_IS_DEBUG = "isDebug";
