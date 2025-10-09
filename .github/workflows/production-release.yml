@@ -1,0 +1,558 @@
+# =============================================================================
+# Production Release Workflow - Publish to pub.dev
+# =============================================================================
+# 
+# Purpose: Publishes the Flutter plugin to pub.dev after successful QA testing.
+# This workflow is triggered when a release PR is merged to master.
+#
+# What it does:
+# 1. Validates the merge is from a release branch
+# 2. Runs full CI pipeline one final time
+# 3. Publishes the plugin to pub.dev
+# 4. Creates a GitHub release with release notes
+# 5. Notifies team via Slack (placeholder for future)
+#
+# Prerequisites:
+# - Release branch has been tested and approved
+# - PR from release branch to master has been created and approved
+# - All CI checks have passed
+#
+# Triggers:
+# - Pull request closed (merged) to master branch from releases/** branches
+# - Manual workflow dispatch (for republishing or testing)
+#
+# =============================================================================
+
+name: Production Release - Publish to pub.dev
+
+on:
+  # Trigger when PR to master is merged
+  pull_request:
+    types:
+      - closed
+    branches:
+      - master
+  
+  # Allow manual triggering
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (must match pubspec.yaml)'
+        required: true
+        type: string
+      skip_tests:
+        description: 'Skip CI tests (use with caution!)'
+        required: false
+        type: boolean
+        default: false
+      dry_run:
+        description: 'Dry run (do not actually publish)'
+        required: false
+        type: boolean
+        default: false
+
+# Ensure only one production release runs at a time
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+
+jobs:
+  # ===========================================================================
+  # Job 1: Validate Release
+  # ===========================================================================
+  # Ensures this is a valid release merge from a release branch
+  # ===========================================================================
+  
+  validate-release:
+    name: 🔍 Validate Release
+    runs-on: ubuntu-latest
+    
+    # Only run if PR was actually merged (not just closed)
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      is_valid: ${{ steps.validate.outputs.is_valid }}
+      is_release_branch: ${{ steps.validate.outputs.is_release_branch }}
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: 🔍 Validate release source
+        id: validate
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "Manual workflow dispatch - skipping branch validation"
+            echo "is_release_branch=true" >> $GITHUB_OUTPUT
+            echo "is_valid=true" >> $GITHUB_OUTPUT
+          else
+            # Check if the merged PR came from a release branch
+            SOURCE_BRANCH="${{ github.event.pull_request.head.ref }}"
+            echo "Source branch: $SOURCE_BRANCH"
+            
+            if [[ $SOURCE_BRANCH =~ ^releases/ ]]; then
+              echo "✅ Valid release branch: $SOURCE_BRANCH"
+              echo "is_release_branch=true" >> $GITHUB_OUTPUT
+              echo "is_valid=true" >> $GITHUB_OUTPUT
+            else
+              echo "⚠️ Not a release branch: $SOURCE_BRANCH"
+              echo "Production release should only be triggered from release branches"
+              echo "is_release_branch=false" >> $GITHUB_OUTPUT
+              echo "is_valid=false" >> $GITHUB_OUTPUT
+              exit 1
+            fi
+          fi
+      
+      - name: 📝 Get version from pubspec.yaml
+        id: get-version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+            echo "Using manual version: $VERSION"
+          else
+            # Extract version from pubspec.yaml
+            VERSION=$(grep "^version:" pubspec.yaml | sed 's/version: //' | tr -d ' ')
+            echo "Extracted version from pubspec.yaml: $VERSION"
+          fi
+          
+          # Validate version format (X.Y.Z)
+          if [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "✅ Valid version format: $VERSION"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Invalid version format: $VERSION"
+            echo "Expected format: X.Y.Z (e.g., 6.17.6)"
+            exit 1
+          fi
+      
+      - name: 🏷️ Check if tag already exists
+        run: |
+          VERSION="${{ steps.get-version.outputs.version }}"
+          
+          # Check if tag exists locally or remotely
+          if git rev-parse "$VERSION" >/dev/null 2>&1; then
+            echo "⚠️ Tag $VERSION already exists locally"
+            
+            if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+              echo "Dry run mode - continuing anyway"
+            else
+              echo "❌ Cannot create duplicate release"
+              exit 1
+            fi
+          fi
+          
+          # Check remote tags
+          git fetch --tags
+          if git rev-parse "origin/$VERSION" >/dev/null 2>&1; then
+            echo "⚠️ Tag $VERSION already exists remotely"
+            
+            if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+              echo "Dry run mode - continuing anyway"
+            else
+              echo "❌ Cannot create duplicate release"
+              exit 1
+            fi
+          fi
+          
+          echo "✅ Tag $VERSION does not exist - safe to proceed"
+
+  # ===========================================================================
+  # Job 2: Run Final CI Check
+  # ===========================================================================
+  # Runs the full CI pipeline one last time before publishing
+  # ===========================================================================
+  
+  final-ci-check:
+    name: 🚀 Final CI Check
+    needs: validate-release
+    if: needs.validate-release.outputs.is_valid == 'true' && github.event.inputs.skip_tests != 'true'
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  # ===========================================================================
+  # Job 3: Publish to pub.dev
+  # ===========================================================================
+  # Publishes the Flutter plugin to pub.dev
+  # ===========================================================================
+  
+  publish-to-pubdev:
+    name: 📦 Publish to pub.dev
+    runs-on: ubuntu-latest
+    needs: [validate-release, final-ci-check]
+    if: always() && needs.validate-release.outputs.is_valid == 'true'
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: 🔧 Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+          channel: 'stable'
+          cache: true
+      
+      - name: ℹ️ Display Flutter version
+        run: |
+          flutter --version
+          dart --version
+      
+      - name: 📦 Get dependencies
+        run: flutter pub get
+      
+      - name: 🔍 Validate package
+        run: |
+          echo "Running pub publish dry-run to validate package..."
+          flutter pub publish --dry-run
+      
+      - name: 📝 Check pub.dev credentials
+        run: |
+          # Check if pub-credentials.json exists
+          # Note: This should be set up as a repository secret
+          if [[ -z "${{ secrets.PUB_DEV_CREDENTIALS }}" ]]; then
+            echo "⚠️ PUB_DEV_CREDENTIALS secret not found"
+            echo "Please set up pub.dev credentials as a repository secret"
+            echo "See: https://dart.dev/tools/pub/automated-publishing"
+            
+            if [[ "${{ github.event.inputs.dry_run }}" != "true" ]]; then
+              exit 1
+            fi
+          else
+            echo "✅ pub.dev credentials found"
+          fi
+      
+      - name: 🚀 Publish to pub.dev
+        if: github.event.inputs.dry_run != 'true'
+        run: |
+          VERSION="${{ needs.validate-release.outputs.version }}"
+          echo "Publishing version $VERSION to pub.dev..."
+          
+          # Set up credentials
+          mkdir -p ~/.config/dart
+          echo '${{ secrets.PUB_DEV_CREDENTIALS }}' > ~/.config/dart/pub-credentials.json
+          
+          # Publish to pub.dev (non-interactive)
+          flutter pub publish --force
+          
+          # Clean up credentials
+          rm ~/.config/dart/pub-credentials.json
+          
+          echo "✅ Successfully published to pub.dev"
+      
+      - name: 🏷️ Verify publication
+        if: github.event.inputs.dry_run != 'true'
+        run: |
+          VERSION="${{ needs.validate-release.outputs.version }}"
+          
+          echo "Waiting 30 seconds for pub.dev to index the package..."
+          sleep 30
+          
+          # Check if the version is available on pub.dev
+          PACKAGE_INFO=$(curl -s "https://pub.dev/api/packages/appsflyer_sdk")
+          
+          if echo "$PACKAGE_INFO" | grep -q "\"version\":\"$VERSION\""; then
+            echo "✅ Version $VERSION is now available on pub.dev"
+          else
+            echo "⚠️ Version $VERSION not yet visible on pub.dev"
+            echo "This is normal - it may take a few minutes to appear"
+          fi
+
+  # ===========================================================================
+  # Job 4: Create GitHub Release
+  # ===========================================================================
+  # Creates an official GitHub release with release notes
+  # ===========================================================================
+  
+  create-github-release:
+    name: 🏷️ Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [validate-release, publish-to-pubdev]
+    if: always() && needs.validate-release.outputs.is_valid == 'true' && github.event.inputs.dry_run != 'true'
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: 📝 Extract release notes from CHANGELOG
+        id: changelog
+        run: |
+          VERSION="${{ needs.validate-release.outputs.version }}"
+          
+          echo "Extracting release notes for version $VERSION from CHANGELOG.md"
+          
+          # Try to extract the section for this version from CHANGELOG.md
+          if [ -f "CHANGELOG.md" ]; then
+            # Extract content between ## VERSION and the next ## heading
+            RELEASE_NOTES=$(awk "/## $VERSION/,/^## [0-9]/" CHANGELOG.md | sed '1d;$d')
+            
+            if [ -z "$RELEASE_NOTES" ]; then
+              echo "⚠️ Could not find release notes for version $VERSION in CHANGELOG.md"
+              RELEASE_NOTES="Release version $VERSION. See [CHANGELOG.md](CHANGELOG.md) for details."
+            fi
+          else
+            echo "⚠️ CHANGELOG.md not found"
+            RELEASE_NOTES="Release version $VERSION."
+          fi
+          
+          # Save to file for use in release
+          echo "$RELEASE_NOTES" > release_notes.md
+          
+          echo "Release notes extracted"
+      
+      - name: 📝 Enhance release notes
+        run: |
+          VERSION="${{ needs.validate-release.outputs.version }}"
+          
+          # Get SDK versions from files
+          ANDROID_SDK_VERSION=$(grep "implementation 'com.appsflyer:af-android-sdk:" android/build.gradle | sed -n "s/.*af-android-sdk:\([^']*\).*/\1/p" | head -1)
+          IOS_SDK_VERSION=$(grep "s.ios.dependency 'AppsFlyerFramework'" ios/appsflyer_sdk.podspec | sed -n "s/.*AppsFlyerFramework',.*'\([^']*\)'.*/\1/p" | head -1)
+          
+          # Create enhanced release notes
+          cat > final_release_notes.md << EOF
+          # AppsFlyer Flutter Plugin v$VERSION
+          
+          ## 📦 Installation
+          
+          Add to your \`pubspec.yaml\`:
+          
+          \`\`\`yaml
+          dependencies:
+            appsflyer_sdk: ^$VERSION
+          \`\`\`
+          
+          Then run:
+          \`\`\`bash
+          flutter pub get
+          \`\`\`
+          
+          ## 📋 Changes in This Release
+          
+          $(cat release_notes.md)
+          
+          ## 🔧 SDK Versions
+          
+          - **Android**: AppsFlyer SDK v$ANDROID_SDK_VERSION
+          - **iOS**: AppsFlyer SDK v$IOS_SDK_VERSION
+          
+          ## 📚 Documentation
+          
+          - [Installation Guide](https://github.com/${{ github.repository }}/blob/master/doc/Installation.md)
+          - [Basic Integration](https://github.com/${{ github.repository }}/blob/master/doc/BasicIntegration.md)
+          - [API Documentation](https://github.com/${{ github.repository }}/blob/master/doc/API.md)
+          - [Sample App](https://github.com/${{ github.repository }}/tree/master/example)
+          
+          ## 🔗 Links
+          
+          - [pub.dev Package](https://pub.dev/packages/appsflyer_sdk)
+          - [API Reference](https://pub.dev/documentation/appsflyer_sdk/latest/)
+          - [GitHub Repository](https://github.com/${{ github.repository }})
+          - [AppsFlyer Developer Hub](https://dev.appsflyer.com/)
+          
+          ## 💬 Support
+          
+          For issues and questions, please contact <support@appsflyer.com>
+          EOF
+          
+          echo "Enhanced release notes created"
+      
+      - name: 🏷️ Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.validate-release.outputs.version }}
+          name: v${{ needs.validate-release.outputs.version }}
+          body_path: final_release_notes.md
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: ✅ Release created
+        run: |
+          VERSION="${{ needs.validate-release.outputs.version }}"
+          echo "✅ GitHub release v$VERSION created successfully"
+          echo "🔗 https://github.com/${{ github.repository }}/releases/tag/$VERSION"
+
+  # ===========================================================================
+  # Job 5: Notify Team (Placeholder for Slack Integration)
+  # ===========================================================================
+  # Sends notification to Slack channel about the production release
+  # ===========================================================================
+  
+  notify-team:
+    name: 📢 Notify Team
+    runs-on: ubuntu-latest
+    needs: [validate-release, publish-to-pubdev, create-github-release]
+    if: always() && github.event.inputs.dry_run != 'true'
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: 📝 Extract SDK versions and changelog
+        id: extract-info
+        run: |
+          VERSION="${{ needs.validate-release.outputs.version }}"
+          
+          # Extract Android SDK version
+          ANDROID_SDK_VERSION=$(grep "implementation 'com.appsflyer:af-android-sdk:" android/build.gradle | sed -n "s/.*af-android-sdk:\([^']*\).*/\1/p" | head -1)
+          echo "android_sdk=$ANDROID_SDK_VERSION" >> $GITHUB_OUTPUT
+          
+          # Extract iOS SDK version from podspec
+          IOS_SDK_VERSION=$(grep "s.ios.dependency 'AppsFlyerFramework'" ios/appsflyer_sdk.podspec | sed -n "s/.*AppsFlyerFramework',.*'\([^']*\)'.*/\1/p" | head -1)
+          echo "ios_sdk=$IOS_SDK_VERSION" >> $GITHUB_OUTPUT
+          
+          # Extract Purchase Connector versions from README (fallback to default if not found)
+          ANDROID_PC_VERSION=$(grep -A 1 "### Purchase Connector versions" README.md | grep "Android" | sed -n 's/.*Android \([0-9.]*\).*/\1/p' || echo "N/A")
+          IOS_PC_VERSION=$(grep -A 2 "### Purchase Connector versions" README.md | grep "iOS" | sed -n 's/.*iOS \([0-9.]*\).*/\1/p' || echo "N/A")
+          echo "android_pc=$ANDROID_PC_VERSION" >> $GITHUB_OUTPUT
+          echo "ios_pc=$IOS_PC_VERSION" >> $GITHUB_OUTPUT
+          
+          # Extract changelog for this version
+          if [ -f "CHANGELOG.md" ]; then
+            # Extract bullet points for this version
+            CHANGELOG=$(awk "/## $VERSION/,/^## [0-9]/" CHANGELOG.md | grep "^-" | sed 's/^- /• /' | head -5)
+            if [ -z "$CHANGELOG" ]; then
+              CHANGELOG="• Check CHANGELOG.md for details"
+            fi
+          else
+            CHANGELOG="• Check release notes for details"
+          fi
+          
+          # Save to file and encode for JSON
+          echo "$CHANGELOG" > /tmp/changelog.txt
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: 🎫 Fetch Jira tickets
+        id: jira-tickets
+        run: |
+          VERSION="${{ needs.validate-release.outputs.version }}"
+          JIRA_FIX_VERSION="Flutter SDK v$VERSION"
+          
+          # Check if Jira credentials are available
+          if [[ -z "${{ secrets.CI_JIRA_EMAIL }}" ]] || [[ -z "${{ secrets.CI_JIRA_TOKEN }}" ]]; then
+            echo "⚠️ Jira credentials not configured"
+            echo "tickets=No linked tickets (Jira not configured)" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Fetch tickets from Jira with this fix version
+          JIRA_DOMAIN="${{ secrets.CI_JIRA_DOMAIN || 'appsflyer.atlassian.net' }}"
+          
+          # Create auth header
+          AUTH=$(echo -n "${{ secrets.CI_JIRA_EMAIL }}:${{ secrets.CI_JIRA_TOKEN }}" | base64)
+          
+          # Query Jira API
+          RESPONSE=$(curl -s -X GET \
+            -H "Authorization: Basic $AUTH" \
+            -H "Content-Type: application/json" \
+            "https://${JIRA_DOMAIN}/rest/api/3/search?jql=fixVersion=\"${JIRA_FIX_VERSION}\"&fields=key,summary&maxResults=20")
+          
+          # Extract ticket keys and create links
+          TICKETS=$(echo "$RESPONSE" | jq -r '.issues[]? | "https://'"${JIRA_DOMAIN}"'/browse/\(.key)"' | head -10)
+          
+          if [ -z "$TICKETS" ]; then
+            echo "tickets=No linked tickets found for version: $JIRA_FIX_VERSION" >> $GITHUB_OUTPUT
+          else
+            # Format tickets as newline-separated list
+            echo "tickets<<EOF" >> $GITHUB_OUTPUT
+            echo "$TICKETS" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: 📢 Determine status
+        id: status
+        run: |
+          PUBLISH_STATUS="${{ needs.publish-to-pubdev.result }}"
+          RELEASE_STATUS="${{ needs.create-github-release.result }}"
+          
+          if [[ "$PUBLISH_STATUS" == "success" ]] && [[ "$RELEASE_STATUS" == "success" ]]; then
+            echo "success=true" >> $GITHUB_OUTPUT
+          else
+            echo "success=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: 📨 Send Slack notification
+        if: steps.status.outputs.success == 'true'
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "<!here>\n:flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter:\n\n*Flutter:*\nappsflyer_sdk: ^${{ needs.validate-release.outputs.version }} is published to Production.\n\n*Sources:*\n:github: https://github.com/${{ github.repository }}/tree/master\n:pubdev: https://pub.dev/packages/appsflyer_sdk/versions/${{ needs.validate-release.outputs.version }}\n\n*Changes and fixes:*\n${{ steps.extract-info.outputs.changelog }}\n\n*Tests:*\n:white_check_mark: CI pipeline passed.\n:white_check_mark: Unit tests passed.\n:white_check_mark: Android and iOS builds successful.\n\n*Linked tickets and issues:*\n${{ steps.jira-tickets.outputs.tickets }}\n\n*Native SDK's:*\n:android: ${{ steps.extract-info.outputs.android_sdk }}\n:apple: ${{ steps.extract-info.outputs.ios_sdk }}\n\n*Purchase Connector:*\n:android: ${{ steps.extract-info.outputs.android_pc }}\n:apple: ${{ steps.extract-info.outputs.ios_pc }}\n\n:flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter:"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.CI_SLACK_WEBHOOK_URL }}
+      
+      - name: 📨 Send failure notification
+        if: steps.status.outputs.success == 'false'
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "<!here>\n:warning: *Flutter Plugin Release Failed*\n\nVersion: ${{ needs.validate-release.outputs.version }}\nStatus: Release encountered issues\n\nPlease check the workflow logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.CI_SLACK_WEBHOOK_URL }}
+
+  # ===========================================================================
+  # Job 6: Production Release Summary
+  # ===========================================================================
+  # Provides a comprehensive summary of the production release
+  # ===========================================================================
+  
+  release-summary:
+    name: 📋 Release Summary
+    runs-on: ubuntu-latest
+    needs: [validate-release, final-ci-check, publish-to-pubdev, create-github-release]
+    if: always()
+    
+    steps:
+      - name: 📊 Display Release Summary
+        run: |
+          echo "========================================="
+          echo "Production Release Summary"
+          echo "========================================="
+          echo "Version: ${{ needs.validate-release.outputs.version }}"
+          echo "Dry Run: ${{ github.event.inputs.dry_run }}"
+          echo "-----------------------------------------"
+          echo "Validation: ${{ needs.validate-release.result }}"
+          echo "Final CI Check: ${{ needs.final-ci-check.result }}"
+          echo "pub.dev Publish: ${{ needs.publish-to-pubdev.result }}"
+          echo "GitHub Release: ${{ needs.create-github-release.result }}"
+          echo "========================================="
+          
+          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+            echo "ℹ️ This was a DRY RUN - no actual publishing occurred"
+            exit 0
+          fi
+          
+          # Check if all critical jobs succeeded
+          if [[ "${{ needs.validate-release.result }}" == "success" ]] && \
+             [[ "${{ needs.publish-to-pubdev.result }}" == "success" ]] && \
+             [[ "${{ needs.create-github-release.result }}" == "success" ]]; then
+            echo ""
+            echo "✅ Production Release Completed Successfully!"
+            echo ""
+            echo "🎉 Version ${{ needs.validate-release.outputs.version }} is now live!"
+            echo ""
+            echo "📦 pub.dev: https://pub.dev/packages/appsflyer_sdk"
+            echo "🏷️ GitHub: https://github.com/${{ github.repository }}/releases/tag/${{ needs.validate-release.outputs.version }}"
+            echo ""
+            echo "Next Steps:"
+            echo "1. Verify the package on pub.dev"
+            echo "2. Update documentation if needed"
+            echo "3. Announce the release to the community"
+            echo "4. Monitor for any issues or feedback"
+          else
+            echo ""
+            echo "❌ Production Release Failed"
+            echo ""
+            echo "Please check the logs above for details and retry if necessary"
+            exit 1
+          fi
