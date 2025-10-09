@@ -10,10 +10,12 @@ class HomeContainerStreams extends StatefulWidget {
   final Future<bool> Function(String, Map) logEvent;
 
   // ignore: prefer_const_constructors_in_immutables
-  HomeContainerStreams(
-      {required this.onData,
-      required this.onAttribution,
-      required this.logEvent});
+  HomeContainerStreams({
+    Key? key,
+    required this.onData,
+    required this.onAttribution,
+    required this.logEvent,
+  }) : super(key: key);
 
   @override
   State<HomeContainerStreams> createState() => _HomeContainerStreamsState();

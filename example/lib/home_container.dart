@@ -11,16 +11,18 @@ class HomeContainer extends StatefulWidget {
   final Future<Map<String, dynamic>?> Function(String, String) validatePurchase;
   final Object? deepLinkData;
 
+  // ignore: prefer_const_constructors_in_immutables
   HomeContainer({
+    Key? key,
     required this.onData,
     required this.deepLinkData,
     required this.logEvent,
     required this.logAdRevenueEvent,
     required this.validatePurchase,
-  });
+  }) : super(key: key);
 
   @override
-  _HomeContainerState createState() => _HomeContainerState();
+  State<HomeContainer> createState() => _HomeContainerState();
 }
 
 class _HomeContainerState extends State<HomeContainer> {
@@ -52,7 +54,7 @@ class _HomeContainerState extends State<HomeContainer> {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       child: Container(
-        padding: const EdgeInsets.all(AppConstants.CONTAINER_PADDING),
+        padding: const EdgeInsets.all(AppConstants.containerPadding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
@@ -73,7 +75,7 @@ class _HomeContainerState extends State<HomeContainer> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  SizedBox(height: AppConstants.TOP_PADDING),
+                  SizedBox(height: AppConstants.topPadding),
                   TextBorder(
                     controller: TextEditingController(
                       text: widget.onData.isNotEmpty
