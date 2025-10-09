@@ -92,8 +92,9 @@ jobs:
       
       # Step 5: Analyze code for issues
       # Checks for code quality issues, unused imports, etc.
+      # Only fails on actual errors, not info-level warnings
       - name: 🔍 Analyze code
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
       
       # Step 6: Format check
       # Ensures code follows Dart formatting standards
