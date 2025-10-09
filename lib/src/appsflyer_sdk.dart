@@ -9,8 +9,8 @@ class AppsflyerSdk {
   AppsFlyerOptions? afOptions;
   Map? mapOptions;
 
-  ///Returns the [AppsflyerSdk] instance, initialized with a custom options
-  ///provided by the user
+  /// Returns the [AppsflyerSdk] instance, initialized with a custom options
+  /// provided by the user
   factory AppsflyerSdk(options) {
     if (_instance == null) {
       MethodChannel methodChannel =
