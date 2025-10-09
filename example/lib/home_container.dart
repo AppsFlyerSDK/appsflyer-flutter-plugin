@@ -9,7 +9,7 @@ class HomeContainer extends StatefulWidget {
   final Future<bool?> Function(String, Map) logEvent;
   final void Function() logAdRevenueEvent;
   final Future<Map<String, dynamic>?> Function(String, String) validatePurchase;
-  Object deepLinkData;
+  final Object? deepLinkData;
 
   HomeContainer({
     required this.onData,
