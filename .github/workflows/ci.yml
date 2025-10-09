@@ -76,8 +76,7 @@ jobs:
       - name: 🔧 Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'stable'  # Use latest stable Flutter
-          channel: 'stable'
+          channel: 'stable'  # Use latest stable Flutter
           cache: true  # Cache Flutter SDK for faster runs
       
       # Step 3: Verify Flutter installation
@@ -145,7 +144,6 @@ jobs:
       - name: 🔧 Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'stable'
           channel: 'stable'
           cache: true
       
@@ -209,7 +207,6 @@ jobs:
       - name: 🔧 Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'stable'
           channel: 'stable'
           cache: true
       
