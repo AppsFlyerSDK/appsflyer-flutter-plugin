@@ -431,11 +431,12 @@ jobs:
           echo "JQL: $JQL_QUERY"
           
           # Query Jira API with error handling and verbose output
+          # Using the new /search/jql endpoint as per Jira API v3
           RESPONSE=$(curl -s -w "\n%{http_code}" \
             -u "${{ secrets.CI_JIRA_EMAIL }}:${{ secrets.CI_JIRA_TOKEN }}" \
             -H "Accept: application/json" \
             -H "Content-Type: application/json" \
-            "https://${JIRA_DOMAIN}/rest/api/3/search?jql=${ENCODED_JQL}&fields=key,summary&maxResults=20")
+            "https://${JIRA_DOMAIN}/rest/api/3/search/jql?jql=${ENCODED_JQL}&fields=key,summary&maxResults=20")
           
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
           BODY=$(echo "$RESPONSE" | sed '$d')
