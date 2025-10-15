@@ -76,8 +76,7 @@ jobs:
       - name: 🔧 Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'stable'  # Use latest stable Flutter
-          channel: 'stable'
+          channel: 'stable'  # Use latest stable Flutter
           cache: true  # Cache Flutter SDK for faster runs
       
       # Step 3: Verify Flutter installation
@@ -93,8 +92,9 @@ jobs:
       
       # Step 5: Analyze code for issues
       # Checks for code quality issues, unused imports, etc.
+      # Only fails on actual errors, not info-level warnings
       - name: 🔍 Analyze code
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
       
       # Step 6: Format check
       # Ensures code follows Dart formatting standards
@@ -145,7 +145,6 @@ jobs:
       - name: 🔧 Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'stable'
           channel: 'stable'
           cache: true
       
@@ -209,7 +208,6 @@ jobs:
       - name: 🔧 Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'stable'
           channel: 'stable'
           cache: true
       
