@@ -458,20 +458,31 @@ jobs:
           # Fetch tickets from Jira with this fix version
           JIRA_DOMAIN="${{ secrets.CI_JIRA_DOMAIN || 'appsflyer.atlassian.net' }}"
           
-          # Create auth header
-          AUTH=$(echo -n "${{ secrets.CI_JIRA_EMAIL }}:${{ secrets.CI_JIRA_TOKEN }}" | base64)
+          # URL-encode the JQL query properly
+          JQL_QUERY="fixVersion=\"${JIRA_FIX_VERSION}\""
+          # Use jq for proper URL encoding
+          ENCODED_JQL=$(echo "$JQL_QUERY" | jq -sRr @uri)
           
-          # Query Jira API with error handling
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X GET \
-            -H "Authorization: Basic $AUTH" \
+          echo "📡 Querying Jira API..."
+          echo "Domain: $JIRA_DOMAIN"
+          echo "JQL: $JQL_QUERY"
+          
+          # Query Jira API with error handling and verbose output
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -u "${{ secrets.CI_JIRA_EMAIL }}:${{ secrets.CI_JIRA_TOKEN }}" \
+            -H "Accept: application/json" \
             -H "Content-Type: application/json" \
-            "https://${JIRA_DOMAIN}/rest/api/3/search?jql=fixVersion=\"${JIRA_FIX_VERSION}\"&fields=key,summary&maxResults=20")
+            "https://${JIRA_DOMAIN}/rest/api/3/search?jql=${ENCODED_JQL}&fields=key,summary&maxResults=20")
           
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
           BODY=$(echo "$RESPONSE" | sed '$d')
           
+          echo "HTTP Status: $HTTP_CODE"
+          
           if [[ "$HTTP_CODE" != "200" ]]; then
             echo "⚠️ Jira API request failed with status $HTTP_CODE"
+            echo "Response body (first 500 chars):"
+            echo "$BODY" | head -c 500
             echo "tickets=No assigned fix version found" >> $GITHUB_OUTPUT
             exit 0
           fi
