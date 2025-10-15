@@ -405,10 +405,17 @@ jobs:
           IOS_SDK_VERSION=$(grep "s.ios.dependency 'AppsFlyerFramework'" ios/appsflyer_sdk.podspec | sed -n "s/.*AppsFlyerFramework',.*'\([^']*\)'.*/\1/p" | head -1)
           echo "ios_sdk=$IOS_SDK_VERSION" >> $GITHUB_OUTPUT
           
-          # Extract Purchase Connector versions from README (fallback to default if not found)
-          ANDROID_PC_VERSION=$(grep -A 1 "### Purchase Connector versions" README.md | grep "Android" | sed -n 's/.*Android \([0-9.]*\).*/\1/p' || echo "N/A")
-          IOS_PC_VERSION=$(grep -A 2 "### Purchase Connector versions" README.md | grep "iOS" | sed -n 's/.*iOS \([0-9.]*\).*/\1/p' || echo "N/A")
+          # Extract Purchase Connector versions from build files
+          ANDROID_PC_VERSION=$(grep "implementation 'com.appsflyer:purchase-connector:" android/build.gradle | sed -n "s/.*purchase-connector:\([^']*\).*/\1/p" | head -1)
+          if [ -z "$ANDROID_PC_VERSION" ]; then
+            ANDROID_PC_VERSION="N/A"
+          fi
           echo "android_pc=$ANDROID_PC_VERSION" >> $GITHUB_OUTPUT
+          
+          IOS_PC_VERSION=$(grep "s.ios.dependency 'PurchaseConnector'" ios/appsflyer_sdk.podspec | sed -n "s/.*PurchaseConnector',.*'\([^']*\)'.*/\1/p" | head -1)
+          if [ -z "$IOS_PC_VERSION" ]; then
+            IOS_PC_VERSION="N/A"
+          fi
           echo "ios_pc=$IOS_PC_VERSION" >> $GITHUB_OUTPUT
           
           # Extract changelog for this version
