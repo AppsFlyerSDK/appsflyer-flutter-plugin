@@ -227,37 +227,31 @@ jobs:
         working-directory: example
         run: flutter pub get
       
-      # Step 6: Prepare iOS project (ensures .xcodeproj exists)
-      # Flutter needs to generate the iOS project structure first
-      - name: 🔧 Prepare iOS project
-        working-directory: example
-        run: flutter precache --ios
-      
-      # Step 7: Update CocoaPods repo (ensures latest pod specs)
+      # Step 6: Update CocoaPods repo (ensures latest pod specs)
       # This can be slow, so we only update if needed
       - name: 🔄 Update CocoaPods repo
         working-directory: example/ios
         run: pod repo update
       
-      # Step 8: Install CocoaPods dependencies
+      # Step 7: Install CocoaPods dependencies
       # This installs native iOS dependencies including AppsFlyer SDK
       - name: 📦 Install CocoaPods dependencies
         working-directory: example/ios
         run: pod install
       
-      # Step 9: Build for iOS Simulator (fastest iOS build)
+      # Step 8: Build for iOS Simulator (fastest iOS build)
       # Validates that the plugin compiles for iOS
       - name: 🔨 Build iOS for Simulator
         working-directory: example
         run: flutter build ios --simulator --debug
       
-      # Step 10: Build iOS IPA without code signing (release mode)
+      # Step 9: Build iOS IPA without code signing (release mode)
       # This validates a full release build without requiring certificates
       - name: 🔨 Build iOS IPA (no codesign)
         working-directory: example
         run: flutter build ipa --release --no-codesign
       
-      # Step 11: Upload build artifacts (optional)
+      # Step 10: Upload build artifacts (optional)
       - name: 📤 Upload iOS build artifact
         if: success()
         uses: actions/upload-artifact@v4
