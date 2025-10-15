@@ -398,8 +398,10 @@ jobs:
           set +e  # Don't exit on errors
           
           VERSION="${{ needs.validate-release.outputs.version }}"
-          # Use full version with -rc suffix and 'v' prefix (matches your Jira convention)
-          JIRA_FIX_VERSION="Flutter SDK v$VERSION"
+          # Remove -rc suffix for Jira lookup (e.g., 99.99.99-rc1 → 99.99.99)
+          BASE_VERSION=$(echo "$VERSION" | sed 's/-rc[0-9]*$//')
+          # Use base version with 'v' prefix (matches your Jira convention)
+          JIRA_FIX_VERSION="Flutter SDK v$BASE_VERSION"
           
           echo "🔍 Looking for Jira tickets with fix version: $JIRA_FIX_VERSION"
           
