@@ -430,14 +430,21 @@ jobs:
       
       - name: 🎫 Fetch Jira tickets
         id: jira-tickets
+        continue-on-error: true  # Don't fail CI if Jira fetch fails
         run: |
+          set +e  # Don't exit on errors
+          
           VERSION="${{ needs.validate-release.outputs.version }}"
+          # Use full version with 'v' prefix (matches your Jira convention)
+          # For production release, version is X.Y.Z without -rc suffix
           JIRA_FIX_VERSION="Flutter SDK v$VERSION"
+          
+          echo "🔍 Looking for Jira tickets with fix version: $JIRA_FIX_VERSION"
           
           # Check if Jira credentials are available
           if [[ -z "${{ secrets.CI_JIRA_EMAIL }}" ]] || [[ -z "${{ secrets.CI_JIRA_TOKEN }}" ]]; then
             echo "⚠️ Jira credentials not configured"
-            echo "tickets=No linked tickets (Jira not configured)" >> $GITHUB_OUTPUT
+            echo "tickets=No assigned fix version found" >> $GITHUB_OUTPUT
             exit 0
           fi
           
@@ -447,19 +454,30 @@ jobs:
           # Create auth header
           AUTH=$(echo -n "${{ secrets.CI_JIRA_EMAIL }}:${{ secrets.CI_JIRA_TOKEN }}" | base64)
           
-          # Query Jira API
-          RESPONSE=$(curl -s -X GET \
+          # Query Jira API with error handling
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X GET \
             -H "Authorization: Basic $AUTH" \
             -H "Content-Type: application/json" \
             "https://${JIRA_DOMAIN}/rest/api/3/search?jql=fixVersion=\"${JIRA_FIX_VERSION}\"&fields=key,summary&maxResults=20")
           
-          # Extract ticket keys and create links
-          TICKETS=$(echo "$RESPONSE" | jq -r '.issues[]? | "https://'"${JIRA_DOMAIN}"'/browse/\(.key)"' | head -10)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          if [[ "$HTTP_CODE" != "200" ]]; then
+            echo "⚠️ Jira API request failed with status $HTTP_CODE"
+            echo "tickets=No assigned fix version found" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Extract ticket keys and create links with summaries
+          TICKETS=$(echo "$BODY" | jq -r '.issues[]? | "• https://'"${JIRA_DOMAIN}"'/browse/\(.key) - \(.fields.summary)"' 2>/dev/null | head -10)
           
           if [ -z "$TICKETS" ]; then
-            echo "tickets=No linked tickets found for version: $JIRA_FIX_VERSION" >> $GITHUB_OUTPUT
+            echo "ℹ️ No linked tickets found for version: $JIRA_FIX_VERSION"
+            echo "tickets=No assigned fix version found" >> $GITHUB_OUTPUT
           else
-            # Format tickets as newline-separated list
+            echo "✅ Found Jira tickets:"
+            echo "$TICKETS"
             echo "tickets<<EOF" >> $GITHUB_OUTPUT
             echo "$TICKETS" >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
