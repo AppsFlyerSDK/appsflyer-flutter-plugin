@@ -12,12 +12,12 @@ To do so, please follow [this article](https://support.appsflyer.com/hc/en-us/ar
 ## SDK Versions
 
 - Android AppsFlyer SDK **v6.17.3**
-- iOS AppsFlyer SDK **v6.17.6**
+- iOS AppsFlyer SDK **v6.17.7**
 
 ### Purchase Connector versions
 
 - Android 2.2.0
-- iOS 6.17.6
+- iOS 6.17.7
 
 ## ❗❗ Breaking changes when updating to v6.x.x❗❗
 

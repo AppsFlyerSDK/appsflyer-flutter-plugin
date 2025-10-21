@@ -131,8 +131,7 @@ class _HomeContainerState extends State<HomeContainer> {
                     onPressed: () {
                       widget.logEvent(eventName, eventValues).then((onValue) {
                         setState(() {
-                          _logEventResponse =
-                              "Event Status: $onValue";
+                          _logEventResponse = "Event Status: $onValue";
                         });
                       }).catchError((onError) {
                         setState(() {
@@ -142,8 +141,8 @@ class _HomeContainerState extends State<HomeContainer> {
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 10),
                       textStyle: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -157,8 +156,8 @@ class _HomeContainerState extends State<HomeContainer> {
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 10),
                       textStyle: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -246,8 +245,8 @@ class _HomeContainerState extends State<HomeContainer> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       foregroundColor: Colors.white,
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 10),
                       textStyle: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,

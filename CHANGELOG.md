@@ -1,11 +1,13 @@
 # Versions
 
-## 6.17.6
+## 6.17.7
 
-- Updated to AppsFlyer SDK v6.17.6 for iOS and Flutter plugin version
+- Updated to AppsFlyer SDK v6.17.7 for iOS and Flutter plugin version
 - Android AppsFlyer SDK remains at v6.17.3
+- iOS AppsFlyer SDK updgraded to v6.17.7
 - Documents update
 - Purchase Connector module updated (to support Google Billing Library 8)
+- Code cleanups
 
 ## 6.17.5
 
