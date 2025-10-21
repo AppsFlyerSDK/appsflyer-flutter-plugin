@@ -20,12 +20,12 @@ class TextBorder extends StatelessWidget {
         maxLines: null,
         decoration: InputDecoration(
           labelText: labelText,
-          labelStyle: TextStyle(
+          labelStyle: const TextStyle(
               color: Colors.blueGrey), // Change the color of the label
-          border: OutlineInputBorder(
+          border: const OutlineInputBorder(
             borderSide: BorderSide(width: 1.0),
           ),
-          focusedBorder: OutlineInputBorder(
+          focusedBorder: const OutlineInputBorder(
             borderSide: BorderSide(width: 1.0),
           ),
         ),
