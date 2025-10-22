@@ -1,6 +1,23 @@
 # Versions
 
+## 6.17.7
+
+- Updated to AppsFlyer SDK v6.17.7 for iOS and Flutter plugin version
+- Android AppsFlyer SDK remains at v6.17.3
+- iOS AppsFlyer SDK upgraded to v6.17.7
+- Android Purchase Connector module updated (to support Google Billing Library 8)
+- Code cleanups
+- **Documentation Updates:**
+  - Enhanced push notification measurement documentation with clear separation between traditional `af` object approach and OneLink URL approach
+  - Added comprehensive iOS-specific requirements for OneLink push notification integration
+  - Clarified the need to call `sendPushNotificationData()` on iOS when using `addPushNotificationDeepLinkPath()`
+  - Added complete code examples for both push notification integration approaches with Firebase Cloud Messaging
+  - Added Flutter 3.27+ breaking change documentation for deep linking (must disable Flutter's built-in deep linking to avoid conflicts with AppsFlyer)
+  - Replaced `effective_dart` with `flutter_lints` in development dependencies
+
+
 ## 6.17.5
+
 - Updated to AppsFlyer SDK v6.17.5 for iOS
 
 ## 6.17.3

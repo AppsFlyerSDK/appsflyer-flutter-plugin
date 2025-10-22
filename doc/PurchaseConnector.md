@@ -45,9 +45,16 @@ support@appsflyer.com
 
 ## <a id="important-note"> ⚠️ ⚠️ Important Note ⚠️ ⚠️
 
+> **🚨 BREAKING CHANGE**: Starting with Purchase Connector version 2.2.0, the module now uses **Google Play Billing Library 8.x.x**. While Gradle will automatically resolve to version 8.x.x in your final APK, **we strongly recommend that your app also upgrades to Billing Library 8.x.x or higher** to ensure API compatibility.
+>
+> **Why this matters:**
+> - If your app code still uses **older Billing Library APIs** (e.g., `querySkuDetailsAsync()` from versions 5-7), these APIs were **removed in version 8** and **will cause runtime crashes** (`NoSuchMethodError`).
+> - **Version 8 introduced new APIs** like `queryProductDetailsAsync()` that replace the deprecated methods.
+> - **Recommendation**: Update your app's billing integration to use Billing Library 8.x.x APIs to prevent runtime issues.
+
 The Purchase Connector feature of the AppsFlyer SDK depends on specific libraries provided by Google and Apple for managing in-app purchases:
 
--   For Android, it depends on the  [Google Play Billing Library](https://developer.android.com/google/play/billing/integrate) (Supported versions: 5.x.x - 7.x.x).
+-   For Android, it depends on the  [Google Play Billing Library](https://developer.android.com/google/play/billing/integrate) (Minimum required version: 8.x.x and higher).
 -   For iOS, it depends on  [StoreKit](https://developer.apple.com/documentation/storekit). (Supported versions are StoreKit V1 + V2)
 
 However, these dependencies aren't actively included with the SDK. This means that the responsibility of managing these dependencies and including the necessary libraries in your project falls on you as the consumer of the SDK.
@@ -345,7 +352,7 @@ To test purchases in an iOS environment on a real device with a TestFlight sandb
 final purchaseConnector = PurchaseConnector(
   config: PurchaseConnectorConfiguration(
     sandbox: true,  // Enable sandbox for testing
-    storeKitVersion: StoreKitVersion.storeKit2,  // Use StoreKit 2 for enhanced testing
+    storeKitVersion: StoreKitVersion.storeKit2,  
     logSubscriptions: true,
     logInApps: true,
   ),

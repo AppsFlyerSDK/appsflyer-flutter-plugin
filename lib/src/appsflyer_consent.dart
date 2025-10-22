@@ -12,23 +12,20 @@ class AppsFlyerConsent {
   });
 
   // Factory constructors
-  factory AppsFlyerConsent.forGDPRUser({
-    required bool hasConsentForDataUsage,
-    required bool hasConsentForAdsPersonalization
-  }){
+  factory AppsFlyerConsent.forGDPRUser(
+      {required bool hasConsentForDataUsage,
+      required bool hasConsentForAdsPersonalization}) {
     return AppsFlyerConsent._(
         isUserSubjectToGDPR: true,
         hasConsentForDataUsage: hasConsentForDataUsage,
-        hasConsentForAdsPersonalization: hasConsentForAdsPersonalization
-    );
+        hasConsentForAdsPersonalization: hasConsentForAdsPersonalization);
   }
 
-  factory AppsFlyerConsent.nonGDPRUser(){
+  factory AppsFlyerConsent.nonGDPRUser() {
     return AppsFlyerConsent._(
         isUserSubjectToGDPR: false,
         hasConsentForDataUsage: false,
-        hasConsentForAdsPersonalization: false
-    );
+        hasConsentForAdsPersonalization: false);
   }
 
   // Converts object to a map

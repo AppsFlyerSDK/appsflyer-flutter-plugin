@@ -2,7 +2,6 @@ part of appsflyer_sdk;
 
 @JsonSerializable()
 class ProductPurchase {
-
   String kind;
   String purchaseTimeMillis;
   int purchaseState;
@@ -32,13 +31,10 @@ class ProductPurchase {
       this.quantity,
       this.obfuscatedExternalAccountId,
       this.obfuscatedExternalProfileId,
-      this.regionCode
-      );
+      this.regionCode);
 
-
-
-  factory ProductPurchase.fromJson(Map<String, dynamic> json) => _$ProductPurchaseFromJson(json);
+  factory ProductPurchase.fromJson(Map<String, dynamic> json) =>
+      _$ProductPurchaseFromJson(json);
 
   Map<String, dynamic> toJson() => _$ProductPurchaseToJson(this);
-
 }

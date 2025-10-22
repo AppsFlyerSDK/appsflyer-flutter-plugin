@@ -1,0 +1,294 @@
+# =============================================================================
+# CI Workflow - Continuous Integration for Pull Requests and Pushes
+# =============================================================================
+# 
+# Purpose: Validates code quality, runs tests, and builds example apps for 
+# both Android and iOS platforms on every PR and push to development/master.
+#
+# What it does:
+# 1. Runs Dart/Flutter unit tests
+# 2. Builds Android example app (APK)
+# 3. Builds iOS example app (simulator + no-codesign IPA)
+# 4. Caches dependencies for faster subsequent runs
+#
+# Triggers:
+# - Pull requests to development or master branches
+# - Direct pushes to development or master branches
+# - Manual workflow dispatch for testing
+#
+# =============================================================================
+
+name: CI - Build & Test
+
+on:
+  # Trigger on pull requests targeting main branches
+  pull_request:
+    branches:
+      - development
+      - master
+    paths-ignore:
+      - '**.md'
+      - 'doc/**'
+      - 'assets/**'
+      - '.github/workflows/close_inactive_issues.yml'
+      - '.github/workflows/responseToSupportIssue*.yml'
+  
+  # Trigger on direct pushes to main branches
+  push:
+    branches:
+      - development
+      - master
+    paths-ignore:
+      - '**.md'
+      - 'doc/**'
+      - 'assets/**'
+  
+  # Allow manual triggering for testing
+  workflow_dispatch:
+  
+  # Allow this workflow to be called by other workflows (reusable workflow)
+  workflow_call:
+
+# Ensure only one CI run per PR/branch at a time
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ===========================================================================
+  # Job 1: Run Unit Tests
+  # ===========================================================================
+  # Runs all Dart/Flutter unit tests for the plugin
+  # Uses: Ubuntu runner (fastest and free for public repos)
+  # ===========================================================================
+  
+  test:
+    name: 🧪 Run Unit Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Step 1: Checkout the repository code
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+      
+      # Step 2: Set up Flutter SDK
+      # Uses subosito/flutter-action which caches Flutter SDK automatically
+      - name: 🔧 Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'  # Use latest stable Flutter
+          cache: true  # Cache Flutter SDK for faster runs
+      
+      # Step 3: Verify Flutter installation
+      - name: ℹ️ Display Flutter version
+        run: |
+          flutter --version
+          dart --version
+      
+      # Step 4: Get plugin dependencies
+      # This installs all packages defined in pubspec.yaml
+      - name: 📦 Install plugin dependencies
+        run: flutter pub get
+      
+      # Step 5: Analyze code for issues
+      # Checks for code quality issues, unused imports, etc.
+      # Only fails on actual errors, not info-level warnings
+      - name: 🔍 Analyze code
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+      
+      # Step 6: Format check
+      # Ensures code follows Dart formatting standards
+      - name: 💅 Check code formatting
+        run: dart format --set-exit-if-changed .
+      
+      # Step 7: Run unit tests
+      # Executes all tests in the test/ directory
+      - name: 🧪 Run unit tests
+        run: flutter test --coverage
+      
+      # Step 8: Upload coverage report (optional)
+      # Useful for tracking code coverage over time
+      - name: 📊 Upload coverage to Codecov (optional)
+        if: success()
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage/lcov.info
+          fail_ci_if_error: false  # Don't fail CI if coverage upload fails
+
+  # ===========================================================================
+  # Job 2: Build Android Example App
+  # ===========================================================================
+  # Builds the example app for Android to ensure plugin integration works
+  # Uses: Ubuntu runner with Java 17
+  # ===========================================================================
+  
+  build-android:
+    name: 🤖 Build Android Example
+    runs-on: ubuntu-latest
+    needs: test  # Only run if tests pass
+    
+    steps:
+      # Step 1: Checkout code
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+      
+      # Step 2: Set up Java (required for Android builds)
+      # Android builds require JDK 17 for modern Gradle versions
+      - name: ☕ Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'  # Eclipse Temurin (formerly AdoptOpenJDK)
+          java-version: '17'
+          cache: 'gradle'  # Cache Gradle dependencies
+      
+      # Step 3: Set up Flutter SDK
+      - name: 🔧 Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+      
+      # Step 4: Display versions for debugging
+      - name: ℹ️ Display versions
+        run: |
+          flutter --version
+          java -version
+          echo "JAVA_HOME: $JAVA_HOME"
+      
+      # Step 5: Get plugin dependencies
+      - name: 📦 Install plugin dependencies
+        run: flutter pub get
+      
+      # Step 6: Get example app dependencies
+      - name: 📦 Install example app dependencies
+        working-directory: example
+        run: flutter pub get
+      
+      # Step 7: Build Android APK (debug mode)
+      # This validates that the plugin integrates correctly with Android
+      - name: 🔨 Build Android APK (debug)
+        working-directory: example
+        run: flutter build apk --debug
+      
+      # Step 8: Build Android App Bundle (release mode, no signing)
+      # App Bundle is the preferred format for Play Store
+      - name: 🔨 Build Android App Bundle (release)
+        working-directory: example
+        run: flutter build appbundle --release
+      
+      # Step 9: Upload build artifacts (optional)
+      # Useful for manual testing or archiving
+      - name: 📤 Upload APK artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-debug
+          path: example/build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 7  # Keep for 7 days
+
+  # ===========================================================================
+  # Job 3: Build iOS Example App
+  # ===========================================================================
+  # Builds the example app for iOS to ensure plugin integration works
+  # Uses: macOS runner (required for Xcode and iOS builds)
+  # Note: macOS runners consume 10x minutes on private repos
+  # ===========================================================================
+  
+  build-ios:
+    name: 🍎 Build iOS Example
+    runs-on: macos-14  # macOS 14 (Sonoma) with Xcode 15+
+    needs: test  # Only run if tests pass
+    
+    steps:
+      # Step 1: Checkout code
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+      
+      # Step 2: Set up Flutter SDK
+      - name: 🔧 Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+      
+      # Step 3: Display versions
+      - name: ℹ️ Display versions
+        run: |
+          flutter --version
+          xcodebuild -version
+          pod --version
+      
+      # Step 4: Get plugin dependencies
+      - name: 📦 Install plugin dependencies
+        run: flutter pub get
+      
+      # Step 5: Get example app dependencies
+      - name: 📦 Install example app dependencies
+        working-directory: example
+        run: flutter pub get
+      
+      # Step 6: Update CocoaPods repo (ensures latest pod specs)
+      # This can be slow, so we only update if needed
+      - name: 🔄 Update CocoaPods repo
+        working-directory: example/ios
+        run: pod repo update
+      
+      # Step 7: Install CocoaPods dependencies
+      # This installs native iOS dependencies including AppsFlyer SDK
+      - name: 📦 Install CocoaPods dependencies
+        working-directory: example/ios
+        run: pod install
+      
+      # Step 8: Build for iOS Simulator (fastest iOS build)
+      # Validates that the plugin compiles for iOS
+      - name: 🔨 Build iOS for Simulator
+        working-directory: example
+        run: flutter build ios --simulator --debug
+      
+      # Step 9: Build iOS IPA without code signing (release mode)
+      # This validates a full release build without requiring certificates
+      - name: 🔨 Build iOS IPA (no codesign)
+        working-directory: example
+        run: flutter build ipa --release --no-codesign
+      
+      # Step 10: Upload build artifacts (optional)
+      - name: 📤 Upload iOS build artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-app-unsigned
+          path: example/build/ios/archive/Runner.xcarchive
+          retention-days: 7
+
+  # ===========================================================================
+  # Job 4: Summary Report
+  # ===========================================================================
+  # Provides a summary of all CI jobs
+  # ===========================================================================
+  
+  ci-summary:
+    name: 📋 CI Summary
+    runs-on: ubuntu-latest
+    needs: [test, build-android, build-ios]
+    if: always()  # Run even if previous jobs fail
+    
+    steps:
+      - name: 📊 Check CI Results
+        run: |
+          echo "==================================="
+          echo "CI Pipeline Summary"
+          echo "==================================="
+          echo "Test Job: ${{ needs.test.result }}"
+          echo "Android Build: ${{ needs.build-android.result }}"
+          echo "iOS Build: ${{ needs.build-ios.result }}"
+          echo "==================================="
+          
+          # Fail this job if any required job failed
+          if [[ "${{ needs.test.result }}" != "success" ]] || \
+             [[ "${{ needs.build-android.result }}" != "success" ]] || \
+             [[ "${{ needs.build-ios.result }}" != "success" ]]; then
+            echo "❌ CI Pipeline Failed"
+            exit 1
+          fi
+          
+          echo "✅ CI Pipeline Passed Successfully"

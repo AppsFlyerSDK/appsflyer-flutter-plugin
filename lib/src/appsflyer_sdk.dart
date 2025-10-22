@@ -1,6 +1,7 @@
 part of appsflyer_sdk;
 
 class AppsflyerSdk {
+  // ignore: unused_field
   EventChannel _eventChannel;
   static AppsflyerSdk? _instance;
   final MethodChannel _methodChannel;
@@ -9,8 +10,8 @@ class AppsflyerSdk {
   AppsFlyerOptions? afOptions;
   Map? mapOptions;
 
-  ///Returns the [AppsflyerSdk] instance, initialized with a custom options
-  ///provided by the user
+  /// Returns the [AppsflyerSdk] instance, initialized with a custom options
+  /// provided by the user
   factory AppsflyerSdk(options) {
     if (_instance == null) {
       MethodChannel methodChannel =
