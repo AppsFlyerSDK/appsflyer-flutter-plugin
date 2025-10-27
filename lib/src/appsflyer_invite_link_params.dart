@@ -14,14 +14,13 @@ class AppsFlyerInviteLinkParams {
   /// Creates an [AppsFlyerInviteLinkParams] instance.
   /// All parameters are optional, allowing greater flexibility when
   /// invoking the constructor.
-  AppsFlyerInviteLinkParams({
-    this.campaign,
-    this.channel,
-    this.referrerName,
-    this.baseDeepLink,
-    this.brandDomain,
-    this.customerID,
-    this.referrerImageUrl,
-    this.customParams
-  });
+  AppsFlyerInviteLinkParams(
+      {this.campaign,
+      this.channel,
+      this.referrerName,
+      this.baseDeepLink,
+      this.brandDomain,
+      this.customerID,
+      this.referrerImageUrl,
+      this.customParams});
 }

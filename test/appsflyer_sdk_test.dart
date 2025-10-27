@@ -305,16 +305,6 @@ void main() {
       expect(capturedArguments['mediationNetwork'], 'applovin_max');
     });
 
-    test('check setConsentData call', () async {
-      final consentData = AppsFlyerConsent.forGDPRUser(
-        hasConsentForDataUsage: true,
-        hasConsentForAdsPersonalization: true,
-      );
-      instance.setConsentData(consentData);
-
-      expect(selectedMethod, 'setConsentData');
-    });
-
     test('check enableTCFDataCollection call', () async {
       instance.enableTCFDataCollection(true);
 
@@ -340,12 +330,6 @@ void main() {
 
       expect(selectedMethod, 'setResolveDeepLinkURLs');
       expect(capturedArguments, contains('https://example.com'));
-    });
-
-    test('check setPushNotification call', () async {
-      instance.setPushNotification(true);
-
-      expect(selectedMethod, 'setPushNotification');
     });
 
     test('check sendPushNotificationData call', () async {

@@ -9,7 +9,7 @@ let purchaseConnectorEnabled = ProcessInfo.processInfo.environment["ENABLE_PURCH
 var dependencies: [Package.Dependency] = [
     .package(
         url: "https://github.com/AppsFlyerSDK/AppsFlyerFramework",
-        exact: "6.17.1"
+        exact: "6.17.7"
     )
 ]
 
@@ -21,7 +21,7 @@ if purchaseConnectorEnabled {
     dependencies.append(
         .package(
             url: "https://github.com/AppsFlyerSDK/appsflyer-apple-purchase-connector",
-            exact: "6.17.1"
+            exact: "6.17.7"
         )
     )
 

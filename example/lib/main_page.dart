@@ -7,6 +7,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'home_container.dart';
 
 class MainPage extends StatefulWidget {
+  const MainPage({Key? key}) : super(key: key);
+
   @override
   State<StatefulWidget> createState() {
     return MainPageState();
@@ -62,7 +64,7 @@ class MainPageState extends State<MainPage> {
 
     // Conversion data callback
     _appsflyerSdk.onInstallConversionData((res) {
-      print("onInstallConversionData res: " + res.toString());
+      print("onInstallConversionData res: $res");
       setState(() {
         _gcd = res;
       });
@@ -70,7 +72,7 @@ class MainPageState extends State<MainPage> {
 
     // App open attribution callback
     _appsflyerSdk.onAppOpenAttribution((res) {
-      print("onAppOpenAttribution res: " + res.toString());
+      print("onAppOpenAttribution res: $res");
       setState(() {
         _deepLinkData = res;
       });
@@ -93,7 +95,7 @@ class MainPageState extends State<MainPage> {
           print("deep link status parsing error");
           break;
       }
-      print("onDeepLinking res: " + dp.toString());
+      print("onDeepLinking res: $dp");
       setState(() {
         _deepLinkData = dp.toJson();
       });
@@ -110,7 +112,7 @@ class MainPageState extends State<MainPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('AppsFlyer SDK example app'),
+        title: const Text('AppsFlyer SDK example app'),
         centerTitle: true,
         backgroundColor: Colors.green,
       ),
@@ -140,7 +142,7 @@ class MainPageState extends State<MainPage> {
                       },
                     );
                   },
-                  child: Text("START SDK"),
+                  child: const Text("START SDK"),
                 )
               ],
             ),

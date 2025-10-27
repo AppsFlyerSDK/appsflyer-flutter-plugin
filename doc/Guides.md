@@ -69,6 +69,28 @@ Please make sure to go over [this guide](https://support.appsflyer.com/hc/en-us/
 ---
 
 ## <a id="deeplinking"> Deep Linking
+
+> ⚠️ **IMPORTANT: Flutter 3.27+ Breaking Change**
+>
+> Starting from Flutter 3.27, the default value for Flutter's deep linking option has changed from `false` to `true`. This means Flutter's built-in deep linking is now enabled by default, which can conflict with third-party deep linking plugins like AppsFlyer.
+>
+> **If you're using Flutter 3.27 or higher, you MUST disable Flutter's built-in deep linking** by adding the following configurations:
+>
+> **Android** - Add to your `AndroidManifest.xml` inside the `<activity>` tag:
+>
+> ```xml
+> <meta-data android:name="flutter_deeplinking_enabled" android:value="false" />
+> ```
+>
+> **iOS** - Add to your `Info.plist` file:
+>
+> ```xml
+> <key>FlutterDeepLinkingEnabled</key>
+> <false/>
+> ```
+>
+> For more details, see the [official Flutter documentation](https://docs.flutter.dev/release/breaking-changes/deep-links-flag-change).
+
 <img src="https://massets.appsflyer.com/wp-content/uploads/2018/03/21101417/app-installed-Recovered.png" width="350">
 
 

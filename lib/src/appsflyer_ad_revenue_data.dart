@@ -7,13 +7,12 @@ class AdRevenueData {
   final double revenue;
   final Map<String, dynamic>? additionalParameters;
 
-  AdRevenueData({
-    required this.monetizationNetwork,
-    required this.mediationNetwork,
-    required this.currencyIso4217Code,
-    required this.revenue,
-    this.additionalParameters
-  });
+  AdRevenueData(
+      {required this.monetizationNetwork,
+      required this.mediationNetwork,
+      required this.currencyIso4217Code,
+      required this.revenue,
+      this.additionalParameters});
 
   Map<String, dynamic> toMap() {
     return {

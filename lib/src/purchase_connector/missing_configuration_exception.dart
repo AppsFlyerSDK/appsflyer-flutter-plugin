@@ -1,4 +1,5 @@
 part of appsflyer_sdk;
+
 /// Exception thrown when the configuration is missing.
 class MissingConfigurationException implements Exception {
   final String message;

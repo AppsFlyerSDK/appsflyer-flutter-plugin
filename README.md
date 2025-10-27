@@ -5,19 +5,19 @@
 [![pub package](https://img.shields.io/pub/v/appsflyer_sdk.svg)](https://pub.dartlang.org/packages/appsflyer_sdk)
 ![Coverage](https://raw.githubusercontent.com/AppsFlyerSDK/appsflyer-flutter-plugin/master/coverage_badge.svg)
 
-🛠 In order for us to provide optimal support, we would kindly ask you to submit any issues to <support@appsflyer.com>
+🛠 In order for us to provide optimal support, please contact AppsFlyer support through the Customer Assistant Chatbot for assistance with troubleshooting issues or product guidance. </br>
+To do so, please follow [this article](https://support.appsflyer.com/hc/en-us/articles/23583984402193-Using-the-Customer-Assistant-Chatbot)
 
-> *When submitting an issue please specify your AppsFlyer sign-up (account) email , your app ID , production steps, logs, code snippets and any additional relevant information.*
 
 ## SDK Versions
 
 - Android AppsFlyer SDK **v6.17.3**
-- iOS AppsFlyer SDK **v6.17.5**
+- iOS AppsFlyer SDK **v6.17.7**
 
 ### Purchase Connector versions
 
-- Android 2.1.1
-- iOS 6.17.5
+- Android 2.2.0
+- iOS 6.17.7
 
 ## ❗❗ Breaking changes when updating to v6.x.x❗❗
 
