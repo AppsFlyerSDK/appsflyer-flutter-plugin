@@ -173,16 +173,6 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         }
     };
 
-    private void onAttachedToEngine(Context applicationContext, BinaryMessenger messenger) {
-        this.mContext = applicationContext;
-        this.mEventChannel = new EventChannel(messenger, AF_EVENTS_CHANNEL);
-        mMethodChannel = new MethodChannel(messenger, AppsFlyerConstants.AF_METHOD_CHANNEL);
-        mMethodChannel.setMethodCallHandler(this);
-        mCallbackChannel = new MethodChannel(messenger, AppsFlyerConstants.AF_CALLBACK_CHANNEL);
-        mCallbackChannel.setMethodCallHandler(callbacksHandler);
-    }
-
-
     private void startListening(Object arguments, Result rawResult) {
         // Get callback id
         String callbackName = (String) arguments;
@@ -392,37 +382,47 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         result.success(null); // indicate that the method invocation is complete
     }
 
-	private void startSDKwithHandler(MethodCall call, final Result result) {
+    private void startSDKwithHandler(MethodCall call, final Result result) {
+        Log.d(AF_PLUGIN_TAG, "startSDKwithHandler - " + this + " MethodChannel - " + mMethodChannel);
         final MethodChannel _channel = mMethodChannel;
         try {
             final AppsFlyerLib appsFlyerLib = AppsFlyerLib.getInstance();
+            if (appsFlyerLib.isStopped()) {
+                appsFlyerLib.start(activity, null, new AppsFlyerRequestListener() {
+                    @Override
+                    public void onSuccess() {
+                        uiThreadHandler.post(() -> {
+                            if (_channel != null) {
+                                _channel.invokeMethod("onSuccess", null);
+                            } else {
+                                Log.e(AF_PLUGIN_TAG, LogMessages.METHOD_CHANNEL_IS_NULL + " - SDK started successfully but callback `onSuccess` failed");
+                            }
+                        });
+                    }
 
-            appsFlyerLib.start(activity, null, new AppsFlyerRequestListener() {
-                @Override
-                public void onSuccess() {
-                    uiThreadHandler.post(() -> {
-                        if (_channel != null) {
-                            _channel.invokeMethod("onSuccess", null);
-                        } else {
-                            Log.e(AF_PLUGIN_TAG, LogMessages.METHOD_CHANNEL_IS_NULL + " - SDK started successfully but callback `onSuccess` failed");
-                        }
-                    });
-                }
-
-                @Override
-                public void onError(final int errorCode, final String errorMessage) {
-                    uiThreadHandler.post(() -> {
-                        if (_channel != null) {
-                            HashMap<String, Object> errorDetails = new HashMap<>();
-                            errorDetails.put("errorCode", errorCode);
-                            errorDetails.put("errorMessage", errorMessage);
-                            _channel.invokeMethod("onError", errorDetails);
-                        } else {
-                            Log.e(AF_PLUGIN_TAG, LogMessages.METHOD_CHANNEL_IS_NULL + " - SDK failed to start: " + errorMessage);
-                        }
-                    });
-                }
-            });
+                    @Override
+                    public void onError(final int errorCode, final String errorMessage) {
+                        uiThreadHandler.post(() -> {
+                            if (_channel != null) {
+                                HashMap<String, Object> errorDetails = new HashMap<>();
+                                errorDetails.put("errorCode", errorCode);
+                                errorDetails.put("errorMessage", errorMessage);
+                                _channel.invokeMethod("onError", errorDetails);
+                            } else {
+                                Log.e(AF_PLUGIN_TAG, LogMessages.METHOD_CHANNEL_IS_NULL + " - SDK failed to start: " + errorMessage);
+                            }
+                        });
+                    }
+                });
+            } else {
+                uiThreadHandler.post(() -> {
+                    if (_channel != null) {
+                        _channel.invokeMethod("onSuccess", null);
+                    } else {
+                        Log.e(AF_PLUGIN_TAG, LogMessages.METHOD_CHANNEL_IS_NULL + " - SDK started successfully but callback `onSuccess` failed");
+                    }
+                });
+            }
             result.success(null);
         } catch (Throwable t) {
             result.error("UNEXPECTED_ERROR", t.getMessage(), null);
@@ -739,7 +739,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         rawResult.success(null);
     }
 
-	private void runOnUIThread(final Object data, final String callbackName, final String status) {
+    private void runOnUIThread(final Object data, final String callbackName, final String status) {
         final MethodChannel _channel = mCallbackChannel;
         uiThreadHandler.post(
                 new Runnable() {
@@ -1227,12 +1227,22 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onAttachedToEngine(FlutterPluginBinding binding) {
-        onAttachedToEngine(binding.getApplicationContext(), binding.getBinaryMessenger());
+        Log.d(AF_PLUGIN_TAG, "onAttachedToEngine - " + this);
+        this.mContext = binding.getApplicationContext();
+        BinaryMessenger messenger = binding.getBinaryMessenger();
+        this.mEventChannel = new EventChannel(messenger, AF_EVENTS_CHANNEL);
+        mMethodChannel = new MethodChannel(messenger, AppsFlyerConstants.AF_METHOD_CHANNEL);
+        mMethodChannel.setMethodCallHandler(this);
+        Log.d(AF_PLUGIN_TAG, "onAttachedToEngine - " + this + " MethodChannel - " + mMethodChannel);
+        mCallbackChannel = new MethodChannel(messenger, AppsFlyerConstants.AF_CALLBACK_CHANNEL);
+        mCallbackChannel.setMethodCallHandler(callbacksHandler);
+        Log.d(AF_PLUGIN_TAG, "onAttachedToEngine - " + this + " mCallbackChannel - " + mCallbackChannel);
         AppsFlyerPurchaseConnector.INSTANCE.onAttachedToEngine(binding);
     }
 
     @Override
     public void onDetachedFromEngine(FlutterPluginBinding binding) {
+        Log.d(AF_PLUGIN_TAG, "onDetachedFromEngine - " + this);
         mMethodChannel.setMethodCallHandler(null);
         mMethodChannel = null;
         mEventChannel.setStreamHandler(null);
@@ -1244,6 +1254,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onAttachedToActivity(ActivityPluginBinding binding) {
+        Log.d(AF_PLUGIN_TAG, "onAttachedToActivity - " + this);
         activity = binding.getActivity();
         mApplication = binding.getActivity().getApplication();
         binding.addOnNewIntentListener(onNewIntentListener);
@@ -1251,11 +1262,13 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onDetachedFromActivityForConfigChanges() {
+        Log.d(AF_PLUGIN_TAG, "onDetachedFromActivityForConfigChanges - " + this);
         this.activity = null;
     }
 
     @Override
     public void onReattachedToActivityForConfigChanges(ActivityPluginBinding binding) {
+        Log.d(AF_PLUGIN_TAG, "onReattachedToActivityForConfigChanges - " + this);
         sendCachedCallbacksToDart();
         binding.addOnNewIntentListener(onNewIntentListener);
         activity = binding.getActivity();
@@ -1263,6 +1276,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onDetachedFromActivity() {
+        Log.d(AF_PLUGIN_TAG, "onDetachedFromActivity - " + this);
         activity = null;
         saveCallbacks = true;
         AppsFlyerLib.getInstance().unregisterConversionListener();
