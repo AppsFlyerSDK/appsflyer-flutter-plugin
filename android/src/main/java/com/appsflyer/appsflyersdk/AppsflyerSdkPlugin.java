@@ -392,7 +392,8 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         result.success(null); // indicate that the method invocation is complete
     }
 
-    private void startSDKwithHandler(MethodCall call, final Result result) {
+	private void startSDKwithHandler(MethodCall call, final Result result) {
+        final MethodChannel _channel = mMethodChannel;
         try {
             final AppsFlyerLib appsFlyerLib = AppsFlyerLib.getInstance();
 
@@ -400,8 +401,8 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                 @Override
                 public void onSuccess() {
                     uiThreadHandler.post(() -> {
-                        if (mMethodChannel != null) {
-                            mMethodChannel.invokeMethod("onSuccess", null);
+                        if (_channel != null) {
+                            _channel.invokeMethod("onSuccess", null);
                         } else {
                             Log.e(AF_PLUGIN_TAG, LogMessages.METHOD_CHANNEL_IS_NULL + " - SDK started successfully but callback `onSuccess` failed");
                         }
@@ -411,11 +412,11 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                 @Override
                 public void onError(final int errorCode, final String errorMessage) {
                     uiThreadHandler.post(() -> {
-                        if (mMethodChannel != null) {
+                        if (_channel != null) {
                             HashMap<String, Object> errorDetails = new HashMap<>();
                             errorDetails.put("errorCode", errorCode);
                             errorDetails.put("errorMessage", errorMessage);
-                            mMethodChannel.invokeMethod("onError", errorDetails);
+                            _channel.invokeMethod("onError", errorDetails);
                         } else {
                             Log.e(AF_PLUGIN_TAG, LogMessages.METHOD_CHANNEL_IS_NULL + " - SDK failed to start: " + errorMessage);
                         }
@@ -738,12 +739,13 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         rawResult.success(null);
     }
 
-    private void runOnUIThread(final Object data, final String callbackName, final String status) {
+	private void runOnUIThread(final Object data, final String callbackName, final String status) {
+        final MethodChannel _channel = mCallbackChannel;
         uiThreadHandler.post(
                 new Runnable() {
                     @Override
                     public void run() {
-                        if (mCallbackChannel != null) {
+                        if (_channel != null) {
                             Log.d(AF_PLUGIN_TAG, "Calling invokeMethod with: " + data);
                             JSONObject args = new JSONObject();
                             try {
@@ -766,7 +768,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
                             } catch (JSONException e) {
                                 e.printStackTrace();
                             }
-                            mCallbackChannel.invokeMethod("callListener", args.toString());
+                            _channel.invokeMethod("callListener", args.toString());
                         } else {
                             Log.e(AF_PLUGIN_TAG, "CallbackChannel is null, cannot invoke method: " + callbackName);
                         }
