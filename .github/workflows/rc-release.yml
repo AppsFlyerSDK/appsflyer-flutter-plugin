@@ -12,9 +12,13 @@
 # 4. Creates a pre-release tag on GitHub
 # 5. Optionally notifies team via Slack (placeholder for future)
 #
-# Branch Convention: releases/X.x.x/X.Y.x/X.Y.Z-rcN
-# Example: releases/6.x.x/6.18.x/6.18.0-rc1
-# Where: X, Y, Z are version numbers, and lowercase 'x' is literal
+# Branch Convention: releases/X.x.x/X.Y.x/X.Y.Z[-rcN][+build]
+# Examples: 
+#   - releases/6.x.x/6.18.x/6.18.0-rc1
+#   - releases/6.x.x/6.17.x/6.17.4+1-rc1
+#   - releases/6.x.x/6.17.x/6.17.4+1
+# Where: X, Y, Z are version numbers, lowercase 'x' is literal,
+#        -rcN is optional for release candidates, +build is optional build number
 #
 # Triggers:
 # - Push to branches matching releases/** pattern
@@ -76,14 +80,17 @@ jobs:
             VERSION="${{ github.event.inputs.version }}"
             echo "Using manual version: $VERSION"
           else
-            # Extract version from branch name: releases/X.x.x/X.Y.x/X.Y.Z-rcN
-            # Example: releases/6.x.x/6.18.x/6.18.0-rc1
+            # Extract version from branch name: releases/X.x.x/X.Y.x/X.Y.Z[-rcN][+build]
+            # Examples: 
+            #   - releases/6.x.x/6.18.x/6.18.0-rc1
+            #   - releases/6.x.x/6.17.x/6.17.4+1-rc1
+            #   - releases/6.x.x/6.17.x/6.17.4+1
             BRANCH_NAME="${{ github.ref_name }}"
             echo "Branch name: $BRANCH_NAME"
             
-            # Extract version using regex
-            # Pattern: releases/X.x.x/X.Y.x/X.Y.Z-rcN where x is literal 'x'
-            if [[ $BRANCH_NAME =~ releases/([0-9]+)\.x\.x/([0-9]+\.[0-9]+)\.x/([0-9]+\.[0-9]+\.[0-9]+-rc[0-9]+)$ ]]; then
+            # Extract version using regex - now supports +build suffix
+            # Pattern: releases/X.x.x/X.Y.x/X.Y.Z[+build][-rcN] where x is literal 'x'
+            if [[ $BRANCH_NAME =~ releases/([0-9]+)\.x\.x/([0-9]+\.[0-9]+)\.x/([0-9]+\.[0-9]+\.[0-9]+(\+[0-9]+)?(-rc[0-9]+)?)$ ]]; then
               VERSION="${BASH_REMATCH[3]}"
               MAJOR="${BASH_REMATCH[1]}"
               MAJOR_MINOR="${BASH_REMATCH[2]}"
@@ -92,7 +99,7 @@ jobs:
               echo "Major version: $MAJOR"
               echo "Major.Minor: $MAJOR_MINOR"
               
-              # Validate that version starts with the correct major.minor
+              # Validate that version starts with the correct major.minor (before any +build suffix)
               VERSION_PREFIX=$(echo "$VERSION" | grep -oE '^[0-9]+\.[0-9]+')
               if [[ "$VERSION_PREFIX" != "$MAJOR_MINOR" ]]; then
                 echo "❌ Version mismatch!"
@@ -111,15 +118,18 @@ jobs:
               fi
             else
               echo "❌ Invalid branch name format!"
-              echo "Expected: releases/X.x.x/X.Y.x/X.Y.Z-rcN"
-              echo "Example: releases/6.x.x/6.18.x/6.18.0-rc1"
+              echo "Expected: releases/X.x.x/X.Y.x/X.Y.Z[-rcN][+build]"
+              echo "Examples:"
+              echo "  - releases/6.x.x/6.18.x/6.18.0-rc1"
+              echo "  - releases/6.x.x/6.17.x/6.17.4+1-rc1"
+              echo "  - releases/6.x.x/6.17.x/6.17.4+1"
               echo "Got: $BRANCH_NAME"
               exit 1
             fi
           fi
           
-          # Validate version format
-          if [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?$ ]]; then
+          # Validate version format (supports +build suffix)
+          if [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(\+[0-9]+)?(-rc[0-9]+)?$ ]]; then
             echo "✅ Valid version format: $VERSION"
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "is_valid=true" >> $GITHUB_OUTPUT
@@ -181,8 +191,10 @@ jobs:
           VERSION="${{ needs.validate-release.outputs.version }}"
           
           # Remove -rcN suffix for pubspec.yaml (pub.dev doesn't support pre-release tags)
+          # But preserve +build suffix if present (pub.dev supports build numbers)
           PUBSPEC_VERSION=$(echo $VERSION | sed 's/-rc[0-9]*$//')
           
+          echo "Full version: $VERSION"
           echo "Updating pubspec.yaml to version: $PUBSPEC_VERSION"
           
           # Update version in pubspec.yaml
@@ -232,11 +244,13 @@ jobs:
       - name: 📝 Update podspec version
         run: |
           VERSION="${{ needs.validate-release.outputs.version }}"
+          # Remove -rcN suffix but preserve +build for podspec
           PODSPEC_VERSION=$(echo $VERSION | sed 's/-rc[0-9]*$//')
           
           PODSPEC_FILE="ios/appsflyer_sdk.podspec"
           
           if [ -f "$PODSPEC_FILE" ]; then
+            echo "Full version: $VERSION"
             echo "Updating podspec to version: $PODSPEC_VERSION"
             sed -i.bak "s/s\.version.*=.*/s.version          = '$PODSPEC_VERSION'/" "$PODSPEC_FILE"
             rm "${PODSPEC_FILE}.bak"

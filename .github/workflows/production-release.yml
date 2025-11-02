@@ -118,13 +118,13 @@ jobs:
             echo "Extracted version from pubspec.yaml: $VERSION"
           fi
           
-          # Validate version format (X.Y.Z)
-          if [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          # Validate version format (X.Y.Z or X.Y.Z+build)
+          if [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(\+[0-9]+)?$ ]]; then
             echo "✅ Valid version format: $VERSION"
             echo "version=$VERSION" >> $GITHUB_OUTPUT
           else
             echo "❌ Invalid version format: $VERSION"
-            echo "Expected format: X.Y.Z (e.g., 6.17.6)"
+            echo "Expected format: X.Y.Z or X.Y.Z+build (e.g., 6.17.6 or 6.17.4+1)"
             exit 1
           fi
       
@@ -205,7 +205,7 @@ jobs:
       - name: 🔍 Validate package
         run: |
           echo "Running pub publish dry-run to validate package..."
-          flutter pub publish --dry-run --force
+          flutter pub publish --dry-run
       
       - name: 📝 Check pub.dev credentials
         run: |
