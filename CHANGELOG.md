@@ -1,5 +1,9 @@
 # Versions
 
+## 6.17.7+1
+
+- Update Android SDK version to 6.17.4
+
 ## 6.17.7
 
 - Updated to AppsFlyer SDK v6.17.7 for iOS and Flutter plugin version
