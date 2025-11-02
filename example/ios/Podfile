@@ -32,6 +32,10 @@ target 'Runner' do
   use_modular_headers!
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  
+  # Google Ads On-Device Conversion SDK for testing AppsFlyer integration
+  pod 'GoogleAdsOnDeviceConversion', '~> 3.2.0'
+  
   target 'RunnerTests' do
     inherit! :search_paths
   end
