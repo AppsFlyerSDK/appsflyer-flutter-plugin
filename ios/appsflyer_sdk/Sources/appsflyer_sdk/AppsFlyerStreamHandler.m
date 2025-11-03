@@ -5,7 +5,7 @@
 //  Created by Shahar Cohen on 05/09/2019.
 //
 
-#import "AppsFlyerStreamHandler.h"
+#import "./include/appsflyer_sdk/AppsFlyerStreamHandler.h"
 
 @implementation AppsFlyerStreamHandler {
 

@@ -54,4 +54,3 @@
 #define afCallbacksMethodChannel        @"callbacks"
 #define afEventChannel                  @"af-events"
 #define afValidatePurchaseChannel       @"af-validate-purchase"
-

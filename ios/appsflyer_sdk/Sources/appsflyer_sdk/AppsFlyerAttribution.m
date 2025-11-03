@@ -6,7 +6,7 @@
 //
 
 #import <Foundation/Foundation.h>
-#import "AppsFlyerAttribution.h"
+#import "./include/appsflyer_sdk/AppsFlyerAttribution.h"
 
 @implementation AppsFlyerAttribution
 
