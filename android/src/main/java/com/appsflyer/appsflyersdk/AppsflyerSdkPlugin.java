@@ -387,42 +387,33 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
         final MethodChannel _channel = mMethodChannel;
         try {
             final AppsFlyerLib appsFlyerLib = AppsFlyerLib.getInstance();
-            if (appsFlyerLib.isStopped()) {
-                appsFlyerLib.start(activity, null, new AppsFlyerRequestListener() {
-                    @Override
-                    public void onSuccess() {
-                        uiThreadHandler.post(() -> {
-                            if (_channel != null) {
-                                _channel.invokeMethod("onSuccess", null);
-                            } else {
-                                Log.e(AF_PLUGIN_TAG, LogMessages.METHOD_CHANNEL_IS_NULL + " - SDK started successfully but callback `onSuccess` failed");
-                            }
-                        });
-                    }
+            AppsFlyerLib.getInstance().stop(false, mContext);
+            appsFlyerLib.start(activity, null, new AppsFlyerRequestListener() {
+                @Override
+                public void onSuccess() {
+                    uiThreadHandler.post(() -> {
+                        if (_channel != null) {
+                            _channel.invokeMethod("onSuccess", null);
+                        } else {
+                            Log.e(AF_PLUGIN_TAG, LogMessages.METHOD_CHANNEL_IS_NULL + " - SDK started successfully but callback `onSuccess` failed");
+                        }
+                    });
+                }
 
-                    @Override
-                    public void onError(final int errorCode, final String errorMessage) {
-                        uiThreadHandler.post(() -> {
-                            if (_channel != null) {
-                                HashMap<String, Object> errorDetails = new HashMap<>();
-                                errorDetails.put("errorCode", errorCode);
-                                errorDetails.put("errorMessage", errorMessage);
-                                _channel.invokeMethod("onError", errorDetails);
-                            } else {
-                                Log.e(AF_PLUGIN_TAG, LogMessages.METHOD_CHANNEL_IS_NULL + " - SDK failed to start: " + errorMessage);
-                            }
-                        });
-                    }
-                });
-            } else {
-                uiThreadHandler.post(() -> {
-                    if (_channel != null) {
-                        _channel.invokeMethod("onSuccess", null);
-                    } else {
-                        Log.e(AF_PLUGIN_TAG, LogMessages.METHOD_CHANNEL_IS_NULL + " - SDK started successfully but callback `onSuccess` failed");
-                    }
-                });
-            }
+                @Override
+                public void onError(final int errorCode, final String errorMessage) {
+                    uiThreadHandler.post(() -> {
+                        if (_channel != null) {
+                            HashMap<String, Object> errorDetails = new HashMap<>();
+                            errorDetails.put("errorCode", errorCode);
+                            errorDetails.put("errorMessage", errorMessage);
+                            _channel.invokeMethod("onError", errorDetails);
+                        } else {
+                            Log.e(AF_PLUGIN_TAG, LogMessages.METHOD_CHANNEL_IS_NULL + " - SDK failed to start: " + errorMessage);
+                        }
+                    });
+                }
+            });
             result.success(null);
         } catch (Throwable t) {
             result.error("UNEXPECTED_ERROR", t.getMessage(), null);
