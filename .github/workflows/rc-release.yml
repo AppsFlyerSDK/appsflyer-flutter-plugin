@@ -244,8 +244,8 @@ jobs:
       - name: 📝 Update podspec version
         run: |
           VERSION="${{ needs.validate-release.outputs.version }}"
-          # Remove -rcN suffix but preserve +build for podspec
-          PODSPEC_VERSION=$(echo $VERSION | sed 's/-rc[0-9]*$//')
+          # Remove both -rcN and +build suffixes for CocoaPods (podspec must be plain X.Y.Z)
+          PODSPEC_VERSION=$(echo $VERSION | sed -E 's/(\+[0-9]+)?(-rc[0-9]+)?$//')
           
           PODSPEC_FILE="ios/appsflyer_sdk.podspec"
           
