@@ -26,7 +26,7 @@
 name: Production Release - Publish to pub.dev
 
 on:
-  # Trigger when PR to master is merged
+  # Trigger when PR to master is merged (legacy path; promotion flow now preferred)
   pull_request:
     types:
       - closed
@@ -51,6 +51,21 @@ on:
         type: boolean
         default: false
 
+  # Allow being called from other workflows
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      skip_tests:
+        required: false
+        type: boolean
+        default: false
+      dry_run:
+        required: false
+        type: boolean
+        default: false
+
 # Ensure only one production release runs at a time
 concurrency:
   group: production-release
@@ -67,8 +82,8 @@ jobs:
     name: 🔍 Validate Release
     runs-on: ubuntu-latest
     
-    # Only run if PR was actually merged (not just closed)
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    # Run when manually dispatched, called by another workflow, or when a PR merge event happens
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event.pull_request.merged == true
     
     outputs:
       version: ${{ steps.get-version.outputs.version }}
@@ -84,8 +99,8 @@ jobs:
       - name: 🔍 Validate release source
         id: validate
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "Manual workflow dispatch - skipping branch validation"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.event_name }}" == "workflow_call" ]]; then
+            echo "Manual/called run - skipping branch validation"
             echo "is_release_branch=true" >> $GITHUB_OUTPUT
             echo "is_valid=true" >> $GITHUB_OUTPUT
           else
@@ -109,9 +124,9 @@ jobs:
       - name: 📝 Get version from pubspec.yaml
         id: get-version
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            VERSION="${{ github.event.inputs.version }}"
-            echo "Using manual version: $VERSION"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.event_name }}" == "workflow_call" ]]; then
+            VERSION="${{ inputs.version || github.event.inputs.version }}"
+            echo "Using provided version: $VERSION"
           else
             # Extract version from pubspec.yaml
             VERSION=$(grep "^version:" pubspec.yaml | sed 's/version: //' | tr -d ' ')
