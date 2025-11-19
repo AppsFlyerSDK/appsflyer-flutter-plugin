@@ -59,6 +59,11 @@ on:
         required: false
         type: boolean
         default: false
+      dry_run:
+        description: 'Do not publish RC to pub.dev (still opens PR and creates prerelease)'
+        required: false
+        type: boolean
+        default: true
 
 # Prevent multiple RC workflows from running simultaneously
 concurrency:
@@ -87,6 +92,7 @@ jobs:
       ios_sdk_version: ${{ steps.compute.outputs.ios_sdk_version }}
       android_sdk_version: ${{ steps.compute.outputs.android_sdk_version }}
       deploy_to_qa: ${{ steps.compute.outputs.deploy_to_qa }}
+      dry_run: ${{ steps.compute.outputs.dry_run }}
     
     steps:
       - name: 📥 Checkout repository
@@ -101,6 +107,7 @@ jobs:
           AND_VER="${{ github.event.inputs.android_sdk_version }}"
           BASE_BRANCH_INPUT="${{ github.event.inputs.base_branch }}"
           DEPLOY_TO_QA="${{ github.event.inputs.deploy_to_qa }}"
+          DRY_RUN_INPUT="${{ github.event.inputs.dry_run }}"
 
           if [[ -z "$VERSION" || -z "$IOS_VER" || -z "$AND_VER" ]]; then
             echo "❌ Missing required inputs"; exit 1
@@ -136,6 +143,7 @@ jobs:
           echo "ios_sdk_version=$IOS_VER" >> $GITHUB_OUTPUT
           echo "android_sdk_version=$AND_VER" >> $GITHUB_OUTPUT
           echo "deploy_to_qa=$DEPLOY_TO_QA" >> $GITHUB_OUTPUT
+          echo "dry_run=$DRY_RUN_INPUT" >> $GITHUB_OUTPUT
 
   # ===========================================================================
   # Job 2: Run CI Pipeline
@@ -399,7 +407,12 @@ jobs:
         run: flutter pub get
       - name: 📝 Validate package (dry-run)
         run: flutter pub publish --dry-run
+      - name: ℹ️ RC dry-run active — skipping publish
+        if: ${{ needs.validate-release.outputs.dry_run == 'true' }}
+        run: |
+          echo "RC dry_run is true — will not publish to pub.dev."
       - name: 🚀 Publish RC to pub.dev
+        if: ${{ needs.validate-release.outputs.dry_run != 'true' }}
         env:
           PUB_DEV_CREDENTIALS: ${{ secrets.PUB_DEV_CREDENTIALS }}
         run: |
@@ -570,7 +583,7 @@ jobs:
   rc-summary:
     name: 📋 RC Summary
     runs-on: ubuntu-latest
-    needs: [validate-release, run-ci, update-version, create-prerelease]
+    needs: [validate-release, run-ci, prepare-branch, create-prerelease]
     if: always()
     
     steps:
@@ -585,7 +598,7 @@ jobs:
           echo "-----------------------------------------"
           echo "Validation: ${{ needs.validate-release.result }}"
           echo "CI Pipeline: ${{ needs.run-ci.result }}"
-          echo "Version Update: ${{ needs.update-version.result }}"
+          echo "Prepare Branch: ${{ needs.prepare-branch.result }}"
           echo "Pre-Release: ${{ needs.create-prerelease.result }}"
           echo "========================================="
           
