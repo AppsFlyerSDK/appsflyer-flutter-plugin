@@ -834,6 +834,11 @@ static BOOL _isSKADEnabled = false;
         // isDebug is a boolean that will come through as an NSNumber
         isDebug = [(NSNumber*)isDebugValue boolValue];
     }
+
+    [AppsFlyerLib shared].appleAppID = appId;
+    [AppsFlyerLib shared].appsFlyerDevKey = devKey;
+    [AppsFlyerLib shared].isDebug = isDebug;
+
     isConversionDataValue = call.arguments[afConversionData];
     if ([isConversionDataValue isKindOfClass:[NSNumber class]]) {
         isConversionData = [(NSNumber*)isConversionDataValue boolValue];
@@ -877,10 +882,6 @@ static BOOL _isSKADEnabled = false;
     }
     
     [[AppsFlyerLib shared] setPluginInfoWith:AFSDKPluginFlutter pluginVersion:kAppsFlyerPluginVersion additionalParams:nil];
-    
-    [AppsFlyerLib shared].appleAppID = appId;
-    [AppsFlyerLib shared].appsFlyerDevKey = devKey;
-    [AppsFlyerLib shared].isDebug = isDebug;
     
     
     // SEL WaitForATTSel = NSSelectorFromString(@"waitForATTUserAuthorizationWithTimeoutInterval:");
