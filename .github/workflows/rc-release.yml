@@ -29,28 +29,46 @@
 name: RC - Release Candidate
 
 on:
-  # Trigger on push to release branches
-  push:
-    branches:
-      - 'releases/**'
-  
-  # Allow manual triggering with version specification
+  # Manual-only triggering with required parameters
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Release version (e.g., 6.18.0-rc1)'
+      base_branch:
+        description: 'Base branch to create the release branch from (e.g., development)'
+        required: false
+        default: development
+        type: string
+      flutter_version:
+        description: 'Flutter plugin version for this RC (e.g., 6.18.0-rc1 or 6.18.0+1-rc1)'
         required: true
         type: string
-      skip_tests:
-        description: 'Skip tests and builds (for testing workflow only)'
+      ios_sdk_version:
+        description: 'iOS native AppsFlyer SDK version (e.g., 6.17.7)'
+        required: true
+        type: string
+      android_sdk_version:
+        description: 'Android native AppsFlyer SDK version (e.g., 6.17.4)'
+        required: true
+        type: string
+      deploy_to_qa:
+        description: 'Open PR to master and publish RC to pub.dev'
         required: false
         type: boolean
         default: false
+      skip_tests:
+        description: 'Skip reusable CI when running this workflow (PR and production flows still run CI)'
+        required: false
+        type: boolean
+        default: false
+      dry_run:
+        description: 'Do not publish RC to pub.dev (still opens PR and creates prerelease)'
+        required: false
+        type: boolean
+        default: true
 
 # Prevent multiple RC workflows from running simultaneously
 concurrency:
-  group: rc-release-${{ github.ref }}
-  cancel-in-progress: false  # Don't cancel, let it finish
+  group: rc-release-${{ github.run_id }}-${{ github.event.inputs.flutter_version || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # ===========================================================================
@@ -60,93 +78,72 @@ jobs:
   # ===========================================================================
   
   validate-release:
-    name: 🔍 Validate Release Branch
+    name: 🔍 Validate Inputs & Compute Branch
     runs-on: ubuntu-latest
     
     outputs:
-      version: ${{ steps.extract-version.outputs.version }}
-      is_rc: ${{ steps.extract-version.outputs.is_rc }}
-      is_valid: ${{ steps.extract-version.outputs.is_valid }}
+      version: ${{ steps.compute.outputs.version }}
+      base_version: ${{ steps.compute.outputs.base_version }}
+      podspec_version: ${{ steps.compute.outputs.podspec_version }}
+      is_rc: ${{ steps.compute.outputs.is_rc }}
+      is_valid: ${{ steps.compute.outputs.is_valid }}
+      base_branch: ${{ steps.compute.outputs.base_branch }}
+      release_branch: ${{ steps.compute.outputs.release_branch }}
+      ios_sdk_version: ${{ steps.compute.outputs.ios_sdk_version }}
+      android_sdk_version: ${{ steps.compute.outputs.android_sdk_version }}
+      deploy_to_qa: ${{ steps.compute.outputs.deploy_to_qa }}
+      dry_run: ${{ steps.compute.outputs.dry_run }}
     
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
       
-      - name: 🔍 Extract and validate version
-        id: extract-version
+      - name: 🔍 Validate and compute
+        id: compute
         run: |
-          # Determine version from branch name or manual input
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            VERSION="${{ github.event.inputs.version }}"
-            echo "Using manual version: $VERSION"
-          else
-            # Extract version from branch name: releases/X.x.x/X.Y.x/X.Y.Z[-rcN][+build]
-            # Examples: 
-            #   - releases/6.x.x/6.18.x/6.18.0-rc1
-            #   - releases/6.x.x/6.17.x/6.17.4+1-rc1
-            #   - releases/6.x.x/6.17.x/6.17.4+1
-            BRANCH_NAME="${{ github.ref_name }}"
-            echo "Branch name: $BRANCH_NAME"
-            
-            # Extract version using regex - now supports +build suffix
-            # Pattern: releases/X.x.x/X.Y.x/X.Y.Z[+build][-rcN] where x is literal 'x'
-            if [[ $BRANCH_NAME =~ releases/([0-9]+)\.x\.x/([0-9]+\.[0-9]+)\.x/([0-9]+\.[0-9]+\.[0-9]+(\+[0-9]+)?(-rc[0-9]+)?)$ ]]; then
-              VERSION="${BASH_REMATCH[3]}"
-              MAJOR="${BASH_REMATCH[1]}"
-              MAJOR_MINOR="${BASH_REMATCH[2]}"
-              
-              echo "Extracted version: $VERSION"
-              echo "Major version: $MAJOR"
-              echo "Major.Minor: $MAJOR_MINOR"
-              
-              # Validate that version starts with the correct major.minor (before any +build suffix)
-              VERSION_PREFIX=$(echo "$VERSION" | grep -oE '^[0-9]+\.[0-9]+')
-              if [[ "$VERSION_PREFIX" != "$MAJOR_MINOR" ]]; then
-                echo "❌ Version mismatch!"
-                echo "Expected version to start with: $MAJOR_MINOR"
-                echo "Got: $VERSION"
-                exit 1
-              fi
-              
-              # Validate that major version matches
-              VERSION_MAJOR=$(echo "$VERSION" | grep -oE '^[0-9]+')
-              if [[ "$VERSION_MAJOR" != "$MAJOR" ]]; then
-                echo "❌ Major version mismatch!"
-                echo "Expected major version: $MAJOR"
-                echo "Got: $VERSION_MAJOR"
-                exit 1
-              fi
-            else
-              echo "❌ Invalid branch name format!"
-              echo "Expected: releases/X.x.x/X.Y.x/X.Y.Z[-rcN][+build]"
-              echo "Examples:"
-              echo "  - releases/6.x.x/6.18.x/6.18.0-rc1"
-              echo "  - releases/6.x.x/6.17.x/6.17.4+1-rc1"
-              echo "  - releases/6.x.x/6.17.x/6.17.4+1"
-              echo "Got: $BRANCH_NAME"
-              exit 1
-            fi
+          set -euo pipefail
+          VERSION="${{ github.event.inputs.flutter_version }}"
+          IOS_VER="${{ github.event.inputs.ios_sdk_version }}"
+          AND_VER="${{ github.event.inputs.android_sdk_version }}"
+          BASE_BRANCH_INPUT="${{ github.event.inputs.base_branch }}"
+          DEPLOY_TO_QA="${{ github.event.inputs.deploy_to_qa }}"
+          DRY_RUN_INPUT="${{ github.event.inputs.dry_run }}"
+
+          if [[ -z "$VERSION" || -z "$IOS_VER" || -z "$AND_VER" ]]; then
+            echo "❌ Missing required inputs"; exit 1
           fi
-          
-          # Validate version format (supports +build suffix)
-          if [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(\+[0-9]+)?(-rc[0-9]+)?$ ]]; then
-            echo "✅ Valid version format: $VERSION"
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "is_valid=true" >> $GITHUB_OUTPUT
-            
-            # Check if it's an RC version
-            if [[ $VERSION =~ -rc[0-9]+$ ]]; then
-              echo "is_rc=true" >> $GITHUB_OUTPUT
-              echo "📦 This is a Release Candidate"
-            else
-              echo "is_rc=false" >> $GITHUB_OUTPUT
-              echo "📦 This is a production version"
-            fi
-          else
-            echo "❌ Invalid version format: $VERSION"
-            echo "is_valid=false" >> $GITHUB_OUTPUT
-            exit 1
+
+          # Validate formats
+          if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(\+[0-9]+)?-rc[0-9]+$ ]]; then
+            echo "❌ flutter_version must be a prerelease like X.Y.Z[-build]+?-rcN (e.g., 6.18.0-rc1 or 6.18.0+1-rc1)"; exit 1
           fi
+          if [[ ! $IOS_VER =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ ios_sdk_version must be X.Y.Z"; exit 1
+          fi
+          if [[ ! $AND_VER =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ android_sdk_version must be X.Y.Z"; exit 1
+          fi
+
+          # Compute base version (remove -rcN), keep +build if present
+          BASE_VERSION=$(echo "$VERSION" | sed 's/-rc[0-9]*$//')
+          # Podspec version must remove both +build and -rcN
+          PODSPEC_VERSION=$(echo "$VERSION" | sed -E 's/(\+[0-9]+)?(-rc[0-9]+)?$//')
+
+          MAJOR_MINOR=$(echo "$BASE_VERSION" | grep -oE '^[0-9]+\.[0-9]+')
+          MAJOR=$(echo "$BASE_VERSION" | grep -oE '^[0-9]+')
+          RELEASE_BRANCH="releases/${MAJOR}.x.x/${MAJOR_MINOR}.x/${VERSION}"
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "base_version=$BASE_VERSION" >> $GITHUB_OUTPUT
+          echo "podspec_version=$PODSPEC_VERSION" >> $GITHUB_OUTPUT
+          echo "is_rc=true" >> $GITHUB_OUTPUT
+          echo "is_valid=true" >> $GITHUB_OUTPUT
+          echo "base_branch=$BASE_BRANCH_INPUT" >> $GITHUB_OUTPUT
+          echo "release_branch=$RELEASE_BRANCH" >> $GITHUB_OUTPUT
+          echo "ios_sdk_version=$IOS_VER" >> $GITHUB_OUTPUT
+          echo "android_sdk_version=$AND_VER" >> $GITHUB_OUTPUT
+          echo "deploy_to_qa=$DEPLOY_TO_QA" >> $GITHUB_OUTPUT
+          echo "dry_run=$DRY_RUN_INPUT" >> $GITHUB_OUTPUT
 
   # ===========================================================================
   # Job 2: Run CI Pipeline
@@ -162,121 +159,120 @@ jobs:
     secrets: inherit
 
   # ===========================================================================
-  # Job 3: Update Version Files
-  # ===========================================================================
-  # Updates pubspec.yaml and other version-related files
+  # Job 3: Create/Update Release Branch and Apply Changes
   # ===========================================================================
   
-  update-version:
-    name: 📝 Update Version Files
+  prepare-branch:
+    name: 🌿 Create Release Branch & Apply Changes
     runs-on: ubuntu-latest
     needs: [validate-release, run-ci]
     if: always() && needs.validate-release.outputs.is_valid == 'true'
-    
+    outputs:
+      release_branch: ${{ steps.push.outputs.release_branch }}
     steps:
-      - name: 📥 Checkout repository
+      - name: 📥 Checkout base branch
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0  # Fetch all history for proper tagging
-      
+          ref: ${{ needs.validate-release.outputs.base_branch }}
+          fetch-depth: 0
+
       - name: 🔧 Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
-      
-      - name: 📝 Update pubspec.yaml version
+
+      - name: 🌿 Create release branch
+        id: branch
         run: |
-          VERSION="${{ needs.validate-release.outputs.version }}"
-          
-          # Remove -rcN suffix for pubspec.yaml (pub.dev doesn't support pre-release tags)
-          # But preserve +build suffix if present (pub.dev supports build numbers)
-          PUBSPEC_VERSION=$(echo $VERSION | sed 's/-rc[0-9]*$//')
-          
-          echo "Full version: $VERSION"
-          echo "Updating pubspec.yaml to version: $PUBSPEC_VERSION"
-          
-          # Update version in pubspec.yaml
-          sed -i.bak "s/^version: .*/version: $PUBSPEC_VERSION/" pubspec.yaml
+          set -e
+          REL_BRANCH="${{ needs.validate-release.outputs.release_branch }}"
+          echo "Target release branch: $REL_BRANCH"
+          if git ls-remote --exit-code --heads origin "$REL_BRANCH" >/dev/null 2>&1; then
+            echo "Branch already exists on remote. Checking it out."
+            git fetch origin "$REL_BRANCH":"$REL_BRANCH"
+            git checkout "$REL_BRANCH"
+          else
+            git checkout -b "$REL_BRANCH"
+          fi
+
+      - name: 📝 Update pubspec.yaml version (RC full)
+        run: |
+          VERSION='${{ needs.validate-release.outputs.version }}'
+          echo "Setting pubspec.yaml version to $VERSION (includes -rcN)"
+          sed -i.bak "s/^version: .*/version: $VERSION/" pubspec.yaml
           rm pubspec.yaml.bak
-          
-          # Verify the change
-          echo "Updated pubspec.yaml:"
           grep "^version:" pubspec.yaml
-      
-      - name: 📝 Update Android plugin version constant
+
+      - name: 📝 Update Android SDK dependency
         run: |
-          VERSION="${{ needs.validate-release.outputs.version }}"
-          
-          # Find and update kPluginVersion in Android constants
-          ANDROID_CONSTANTS_FILE="android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerConstants.java"
-          
-          if [ -f "$ANDROID_CONSTANTS_FILE" ]; then
-            echo "Updating Android plugin version to: $VERSION"
-            sed -i.bak "s/kPluginVersion = \".*\"/kPluginVersion = \"$VERSION\"/" "$ANDROID_CONSTANTS_FILE"
-            rm "${ANDROID_CONSTANTS_FILE}.bak"
-            
-            echo "Updated Android constants:"
-            grep "kPluginVersion" "$ANDROID_CONSTANTS_FILE" || echo "Pattern not found"
+          AND_VER='${{ needs.validate-release.outputs.android_sdk_version }}'
+          sed -i.bak "s/com.appsflyer:af-android-sdk:[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/com.appsflyer:af-android-sdk:${AND_VER}/" android/build.gradle
+          rm android/build.gradle.bak
+          grep "af-android-sdk:" -n android/build.gradle | head -1
+
+      - name: 📝 Update iOS podspec version and dependencies
+        run: |
+          PODSPEC_VERSION='${{ needs.validate-release.outputs.podspec_version }}'
+          IOS_VER='${{ needs.validate-release.outputs.ios_sdk_version }}'
+          FILE='ios/appsflyer_sdk.podspec'
+          if [ -f "$FILE" ]; then
+            sed -i.bak "s/s\.version\s*=\s*'.*'/s.version          = '${PODSPEC_VERSION}'/" "$FILE"
+            sed -i.bak "s/ss\.ios\.dependency 'AppsFlyerFramework','[^']*'/ss.ios.dependency 'AppsFlyerFramework','${IOS_VER}'/" "$FILE"
+            # PurchaseConnector line may or may not exist
+            if grep -q "PurchaseConnector', '" "$FILE"; then
+              sed -i.bak "s/ss\.ios\.dependency 'PurchaseConnector', '[^']*'/ss.ios.dependency 'PurchaseConnector', '${IOS_VER}'/" "$FILE" || true
+            fi
+            rm ${FILE}.bak || true
+            echo "Updated podspec lines:"
+            grep -n "s.version\|AppsFlyerFramework\|PurchaseConnector" "$FILE" || true
           else
-            echo "⚠️ Android constants file not found, skipping"
+            echo "⚠️ $FILE not found"
           fi
-      
-      - name: 📝 Update iOS plugin version constant
+
+      - name: 📝 Update plugin version constants (Android/iOS)
         run: |
-          VERSION="${{ needs.validate-release.outputs.version }}"
-          
-          # Find and update kPluginVersion in iOS constants
-          IOS_PLUGIN_FILE="ios/Classes/AppsflyerSdkPlugin.m"
-          
-          if [ -f "$IOS_PLUGIN_FILE" ]; then
-            echo "Updating iOS plugin version to: $VERSION"
-            sed -i.bak "s/kPluginVersion = @\".*\"/kPluginVersion = @\"$VERSION\"/" "$IOS_PLUGIN_FILE"
-            rm "${IOS_PLUGIN_FILE}.bak"
-            
-            echo "Updated iOS plugin file:"
-            grep "kPluginVersion" "$IOS_PLUGIN_FILE" || echo "Pattern not found"
-          else
-            echo "⚠️ iOS plugin file not found, skipping"
+          VERSION='${{ needs.validate-release.outputs.version }}'
+          AND_FILE="android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerConstants.java"
+          IOS_FILE="ios/Classes/AppsflyerSdkPlugin.m"
+          if [ -f "$AND_FILE" ]; then
+            sed -i.bak "s/kPluginVersion = \".*\"/kPluginVersion = \"$VERSION\"/" "$AND_FILE" && rm "$AND_FILE.bak" || true
           fi
-      
-      - name: 📝 Update podspec version
-        run: |
-          VERSION="${{ needs.validate-release.outputs.version }}"
-          # Remove -rcN suffix but preserve +build for podspec
-          PODSPEC_VERSION=$(echo $VERSION | sed 's/-rc[0-9]*$//')
-          
-          PODSPEC_FILE="ios/appsflyer_sdk.podspec"
-          
-          if [ -f "$PODSPEC_FILE" ]; then
-            echo "Full version: $VERSION"
-            echo "Updating podspec to version: $PODSPEC_VERSION"
-            sed -i.bak "s/s\.version.*=.*/s.version          = '$PODSPEC_VERSION'/" "$PODSPEC_FILE"
-            rm "${PODSPEC_FILE}.bak"
-            
-            echo "Updated podspec:"
-            grep "s.version" "$PODSPEC_FILE"
-          else
-            echo "⚠️ Podspec file not found, skipping"
+          if [ -f "$IOS_FILE" ]; then
+            sed -i.bak "s/kPluginVersion = @\".*\"/kPluginVersion = @\"$VERSION\"/" "$IOS_FILE" && rm "$IOS_FILE.bak" || true
           fi
-      
-      - name: 💾 Commit version changes
+
+      - name: 📝 Update README SDK versions
         run: |
-          VERSION="${{ needs.validate-release.outputs.version }}"
-          
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          
-          # Check if there are changes to commit
+          IOS_VER='${{ needs.validate-release.outputs.ios_sdk_version }}'
+          AND_VER='${{ needs.validate-release.outputs.android_sdk_version }}'
+          sed -i.bak -E "s/- Android AppsFlyer SDK \*\*v[0-9.]+\*\*/- Android AppsFlyer SDK **v${AND_VER}**/" README.md
+          sed -i.bak -E "s/- iOS AppsFlyer SDK \*\*v[0-9.]+\*\*/- iOS AppsFlyer SDK **v${IOS_VER}**/" README.md
+          rm README.md.bak
+          echo "README updated SDK versions:"
+          sed -n '12,20p' README.md | cat
+
+      - name: 💾 Commit & push changes
+        id: push
+        run: |
+          set -e
+          REL_BRANCH='${{ needs.validate-release.outputs.release_branch }}'
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
           if [[ -n $(git status -s) ]]; then
-            git add pubspec.yaml android/ ios/
-            git commit -m "chore: bump version to $VERSION"
-            git push
-            echo "✅ Version changes committed and pushed"
+            git add pubspec.yaml android/ ios/ README.md || true
+            git commit -m "chore: prepare RC ${VERSION} (iOS ${{ needs.validate-release.outputs.ios_sdk_version }}, Android ${{ needs.validate-release.outputs.android_sdk_version }})"
+            git push --set-upstream origin "$REL_BRANCH"
           else
-            echo "ℹ️ No version changes to commit"
+            echo "No changes to commit"
+            # Ensure branch exists on remote
+            if ! git ls-remote --exit-code --heads origin "$REL_BRANCH" >/dev/null 2>&1; then
+              git push --set-upstream origin "$REL_BRANCH"
+            fi
           fi
+          echo "release_branch=$REL_BRANCH" >> $GITHUB_OUTPUT
+
+  # (Deprecated) Legacy update-version job removed; handled by prepare-branch
 
   # ===========================================================================
   # Job 4: Create Pre-Release
@@ -287,15 +283,15 @@ jobs:
   create-prerelease:
     name: 🏷️ Create Pre-Release
     runs-on: ubuntu-latest
-    needs: [validate-release, run-ci, update-version]
-    if: always() && needs.validate-release.outputs.is_rc == 'true'
+    needs: [validate-release, run-ci, prepare-branch]
+    if: always() && needs.validate-release.outputs.is_rc == 'true' && needs.validate-release.outputs.deploy_to_qa == 'true'
     
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.ref }}
+          ref: ${{ needs.prepare-branch.outputs.release_branch }}
       
       - name: 📝 Generate release notes
         id: release-notes
@@ -361,6 +357,72 @@ jobs:
   # Sends notification to Slack channel about the RC release
   # ===========================================================================
   
+  open-pr:
+    name: 🔀 Open PR to master
+    runs-on: ubuntu-latest
+    needs: [validate-release, prepare-branch]
+    if: always() && needs.validate-release.outputs.deploy_to_qa == 'true'
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.prepare-branch.outputs.release_branch }}
+      - name: 🧠 Create or update PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const version = `${{ toJSON(needs.validate-release.outputs.base_version) }}`;
+            const head = `${{ toJSON(needs.prepare-branch.outputs.release_branch) }}`;
+            const base = 'master';
+            // Find existing PR
+            const { data: prs } = await github.rest.pulls.list({ owner: context.repo.owner, repo: context.repo.repo, state: 'open', head: `${context.repo.owner}:${head}` });
+            const body = `### Release ${version}\n\n- Android SDK: ${{ needs.validate-release.outputs.android_sdk_version }}\n- iOS SDK: ${{ needs.validate-release.outputs.ios_sdk_version }}\n\nThis PR was opened by the RC workflow.`;
+            if (prs.length > 0) {
+              const pr = prs[0];
+              await github.rest.pulls.update({ owner: context.repo.owner, repo: context.repo.repo, pull_number: pr.number, title: `Release ${version}`, body });
+              core.setOutput('pr_number', pr.number);
+            } else {
+              const { data: pr } = await github.rest.pulls.create({ owner: context.repo.owner, repo: context.repo.repo, head, base, title: `Release ${version}`, body, maintainer_can_modify: true });
+              core.setOutput('pr_number', pr.number);
+            }
+
+  publish-rc:
+    name: 📦 Publish RC to pub.dev
+    runs-on: ubuntu-latest
+    needs: [validate-release, prepare-branch]
+    if: always() && needs.validate-release.outputs.deploy_to_qa == 'true'
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.prepare-branch.outputs.release_branch }}
+      - name: 🔧 Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+      - name: 📦 Get dependencies
+        run: flutter pub get
+      - name: 📝 Validate package (dry-run)
+        run: flutter pub publish --dry-run
+      - name: ℹ️ RC dry-run active — skipping publish
+        if: ${{ needs.validate-release.outputs.dry_run == 'true' }}
+        run: |
+          echo "RC dry_run is true — will not publish to pub.dev."
+      - name: 🚀 Publish RC to pub.dev
+        if: ${{ needs.validate-release.outputs.dry_run != 'true' }}
+        env:
+          PUB_DEV_CREDENTIALS: ${{ secrets.PUB_DEV_CREDENTIALS }}
+        run: |
+          if [[ -z "${PUB_DEV_CREDENTIALS}" ]]; then
+            echo "PUB_DEV_CREDENTIALS is missing"; exit 1; fi
+          mkdir -p ~/.config/dart
+          echo "${PUB_DEV_CREDENTIALS}" > ~/.config/dart/pub-credentials.json
+          flutter pub publish --force
+          rm -f ~/.config/dart/pub-credentials.json
+
   notify-team:
     name: 📢 Notify Team
     runs-on: ubuntu-latest
@@ -521,7 +583,7 @@ jobs:
   rc-summary:
     name: 📋 RC Summary
     runs-on: ubuntu-latest
-    needs: [validate-release, run-ci, update-version, create-prerelease]
+    needs: [validate-release, run-ci, prepare-branch, create-prerelease]
     if: always()
     
     steps:
@@ -536,7 +598,7 @@ jobs:
           echo "-----------------------------------------"
           echo "Validation: ${{ needs.validate-release.result }}"
           echo "CI Pipeline: ${{ needs.run-ci.result }}"
-          echo "Version Update: ${{ needs.update-version.result }}"
+          echo "Prepare Branch: ${{ needs.prepare-branch.result }}"
           echo "Pre-Release: ${{ needs.create-prerelease.result }}"
           echo "========================================="
           
