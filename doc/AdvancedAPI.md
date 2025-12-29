@@ -39,15 +39,46 @@ You can register the uninstall token with AppsFlyer by calling the following API
 appsFlyerSdk.updateServerUninstallToken("token");
 ```
 
+> **Note:** When using this method on iOS, the token should be passed as a **hexadecimal string representation** of the device token. The plugin will automatically convert the hex string to the required `NSData` format for the AppsFlyer SDK.
+>
+> If you're using the [firebase_messaging](https://pub.dev/packages/firebase_messaging) plugin, you can get the APNs token on iOS using `FirebaseMessaging.instance.getAPNSToken()` which returns the token as a hex string, which is the expected format for this method.
+
 ### Android
 
 It is possible to utilize the [Firebase Messaging Plugin for Flutter](https://pub.dev/packages/firebase_messaging) for everything related to the uninstall token.
 You can read more about Android Uninstall Measurement in our [knowledge base](https://support.appsflyer.com/hc/en-us/articles/4408933557137) and you can follow our guide for Uninstall measurement using FCM on our [DevHub](https://dev.appsflyer.com/hc/docs/uninstall-measurement-android).
 
-On the flutter side, you can register the uninstall token with AppsFlyer by calling the following API with your uninstall token:
+On the Flutter side, you can register the uninstall token with AppsFlyer by calling the following API with your uninstall token:
 ```dart
 appsFlyerSdk.updateServerUninstallToken("token");
 ```
+
+**Example using Firebase Messaging (cross-platform):**
+```dart
+import 'dart:io' show Platform;
+import 'package:firebase_messaging/firebase_messaging.dart';
+
+// Update uninstall token for AppsFlyer
+void _updateUninstallToken(appsFlyerSdk) {
+  if (Platform.isAndroid) {
+    FirebaseMessaging.instance.getToken().then((token) {
+      if (token != null) {
+        appsFlyerSdk.updateServerUninstallToken(token);
+      }
+    });
+  } else if (Platform.isIOS) {
+    FirebaseMessaging.instance.getAPNSToken().then((token) {
+      if (token != null) {
+        appsFlyerSdk.updateServerUninstallToken(token);
+      }
+    });
+  }
+}
+```
+**Note:**  
+- On Android, `getToken()` returns the FCM token.  
+- On iOS, `getAPNSToken()` returns the APNs token as a hex string, suitable for `updateServerUninstallToken`.  
+- Replace `appsFlyerSdk` with your instance of `AppsflyerSdk`.
 
 ---
 
@@ -114,11 +145,9 @@ appsFlyerSdk.generateInviteLink(inviteLinkParams,
 Receipt validation is a secure mechanism whereby the payment platform (e.g. Apple or Google) validates that an in-app purchase indeed occurred as reported.<br>
 Learn more - https://support.appsflyer.com/hc/en-us/articles/207032106-Receipt-validation-for-in-app-purchases<br>
 
-**Cross-Platform V2 API (Recommended - SDK v6.17.3+) - BETA:**
+**Cross-Platform V2 API (Recommended - SDK v6.17.3+):**
 
-> ⚠️ **BETA Feature**: This API is currently in beta. While it's stable and recommended for new implementations, please test thoroughly in your environment before production use.
-
-The new unified purchase validation API that works across both Android and iOS platforms:
+The unified purchase validation API that works across both Android and iOS platforms:
 
 ```dart
 Future<Map<String, dynamic>> validateAndLogInAppPurchaseV2(
@@ -135,7 +164,7 @@ AFPurchaseDetails(
 )
 ```
 
-Example:
+**Example:**
 ```dart
 // Create purchase details
 AFPurchaseDetails purchaseDetails = AFPurchaseDetails(
@@ -151,24 +180,40 @@ try {
     additionalParameters: {"custom_param": "value"}
   );
   print("Validation successful: $result");
+} on PlatformException catch (e) {
+  // Handle platform-specific errors with detailed information
+  print("Validation failed: ${e.message}");
+  print("Error code: ${e.code}");
+  if (e.details != null) {
+    // Access detailed error information
+    final details = e.details as Map<String, dynamic>;
+    print("Error details: $details");
+    // On iOS, additional fields may include:
+    // - error_code: The NSError code
+    // - error_domain: The NSError domain
+    // - error_user_info: Additional error context
+  }
 } catch (e) {
-  print("Validation failed: $e");
+  print("Unexpected error: $e");
 }
 ```
 
 **Benefits of V2 API:**
 - ✅ **Cross-platform**: Single API works on both Android and iOS
 - ✅ **Type-safe**: Uses structured data classes instead of raw strings
-- ✅ **Better error handling**: Returns structured error information
+- ✅ **Comprehensive error handling**: Returns structured error information including NSError details on iOS
 - ✅ **Enhanced validation**: Uses AppsFlyer's latest validation infrastructure
 - ✅ **Future-proof**: Built for AppsFlyer's V2 validation endpoints
 
 ---
 
-**Legacy Platform-Specific APIs:**
+**Deprecated Platform-Specific APIs:**
 
-**Android:**
+> ⚠️ **Deprecated**: The following platform-specific APIs are deprecated and will be removed in a future version. Please migrate to `validateAndLogInAppPurchaseV2` for cross-platform support.
+
+**Android (Deprecated):**
 ```dart
+@Deprecated('Use validateAndLogInAppPurchaseV2 instead')
 Future<dynamic> validateAndLogInAppAndroidPurchase( 
       String publicKey,
       String signature,
@@ -179,6 +224,7 @@ Future<dynamic> validateAndLogInAppAndroidPurchase(
 ```
 Example:
 ```dart
+// Deprecated - migrate to validateAndLogInAppPurchaseV2
 appsFlyerSdk.validateAndLogInAppAndroidPurchase(
            "publicKey",
            "signature",
@@ -188,12 +234,13 @@ appsFlyerSdk.validateAndLogInAppAndroidPurchase(
            {"fs": "fs"});
 ```
 
-**iOS:**
+**iOS (Deprecated):**
 
 ❗Important❗ for iOS - set SandBox to ```true```<br>
 ```appsFlyer.useReceiptValidationSandbox(true);```
 
 ```dart
+@Deprecated('Use validateAndLogInAppPurchaseV2 instead')
 Future<dynamic> validateAndLogInAppIosPurchase( 
       String productIdentifier,
       String price,
@@ -204,6 +251,7 @@ Future<dynamic> validateAndLogInAppIosPurchase(
 
 Example:
 ```dart
+// Deprecated - migrate to validateAndLogInAppPurchaseV2
 appsFlyerSdk.validateAndLogInAppIosPurchase(
            "productIdentifier",
            "price",
