@@ -408,7 +408,8 @@ class AppsflyerSdk {
   /// Validate and log the In-App Purchase for Android on AppsFlyer's dashboard.
   ///
   /// @Deprecated Use [validateAndLogInAppPurchaseV2] instead. This API will be removed in a future version.
-  @Deprecated('Use validateAndLogInAppPurchaseV2 instead for cross-platform purchase validation')
+  @Deprecated(
+      'Use validateAndLogInAppPurchaseV2 instead for cross-platform purchase validation')
   Future<dynamic> validateAndLogInAppAndroidPurchase(
       String publicKey,
       String signature,
@@ -429,7 +430,8 @@ class AppsflyerSdk {
   /// Accessing AppsFlyer purchase validation data for iOS.
   ///
   /// @Deprecated Use [validateAndLogInAppPurchaseV2] instead. This API will be removed in a future version.
-  @Deprecated('Use validateAndLogInAppPurchaseV2 instead for cross-platform purchase validation')
+  @Deprecated(
+      'Use validateAndLogInAppPurchaseV2 instead for cross-platform purchase validation')
   Future<dynamic> validateAndLogInAppIosPurchase(
       String productIdentifier,
       String price,
