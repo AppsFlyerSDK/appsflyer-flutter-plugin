@@ -704,20 +704,57 @@ static BOOL _isSKADEnabled = false;
         result(v2Response);
     }
                                                failure:^(NSError *error, id errorResponse) {
-        NSLog(@"AppsFlyer Debug: validateAndLogInAppPurchaseV2 failed with Error: %@", error);
+        NSLog(@"AppsFlyer Debug: validateAndLogInAppPurchaseV2 failed with Error: %@, Response: %@", error, errorResponse);
         
-        // Create error response for V2 format
+        // Create error response for V2 format with comprehensive error handling
         NSMutableDictionary *errorData = [NSMutableDictionary dictionary];
+        
+        // Handle NSError object
         if (error) {
             errorData[@"error_message"] = error.localizedDescription ?: @"Purchase validation failed";
             errorData[@"error_code"] = @(error.code);
-        }
-        if (errorResponse && [errorResponse isKindOfClass:[NSDictionary class]]) {
-            [errorData addEntriesFromDictionary:(NSDictionary*)errorResponse];
+            errorData[@"error_domain"] = error.domain ?: @"Unknown";
+            
+            // Include userInfo if available (may contain additional error details)
+            if (error.userInfo && error.userInfo.count > 0) {
+                NSMutableDictionary *userInfoDict = [NSMutableDictionary dictionary];
+                for (NSString *key in error.userInfo) {
+                    id value = error.userInfo[key];
+                    // Only include serializable values
+                    if ([value isKindOfClass:[NSString class]] || 
+                        [value isKindOfClass:[NSNumber class]] ||
+                        [value isKindOfClass:[NSDictionary class]] ||
+                        [value isKindOfClass:[NSArray class]]) {
+                        userInfoDict[key] = value;
+                    } else if ([value respondsToSelector:@selector(description)]) {
+                        userInfoDict[key] = [value description];
+                    }
+                }
+                if (userInfoDict.count > 0) {
+                    errorData[@"error_user_info"] = userInfoDict;
+                }
+            }
         }
         
+        // Handle error response object (could be NSDictionary, NSString, or NSError)
+        if (errorResponse) {
+            if ([errorResponse isKindOfClass:[NSDictionary class]]) {
+                [errorData addEntriesFromDictionary:(NSDictionary*)errorResponse];
+            } else if ([errorResponse isKindOfClass:[NSString class]]) {
+                errorData[@"response_message"] = (NSString*)errorResponse;
+            } else if ([errorResponse isKindOfClass:[NSError class]]) {
+                NSError *responseError = (NSError*)errorResponse;
+                errorData[@"response_error_code"] = @(responseError.code);
+                errorData[@"response_error_message"] = responseError.localizedDescription ?: @"Unknown error";
+                errorData[@"response_error_domain"] = responseError.domain ?: @"Unknown";
+            } else if ([errorResponse respondsToSelector:@selector(description)]) {
+                errorData[@"response_description"] = [errorResponse description];
+            }
+        }
+        
+        NSString *errorMessage = error.localizedDescription ?: @"Purchase validation failed";
         result([FlutterError errorWithCode:@"VALIDATION_ERROR"
-                                   message:error.localizedDescription ?: @"Purchase validation failed"
+                                   message:errorMessage
                                    details:errorData]);
     }];
 }
