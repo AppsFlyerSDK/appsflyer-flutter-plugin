@@ -638,124 +638,56 @@ static BOOL _isSKADEnabled = false;
     result(nil);
 }
 
-- (void)validateAndLogInAppPurchaseV2:(FlutterMethodCall*)call result:(FlutterResult)result{
-    @try {
-        // Extract purchase details map from Flutter
-        NSDictionary* purchaseDetailsMap = call.arguments[@"purchaseDetails"];
-        NSDictionary* additionalParameters = call.arguments[@"additionalParameters"];
-        
-        if (purchaseDetailsMap == nil) {
-            result([FlutterError errorWithCode:@"INVALID_ARGUMENTS"
-                                       message:@"Purchase details cannot be null"
-                                       details:nil]);
-            return;
-        }
-        
-        // Extract individual fields from purchase details map
-        NSString* purchaseTypeString = purchaseDetailsMap[@"purchaseType"];
-        NSString* purchaseToken = purchaseDetailsMap[@"purchaseToken"];
-        NSString* productId = purchaseDetailsMap[@"productId"];
-        
-        // Validate required fields
-        if (purchaseTypeString == nil || purchaseToken == nil || productId == nil) {
-            result([FlutterError errorWithCode:@"INVALID_ARGUMENTS"
-                                       message:@"Purchase details must contain purchaseType, purchaseToken, and productId"
-                                       details:nil]);
-            return;
-        }
-        
-        // Map Dart enum values to iOS purchase type
-        // For iOS, we use transactionId instead of purchaseToken, so we'll use purchaseToken as transactionId
-        NSString* transactionId = purchaseToken;
-        
-        NSLog(@"AppsFlyer Debug: validateAndLogInAppPurchaseV2 called with purchaseType: %@, transactionId: %@, productId: %@", purchaseTypeString, transactionId, productId);
-        
-        // Call the actual AppsFlyer iOS V2 API
-        [self callAppsFlyerV2API:purchaseTypeString
-                   transactionId:transactionId
-                       productId:productId
-            additionalParameters:additionalParameters
-                          result:result];
-        
-    } @catch (NSException *exception) {
-        NSLog(@"AppsFlyer: Error in validateAndLogInAppPurchaseV2: %@", exception.reason);
-        result([FlutterError errorWithCode:@"VALIDATION_ERROR"
-                                   message:[NSString stringWithFormat:@"Purchase validation failed: %@", exception.reason]
-                                   details:nil]);
-    }
-}
-
-- (void)callAppsFlyerV2API:(NSString*)purchaseTypeString
-             transactionId:(NSString*)transactionId
-                 productId:(NSString*)productId
-      additionalParameters:(NSDictionary*)additionalParameters
-                    result:(FlutterResult)result {
+- (void)validateAndLogInAppPurchaseV2:(FlutterMethodCall*)call result:(FlutterResult)result {
+    NSDictionary* purchaseDetailsMap = call.arguments[@"purchaseDetails"];
+    NSDictionary* additionalParameters = call.arguments[@"additionalParameters"];
     
-    [[AppsFlyerLib shared] validateAndLogInAppPurchase:productId
-                                                 price:nil  // V2 doesn't use price
-                                              currency:nil  // V2 doesn't use currency
-                                         transactionId:transactionId
-                                  additionalParameters:additionalParameters
-                                               success:^(NSDictionary *response) {
-        NSLog(@"AppsFlyer Debug: validateAndLogInAppPurchaseV2 Success!");
-        // V2 API returns response directly without wrapper
-        NSMutableDictionary *v2Response = [NSMutableDictionary dictionaryWithDictionary:response];
-        v2Response[@"purchase_type"] = purchaseTypeString;
-        result(v2Response);
+    if (purchaseDetailsMap == nil) {
+        result([FlutterError errorWithCode:@"INVALID_ARGUMENTS"
+                                   message:@"Purchase details cannot be null"
+                                   details:nil]);
+        return;
     }
-                                               failure:^(NSError *error, id errorResponse) {
-        NSLog(@"AppsFlyer Debug: validateAndLogInAppPurchaseV2 failed with Error: %@, Response: %@", error, errorResponse);
-        
-        // Create error response for V2 format with comprehensive error handling
-        NSMutableDictionary *errorData = [NSMutableDictionary dictionary];
-        
-        // Handle NSError object
+    
+    NSString* purchaseTypeString = purchaseDetailsMap[@"purchaseType"];
+    NSString* transactionId = purchaseDetailsMap[@"purchaseToken"]; // purchaseToken maps to transactionId on iOS
+    NSString* productId = purchaseDetailsMap[@"productId"];
+    
+    if (purchaseTypeString == nil || transactionId == nil || productId == nil) {
+        result([FlutterError errorWithCode:@"INVALID_ARGUMENTS"
+                                   message:@"Purchase details must contain purchaseType, purchaseToken, and productId"
+                                   details:nil]);
+        return;
+    }
+    
+    // Map Dart enum to iOS AFSDKPurchaseType
+    AFSDKPurchaseType purchaseType = [purchaseTypeString isEqualToString:@"subscription"]
+        ? AFSDKPurchaseTypeSubscription
+        : AFSDKPurchaseTypeOneTimePurchase;
+    
+    AFSDKPurchaseDetails *purchaseDetails = [[AFSDKPurchaseDetails alloc] initWithProductId:productId
+                                                                             transactionId:transactionId
+                                                                              purchaseType:purchaseType];
+    
+    // Handle NSNull for additionalParameters
+    NSDictionary* purchaseAdditionalDetails = [additionalParameters isEqual:[NSNull null]] ? nil : additionalParameters;
+    
+    [[AppsFlyerLib shared] validateAndLogInAppPurchase:purchaseDetails
+                             purchaseAdditionalDetails:purchaseAdditionalDetails
+                                            completion:^(NSDictionary * _Nullable response, NSError * _Nullable error) {
         if (error) {
-            errorData[@"error_message"] = error.localizedDescription ?: @"Purchase validation failed";
-            errorData[@"error_code"] = @(error.code);
-            errorData[@"error_domain"] = error.domain ?: @"Unknown";
-            
-            // Include userInfo if available (may contain additional error details)
-            if (error.userInfo && error.userInfo.count > 0) {
-                NSMutableDictionary *userInfoDict = [NSMutableDictionary dictionary];
-                for (NSString *key in error.userInfo) {
-                    id value = error.userInfo[key];
-                    // Only include serializable values
-                    if ([value isKindOfClass:[NSString class]] || 
-                        [value isKindOfClass:[NSNumber class]] ||
-                        [value isKindOfClass:[NSDictionary class]] ||
-                        [value isKindOfClass:[NSArray class]]) {
-                        userInfoDict[key] = value;
-                    } else if ([value respondsToSelector:@selector(description)]) {
-                        userInfoDict[key] = [value description];
-                    }
-                }
-                if (userInfoDict.count > 0) {
-                    errorData[@"error_user_info"] = userInfoDict;
-                }
-            }
+            NSLog(@"AppsFlyer Debug: validateAndLogInAppPurchaseV2 failed: %@", error.localizedDescription);
+            result([FlutterError errorWithCode:@"VALIDATION_ERROR"
+                                       message:error.localizedDescription ?: @"Purchase validation failed"
+                                       details:@{
+                                           @"error_code": @(error.code),
+                                           @"error_domain": error.domain ?: @"Unknown"
+                                       }]);
+            return;
         }
         
-        // Handle error response object (could be NSDictionary, NSString, or NSError)
-        if (errorResponse) {
-            if ([errorResponse isKindOfClass:[NSDictionary class]]) {
-                [errorData addEntriesFromDictionary:(NSDictionary*)errorResponse];
-            } else if ([errorResponse isKindOfClass:[NSString class]]) {
-                errorData[@"response_message"] = (NSString*)errorResponse;
-            } else if ([errorResponse isKindOfClass:[NSError class]]) {
-                NSError *responseError = (NSError*)errorResponse;
-                errorData[@"response_error_code"] = @(responseError.code);
-                errorData[@"response_error_message"] = responseError.localizedDescription ?: @"Unknown error";
-                errorData[@"response_error_domain"] = responseError.domain ?: @"Unknown";
-            } else if ([errorResponse respondsToSelector:@selector(description)]) {
-                errorData[@"response_description"] = [errorResponse description];
-            }
-        }
-        
-        NSString *errorMessage = error.localizedDescription ?: @"Purchase validation failed";
-        result([FlutterError errorWithCode:@"VALIDATION_ERROR"
-                                   message:errorMessage
-                                   details:errorData]);
+        NSLog(@"AppsFlyer Debug: validateAndLogInAppPurchaseV2 Success!");
+        result(response);
     }];
 }
 
