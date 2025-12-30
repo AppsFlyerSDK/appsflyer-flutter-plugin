@@ -1,0 +1,29 @@
+# Files to exclude from pub.dev package
+
+# Development/build files
+covBadgeGen.js
+coverage_badge.svg
+package.json
+package-lock.json
+node_modules/
+local.properties
+.cursor/
+
+# Example app files that shouldn't be in package
+example/.env
+example/.metadata
+example/build/
+example/ios/Podfile.lock
+example/ios/Pods/
+example/ios/Flutter/ephemeral/
+example/android/local.properties
+
+# CI/CD files
+.github/
+.travis.yml
+
+# Internal documentation
+FlutterEngine_and_Android_lifecycle_interaction.txt
+doc/Deep-Link-Callback-Fix-Summary.md
+doc/DeepLink-NewIntent-Fix.md
+
