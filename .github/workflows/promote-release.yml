@@ -197,7 +197,6 @@ jobs:
     
     steps:
       - name: 📨 Send Slack notification
-        if: ${{ secrets.CI_SLACK_WEBHOOK_URL != '' }}
         uses: slackapi/slack-github-action@v1
         with:
           payload: |
@@ -206,4 +205,4 @@ jobs:
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.CI_SLACK_WEBHOOK_URL }}
-        continue-on-error: true
+        continue-on-error: true  # Will gracefully fail if webhook not configured
