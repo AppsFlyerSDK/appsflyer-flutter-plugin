@@ -372,8 +372,8 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const version = `${{ toJSON(needs.validate-release.outputs.base_version) }}`;
-            const head = `${{ toJSON(needs.prepare-branch.outputs.release_branch) }}`;
+            const version = '${{ needs.validate-release.outputs.base_version }}';
+            const head = '${{ needs.prepare-branch.outputs.release_branch }}';
             const base = 'master';
             // Find existing PR
             const { data: prs } = await github.rest.pulls.list({ owner: context.repo.owner, repo: context.repo.repo, state: 'open', head: `${context.repo.owner}:${head}` });
