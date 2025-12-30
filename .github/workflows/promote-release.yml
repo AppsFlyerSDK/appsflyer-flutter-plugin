@@ -1,97 +1,209 @@
-name: Promote Release - Merge on QA Pass and Publish
+# =============================================================================
+# Promote Release - Prepare Release Branch for Production
+# =============================================================================
+#
+# Purpose: When QA approves an RC, this workflow prepares the release branch
+# for production by removing the -rc suffix from version numbers.
+#
+# IMPORTANT: This workflow does NOT merge the PR (org rules prevent bot merges).
+# Instead, it updates the release branch so when a human merges, the version
+# is clean (e.g., 6.17.8 instead of 6.17.8-rc1).
+#
+# Flow:
+# 1. QA tests the RC version
+# 2. QA adds label "pass QA ready for deploy" to the PR
+# 3. This workflow triggers and:
+#    - Updates the release branch to remove -rcN suffix
+#    - Updates all version files
+#    - Commits changes to the release branch
+# 4. Human reviews and manually merges the PR
+# 5. production-release.yml triggers on merge
+#
+# =============================================================================
+
+name: Promote Release - Prepare for Production
 
 on:
   pull_request:
-    types: [labeled, synchronize, reopened, ready_for_review]
-    branches:
-      - master
-  pull_request_review:
-    types: [submitted]
+    types: [labeled]
     branches:
       - master
 
 concurrency:
-  group: promote-release-${{ github.event.pull_request.number || github.run_id }}
+  group: promote-release-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
-  gate-and-merge:
-    name: 🔐 Gate, Verify Checks, and Merge
-    if: >-
-      ${ { github.event.pull_request.head.ref } } == '' || startsWith(github.event.pull_request.head.ref, 'releases/')
+  # ===========================================================================
+  # Job 1: Prepare Release Branch for Production
+  # ===========================================================================
+  prepare-for-production:
+    name: 🚀 Prepare Release for Production
+    # Only run when the specific label is added AND it's from a releases/ branch
+    if: |
+      github.event.label.name == 'pass QA ready for deploy' &&
+      startsWith(github.event.pull_request.head.ref, 'releases/')
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-      checks: read
-      statuses: read
+    
     outputs:
-      merged: ${{ steps.merge.outputs.merged }}
-      version: ${{ steps.version.outputs.version }}
+      version: ${{ steps.compute-version.outputs.version }}
+      release_branch: ${{ steps.compute-version.outputs.release_branch }}
+    
     steps:
-      - name: 🧠 Evaluate conditions
-        id: eval
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const core = require('@actions/core');
-            const pr = context.payload.pull_request || (await github.rest.pulls.get({owner: context.repo.owner, repo: context.repo.repo, pull_number: context.payload.pull_request?.number || context.issue.number})).data;
-            if (!pr) core.setFailed('No PR context');
-            const hasLabel = pr.labels.some(l => l.name === 'pass QA ready for deploy');
-            if (!hasLabel) core.setFailed('Required label not present: pass QA ready for deploy');
-            // Check approvals
-            const reviews = await github.rest.pulls.listReviews({owner: context.repo.owner, repo: context.repo.repo, pull_number: pr.number});
-            const approved = reviews.data.some(r => r.state === 'APPROVED');
-            if (!approved) core.setFailed('No approval found on the PR');
-            core.setOutput('pr_number', pr.number.toString());
-      - name: ⏳ Wait for required status checks to pass
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const prNumber = Number(core.getInput('pr_number', { required: false })) || ${{ steps.eval.outputs.pr_number || '0' }};
-            const { data: pr } = await github.rest.pulls.get({ owner: context.repo.owner, repo: context.repo.repo, pull_number: prNumber });
-            const ref = pr.head.sha;
-            const start = Date.now();
-            const timeoutMs = 60*60*1000; // 60 minutes
-            const sleep = ms => new Promise(r => setTimeout(r, ms));
-            while (true) {
-              const { data: combined } = await github.rest.repos.getCombinedStatusForRef({ owner: context.repo.owner, repo: context.repo.repo, ref });
-              const checksOk = combined.state === 'success';
-              if (checksOk) break;
-              if (Date.now() - start > timeoutMs) throw new Error('Timeout waiting for status checks to pass');
-              core.info(`Waiting for checks. Current state: ${combined.state}`);
-              await sleep(15000);
-            }
-      - name: 📥 Checkout
+      - name: 📥 Checkout release branch
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
-      - name: 🔀 Merge PR immediately
-        id: merge
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: 🔍 Compute production version
+        id: compute-version
+        run: |
+          RELEASE_BRANCH="${{ github.event.pull_request.head.ref }}"
+          echo "Release branch: $RELEASE_BRANCH"
+          
+          # Get current version from pubspec.yaml
+          CURRENT_VERSION=$(grep "^version:" pubspec.yaml | sed 's/version: //' | tr -d ' ')
+          echo "Current version: $CURRENT_VERSION"
+          
+          # Remove -rcN suffix to get production version
+          PROD_VERSION=$(echo "$CURRENT_VERSION" | sed 's/-rc[0-9]*$//')
+          echo "Production version: $PROD_VERSION"
+          
+          # Validate it's different (was an RC version)
+          if [[ "$CURRENT_VERSION" == "$PROD_VERSION" ]]; then
+            echo "⚠️ Version doesn't have -rc suffix. Already production ready?"
+            echo "Current: $CURRENT_VERSION"
+          fi
+          
+          echo "version=$PROD_VERSION" >> $GITHUB_OUTPUT
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "release_branch=$RELEASE_BRANCH" >> $GITHUB_OUTPUT
+      
+      - name: 📝 Update pubspec.yaml to production version
+        run: |
+          VERSION='${{ steps.compute-version.outputs.version }}'
+          echo "Updating pubspec.yaml to production version: $VERSION"
+          sed -i "s/^version: .*/version: $VERSION/" pubspec.yaml
+          grep "^version:" pubspec.yaml
+      
+      - name: 📝 Update plugin version constants (Android)
+        run: |
+          VERSION='${{ steps.compute-version.outputs.version }}'
+          FILE="android/src/main/java/com/appsflyer/appsflyersdk/AppsFlyerConstants.java"
+          if [ -f "$FILE" ]; then
+            sed -i "s/kPluginVersion = \".*\"/kPluginVersion = \"$VERSION\"/" "$FILE"
+            echo "Updated Android constants:"
+            grep "kPluginVersion" "$FILE"
+          fi
+      
+      - name: 📝 Update plugin version constants (iOS)
+        run: |
+          VERSION='${{ steps.compute-version.outputs.version }}'
+          FILE="ios/Classes/AppsflyerSdkPlugin.m"
+          if [ -f "$FILE" ]; then
+            sed -i "s/kPluginVersion = @\".*\"/kPluginVersion = @\"$VERSION\"/" "$FILE"
+            echo "Updated iOS constants:"
+            grep "kPluginVersion" "$FILE"
+          fi
+      
+      - name: 💾 Commit and push version changes
+        run: |
+          VERSION='${{ steps.compute-version.outputs.version }}'
+          CURRENT='${{ steps.compute-version.outputs.current_version }}'
+          
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          
+          if [[ -n $(git status -s) ]]; then
+            git add pubspec.yaml android/ ios/
+            git commit -m "chore: prepare production release $VERSION (from $CURRENT)"
+            git push
+            echo "✅ Pushed version update to release branch"
+          else
+            echo "ℹ️ No version changes needed"
+          fi
+      
+      - name: 📝 Update PR description
         uses: actions/github-script@v7
         with:
           script: |
-            const prNumber = Number(${ { steps.eval.outputs.pr_number } });
-            const { data: pr } = await github.rest.pulls.get({ owner: context.repo.owner, repo: context.repo.repo, pull_number: prNumber });
-            if (pr.merged) { core.setOutput('merged', 'true'); return; }
-            const method = 'merge'; // use repo default merge method
-            await github.rest.pulls.merge({ owner: context.repo.owner, repo: context.repo.repo, pull_number: pr.number, merge_method: method });
-            core.setOutput('merged', 'true');
-      - name: 📝 Read version from pubspec on master
-        id: version
-        run: |
-          git fetch origin master:master
-          git checkout master
-          VER=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr -d ' ')
-          echo "version=$VER" >> $GITHUB_OUTPUT
+            const version = '${{ steps.compute-version.outputs.version }}';
+            const currentVersion = '${{ steps.compute-version.outputs.current_version }}';
+            const pr = context.payload.pull_request;
+            
+            const newBody = `### Production Release ${version}
 
-  call-production:
-    name: 🚀 Production Release
-    needs: gate-and-merge
-    if: needs.gate-and-merge.outputs.merged == 'true'
-    uses: ./.github/workflows/production-release.yml
-    with:
-      version: ${{ needs.gate-and-merge.outputs.version }}
-      skip_tests: false
-      dry_run: false
-    secrets: inherit
+            **Status:** ✅ Ready for manual merge
+
+            **Version updated:** ${currentVersion} → ${version}
+
+            ---
+
+            ${pr.body || ''}
+
+            ---
+
+            **Next steps:**
+            1. ✅ QA approved (label added)
+            2. ✅ Version updated to production (${version})
+            3. ⏳ **Awaiting manual merge** by a maintainer
+            4. ⏳ Production release will trigger automatically after merge
+            `;
+            
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              body: newBody
+            });
+      
+      - name: 📢 Add comment to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const version = '${{ steps.compute-version.outputs.version }}';
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: `## 🚀 Ready for Production Release
+
+            The release branch has been updated:
+            - **Version:** \`${version}\` (removed -rc suffix)
+            - **All version files updated**
+
+            ### Next Steps
+            1. **Review the changes** in this PR
+            2. **Merge this PR** when ready
+            3. The production release workflow will automatically:
+               - Publish \`${version}\` to pub.dev
+               - Create GitHub release
+               - Send notifications
+
+            > ⚠️ **Note:** This PR requires manual merge due to branch protection rules.`
+            });
+
+  # ===========================================================================
+  # Job 2: Notify Team
+  # ===========================================================================
+  notify-ready:
+    name: 📢 Notify Ready for Merge
+    needs: prepare-for-production
+    runs-on: ubuntu-latest
+    if: always() && needs.prepare-for-production.result == 'success'
+    
+    steps:
+      - name: 📨 Send Slack notification
+        if: ${{ secrets.CI_SLACK_WEBHOOK_URL != '' }}
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "<!here>\n:white_check_mark: *Flutter Plugin Ready for Production*\n\nVersion: ${{ needs.prepare-for-production.outputs.version }}\nPR: ${{ github.event.pull_request.html_url }}\n\n*Action Required:* A maintainer needs to manually merge the PR to trigger the production release."
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.CI_SLACK_WEBHOOK_URL }}
+        continue-on-error: true
