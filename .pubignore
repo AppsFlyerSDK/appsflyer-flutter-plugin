@@ -21,9 +21,3 @@ example/android/local.properties
 # CI/CD files
 .github/
 .travis.yml
-
-# Internal documentation
-FlutterEngine_and_Android_lifecycle_interaction.txt
-doc/Deep-Link-Callback-Fix-Summary.md
-doc/DeepLink-NewIntent-Fix.md
-
