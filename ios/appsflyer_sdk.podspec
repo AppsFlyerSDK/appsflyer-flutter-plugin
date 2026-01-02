@@ -18,8 +18,8 @@ Pod::Spec.new do |s|
   end
 
   s.subspec 'Core' do |ss|
-    ss.source_files = 'Classes/**/*'
-    ss.public_header_files = 'Classes/**/*.h'
+    ss.source_files = 'appsflyer_sdk/Sources/**/*.{h,m}'
+    ss.public_header_files = 'appsflyer_sdk/Sources/appsflyer_sdk/include/**/*.h'
     ss.dependency 'Flutter'
     ss.ios.dependency 'AppsFlyerFramework','6.17.8'
   end
@@ -27,9 +27,7 @@ Pod::Spec.new do |s|
   s.subspec 'PurchaseConnector' do |ss|
     ss.dependency 'Flutter'
     ss.ios.dependency 'PurchaseConnector', '6.17.8'
-    ss.source_files = 'PurchaseConnector/**/*'
-    ss.public_header_files = 'PurchaseConnector/**/*.h'
-  
+    ss.source_files = 'appsflyer_sdk/Sources/purchase_connector/**/*.{swift}'
     ss.pod_target_xcconfig = { 'GCC_PREPROCESSOR_DEFINITIONS' => '$(inherited) ENABLE_PURCHASE_CONNECTOR=1' }
   end
 end
