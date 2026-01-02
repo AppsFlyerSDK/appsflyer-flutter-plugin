@@ -1,0 +1,97 @@
+name: Promote Release - Merge on QA Pass and Publish
+
+on:
+  pull_request:
+    types: [labeled, synchronize, reopened, ready_for_review]
+    branches:
+      - master
+  pull_request_review:
+    types: [submitted]
+    branches:
+      - master
+
+concurrency:
+  group: promote-release-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  gate-and-merge:
+    name: 🔐 Gate, Verify Checks, and Merge
+    if: >-
+      ${ { github.event.pull_request.head.ref } } == '' || startsWith(github.event.pull_request.head.ref, 'releases/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: read
+      statuses: read
+    outputs:
+      merged: ${{ steps.merge.outputs.merged }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: 🧠 Evaluate conditions
+        id: eval
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const core = require('@actions/core');
+            const pr = context.payload.pull_request || (await github.rest.pulls.get({owner: context.repo.owner, repo: context.repo.repo, pull_number: context.payload.pull_request?.number || context.issue.number})).data;
+            if (!pr) core.setFailed('No PR context');
+            const hasLabel = pr.labels.some(l => l.name === 'pass QA ready for deploy');
+            if (!hasLabel) core.setFailed('Required label not present: pass QA ready for deploy');
+            // Check approvals
+            const reviews = await github.rest.pulls.listReviews({owner: context.repo.owner, repo: context.repo.repo, pull_number: pr.number});
+            const approved = reviews.data.some(r => r.state === 'APPROVED');
+            if (!approved) core.setFailed('No approval found on the PR');
+            core.setOutput('pr_number', pr.number.toString());
+      - name: ⏳ Wait for required status checks to pass
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = Number(core.getInput('pr_number', { required: false })) || ${{ steps.eval.outputs.pr_number || '0' }};
+            const { data: pr } = await github.rest.pulls.get({ owner: context.repo.owner, repo: context.repo.repo, pull_number: prNumber });
+            const ref = pr.head.sha;
+            const start = Date.now();
+            const timeoutMs = 60*60*1000; // 60 minutes
+            const sleep = ms => new Promise(r => setTimeout(r, ms));
+            while (true) {
+              const { data: combined } = await github.rest.repos.getCombinedStatusForRef({ owner: context.repo.owner, repo: context.repo.repo, ref });
+              const checksOk = combined.state === 'success';
+              if (checksOk) break;
+              if (Date.now() - start > timeoutMs) throw new Error('Timeout waiting for status checks to pass');
+              core.info(`Waiting for checks. Current state: ${combined.state}`);
+              await sleep(15000);
+            }
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: 🔀 Merge PR immediately
+        id: merge
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = Number(${ { steps.eval.outputs.pr_number } });
+            const { data: pr } = await github.rest.pulls.get({ owner: context.repo.owner, repo: context.repo.repo, pull_number: prNumber });
+            if (pr.merged) { core.setOutput('merged', 'true'); return; }
+            const method = 'merge'; // use repo default merge method
+            await github.rest.pulls.merge({ owner: context.repo.owner, repo: context.repo.repo, pull_number: pr.number, merge_method: method });
+            core.setOutput('merged', 'true');
+      - name: 📝 Read version from pubspec on master
+        id: version
+        run: |
+          git fetch origin master:master
+          git checkout master
+          VER=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr -d ' ')
+          echo "version=$VER" >> $GITHUB_OUTPUT
+
+  call-production:
+    name: 🚀 Production Release
+    needs: gate-and-merge
+    if: needs.gate-and-merge.outputs.merged == 'true'
+    uses: ./.github/workflows/production-release.yml
+    with:
+      version: ${{ needs.gate-and-merge.outputs.version }}
+      skip_tests: false
+      dry_run: false
+    secrets: inherit
