@@ -116,6 +116,10 @@ jobs:
         working-directory: example/ios
         run: pod install
 
+      # ── Create .env file from secret ─────────────────────────────────────
+      - name: Create example .env file
+        run: echo "${{ secrets.ENV_FILE }}" > example/.env
+
       # ── Build Android APK ────────────────────────────────────────────────
       - name: Build Android APK (debug)
         working-directory: example
