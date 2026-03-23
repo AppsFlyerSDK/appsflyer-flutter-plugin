@@ -18,28 +18,6 @@ fi
 ANDROID_PACKAGE="com.appsflyer.android.deviceid"
 IOS_BUNDLE="com.appsflyer.example"
 
-# Auto-detect Android device (ANDROID_SERIAL env overrides)
-if [[ -n "${ANDROID_SERIAL:-}" ]]; then
-  ANDROID_DEVICE="$ANDROID_SERIAL"
-else
-  ANDROID_DEVICE=$(adb devices 2>/dev/null | grep -E "emulator|device$" | grep -v "List" | awk '{print $1}' | head -1 || true)
-  if [[ -z "$ANDROID_DEVICE" ]]; then
-    echo "ERROR: No Android device/emulator found. Start an emulator or set ANDROID_SERIAL." >&2
-    exit 1
-  fi
-fi
-
-# Auto-detect iOS simulator UDID (IOS_SIMULATOR_UDID env overrides)
-if [[ -n "${IOS_SIMULATOR_UDID:-}" ]]; then
-  IOS_UDID="$IOS_SIMULATOR_UDID"
-else
-  IOS_UDID=$(xcrun simctl list devices 2>/dev/null | grep "Booted" | grep -oE '[A-F0-9-]{36}' | head -1 || true)
-  if [[ -z "$IOS_UDID" ]]; then
-    echo "ERROR: No booted iOS simulator found. Boot a simulator or set IOS_SIMULATOR_UDID." >&2
-    exit 1
-  fi
-fi
-
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 EXAMPLE_DIR="$REPO_ROOT/example"
 APK_PATH="$EXAMPLE_DIR/build/app/outputs/flutter-apk/app-debug.apk"
@@ -63,6 +41,34 @@ for arg in "$@"; do
     --ios-only)     RUN_ANDROID=false ;;
   esac
 done
+
+# ── Device detection (only for platforms being tested) ───────────────────────
+ANDROID_DEVICE=""
+IOS_UDID=""
+
+if [[ "$RUN_ANDROID" == true ]]; then
+  if [[ -n "${ANDROID_SERIAL:-}" ]]; then
+    ANDROID_DEVICE="$ANDROID_SERIAL"
+  else
+    ANDROID_DEVICE=$(adb devices 2>/dev/null | grep -E "emulator|device$" | grep -v "List" | awk '{print $1}' | head -1 || true)
+    if [[ -z "$ANDROID_DEVICE" ]]; then
+      echo "ERROR: No Android device/emulator found. Start an emulator or set ANDROID_SERIAL." >&2
+      exit 1
+    fi
+  fi
+fi
+
+if [[ "$RUN_IOS" == true ]]; then
+  if [[ -n "${IOS_SIMULATOR_UDID:-}" ]]; then
+    IOS_UDID="$IOS_SIMULATOR_UDID"
+  else
+    IOS_UDID=$(xcrun simctl list devices 2>/dev/null | grep "Booted" | grep -oE '[A-F0-9-]{36}' | head -1 || true)
+    if [[ -z "$IOS_UDID" ]]; then
+      echo "ERROR: No booted iOS simulator found. Boot a simulator or set IOS_SIMULATOR_UDID." >&2
+      exit 1
+    fi
+  fi
+fi
 
 # ── State tracking (bash 3.2 compatible — no associative arrays) ─────────────
 TOTAL=0; PASSED=0; FAILED=0; WARNED=0
