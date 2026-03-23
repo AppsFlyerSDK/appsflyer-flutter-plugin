@@ -95,6 +95,14 @@ jobs:
       - name: Create example .env file
         run: echo "${{ secrets.ENV_FILE }}" > example/.env
 
+      # ── Cache iOS build output ───────────────────────────────────────────
+      - name: Cache iOS build output
+        uses: actions/cache@v4
+        with:
+          path: example/build/ios
+          key: ios-build-${{ hashFiles('ios/**', 'lib/**', 'example/lib/**', 'example/ios/**', 'pubspec.yaml') }}
+          restore-keys: ios-build-
+
       # ── Build iOS simulator app ──────────────────────────────────────────
       - name: Build iOS simulator app (debug)
         working-directory: example
