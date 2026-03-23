@@ -153,23 +153,45 @@ ios_fresh_install() {
   xcrun simctl install "$IOS_UDID" "$IOS_APP_PATH"
 }
 
-IOS_LOG_FILE="/tmp/af_ios_runner_logs.txt"
+IOS_LOG_FILE="/tmp/af_ios_stdout.txt"
+IOS_ERR_FILE="/tmp/af_ios_stderr.txt"
+IOS_STREAM_FILE="/tmp/af_ios_syslog.txt"
+IOS_STREAM_PID=""
+
+ios_start_logstream() {
+  rm -f "$IOS_STREAM_FILE"
+  # Capture system log (NSLog / os_log) in background — covers Flutter print on some iOS versions
+  xcrun simctl spawn "$IOS_UDID" log stream --level debug \
+    --predicate 'process == "Runner"' > "$IOS_STREAM_FILE" 2>/dev/null &
+  IOS_STREAM_PID=$!
+  sleep 1
+}
+
+ios_stop_logstream() {
+  [[ -n "$IOS_STREAM_PID" ]] && kill "$IOS_STREAM_PID" 2>/dev/null || true
+}
 
 ios_launch() {
   step "Launching app"
-  rm -f "$IOS_LOG_FILE"
-  # Launch with stdout/stderr captured to file — Flutter debugPrint goes here
-  IOS_LAUNCH_OUT=$(xcrun simctl launch --stdout "$IOS_LOG_FILE" --stderr "$IOS_LOG_FILE" "$IOS_UDID" "$IOS_BUNDLE" 2>&1)
+  rm -f "$IOS_LOG_FILE" "$IOS_ERR_FILE"
+  # Separate stdout/stderr files — same file causes simctl to lose PID output
+  IOS_LAUNCH_OUT=$(xcrun simctl launch \
+    --stdout="$IOS_LOG_FILE" \
+    --stderr="$IOS_ERR_FILE" \
+    "$IOS_UDID" "$IOS_BUNDLE" 2>&1)
   IOS_PID=$(echo "$IOS_LAUNCH_OUT" | grep -oE '[0-9]+$' | tail -1 || true)
   note "PID: $IOS_PID"
 }
 
 ios_logs() {
-  cat "$IOS_LOG_FILE" 2>/dev/null | grep -E "AF_QA|response_status=" || true
+  # Merge stdout, stderr, and system log — Flutter print may go to any of these
+  { cat "$IOS_LOG_FILE" "$IOS_ERR_FILE" "$IOS_STREAM_FILE" 2>/dev/null; } \
+    | grep -E "AF_QA|response_status=" || true
 }
 
 ios_http_count() {
-  cat "$IOS_LOG_FILE" 2>/dev/null | grep -c "response_status=200" || echo 0
+  { cat "$IOS_LOG_FILE" "$IOS_ERR_FILE" "$IOS_STREAM_FILE" 2>/dev/null; } \
+    | grep -c "response_status=200" || echo 0
 }
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -301,10 +323,12 @@ run_android_phase3() {
 run_ios_phase1() {
   header "iOS — Phase 1: Smoke (fresh install)"
   ios_fresh_install
+  ios_start_logstream
   ios_launch
   step "Waiting 30s for SDK start + events..."
   sleep 30
-  local logs; logs=$(ios_logs 40)
+  ios_stop_logstream
+  local logs; logs=$(ios_logs)
 
   echo ""
   note "--- SDK Init ---"
@@ -322,7 +346,7 @@ run_ios_phase1() {
   check_present "af_purchase fired"     "[AF_QA][logEvent: af_purchase"     "$logs"
   check_present "af_content_view fired" "[AF_QA][logEvent: af_content_view" "$logs"
 
-  local http_count; http_count=$(ios_http_count 35)
+  local http_count; http_count=$(ios_http_count)
   if [[ "$http_count" -ge 3 ]]; then
     pass "HTTP 200 responses: $http_count (≥3 required)"
   else
@@ -354,13 +378,13 @@ run_ios_phase2() {
   xcrun simctl openurl "$IOS_UDID" "$DL_BG_URL"
   sleep 5
 
-  local logs; logs=$(ios_logs 20)
+  local logs; logs=$(ios_logs)
   echo ""
   check_present "onDeepLinking FOUND (bg)"                      "status=Status.FOUND deepLinkValue=qa_deeplink_bg error=null" "$logs"
   check_present "deepLinkValue=qa_deeplink_bg"                  "qa_deeplink_bg"    "$logs"
   check_present "2nd onInstallConversionData is_first_launch=false" "is_first_launch: false" "$logs"
 
-  local http_count; http_count=$(ios_http_count 20)
+  local http_count; http_count=$(ios_http_count)
   if [[ "$http_count" -ge 1 ]]; then pass "HTTP 200 observed"; else fail "HTTP 200 not observed"; fi
 
   check_absent "No Fatal Exception" "Fatal Exception" "$logs"
@@ -371,13 +395,15 @@ run_ios_phase2() {
 run_ios_phase3() {
   header "iOS — Phase 3: Foreground Deep Link (fresh install #2)"
   ios_fresh_install
+  ios_start_logstream
   ios_launch
   step "Waiting 28s for SDK start + first conversion data (iOS cold install needs ~21s)..."
   sleep 28
 
-  local pre_logs; pre_logs=$(ios_logs 35)
+  local pre_logs; pre_logs=$(ios_logs)
   if ! echo "$pre_logs" | grep -qF "is_first_launch: true"; then
     fail "is_first_launch=true not confirmed — aborting phase"
+    ios_stop_logstream
     set_phase ios_phase_3 FAIL; return
   fi
   pass "is_first_launch=true confirmed (pre-deeplink gate)"
@@ -390,13 +416,14 @@ run_ios_phase3() {
   xcrun simctl openurl "$IOS_UDID" "$DL_FG_URL"
   sleep 5
 
-  local logs; logs=$(ios_logs 30)
+  ios_stop_logstream
+  local logs; logs=$(ios_logs)
   echo ""
   check_present "onDeepLinking FOUND (fg)"                      "status=Status.FOUND deepLinkValue=qa_deeplink_fg error=null" "$logs"
   check_present "deepLinkValue=qa_deeplink_fg"                  "qa_deeplink_fg"    "$logs"
   check_present "2nd onInstallConversionData is_first_launch=false" "is_first_launch: false" "$logs"
 
-  local http_count; http_count=$(ios_http_count 30)
+  local http_count; http_count=$(ios_http_count)
   if [[ "$http_count" -ge 1 ]]; then pass "HTTP 200 observed"; else fail "HTTP 200 not observed"; fi
 
   check_absent "No Fatal Exception" "Fatal Exception" "$logs"
