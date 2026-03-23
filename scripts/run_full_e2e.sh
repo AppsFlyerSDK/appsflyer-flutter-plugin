@@ -160,8 +160,9 @@ IOS_STREAM_PID=""
 
 ios_start_logstream() {
   rm -f "$IOS_STREAM_FILE"
-  # Capture system log (NSLog / os_log) in background — covers Flutter print on some iOS versions
-  xcrun simctl spawn "$IOS_UDID" log stream --level debug \
+  # Capture system log in background — with OS_ACTIVITY_DT_MODE enabled, Flutter NSLog appears here
+  SIMCTL_CHILD_OS_ACTIVITY_DT_MODE=enable \
+    xcrun simctl spawn "$IOS_UDID" log stream --level debug \
     --predicate 'process == "Runner"' > "$IOS_STREAM_FILE" 2>/dev/null &
   IOS_STREAM_PID=$!
   sleep 1
@@ -174,10 +175,11 @@ ios_stop_logstream() {
 ios_launch() {
   step "Launching app"
   rm -f "$IOS_LOG_FILE" "$IOS_ERR_FILE"
-  # Separate stdout/stderr files — same file causes simctl to lose PID output
-  IOS_LAUNCH_OUT=$(xcrun simctl launch \
-    --stdout="$IOS_LOG_FILE" \
-    --stderr="$IOS_ERR_FILE" \
+  # SIMCTL_CHILD_* vars are passed to the app process — enables NSLog in headless CI
+  IOS_LAUNCH_OUT=$(SIMCTL_CHILD_OS_ACTIVITY_DT_MODE=enable \
+    xcrun simctl launch \
+    --stdout "$IOS_LOG_FILE" \
+    --stderr "$IOS_ERR_FILE" \
     "$IOS_UDID" "$IOS_BUNDLE" 2>&1)
   IOS_PID=$(echo "$IOS_LAUNCH_OUT" | grep -oE '[0-9]+$' | tail -1 || true)
   note "PID: $IOS_PID"
