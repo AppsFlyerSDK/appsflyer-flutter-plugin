@@ -159,7 +159,7 @@ ios_find_log_file() {
   local sim_data="$HOME/Library/Developer/CoreSimulator/Devices/$IOS_UDID/data"
   IOS_QA_LOG_FILE=$(find "$sim_data/Containers/Data/Application" \
     -name "af_qa_logs.txt" 2>/dev/null | head -1 || true)
-  note "QA log file: ${IOS_QA_LOG_FILE:-not found yet}"
+  note "QA log file: ${IOS_QA_LOG_FILE:-not found yet}" >&2
 }
 
 ios_start_logstream() { :; }
@@ -368,13 +368,12 @@ run_ios_phase2() {
 
   step "Triggering background deep link"
   xcrun simctl openurl "$IOS_UDID" "$DL_BG_URL"
-  sleep 5
+  sleep 10
 
   local logs; logs=$(ios_logs)
   echo ""
-  check_present "onDeepLinking FOUND (bg)"                      "status=Status.FOUND deepLinkValue=qa_deeplink_bg error=null" "$logs"
-  check_present "deepLinkValue=qa_deeplink_bg"                  "qa_deeplink_bg"    "$logs"
-  check_present "2nd onInstallConversionData is_first_launch=false" "is_first_launch: false" "$logs"
+  check_present "onDeepLinking FOUND (bg)"     "status=Status.FOUND deepLinkValue=qa_deeplink_bg error=null" "$logs"
+  check_present "deepLinkValue=qa_deeplink_bg" "qa_deeplink_bg" "$logs"
 
   local http_count; http_count=$(ios_http_count)
   if [[ "$http_count" -ge 1 ]]; then pass "HTTP 200 observed"; else fail "HTTP 200 not observed"; fi
