@@ -18,6 +18,10 @@
 name: E2E — Full Integration Tests
 
 on:
+  push:
+    branches:
+      - POC/AI-Agent-Version-Update
+
   workflow_dispatch:
     inputs:
       platform:
