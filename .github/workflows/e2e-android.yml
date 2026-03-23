@@ -1,0 +1,108 @@
+# =============================================================================
+# E2E Test Workflow — Android Integration Tests
+# =============================================================================
+#
+# Runs all 3 phases on Android emulator:
+#   Phase 1 — Smoke: SDK init, API calls, events, HTTP 200 validation
+#   Phase 2 — Background deep link: onDeepLinking FOUND + LAUNCH HTTP 200
+#   Phase 3 — Foreground deep link: fresh install + onPause cycle + FOUND
+#
+# Note: Android emulator requires KVM (Linux). Uses ubuntu-latest runner.
+#
+# Triggers:
+#   - Manual (workflow_dispatch)
+#   - Weekly scheduled (Sunday 03:00 UTC)
+#   - Can be called from other workflows (workflow_call)
+# =============================================================================
+
+name: E2E — Android Integration Tests
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: '0 3 * * 0'  # Every Sunday at 03:00 UTC
+
+  workflow_call:
+
+concurrency:
+  group: e2e-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e-android:
+    name: E2E Tests (Android)
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── Checkout ────────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Java ─────────────────────────────────────────────────────────────────
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      # ── Flutter ─────────────────────────────────────────────────────────────
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      # ── Install dependencies ─────────────────────────────────────────────
+      - name: Install plugin dependencies
+        run: flutter pub get
+
+      - name: Install example app dependencies
+        working-directory: example
+        run: flutter pub get
+
+      # ── Create .env file from secret ─────────────────────────────────────
+      - name: Create example .env file
+        run: echo "${{ secrets.ENV_FILE }}" > example/.env
+
+      # ── Build Android APK ────────────────────────────────────────────────
+      - name: Build Android APK (debug)
+        working-directory: example
+        run: flutter build apk --debug
+
+      # ── Clear old reports ────────────────────────────────────────────────
+      - name: Clear previous E2E reports
+        run: rm -f .claude/e2e-reports/full_e2e_report_*.json
+
+      # ── Run E2E tests on Android emulator ────────────────────────────────
+      - name: Run E2E tests (Android)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          arch: x86_64
+          profile: pixel_6
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: ./scripts/run_full_e2e.sh --no-build --android-only
+
+      # ── Upload report artifact ──────────────────────────────────────────
+      - name: Upload E2E report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-android-report-${{ github.run_number }}
+          path: .claude/e2e-reports/full_e2e_report_*.json
+          retention-days: 30
+
+      # ── Post summary to job output ───────────────────────────────────────
+      - name: Print latest report
+        if: always()
+        run: |
+          REPORT=$(ls -t .claude/e2e-reports/full_e2e_report_*.json 2>/dev/null | head -1)
+          if [[ -n "$REPORT" ]]; then
+            echo "=== E2E Android Report: $(basename $REPORT) ==="
+            cat "$REPORT"
+          else
+            echo "No report file found"
+          fi

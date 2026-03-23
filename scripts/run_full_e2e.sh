@@ -475,40 +475,66 @@ print_summary() {
 
 save_report() {
   local overall; overall=$(overall_status)
-  local a1; a1=$(get_phase android_phase_1)
-  local a2; a2=$(get_phase android_phase_2)
-  local a3; a3=$(get_phase android_phase_3)
   local i1; i1=$(get_phase ios_phase_1)
   local i2; i2=$(get_phase ios_phase_2)
   local i3; i3=$(get_phase ios_phase_3)
+  local a1; a1=$(get_phase android_phase_1)
+  local a2; a2=$(get_phase android_phase_2)
+  local a3; a3=$(get_phase android_phase_3)
+
+  # Build platforms_run array dynamically
+  local platforms=""
+  [[ "$RUN_ANDROID" == true ]] && platforms="\"android\""
+  if [[ "$RUN_IOS" == true ]]; then
+    [[ -n "$platforms" ]] && platforms="$platforms, "
+    platforms="${platforms}\"ios\""
+  fi
 
   mkdir -p "$REPORT_DIR"
-  cat > "$REPORT_FILE" <<EOF
-{
-  "_meta": {
-    "run_date": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-    "plan_version": "1.0.0",
-    "overall_status": "$overall",
-    "platforms_run": ["android", "ios"],
-    "total_checks": $TOTAL,
-    "passed": $PASSED,
-    "failed": $FAILED
-  },
-  "summary_table": {
-    "android_phase_1_smoke":       "$a1",
-    "android_phase_2_bg_deeplink": "$a2",
-    "android_phase_3_fg_deeplink": "$a3",
-    "ios_phase_1_smoke":           "$i1",
-    "ios_phase_2_bg_deeplink":     "$i2",
-    "ios_phase_3_fg_deeplink":     "$i3"
-  },
-  "baselines_used": {
-    "smoke_android":       ".claude/e2e-baselines/android_baseline.json",
-    "smoke_ios":           ".claude/e2e-baselines/ios_baseline.json",
-    "deeplink_background": ".claude/e2e-baselines/deeplink_background_baseline.json",
-    "deeplink_foreground": ".claude/e2e-baselines/deeplink_foreground_baseline.json"
-  }
-}
+  {
+    echo "{"
+    echo "  \"_meta\": {"
+    echo "    \"run_date\": \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\","
+    echo "    \"plan_version\": \"1.0.0\","
+    echo "    \"overall_status\": \"$overall\","
+    echo "    \"platforms_run\": [$platforms],"
+    echo "    \"total_checks\": $TOTAL,"
+    echo "    \"passed\": $PASSED,"
+    echo "    \"failed\": $FAILED"
+    echo "  },"
+    echo "  \"summary_table\": {"
+    # Only emit sections for platforms that were run
+    local first=true
+    if [[ "$RUN_IOS" == true ]]; then
+      [[ "$first" == true ]] && first=false || echo ","
+      printf "    \"ios_phase_1_smoke\":           \"%s\",\n" "$i1"
+      printf "    \"ios_phase_2_bg_deeplink\":     \"%s\",\n" "$i2"
+      printf "    \"ios_phase_3_fg_deeplink\":     \"%s\""    "$i3"
+    fi
+    if [[ "$RUN_ANDROID" == true ]]; then
+      [[ "$first" == true ]] && first=false || echo ","
+      printf "    \"android_phase_1_smoke\":       \"%s\",\n" "$a1"
+      printf "    \"android_phase_2_bg_deeplink\": \"%s\",\n" "$a2"
+      printf "    \"android_phase_3_fg_deeplink\": \"%s\""    "$a3"
+    fi
+    echo ""
+    echo "  },"
+    echo "  \"baselines_used\": {"
+    if [[ "$RUN_IOS" == true && "$RUN_ANDROID" == true ]]; then
+      echo "    \"smoke_android\":       \".claude/e2e-baselines/android_baseline.json\","
+      echo "    \"smoke_ios\":           \".claude/e2e-baselines/ios_baseline.json\","
+      echo "    \"deeplink_background\": \".claude/e2e-baselines/deeplink_background_baseline.json\","
+      echo "    \"deeplink_foreground\": \".claude/e2e-baselines/deeplink_foreground_baseline.json\""
+    elif [[ "$RUN_IOS" == true ]]; then
+      echo "    \"smoke_ios\":           \".claude/e2e-baselines/ios_baseline.json\","
+      echo "    \"deeplink_background\": \".claude/e2e-baselines/deeplink_background_baseline.json\","
+      echo "    \"deeplink_foreground\": \".claude/e2e-baselines/deeplink_foreground_baseline.json\""
+    else
+      echo "    \"smoke_android\":       \".claude/e2e-baselines/android_baseline.json\""
+    fi
+    echo "  }"
+    echo "}"
+  } > "$REPORT_FILE"
 EOF
 
   local readme="$REPORT_DIR/README.md"
