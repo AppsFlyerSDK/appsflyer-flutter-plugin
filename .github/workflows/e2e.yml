@@ -46,7 +46,7 @@ concurrency:
 jobs:
   e2e:
     name: E2E Tests (Android + iOS)
-    runs-on: self-hosted
+    runs-on: macos-14
 
     steps:
       # ── Checkout ────────────────────────────────────────────────────────────
