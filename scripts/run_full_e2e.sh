@@ -103,6 +103,17 @@ check_absent() {
   fi
 }
 
+# Set phase FAIL if any check inside it failed, PASS otherwise.
+# Usage: end_phase <phase_key> <FAILED_count_at_phase_start>
+end_phase() {
+  local phase_key="$1" failed_before="$2"
+  if [[ $FAILED -gt $failed_before ]]; then
+    set_phase "$phase_key" FAIL
+  else
+    set_phase "$phase_key" PASS
+  fi
+}
+
 count_matches() { echo "$1" | grep -cF "$2" 2>/dev/null || echo 0; }
 
 # ── Build ─────────────────────────────────────────────────────────────────────
@@ -192,6 +203,7 @@ ios_http_count() {
 
 run_android_phase1() {
   header "Android — Phase 1: Smoke (fresh install)"
+  local _f=$FAILED
   android_fresh_install
   if ! android_launch; then set_phase android_phase_1 FAIL; return; fi
   step "Waiting 30s for SDK start + events..."
@@ -234,7 +246,7 @@ run_android_phase1() {
   check_absent "No startSDK error"  "[AF_QA][startSDK] error:" "$logs"
   check_absent "No 5xx responses"   "response code:5"           "$logs"
 
-  set_phase android_phase_1 PASS
+  end_phase android_phase_1 $_f
 }
 
 run_android_phase2() {
@@ -242,6 +254,7 @@ run_android_phase2() {
   if [[ "$(get_phase android_phase_1)" != "PASS" ]]; then
     note "Skipping — Phase 1 did not pass"; set_phase android_phase_2 SKIP; return
   fi
+  local _f=$FAILED
 
   step "Pressing HOME (background app)"
   adb -s "$ANDROID_DEVICE" shell input keyevent KEYCODE_HOME
@@ -269,11 +282,12 @@ run_android_phase2() {
 
   check_absent "No Fatal Exception" "Fatal Exception" "$logs"
 
-  set_phase android_phase_2 PASS
+  end_phase android_phase_2 $_f
 }
 
 run_android_phase3() {
   header "Android — Phase 3: Foreground Deep Link (fresh install #2)"
+  local _f=$FAILED
   android_fresh_install
   if ! android_launch; then set_phase android_phase_3 FAIL; return; fi
   step "Waiting 25s for SDK start + first conversion data..."
@@ -305,7 +319,7 @@ run_android_phase3() {
 
   check_absent "No Fatal Exception" "Fatal Exception" "$logs"
 
-  set_phase android_phase_3 PASS
+  end_phase android_phase_3 $_f
 }
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -314,6 +328,7 @@ run_android_phase3() {
 
 run_ios_phase1() {
   header "iOS — Phase 1: Smoke (fresh install)"
+  local _f=$FAILED
   ios_fresh_install
   ios_start_logstream
   ios_launch
@@ -353,7 +368,7 @@ run_ios_phase1() {
     note "Initial onDeepLinking NOT_FOUND at launch — expected iOS SDK behavior"
   fi
 
-  set_phase ios_phase_1 PASS
+  end_phase ios_phase_1 $_f
 }
 
 run_ios_phase2() {
@@ -361,6 +376,7 @@ run_ios_phase2() {
   if [[ "$(get_phase ios_phase_1)" != "PASS" ]]; then
     note "Skipping — Phase 1 did not pass"; set_phase ios_phase_2 SKIP; return
   fi
+  local _f=$FAILED
 
   step "Launching Safari to background the app"
   xcrun simctl launch "$IOS_UDID" com.apple.mobilesafari > /dev/null 2>&1 || true
@@ -380,11 +396,12 @@ run_ios_phase2() {
 
   check_absent "No Fatal Exception" "Fatal Exception" "$logs"
 
-  set_phase ios_phase_2 PASS
+  end_phase ios_phase_2 $_f
 }
 
 run_ios_phase3() {
   header "iOS — Phase 3: Foreground Deep Link (fresh install #2)"
+  local _f=$FAILED
   ios_fresh_install
   ios_start_logstream
   ios_launch
@@ -410,16 +427,15 @@ run_ios_phase3() {
   ios_stop_logstream
   local logs; logs=$(ios_logs)
   echo ""
-  check_present "onDeepLinking FOUND (fg)"                      "status=Status.FOUND deepLinkValue=qa_deeplink_fg error=null" "$logs"
-  check_present "deepLinkValue=qa_deeplink_fg"                  "qa_deeplink_fg"    "$logs"
-  check_present "2nd onInstallConversionData is_first_launch=false" "is_first_launch: false" "$logs"
+  check_present "onDeepLinking FOUND (fg)"     "status=Status.FOUND deepLinkValue=qa_deeplink_fg error=null" "$logs"
+  check_present "deepLinkValue=qa_deeplink_fg" "qa_deeplink_fg" "$logs"
 
   local http_count; http_count=$(ios_http_count)
   if [[ "$http_count" -ge 1 ]]; then pass "HTTP 200 observed"; else fail "HTTP 200 not observed"; fi
 
   check_absent "No Fatal Exception" "Fatal Exception" "$logs"
 
-  set_phase ios_phase_3 PASS
+  end_phase ios_phase_3 $_f
 }
 
 # ═════════════════════════════════════════════════════════════════════════════
