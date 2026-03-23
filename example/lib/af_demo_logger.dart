@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 
 /// Centralized logger for the AppsFlyer demo app.
 ///
@@ -21,7 +23,7 @@ class AfDemoLogger extends ChangeNotifier {
   void log(String method, String message) {
     final line = '[AF_QA][$method] $message';
     debugPrint(line);
-    _writeToFile(line);
+    unawaited(_writeToFile(line));
     lines.add(line);
     notifyListeners();
   }
@@ -41,7 +43,7 @@ class AfDemoLogger extends ChangeNotifier {
   void logCallback(String callbackName, dynamic payload) {
     final line = '[AF_QA][CALLBACK][$callbackName] received: $payload';
     debugPrint(line);
-    _writeToFile(line);
+    unawaited(_writeToFile(line));
     lines.add(line);
     notifyListeners();
   }
@@ -55,15 +57,12 @@ class AfDemoLogger extends ChangeNotifier {
   /// On iOS simulator the file lands at:
   ///   ~/Library/Developer/CoreSimulator/Devices/{UDID}/data/
   ///     Containers/Data/Application/*/Documents/af_qa_logs.txt
-  void _writeToFile(String line) {
+  Future<void> _writeToFile(String line) async {
     if (!Platform.isIOS && !Platform.isAndroid) return;
     try {
-      final home = Platform.environment['HOME'];
-      if (home == null) return;
-      final dir = Platform.isIOS ? '$home/Documents' : '/data/data/com.appsflyer.android.deviceid/files';
-      Directory(dir).createSync(recursive: true);
-      File('$dir/af_qa_logs.txt')
-          .writeAsStringSync('$line\n', mode: FileMode.append, flush: true);
+      final dir = await getApplicationDocumentsDirectory();
+      await File('${dir.path}/af_qa_logs.txt')
+          .writeAsString('$line\n', mode: FileMode.append, flush: true);
     } catch (_) {}
   }
 }
