@@ -1,0 +1,275 @@
+{
+  "_meta": {
+    "captured_at": "2026-03-16",
+    "plugin_version": "6.17.8",
+    "native_sdk_version": "6.17.5",
+    "native_sdk_build": "366",
+    "platform": "android",
+    "package": "com.appsflyer.android.deviceid",
+    "apk": "example/build/app/outputs/flutter-apk/app-debug.apk",
+    "capture_method": "fresh_install — adb uninstall + adb install + adb shell am start",
+    "note": "All baselines require a fresh install (uninstall + reinstall) before each run. is_first_launch=true is only guaranteed on fresh install."
+  },
+
+  "fresh_install_procedure": {
+    "description": "These exact steps MUST be followed before every baseline validation run.",
+    "steps": [
+      "adb uninstall com.appsflyer.android.deviceid",
+      "adb logcat -c",
+      "adb install example/build/app/outputs/flutter-apk/app-debug.apk",
+      "adb shell am start -n com.appsflyer.android.deviceid/.MainActivity",
+      "sleep 20 (wait for SDK to complete all HTTP calls)",
+      "confirm: adb shell pidof com.appsflyer.android.deviceid returns a PID"
+    ],
+    "log_collection": [
+      "adb logcat -d -s AppsFlyer_6.17.5 --pid=<PID> -t 2000",
+      "adb logcat -d --pid=<PID> -t 2000 | grep AF_QA"
+    ]
+  },
+
+  "lifecycle": {
+    "pre_start_sequence": [
+      "[AF_QA][initSdk] result: channel registration complete",
+      "[AF_QA][AUTO_APIS] --- Running pre-start auto APIs ---",
+      "[AF_QA][getVersionNumber] result:",
+      "[AF_QA][enableTCFDataCollection] shouldCollect=true",
+      "[AF_QA][setConsentDataV2] isUserSubjectToGDPR=false",
+      "[AF_QA][setDisableAdvertisingIdentifiers] disabled=false",
+      "[AF_QA][setCollectIMEI] isCollect=false",
+      "[AF_QA][setCollectAndroidId] isCollect=false",
+      "[AF_QA][performOnDeepLinking] called",
+      "[AF_QA][AUTO_APIS] --- Pre-start auto APIs complete ---",
+      "[AF_QA][startSDK] calling..."
+    ],
+    "post_start_sequence": [
+      "[AF_QA][startSDK] result: SUCCESS",
+      "[AF_QA][AUTO_APIS] --- Running post-start auto APIs ---",
+      "[AF_QA][getSDKVersion] result:",
+      "[AF_QA][getAppsFlyerUID] result:",
+      "[AF_QA][getHostName] result:",
+      "[AF_QA][getHostPrefix] result:",
+      "[AF_QA][logEvent(af_demo_launch)] result: true",
+      "[AF_QA][logEvent: af_purchase sent] result: true",
+      "[AF_QA][logEvent: af_content_view sent] result: true",
+      "[AF_QA][setCustomerUserId] id=qa_auto_customer_001",
+      "[AF_QA][anonymizeUser] shouldAnonymize=false",
+      "[AF_QA][setAdditionalData] customData={qa_key:qa_value, auto_run:true}",
+      "[AF_QA][setSharingFilterForPartners] partners=[demo_partner]",
+      "[AF_QA][AUTO_APIS] --- Post-start auto APIs complete ---"
+    ],
+    "native_markers": [
+      "AppsFlyer: first launch detected",
+      "Initializing AppsFlyer SDK",
+      "Starting AppsFlyer",
+      "Sending first launch for this session"
+    ]
+  },
+
+  "api_results": {
+    "getVersionNumber": {
+      "rule": "exact",
+      "expected": "6.17.8",
+      "log_pattern": "[AF_QA][getVersionNumber] result: {VALUE}"
+    },
+    "getSDKVersion": {
+      "rule": "contains",
+      "expected": "6.17",
+      "log_pattern": "[AF_QA][getSDKVersion] result: {VALUE}"
+    },
+    "getHostName": {
+      "rule": "exact",
+      "expected": "appsflyersdk.com",
+      "log_pattern": "[AF_QA][getHostName] result: {VALUE}"
+    },
+    "getHostPrefix": {
+      "rule": "present_and_non_empty",
+      "log_pattern": "[AF_QA][getHostPrefix] result: {VALUE}"
+    },
+    "getAppsFlyerUID": {
+      "rule": "pattern",
+      "pattern": "^\\d+-\\d+$",
+      "log_pattern": "[AF_QA][getAppsFlyerUID] result: {VALUE}"
+    },
+    "getOutOfStore": {
+      "rule": "present",
+      "log_pattern": "[AF_QA][getOutOfStore] result: {VALUE}"
+    }
+  },
+
+  "http_requests": {
+    "description": "Validate using: adb logcat -d -s AppsFlyer_<version> --pid=<PID>. Filter for [HTTP Client] and 'preparing data' lines.",
+    "conversion_launch": {
+      "method": "POST",
+      "url_contains": "conversions.appsflyersdk.com/api/v6.17/androidevent",
+      "url_params": {
+        "app_id": "com.appsflyer.android.deviceid",
+        "buildnumber": "6.17.5"
+      },
+      "preparing_data_marker": "CONVERSION-",
+      "payload_fields": {
+        "platform_extension_v2.platform": "android_flutter",
+        "platform_extension_v2.version": "6.17.8",
+        "platformextension": "android_flutter",
+        "consent_data.manual.gdpr_applies": false,
+        "isFirstCall": "true"
+      },
+      "expected_response_code": "200 OK",
+      "expected_response_body": "ok",
+      "log_evidence": "[HTTP Client] [ID] response code:200 OK",
+      "note": "HTTP payload is encrypted — validate fields from 'preparing data' log line before the POST"
+    },
+    "ddl": {
+      "method": "POST",
+      "url_contains": "dlsdk.appsflyersdk.com/v1.0/android",
+      "payload_fields": {
+        "is_first": false
+      },
+      "expected_response_code": "200 OK",
+      "expected_response_body_contains": "found",
+      "log_evidence": "[HTTP Client] [ID] response code:200 OK"
+    },
+    "gcd_conversion_data": {
+      "method": "GET",
+      "url_contains": "gcdsdk.appsflyersdk.com/install_data/v5.0",
+      "marker": "[GCD-B01] URL:",
+      "expected_response_code": "200 OK",
+      "expected_callback": "GCD-A02] Calling onConversionDataSuccess",
+      "log_evidence": "[HTTP Client] [ID] response code:200 OK"
+    },
+    "inapp_af_demo_launch": {
+      "method": "POST",
+      "url_contains": "inapps.appsflyersdk.com/api/v6.17/androidevent",
+      "preparing_data_marker": "INAPP-",
+      "payload_fields": {
+        "eventName": "af_demo_launch",
+        "eventValue": "{\"platform\":\"android\",\"plugin_version\":\"6.17.8\"}",
+        "platformextension": "android_flutter",
+        "appUserId": "qa_auto_customer_001",
+        "customData": "{\"qa_key\":\"qa_value\",\"auto_run\":\"true\"}",
+        "sharing_filter": ["demo_partner"],
+        "consent_data.manual.gdpr_applies": false
+      },
+      "expected_response_code": "200 OK",
+      "log_evidence": "[HTTP Client] [ID] response code:200 OK"
+    },
+    "inapp_af_purchase": {
+      "method": "POST",
+      "url_contains": "inapps.appsflyersdk.com/api/v6.17/androidevent",
+      "preparing_data_marker": "INAPP-",
+      "payload_fields": {
+        "eventName": "af_purchase",
+        "eventValue": "{\"af_currency\":\"USD\",\"af_content_id\":\"auto_product_001\",\"source\":\"auto_on_launch\",\"af_revenue\":9.99,\"af_quantity\":1}",
+        "platformextension": "android_flutter",
+        "appUserId": "qa_auto_customer_001",
+        "customData": "{\"qa_key\":\"qa_value\",\"auto_run\":\"true\"}"
+      },
+      "expected_response_code": "200 OK",
+      "log_evidence": "[HTTP Client] [ID] response code:200 OK"
+    },
+    "inapp_af_content_view": {
+      "method": "POST",
+      "url_contains": "inapps.appsflyersdk.com/api/v6.17/androidevent",
+      "preparing_data_marker": "INAPP-",
+      "payload_fields": {
+        "eventName": "af_content_view",
+        "eventValue": "{\"af_currency\":\"USD\",\"af_content_id\":\"auto_content_001\",\"source\":\"auto_on_launch\",\"af_content_type\":\"demo_page\"}",
+        "platformextension": "android_flutter",
+        "appUserId": "qa_auto_customer_001",
+        "customData": "{\"qa_key\":\"qa_value\",\"auto_run\":\"true\"}"
+      },
+      "expected_response_code": "200 OK",
+      "log_evidence": "[HTTP Client] [ID] response code:200 OK"
+    }
+  },
+
+  "callbacks": {
+    "onInstallConversionData": {
+      "expected": true,
+      "log_pattern": "[AF_QA][CALLBACK][onInstallConversionData] received: {PAYLOAD}",
+      "stable_fields": {
+        "status": "success",
+        "af_status": "Organic",
+        "af_message": "organic install"
+      },
+      "fresh_install_fields": {
+        "is_first_launch": true,
+        "note": "is_first_launch MUST be true after a fresh install. If false, the install was not genuinely fresh — stop and reinvestigate."
+      },
+      "dynamic_fields": ["install_time"]
+    },
+    "onDeepLinking": {
+      "expected": true,
+      "log_pattern": "[AF_QA][CALLBACK][onDeepLinking] received: {PAYLOAD}",
+      "stable_fields": {
+        "status": "Status.NOT_FOUND"
+      },
+      "note": "Expected NOT_FOUND on clean launch with no incoming deep link"
+    },
+    "onAppOpenAttribution": {
+      "expected": false
+    },
+    "onConversionDataFail": {
+      "expected": false
+    }
+  },
+
+  "events": {
+    "af_demo_launch": {
+      "expected": true,
+      "result_expected": true,
+      "log_pattern": "[AF_QA][logEvent(af_demo_launch)] result: true",
+      "dart_payload": {
+        "platform": "android",
+        "plugin_version": "6.17.8"
+      },
+      "http_payload_eventValue": "{\"platform\":\"android\",\"plugin_version\":\"6.17.8\"}"
+    },
+    "af_purchase": {
+      "expected": true,
+      "result_expected": true,
+      "log_pattern": "[AF_QA][logEvent: af_purchase sent] result: true",
+      "dart_payload": {
+        "af_content_id": "auto_product_001",
+        "af_currency": "USD",
+        "af_revenue": 9.99,
+        "af_quantity": 1,
+        "source": "auto_on_launch"
+      },
+      "http_payload_eventValue": "{\"af_currency\":\"USD\",\"af_content_id\":\"auto_product_001\",\"source\":\"auto_on_launch\",\"af_revenue\":9.99,\"af_quantity\":1}"
+    },
+    "af_content_view": {
+      "expected": true,
+      "result_expected": true,
+      "log_pattern": "[AF_QA][logEvent: af_content_view sent] result: true",
+      "dart_payload": {
+        "af_content_id": "auto_content_001",
+        "af_content_type": "demo_page",
+        "af_currency": "USD",
+        "source": "auto_on_launch"
+      },
+      "http_payload_eventValue": "{\"af_currency\":\"USD\",\"af_content_id\":\"auto_content_001\",\"source\":\"auto_on_launch\",\"af_content_type\":\"demo_page\"}"
+    }
+  },
+
+  "known_warnings": {
+    "gaid_unavailable": {
+      "rule": "warn_not_fail",
+      "log_pattern": "Google Play Services is missing",
+      "note": "Expected on emulator. All events still send successfully."
+    },
+    "register_trigger_failure": {
+      "rule": "warn_not_fail",
+      "log_pattern": "REGISTER_TRIGGER.*FAILURE",
+      "note": "Expected with placeholder FCM token."
+    }
+  },
+
+  "must_not_contain": [
+    "[AF_QA][startSDK] error:",
+    "[AF_QA][initSdk] error:",
+    "response code:4",
+    "response code:5",
+    "Fatal Exception",
+    "FATAL"
+  ]
+}

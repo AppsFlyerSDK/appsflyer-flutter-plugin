@@ -1,0 +1,136 @@
+{
+  "_meta": {
+    "scenario": "deep_link_foreground",
+    "description": "App is in foreground. User briefly switches to launcher (simulating a notification tap or link open in browser), then a deep link brings them back. onDeepLinking fires with FOUND via the onResume/onNewIntent path.",
+    "url_scheme": "afexample",
+    "test_url": "afexample://deeplink?deep_link_value=qa_deeplink_fg&af_sub1=foreground_test&pid=testmedia&c=deeplink_test",
+    "captured_from": "Android emulator-5554 PID 27300, fresh install 2026-03-16",
+    "status": "CAPTURED — baselines reflect real observed payloads",
+    "important_note": "A deep link sent directly to a foregrounded app via adb onNewIntent (without any pause/resume cycle) does NOT trigger onDeepLinking. The app must go through at least a brief onPause before the SDK processes the new deep link. The test procedure uses a launcher switch to simulate this real-world pattern."
+  },
+
+  "preconditions": [
+    "App fresh-installed (standard fresh install procedure)",
+    "SDK fully started — startSDK result: SUCCESS confirmed in logs",
+    "onInstallConversionData fired with is_first_launch=true",
+    "App is in the foreground (no home press yet)"
+  ],
+
+  "procedure": {
+    "android": [
+      "confirm app is in foreground: adb shell dumpsys activity activities | grep mResumedActivity | grep appsflyer",
+      "briefly switch to launcher: adb shell am start -a android.intent.action.MAIN -c android.intent.category.HOME",
+      "sleep 1",
+      "trigger deep link (brings app back to foreground): adb shell am start -a android.intent.action.VIEW -d \"afexample://deeplink?deep_link_value=qa_deeplink_fg&af_sub1=foreground_test&pid=testmedia&c=deeplink_test\"",
+      "sleep 4",
+      "adb logcat -d --pid=<PID> | grep -E \"AF_QA|DDL|DeepLink\""
+    ],
+    "ios": [
+      "xcrun simctl uninstall E112EA95-9BAE-4BE1-921C-FCCC39CF5F31 com.appsflyer.example",
+      "xcrun simctl install E112EA95-9BAE-4BE1-921C-FCCC39CF5F31 build/ios/iphonesimulator/Runner.app",
+      "xcrun simctl launch E112EA95-9BAE-4BE1-921C-FCCC39CF5F31 com.appsflyer.example",
+      "sleep 12 (wait for SDK start + onInstallConversionData with is_first_launch=true)",
+      "confirm app is in foreground (PID 2473 alive)",
+      "briefly switch to Settings to trigger onPause: xcrun simctl launch E112EA95-9BAE-4BE1-921C-FCCC39CF5F31 com.apple.Preferences",
+      "sleep 1",
+      "xcrun simctl openurl E112EA95-9BAE-4BE1-921C-FCCC39CF5F31 \"afexample://deeplink?deep_link_value=qa_deeplink_fg&af_sub1=foreground_test&pid=testmedia&c=deeplink_test\"",
+      "sleep 4",
+      "xcrun simctl spawn E112EA95-9BAE-4BE1-921C-FCCC39CF5F31 log show --predicate 'process == \"Runner\"' --last 30s --style compact | grep AF_QA"
+    ],
+    "why_launcher_switch": "The AppsFlyer SDK processes deep links on onResume. When onNewIntent fires without a preceding onPause, the SDK does not re-trigger the deep link callback. The brief launcher switch causes onPause → (deep link intent) → onResume, which is the standard real-world deep link path."
+  },
+
+  "expected_callbacks": {
+    "onDeepLinking": {
+      "expected": true,
+      "log_pattern": "[AF_QA][CALLBACK][onDeepLinking] received: status=Status.FOUND deepLinkValue=qa_deeplink_fg error=null",
+      "captured_native_payload": {
+        "status": "FOUND",
+        "deepLink": {
+          "path": "",
+          "scheme": "afexample",
+          "link": "afexample://deeplink?deep_link_value=qa_deeplink_fg",
+          "host": "deeplink",
+          "deep_link_value": "qa_deeplink_fg",
+          "is_deferred": false
+        }
+      },
+      "stable_fields": {
+        "status": "Status.FOUND",
+        "deepLinkValue": "qa_deeplink_fg",
+        "error": "null"
+      }
+    },
+    "onInstallConversionData_second_fire": {
+      "expected": true,
+      "note": "Same as background scenario — onInstallConversionData fires again with is_first_launch=false on app resume.",
+      "captured_payload": {
+        "status": "success",
+        "af_status": "Organic",
+        "af_message": "organic install",
+        "is_first_launch": false
+      }
+    },
+    "onAppOpenAttribution": {
+      "expected": false,
+      "note": "Does not fire for custom URI scheme (non-OneLink) deep links."
+    }
+  },
+
+  "http_request": {
+    "description": "A LAUNCH event is sent when the app resumes via deep link.",
+    "endpoint": "launches.appsflyersdk.com/api/v6.17/androidevent",
+    "method": "POST",
+    "expected_response": "200 OK, body: ok",
+    "captured_payload_fields": {
+      "platform_extension_v2.platform": "android_flutter",
+      "platform_extension_v2.version": "6.17.8",
+      "platformextension": "android_flutter",
+      "af_deeplink": "afexample://deeplink?deep_link_value=qa_deeplink_fg",
+      "appUserId": "qa_auto_customer_001",
+      "customData": "{\"qa_key\":\"qa_value\",\"auto_run\":\"true\"}",
+      "sharing_filter": ["demo_partner"],
+      "consent_data.manual.gdpr_applies": false
+    },
+    "log_pattern": "[HTTP Client] [ID] response code:200 OK"
+  },
+
+  "background_vs_foreground_differences": {
+    "deepLinkValue": "bg=qa_deeplink_bg, fg=qa_deeplink_fg — use this to confirm which scenario ran",
+    "af_deeplink_in_launch_payload": "bg: afexample://deeplink?deep_link_value=qa_deeplink_bg, fg: afexample://deeplink?deep_link_value=qa_deeplink_fg",
+    "onInstallConversionData": "Both scenarios fire a second onInstallConversionData with is_first_launch=false",
+    "onAppOpenAttribution": "Neither fires for custom URI scheme — would need OneLink URL",
+    "sdk_behavior": "Both are functionally identical at the SDK level — both go through onPause → onNewIntent → onResume → SDK processes intent"
+  },
+
+  "ios_captured": {
+    "captured_from": "iOS simulator E112EA95-9BAE-4BE1-921C-FCCC39CF5F31 iPhone 17, fresh install 2026-03-16",
+    "app_pid": "2473",
+    "sdk_start_log": "[AF_QA][startSDK] result: SUCCESS — SDK started (2026-03-16 13:56:46)",
+    "install_conversion_first_fire_log": "[AF_QA][CALLBACK][onInstallConversionData] received: {status: success, payload: {is_first_launch: true, install_time: 2026-03-16 11:56:46.220, af_message: organic install, af_status: Organic}} (2026-03-16 13:56:50)",
+    "onDeepLinking_log": "2026-03-16 13:57:30.276 Df Runner[2473:4fcfd0] (Flutter) flutter: [AF_QA][CALLBACK][onDeepLinking] received: status=Status.FOUND deepLinkValue=qa_deeplink_fg error=null",
+    "onInstallConversionData_second_fire_log": "2026-03-16 13:57:31.257 Df Runner[2473:4fcfd0] (Flutter) flutter: [AF_QA][CALLBACK][onInstallConversionData] received: {status: success, payload: {is_first_launch: false, install_time: 2026-03-16 11:56:46.220, af_message: organic install, af_status: Organic}}",
+    "stable_fields": {
+      "status": "Status.FOUND",
+      "deepLinkValue": "qa_deeplink_fg",
+      "error": "null"
+    },
+    "http_200_responses_observed": 6,
+    "http_log_sample": "2026-03-16 13:57:30.505 Df Runner[2473:4fd88a] [com.apple.CFNetwork:Summary] Task <47FF50C9-33FD-4466-B18D-787EA9D7DB5A>.<18> summary for task success {transaction_duration_ms=232, response_status=200, ...}",
+    "notes": [
+      "App was briefly backgrounded via Settings launch (com.apple.Preferences) before deep link trigger — this is required to trigger the onPause/onResume cycle on iOS",
+      "onDeepLinking fired 981ms before onInstallConversionData second fire",
+      "HTTP 200 response observed at same timestamp as onDeepLinking callback (13:57:30)",
+      "Initial onDeepLinking fires with Status.NOT_FOUND on first launch (before any deep link) — this is expected iOS SDK behavior",
+      "onAppOpenAttribution did not fire — confirmed not expected for custom URI scheme",
+      "iOS behavior matches Android: both require a brief background cycle (onPause) before the SDK processes the deep link on resume"
+    ]
+  },
+
+  "must_not_contain": [
+    "Fatal Exception",
+    "FATAL",
+    "status=Status.NOT_FOUND",
+    "[AF_QA][startSDK] error:"
+  ]
+}

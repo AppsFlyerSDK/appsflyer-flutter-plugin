@@ -1,0 +1,167 @@
+# =============================================================================
+# E2E Test Workflow — Full AppsFlyer SDK Integration Tests
+# =============================================================================
+#
+# Runs all 3 phases on both Android emulator and iOS simulator:
+#   Phase 1 — Smoke: SDK init, API calls, events, HTTP 200 validation
+#   Phase 2 — Background deep link: onDeepLinking FOUND + LAUNCH HTTP 200
+#   Phase 3 — Foreground deep link: fresh install + onPause cycle + FOUND
+#
+# Triggers:
+#   - Manual (workflow_dispatch) — run on demand
+#   - Weekly scheduled (Sunday 02:00 UTC) — catch regressions between releases
+#   - Can be called from other workflows (workflow_call)
+#
+# Runner: macos-14 — required for both Android emulator (HAXM) and iOS simulator
+# =============================================================================
+
+name: E2E — Full Integration Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform(s) to test'
+        required: false
+        default: 'both'
+        type: choice
+        options:
+          - both
+          - android-only
+          - ios-only
+
+  schedule:
+    - cron: '0 2 * * 0'  # Every Sunday at 02:00 UTC
+
+  workflow_call:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: E2E Tests (Android + iOS)
+    runs-on: macos-14
+
+    steps:
+      # ── Checkout ────────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Java (required for Android build + emulator) ─────────────────────
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      # ── Flutter ─────────────────────────────────────────────────────────────
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      # ── Android SDK + emulator image ─────────────────────────────────────
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android emulator image (API 34, x86_64)
+        run: |
+          sdkmanager --install "emulator" "platform-tools" \
+            "system-images;android-34;google_apis;x86_64" \
+            "platforms;android-34"
+          echo "no" | avdmanager create avd \
+            --name "e2e_avd" \
+            --package "system-images;android-34;google_apis;x86_64" \
+            --device "pixel_6" \
+            --force
+
+      # ── iOS simulator ───────────────────────────────────────────────────
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app
+
+      - name: Boot iOS simulator (iPhone 15)
+        run: |
+          UDID=$(xcrun simctl list devices available 2>/dev/null \
+            | grep "iPhone 15" | grep -v "Plus\|Pro\|Max" \
+            | grep -oE '[A-F0-9-]{36}' | head -1)
+          if [[ -z "$UDID" ]]; then
+            echo "iPhone 15 not found, using first available iPhone"
+            UDID=$(xcrun simctl list devices available 2>/dev/null \
+              | grep "iPhone" | grep -oE '[A-F0-9-]{36}' | head -1)
+          fi
+          echo "Booting simulator UDID: $UDID"
+          xcrun simctl boot "$UDID"
+          # Wait for boot
+          xcrun simctl bootstatus "$UDID" -b
+          echo "IOS_SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
+
+      # ── Install Flutter + example dependencies ───────────────────────────
+      - name: Install plugin dependencies
+        run: flutter pub get
+
+      - name: Install example app dependencies
+        working-directory: example
+        run: flutter pub get
+
+      # ── iOS: CocoaPods ───────────────────────────────────────────────────
+      - name: Install CocoaPods dependencies
+        working-directory: example/ios
+        run: pod install
+
+      # ── Build Android APK ────────────────────────────────────────────────
+      - name: Build Android APK (debug)
+        working-directory: example
+        run: flutter build apk --debug
+
+      # ── Build iOS simulator app ──────────────────────────────────────────
+      - name: Build iOS simulator app (debug)
+        working-directory: example
+        run: flutter build ios --simulator --debug
+
+      # ── Start Android emulator and run E2E ──────────────────────────────
+      - name: Run E2E tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          avd-name: e2e_avd
+          force-avd-creation: false
+          emulator-options: -no-snapshot -no-window -no-audio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            # Determine platform flags from workflow input
+            PLATFORM_FLAG=""
+            INPUT="${{ github.event.inputs.platform || 'both' }}"
+            case "$INPUT" in
+              android-only) PLATFORM_FLAG="--android-only" ;;
+              ios-only)     PLATFORM_FLAG="--ios-only" ;;
+            esac
+
+            # Run the full E2E script (builds already done above)
+            ./scripts/run_full_e2e.sh --no-build $PLATFORM_FLAG
+
+      # ── Upload report artifact ──────────────────────────────────────────
+      - name: Upload E2E report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report-${{ github.run_number }}
+          path: .claude/e2e-reports/full_e2e_report_*.json
+          retention-days: 30
+
+      # ── Post summary to job output ───────────────────────────────────────
+      - name: Print latest report
+        if: always()
+        run: |
+          REPORT=$(ls -t .claude/e2e-reports/full_e2e_report_*.json 2>/dev/null | head -1)
+          if [[ -n "$REPORT" ]]; then
+            echo "=== E2E Report: $(basename $REPORT) ==="
+            cat "$REPORT"
+          else
+            echo "No report file found"
+          fi

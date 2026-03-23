@@ -1,0 +1,308 @@
+{
+  "_meta": {
+    "run_date": "2026-03-16T14:22:59+02:00",
+    "plan_version": "1.0.0",
+    "overall_status": "PASS",
+    "platforms_run": ["android", "ios"],
+    "total_checks": 36,
+    "passed": 36,
+    "failed": 0,
+    "warned": 0
+  },
+  "results": [
+    {
+      "phase_id": "phase_1",
+      "phase_name": "Smoke — SDK Init, APIs, Events, HTTP",
+      "platform": "android",
+      "device": "emulator-5554",
+      "app_pid": 28918,
+      "status": "PASS",
+      "checks": {
+        "fresh_install": {
+          "status": "PASS",
+          "evidence": "adb uninstall returned Success; adb install returned Success",
+          "note": ""
+        },
+        "sdk_started": {
+          "status": "PASS",
+          "evidence": "03-16 14:23:01.308 28918 28918 I flutter : [AF_QA][startSDK] result: SUCCESS — SDK started",
+          "note": "Gate check passed"
+        },
+        "is_first_launch_true": {
+          "status": "PASS",
+          "evidence": "03-16 14:23:04.104 28918 28918 I flutter : [AF_QA][CALLBACK][onInstallConversionData] received: {status: success, payload: {install_time: 2026-03-16 12:23:02.129, af_message: organic install, af_status: Organic, is_first_launch: true}}",
+          "note": ""
+        },
+        "pre_start_apis": {
+          "status": "PASS",
+          "evidence": "[AF_QA][enableTCFDataCollection] shouldCollect=true | [AF_QA][setConsentDataV2] isUserSubjectToGDPR=false | [AF_QA][setDisableAdvertisingIdentifiers] disabled=false | [AF_QA][setCollectIMEI] isCollect=false | [AF_QA][setCollectAndroidId] isCollect=false | [AF_QA][performOnDeepLinking] called",
+          "note": "disableSKAdNetwork skipped on Android — expected"
+        },
+        "post_start_apis": {
+          "status": "PASS",
+          "evidence": "[AF_QA][getVersionNumber] result: 6.17.8 | [AF_QA][getSDKVersion] result: version: 6.17.5 (build 366)",
+          "note": ""
+        },
+        "event_af_demo_launch": {
+          "status": "PASS",
+          "evidence": "03-16 14:23:01.312 28918 28918 I flutter : [AF_QA][logEvent(af_demo_launch)] result: true | HTTP 200 for INAPP-11 at 14:23:02.391",
+          "note": ""
+        },
+        "event_af_purchase": {
+          "status": "PASS",
+          "evidence": "03-16 14:23:01.316 28918 28918 I flutter : [AF_QA][logEvent: af_purchase sent] result: true | HTTP 200 for INAPP-12 at 14:23:02.376",
+          "note": ""
+        },
+        "event_af_content_view": {
+          "status": "PASS",
+          "evidence": "03-16 14:23:01.316 28918 28918 I flutter : [AF_QA][logEvent: af_content_view sent] result: true | HTTP 200 for INAPP-14 at 14:23:02.415",
+          "note": ""
+        },
+        "http_conversion_endpoint": {
+          "status": "PASS",
+          "evidence": "8 x 'response code:200 OK' observed — expected minimum 3",
+          "note": ""
+        },
+        "no_fatal_errors": {
+          "status": "PASS",
+          "evidence": "No Fatal Exception, FATAL, [AF_QA][startSDK] error:, response code:4xx, or response code:5xx found in logs",
+          "note": "Google Play Services (GAID) ClassNotFoundException is expected on emulator — not a fatal"
+        }
+      }
+    },
+    {
+      "phase_id": "phase_2",
+      "phase_name": "Background Deep Link",
+      "platform": "android",
+      "device": "emulator-5554",
+      "app_pid": 28918,
+      "status": "PASS",
+      "checks": {
+        "onDeepLinking_found": {
+          "status": "PASS",
+          "evidence": "03-16 14:24:43.950 28918 28918 I flutter : [AF_QA][CALLBACK][onDeepLinking] received: status=Status.FOUND deepLinkValue=qa_deeplink_bg error=null",
+          "note": ""
+        },
+        "deepLinkValue_correct": {
+          "status": "PASS",
+          "evidence": "deepLinkValue=qa_deeplink_bg confirmed in log",
+          "note": ""
+        },
+        "second_conversion_data": {
+          "status": "PASS",
+          "evidence": "03-16 14:24:44.722 28918 28918 I flutter : [AF_QA][CALLBACK][onInstallConversionData] received: {status: success, payload: {install_time: 2026-03-16 12:23:02.129, af_message: organic install, af_status: Organic, is_first_launch: false}}",
+          "note": ""
+        },
+        "launch_http_200": {
+          "status": "PASS",
+          "evidence": "03-16 14:24:44.717 28918 28959 D AppsFlyer_6.17.5: [HTTP Client] [58438046] response code:200 OK — at 14:24:44 after deep link trigger",
+          "note": ""
+        },
+        "no_not_found_after_deeplink": {
+          "status": "PASS",
+          "evidence": "No status=Status.NOT_FOUND observed after deep link trigger timestamp 14:24:43",
+          "note": ""
+        },
+        "no_fatal_errors": {
+          "status": "PASS",
+          "evidence": "No Fatal Exception or FATAL in logs",
+          "note": ""
+        }
+      }
+    },
+    {
+      "phase_id": "phase_3",
+      "phase_name": "Foreground Deep Link",
+      "platform": "android",
+      "device": "emulator-5554",
+      "app_pid": 29238,
+      "status": "PASS",
+      "checks": {
+        "is_first_launch_true_before_deeplink": {
+          "status": "PASS",
+          "evidence": "03-16 14:25:36.354 29238 29238 I flutter : [AF_QA][CALLBACK][onInstallConversionData] received: {status: success, payload: {install_time: 2026-03-16 12:25:34.249, af_message: organic install, af_status: Organic, is_first_launch: true}}",
+          "note": "Confirmed before deep link trigger at 14:26:14"
+        },
+        "onDeepLinking_found": {
+          "status": "PASS",
+          "evidence": "03-16 14:26:14.908 29238 29238 I flutter : [AF_QA][CALLBACK][onDeepLinking] received: status=Status.FOUND deepLinkValue=qa_deeplink_fg error=null",
+          "note": ""
+        },
+        "deepLinkValue_correct": {
+          "status": "PASS",
+          "evidence": "deepLinkValue=qa_deeplink_fg confirmed in log",
+          "note": ""
+        },
+        "second_conversion_data": {
+          "status": "PASS",
+          "evidence": "03-16 14:26:15.493 29238 29238 I flutter : [AF_QA][CALLBACK][onInstallConversionData] received: {status: success, payload: {install_time: 2026-03-16 12:25:34.249, af_message: organic install, af_status: Organic, is_first_launch: false}}",
+          "note": ""
+        },
+        "launch_http_200": {
+          "status": "PASS",
+          "evidence": "03-16 14:26:15.487 29238 29273 D AppsFlyer_6.17.5: [HTTP Client] [224952737] response code:200 OK — at 14:26:15 after deep link trigger",
+          "note": ""
+        },
+        "no_fatal_errors": {
+          "status": "PASS",
+          "evidence": "No Fatal Exception or FATAL in logs",
+          "note": ""
+        }
+      }
+    },
+    {
+      "phase_id": "phase_1",
+      "phase_name": "Smoke — SDK Init, APIs, Events, HTTP",
+      "platform": "ios",
+      "device": "iPhone 17 (E112EA95-9BAE-4BE1-921C-FCCC39CF5F31)",
+      "app_pid": 12249,
+      "status": "PASS",
+      "checks": {
+        "fresh_install": {
+          "status": "PASS",
+          "evidence": "xcrun simctl uninstall succeeded (no error); xcrun simctl install succeeded",
+          "note": ""
+        },
+        "sdk_started": {
+          "status": "PASS",
+          "evidence": "2026-03-16 14:27:08.226 Df Runner[12249:50c42b] (Flutter) flutter: [AF_QA][startSDK] result: SUCCESS — SDK started",
+          "note": "Gate check passed"
+        },
+        "is_first_launch_true": {
+          "status": "PASS",
+          "evidence": "2026-03-16 14:27:12.578 Df Runner[12249:50c42b] (Flutter) flutter: [AF_QA][CALLBACK][onInstallConversionData] received: {status: success, payload: {is_first_launch: true, install_time: 2026-03-16 12:27:08.212, af_message: organic install, af_status: Organic}}",
+          "note": ""
+        },
+        "pre_start_apis": {
+          "status": "PASS",
+          "evidence": "iOS: disableSKAdNetwork(false) called before start; enableTCFDataCollection, setConsentDataV2, setDisableAdvertisingIdentifiers all logged",
+          "note": "setCollectIMEI and setCollectAndroidId skipped on iOS — expected"
+        },
+        "post_start_apis": {
+          "status": "PASS",
+          "evidence": "[AF_QA][getVersionNumber] result: 6.17.8 | [AF_QA][getSDKVersion] result: version: 6.17.8 (build 1)",
+          "note": "iOS SDK version 6.17.8 (vs Android 6.17.5 — expected platform difference)"
+        },
+        "event_af_demo_launch": {
+          "status": "PASS",
+          "evidence": "2026-03-16 14:27:08.229 Df Runner[12249:50c42b] (Flutter) flutter: [AF_QA][logEvent(af_demo_launch)] result: true | response_status=200 confirmed",
+          "note": ""
+        },
+        "event_af_purchase": {
+          "status": "PASS",
+          "evidence": "2026-03-16 14:27:08.230 Df Runner[12249:50c42b] (Flutter) flutter: [AF_QA][logEvent: af_purchase sent] result: true | response_status=200 confirmed",
+          "note": ""
+        },
+        "event_af_content_view": {
+          "status": "PASS",
+          "evidence": "2026-03-16 14:27:08.230 Df Runner[12249:50c42b] (Flutter) flutter: [AF_QA][logEvent: af_content_view sent] result: true | response_status=200 confirmed",
+          "note": ""
+        },
+        "http_conversion_endpoint": {
+          "status": "PASS",
+          "evidence": "9 x 'response_status=200' observed — expected minimum 3",
+          "note": ""
+        },
+        "no_fatal_errors": {
+          "status": "PASS",
+          "evidence": "No Fatal Exception, FATAL, or [AF_QA][startSDK] error: in logs",
+          "note": "Initial onDeepLinking status=Status.NOT_FOUND at launch is expected iOS behavior per test plan"
+        }
+      }
+    },
+    {
+      "phase_id": "phase_2",
+      "phase_name": "Background Deep Link",
+      "platform": "ios",
+      "device": "iPhone 17 (E112EA95-9BAE-4BE1-921C-FCCC39CF5F31)",
+      "app_pid": 12249,
+      "status": "PASS",
+      "checks": {
+        "onDeepLinking_found": {
+          "status": "PASS",
+          "evidence": "2026-03-16 14:27:45.429 Df Runner[12249:50c42b] (Flutter) flutter: [AF_QA][CALLBACK][onDeepLinking] received: status=Status.FOUND deepLinkValue=qa_deeplink_bg error=null",
+          "note": ""
+        },
+        "deepLinkValue_correct": {
+          "status": "PASS",
+          "evidence": "deepLinkValue=qa_deeplink_bg confirmed in log",
+          "note": ""
+        },
+        "second_conversion_data": {
+          "status": "PASS",
+          "evidence": "2026-03-16 14:27:46.401 Df Runner[12249:50c42b] (Flutter) flutter: [AF_QA][CALLBACK][onInstallConversionData] received: {status: success, payload: {is_first_launch: false, install_time: 2026-03-16 12:27:08.212, af_message: organic install, af_status: Organic}}",
+          "note": ""
+        },
+        "launch_http_200": {
+          "status": "PASS",
+          "evidence": "2026-03-16 14:28:26.662 Df Runner[12249:50d034] response_status=200 after deep link trigger",
+          "note": ""
+        },
+        "no_not_found_after_deeplink": {
+          "status": "PASS",
+          "evidence": "No status=Status.NOT_FOUND observed after deep link trigger timestamp 14:27:45",
+          "note": ""
+        },
+        "no_fatal_errors": {
+          "status": "PASS",
+          "evidence": "No Fatal Exception or FATAL in logs",
+          "note": ""
+        }
+      }
+    },
+    {
+      "phase_id": "phase_3",
+      "phase_name": "Foreground Deep Link",
+      "platform": "ios",
+      "device": "iPhone 17 (E112EA95-9BAE-4BE1-921C-FCCC39CF5F31)",
+      "app_pid": 13208,
+      "status": "PASS",
+      "checks": {
+        "is_first_launch_true_before_deeplink": {
+          "status": "PASS",
+          "evidence": "2026-03-16 14:29:29.078 Df Runner[13208:50da77] (Flutter) flutter: [AF_QA][CALLBACK][onInstallConversionData] received: {status: success, payload: {is_first_launch: true, install_time: 2026-03-16 12:29:24.751, af_message: organic install, af_status: Organic}}",
+          "note": "Confirmed before deep link trigger at 14:29:45"
+        },
+        "onDeepLinking_found": {
+          "status": "PASS",
+          "evidence": "2026-03-16 14:29:45.170 Df Runner[13208:50da77] (Flutter) flutter: [AF_QA][CALLBACK][onDeepLinking] received: status=Status.FOUND deepLinkValue=qa_deeplink_fg error=null",
+          "note": ""
+        },
+        "deepLinkValue_correct": {
+          "status": "PASS",
+          "evidence": "deepLinkValue=qa_deeplink_fg confirmed in log",
+          "note": ""
+        },
+        "second_conversion_data": {
+          "status": "PASS",
+          "evidence": "2026-03-16 14:29:46.122 Df Runner[13208:50da77] (Flutter) flutter: [AF_QA][CALLBACK][onInstallConversionData] received: {status: success, payload: {is_first_launch: false, install_time: 2026-03-16 12:29:24.751, af_message: organic install, af_status: Organic}}",
+          "note": ""
+        },
+        "launch_http_200": {
+          "status": "PASS",
+          "evidence": "2026-03-16 14:29:52.239 Df Runner[13208:50dc82] response_status=200 after deep link trigger",
+          "note": ""
+        },
+        "no_fatal_errors": {
+          "status": "PASS",
+          "evidence": "No Fatal Exception or FATAL in logs",
+          "note": ""
+        }
+      }
+    }
+  ],
+  "summary_table": {
+    "android_phase_1_smoke": "PASS",
+    "android_phase_2_bg_deeplink": "PASS",
+    "android_phase_3_fg_deeplink": "PASS",
+    "ios_phase_1_smoke": "PASS",
+    "ios_phase_2_bg_deeplink": "PASS",
+    "ios_phase_3_fg_deeplink": "PASS"
+  },
+  "baselines_used": {
+    "smoke_android": ".claude/e2e-baselines/android_baseline.json",
+    "smoke_ios": ".claude/e2e-baselines/ios_baseline.json",
+    "deeplink_background": ".claude/e2e-baselines/deeplink_background_baseline.json",
+    "deeplink_foreground": ".claude/e2e-baselines/deeplink_foreground_baseline.json"
+  }
+}

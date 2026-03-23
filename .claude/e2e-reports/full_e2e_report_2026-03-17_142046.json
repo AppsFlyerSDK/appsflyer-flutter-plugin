@@ -1,0 +1,25 @@
+{
+  "_meta": {
+    "run_date": "2026-03-17T12:22:43Z",
+    "plan_version": "1.0.0",
+    "overall_status": "FAIL",
+    "platforms_run": ["android", "ios"],
+    "total_checks": 40,
+    "passed": 39,
+    "failed": 1
+  },
+  "summary_table": {
+    "android_phase_1_smoke":       "PASS",
+    "android_phase_2_bg_deeplink": "PASS",
+    "android_phase_3_fg_deeplink": "PASS",
+    "ios_phase_1_smoke":           "PASS",
+    "ios_phase_2_bg_deeplink":     "PASS",
+    "ios_phase_3_fg_deeplink":     "FAIL"
+  },
+  "baselines_used": {
+    "smoke_android":       ".claude/e2e-baselines/android_baseline.json",
+    "smoke_ios":           ".claude/e2e-baselines/ios_baseline.json",
+    "deeplink_background": ".claude/e2e-baselines/deeplink_background_baseline.json",
+    "deeplink_foreground": ".claude/e2e-baselines/deeplink_foreground_baseline.json"
+  }
+}

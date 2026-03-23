@@ -1,0 +1,124 @@
+{
+  "_meta": {
+    "scenario": "deep_link_background",
+    "description": "App is running, sent to background via KEYCODE_HOME, then a deep link URL triggers it back to foreground. onDeepLinking fires with FOUND.",
+    "url_scheme": "afexample",
+    "test_url": "afexample://deeplink?deep_link_value=qa_deeplink_bg&af_sub1=background_test&pid=testmedia&c=deeplink_test",
+    "captured_from": "Android emulator-5554 PID 26322, fresh install 2026-03-16",
+    "status": "CAPTURED — baselines reflect real observed payloads"
+  },
+
+  "preconditions": [
+    "App fresh-installed (standard fresh install procedure)",
+    "SDK fully started — startSDK result: SUCCESS confirmed in logs",
+    "onInstallConversionData fired with is_first_launch=true",
+    "App is confirmed backgrounded before triggering deep link"
+  ],
+
+  "procedure": {
+    "android": [
+      "adb shell input keyevent KEYCODE_HOME",
+      "sleep 2",
+      "confirm PID still alive: adb shell pidof com.appsflyer.android.deviceid",
+      "adb shell am start -a android.intent.action.VIEW -d \"afexample://deeplink?deep_link_value=qa_deeplink_bg&af_sub1=background_test&pid=testmedia&c=deeplink_test\"",
+      "sleep 4",
+      "adb logcat -d --pid=<PID> | grep -E \"AF_QA|DDL|DeepLink\""
+    ],
+    "ios": [
+      "xcrun simctl uninstall E112EA95-9BAE-4BE1-921C-FCCC39CF5F31 com.appsflyer.example",
+      "xcrun simctl install E112EA95-9BAE-4BE1-921C-FCCC39CF5F31 build/ios/iphonesimulator/Runner.app",
+      "xcrun simctl launch E112EA95-9BAE-4BE1-921C-FCCC39CF5F31 com.appsflyer.example",
+      "sleep 12 (wait for SDK start + onInstallConversionData with is_first_launch=true)",
+      "xcrun simctl launch E112EA95-9BAE-4BE1-921C-FCCC39CF5F31 com.apple.mobilesafari",
+      "sleep 2",
+      "xcrun simctl openurl E112EA95-9BAE-4BE1-921C-FCCC39CF5F31 \"afexample://deeplink?deep_link_value=qa_deeplink_bg&af_sub1=background_test&pid=testmedia&c=deeplink_test\"",
+      "sleep 4",
+      "xcrun simctl spawn E112EA95-9BAE-4BE1-921C-FCCC39CF5F31 log show --predicate 'process == \"Runner\"' --last 30s --style compact | grep AF_QA"
+    ]
+  },
+
+  "expected_callbacks": {
+    "onDeepLinking": {
+      "expected": true,
+      "log_pattern": "[AF_QA][CALLBACK][onDeepLinking] received: status=Status.FOUND deepLinkValue=qa_deeplink_bg error=null",
+      "captured_native_payload": {
+        "status": "FOUND",
+        "deepLink": {
+          "path": "",
+          "scheme": "afexample",
+          "link": "afexample://deeplink?deep_link_value=qa_deeplink_bg",
+          "host": "deeplink",
+          "deep_link_value": "qa_deeplink_bg",
+          "is_deferred": false
+        }
+      },
+      "stable_fields": {
+        "status": "Status.FOUND",
+        "deepLinkValue": "qa_deeplink_bg",
+        "error": "null"
+      },
+      "note": "Only deep_link_value is reliably extracted for custom URI scheme URLs. Other query params (af_sub1, pid, c) are not exposed in the deepLink object for non-OneLink URLs."
+    },
+    "onInstallConversionData_second_fire": {
+      "expected": true,
+      "note": "onInstallConversionData fires a second time when the app is resumed via deep link. This is expected AppsFlyer SDK behavior — the SDK re-checks conversion data on app open.",
+      "captured_payload": {
+        "status": "success",
+        "af_status": "Organic",
+        "af_message": "organic install",
+        "is_first_launch": false
+      }
+    },
+    "onAppOpenAttribution": {
+      "expected": false,
+      "note": "Does not fire for custom URI scheme (non-OneLink) deep links."
+    }
+  },
+
+  "http_request": {
+    "description": "A LAUNCH event is sent when the app comes to foreground via deep link.",
+    "endpoint": "launches.appsflyersdk.com/api/v6.17/androidevent",
+    "method": "POST",
+    "expected_response": "200 OK, body: ok",
+    "captured_payload_fields": {
+      "platform_extension_v2.platform": "android_flutter",
+      "platform_extension_v2.version": "6.17.8",
+      "platformextension": "android_flutter",
+      "af_deeplink": "afexample://deeplink?deep_link_value=qa_deeplink_bg",
+      "appUserId": "qa_auto_customer_001",
+      "customData": "{\"qa_key\":\"qa_value\",\"auto_run\":\"true\"}",
+      "sharing_filter": ["demo_partner"],
+      "consent_data.manual.gdpr_applies": false
+    },
+    "log_pattern": "[HTTP Client] [ID] response code:200 OK"
+  },
+
+  "ios_captured": {
+    "captured_from": "iOS simulator E112EA95-9BAE-4BE1-921C-FCCC39CF5F31 iPhone 17, fresh install 2026-03-16",
+    "app_pid": "1767",
+    "sdk_start_log": "[AF_QA][startSDK] result: SUCCESS — SDK started (2026-03-16 13:54:33)",
+    "install_conversion_first_fire_log": "[AF_QA][CALLBACK][onInstallConversionData] received: {status: success, payload: {is_first_launch: true, install_time: 2026-03-16 11:54:33.054, af_message: organic install, af_status: Organic}} (2026-03-16 13:54:38)",
+    "onDeepLinking_log": "2026-03-16 13:55:28.144 Df Runner[1767:4fba8f] (Flutter) flutter: [AF_QA][CALLBACK][onDeepLinking] received: status=Status.FOUND deepLinkValue=qa_deeplink_bg error=null",
+    "onInstallConversionData_second_fire_log": "2026-03-16 13:55:29.320 Df Runner[1767:4fba8f] (Flutter) flutter: [AF_QA][CALLBACK][onInstallConversionData] received: {status: success, payload: {is_first_launch: false, install_time: 2026-03-16 11:54:33.054, af_message: organic install, af_status: Organic}}",
+    "stable_fields": {
+      "status": "Status.FOUND",
+      "deepLinkValue": "qa_deeplink_bg",
+      "error": "null"
+    },
+    "http_200_responses_observed": 4,
+    "http_log_sample": "2026-03-16 13:55:28.384 Df Runner[1767:4fc6ed] [com.apple.CFNetwork:Summary] Task <82566643-335F-4702-8D06-0B8FD6FA54AC>.<19> summary for task success {transaction_duration_ms=244, response_status=200, ...}",
+    "notes": [
+      "onDeepLinking fired 229ms before onInstallConversionData second fire",
+      "HTTP 200 response observed at same timestamp as onDeepLinking callback (13:55:28)",
+      "Initial onDeepLinking fires with Status.NOT_FOUND on first launch (before any deep link) — this is expected iOS SDK behavior",
+      "onAppOpenAttribution did not fire — confirmed not expected for custom URI scheme"
+    ]
+  },
+
+  "must_not_contain": [
+    "Fatal Exception",
+    "FATAL",
+    "status=Status.NOT_FOUND",
+    "[AF_QA][startSDK] error:"
+  ]
+}

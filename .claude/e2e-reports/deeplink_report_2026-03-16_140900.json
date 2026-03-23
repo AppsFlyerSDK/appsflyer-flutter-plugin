@@ -1,0 +1,92 @@
+{
+  "_meta": {
+    "run_date": "2026-03-16T14:09:00Z",
+    "run_by": "flutter-e2e-tester",
+    "scenarios_run": 4,
+    "overall_status": "PASS"
+  },
+  "results": [
+    {
+      "scenario": "deep_link_background",
+      "platform": "android",
+      "device": "emulator-5554 (Android emulator)",
+      "app_pid": 27937,
+      "status": "PASS",
+      "checks": {
+        "fresh_install": true,
+        "sdk_started": true,
+        "is_first_launch_true": true,
+        "onDeepLinking_FOUND": true,
+        "deepLinkValue_correct": true,
+        "onInstallConversionData_second_fire": true,
+        "http_200_observed": true,
+        "no_fatal_errors": true
+      },
+      "captured_log": "03-16 14:04:13.398 27937 27937 I flutter : [AF_QA][CALLBACK][onDeepLinking] received: status=Status.FOUND deepLinkValue=qa_deeplink_bg error=null",
+      "notes": "SDK started at 14:03:22. onInstallConversionData first fire (is_first_launch=true) at 14:03:25. App backgrounded via KEYCODE_HOME. Deep link triggered at 14:04:13. onDeepLinking FOUND received immediately. HTTP 200 (launches endpoint) at 14:04:14. onInstallConversionData second fire (is_first_launch=false) at 14:04:14. Initial NOT_FOUND at 14:03:22 is expected SDK behavior (no deep link on first launch). No FATAL errors. All must_not_contain checks passed."
+    },
+    {
+      "scenario": "deep_link_foreground",
+      "platform": "android",
+      "device": "emulator-5554 (Android emulator)",
+      "app_pid": 28263,
+      "status": "PASS",
+      "checks": {
+        "fresh_install": true,
+        "sdk_started": true,
+        "is_first_launch_true": true,
+        "onDeepLinking_FOUND": true,
+        "deepLinkValue_correct": true,
+        "onInstallConversionData_second_fire": true,
+        "http_200_observed": true,
+        "no_fatal_errors": true
+      },
+      "captured_log": "03-16 14:05:35.065 28263 28263 I flutter : [AF_QA][CALLBACK][onDeepLinking] received: status=Status.FOUND deepLinkValue=qa_deeplink_fg error=null",
+      "notes": "SDK started at 14:05:01. onInstallConversionData first fire (is_first_launch=true) at 14:05:04. App was briefly sent to launcher (am start HOME) to trigger onPause cycle. Deep link triggered at 14:05:35. onDeepLinking FOUND received immediately. HTTP 200 (launches endpoint) at 14:05:35. onInstallConversionData second fire (is_first_launch=false) at 14:05:35. Launcher switch was required — direct onNewIntent without prior onPause does not trigger SDK deep link callback, consistent with baseline. No FATAL errors."
+    },
+    {
+      "scenario": "deep_link_background",
+      "platform": "ios",
+      "device": "iPhone 17 simulator (E112EA95-9BAE-4BE1-921C-FCCC39CF5F31)",
+      "app_pid": 6869,
+      "status": "PASS",
+      "checks": {
+        "fresh_install": true,
+        "sdk_started": true,
+        "is_first_launch_true": true,
+        "onDeepLinking_FOUND": true,
+        "deepLinkValue_correct": true,
+        "onInstallConversionData_second_fire": true,
+        "http_200_observed": true,
+        "no_fatal_errors": true
+      },
+      "captured_log": "2026-03-16 14:07:20.865 Df Runner[6869:502e05] (Flutter) flutter: [AF_QA][CALLBACK][onDeepLinking] received: status=Status.FOUND deepLinkValue=qa_deeplink_bg error=null",
+      "notes": "SDK started at 14:06:51. onInstallConversionData first fire (is_first_launch=true) at 14:06:55. App backgrounded via Safari launch. Deep link triggered via xcrun simctl openurl at 14:07:20. onDeepLinking FOUND at 14:07:20. onInstallConversionData second fire (is_first_launch=false) at 14:07:21. Multiple HTTP 200 responses observed at 14:07:19-14:07:21 (CFNetwork summary). Initial NOT_FOUND at 14:06:37 is expected iOS SDK behavior. No FATAL errors. All must_not_contain checks passed."
+    },
+    {
+      "scenario": "deep_link_foreground",
+      "platform": "ios",
+      "device": "iPhone 17 simulator (E112EA95-9BAE-4BE1-921C-FCCC39CF5F31)",
+      "app_pid": 7331,
+      "status": "PASS",
+      "checks": {
+        "fresh_install": true,
+        "sdk_started": true,
+        "is_first_launch_true": true,
+        "onDeepLinking_FOUND": true,
+        "deepLinkValue_correct": true,
+        "onInstallConversionData_second_fire": true,
+        "http_200_observed": true,
+        "no_fatal_errors": true
+      },
+      "captured_log": "2026-03-16 14:08:50.471 Df Runner[7331:503d0d] (Flutter) flutter: [AF_QA][CALLBACK][onDeepLinking] received: status=Status.FOUND deepLinkValue=qa_deeplink_fg error=null",
+      "notes": "SDK started at 14:08:32. onInstallConversionData first fire (is_first_launch=true) at 14:08:36. App briefly switched to Settings (com.apple.Preferences) to trigger onPause cycle before deep link. Deep link triggered via xcrun simctl openurl at 14:08:50. onDeepLinking FOUND at 14:08:50. onInstallConversionData second fire (is_first_launch=false) at 14:08:51. HTTP 200 responses observed at 14:08:50-14:08:51 (5 responses including launches endpoint, CFNetwork summary). No FATAL errors. All must_not_contain checks passed."
+    }
+  ],
+  "summary": {
+    "android_background": "PASS",
+    "android_foreground": "PASS",
+    "ios_background": "PASS",
+    "ios_foreground": "PASS"
+  }
+}

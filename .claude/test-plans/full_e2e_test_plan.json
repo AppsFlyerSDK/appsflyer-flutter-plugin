@@ -1,0 +1,264 @@
+{
+  "_meta": {
+    "plan_id": "full_e2e",
+    "version": "1.0.0",
+    "description": "Complete E2E test plan for the AppsFlyer Flutter plugin. Covers SDK initialization, pre/post-start API calls, in-app event HTTP validation, callback verification, and deep link scenarios (background and foreground) — on both Android and iOS.",
+    "platforms": ["android", "ios"],
+    "total_phases": 3,
+    "fresh_installs_required": 2,
+    "baselines": {
+      "smoke": {
+        "android": ".claude/e2e-baselines/android_baseline.json",
+        "ios": ".claude/e2e-baselines/ios_baseline.json"
+      },
+      "deeplink_background": ".claude/e2e-baselines/deeplink_background_baseline.json",
+      "deeplink_foreground": ".claude/e2e-baselines/deeplink_foreground_baseline.json"
+    },
+    "report_output_dir": ".claude/e2e-reports/",
+    "report_naming": "full_e2e_report_<YYYY-MM-DD_HHMMSS>.json"
+  },
+
+  "phases": [
+    {
+      "id": "phase_1",
+      "name": "Smoke — SDK Init, APIs, Events, HTTP",
+      "description": "Fresh install. Validate SDK startup sequence, all pre/post-start API calls return expected values, three auto-launched events fire and reach the server with 200 OK, and all standard callbacks fire correctly.",
+      "requires_fresh_install": true,
+      "baseline_ref": "smoke",
+      "checks": {
+        "fresh_install": {
+          "description": "App was uninstalled and reinstalled from scratch",
+          "type": "gate",
+          "fail_action": "abort_plan"
+        },
+        "sdk_started": {
+          "description": "startSDK returns SUCCESS",
+          "log_pattern": "[AF_QA][startSDK] result: SUCCESS",
+          "type": "exact_match",
+          "fail_action": "abort_plan"
+        },
+        "is_first_launch_true": {
+          "description": "onInstallConversionData fires with is_first_launch=true",
+          "log_pattern": "[AF_QA][CALLBACK][onInstallConversionData]",
+          "payload_field": "is_first_launch",
+          "expected_value": true,
+          "type": "exact_match",
+          "fail_action": "fail_phase"
+        },
+        "pre_start_apis": {
+          "description": "All pre-start API calls complete without error",
+          "apis": [
+            "enableTCFDataCollection",
+            "setConsentDataV2",
+            "setDisableAdvertisingIdentifiers",
+            "setCollectIMEI",
+            "setCollectAndroidId",
+            "performOnDeepLinking",
+            "disableSKAdNetwork"
+          ],
+          "type": "present_and_non_empty",
+          "fail_action": "warn"
+        },
+        "post_start_apis": {
+          "description": "getVersionNumber and getSDKVersion return non-empty values",
+          "apis": ["getVersionNumber", "getSDKVersion"],
+          "type": "present_and_non_empty",
+          "fail_action": "fail_phase"
+        },
+        "event_af_demo_launch": {
+          "description": "af_demo_launch event fires and gets HTTP 200",
+          "log_pattern": "[AF_QA][logEvent] af_demo_launch",
+          "http_validation": "response code:200 OK or response_status=200",
+          "type": "event_with_http",
+          "fail_action": "fail_phase"
+        },
+        "event_af_purchase": {
+          "description": "af_purchase event fires and gets HTTP 200",
+          "log_pattern": "[AF_QA][logEvent] af_purchase",
+          "http_validation": "response code:200 OK or response_status=200",
+          "type": "event_with_http",
+          "fail_action": "fail_phase"
+        },
+        "event_af_content_view": {
+          "description": "af_content_view event fires and gets HTTP 200",
+          "log_pattern": "[AF_QA][logEvent] af_content_view",
+          "http_validation": "response code:200 OK or response_status=200",
+          "type": "event_with_http",
+          "fail_action": "fail_phase"
+        },
+        "http_conversion_endpoint": {
+          "description": "Conversion data endpoint returns 200",
+          "android_pattern": "response code:200 OK",
+          "ios_pattern": "response_status=200",
+          "minimum_200_count": 3,
+          "type": "http_200_count",
+          "fail_action": "fail_phase"
+        },
+        "no_fatal_errors": {
+          "description": "No fatal exceptions or SDK start errors in logs",
+          "must_not_contain": [
+            "Fatal Exception",
+            "FATAL",
+            "[AF_QA][startSDK] error:",
+            "response code:4",
+            "response code:5"
+          ],
+          "type": "absent",
+          "fail_action": "fail_phase"
+        }
+      }
+    },
+
+    {
+      "id": "phase_2",
+      "name": "Background Deep Link",
+      "description": "App is backgrounded after SDK start (home press on Android, Safari on iOS). Deep link URL is triggered and brings app back to foreground. onDeepLinking fires with Status.FOUND. Can reuse the same app session from Phase 1.",
+      "requires_fresh_install": false,
+      "note": "Run immediately after Phase 1 completes — app is still running. No reinstall needed.",
+      "baseline_ref": "deeplink_background",
+      "deep_link_url": "afexample://deeplink?deep_link_value=qa_deeplink_bg&af_sub1=background_test&pid=testmedia&c=deeplink_test",
+      "procedure": {
+        "android": [
+          "adb shell input keyevent KEYCODE_HOME",
+          "sleep 2",
+          "adb shell am start -a android.intent.action.VIEW -d \"afexample://deeplink?deep_link_value=qa_deeplink_bg&af_sub1=background_test&pid=testmedia&c=deeplink_test\"",
+          "sleep 4"
+        ],
+        "ios": [
+          "xcrun simctl launch <UDID> com.apple.mobilesafari",
+          "sleep 2",
+          "xcrun simctl openurl <UDID> \"afexample://deeplink?deep_link_value=qa_deeplink_bg&af_sub1=background_test&pid=testmedia&c=deeplink_test\"",
+          "sleep 4"
+        ]
+      },
+      "checks": {
+        "onDeepLinking_found": {
+          "description": "onDeepLinking fires with Status.FOUND",
+          "log_pattern": "[AF_QA][CALLBACK][onDeepLinking] received: status=Status.FOUND deepLinkValue=qa_deeplink_bg error=null",
+          "type": "exact_match",
+          "fail_action": "fail_phase"
+        },
+        "deepLinkValue_correct": {
+          "description": "deepLinkValue matches qa_deeplink_bg",
+          "expected": "qa_deeplink_bg",
+          "type": "exact_match",
+          "fail_action": "fail_phase"
+        },
+        "second_conversion_data": {
+          "description": "onInstallConversionData fires again with is_first_launch=false",
+          "log_pattern": "[AF_QA][CALLBACK][onInstallConversionData]",
+          "payload_field": "is_first_launch",
+          "expected_value": false,
+          "type": "exact_match",
+          "fail_action": "fail_phase"
+        },
+        "launch_http_200": {
+          "description": "LAUNCH HTTP event sent with af_deeplink and returns 200",
+          "android_pattern": "response code:200 OK",
+          "ios_pattern": "response_status=200",
+          "type": "http_200_present",
+          "fail_action": "fail_phase"
+        },
+        "no_not_found_after_deeplink": {
+          "description": "No Status.NOT_FOUND after the deep link was triggered",
+          "must_not_contain": ["status=Status.NOT_FOUND"],
+          "note": "iOS fires NOT_FOUND on initial launch only — only check logs AFTER the deep link trigger timestamp",
+          "type": "absent_after_trigger",
+          "fail_action": "fail_phase"
+        },
+        "no_fatal_errors": {
+          "description": "No fatal exceptions",
+          "must_not_contain": ["Fatal Exception", "FATAL", "[AF_QA][startSDK] error:"],
+          "type": "absent",
+          "fail_action": "fail_phase"
+        }
+      }
+    },
+
+    {
+      "id": "phase_3",
+      "name": "Foreground Deep Link",
+      "description": "Fresh install. App is in foreground after SDK start. A brief launcher/settings switch triggers onPause (required for SDK to re-process intent on resume). Deep link brings app back. onDeepLinking fires with Status.FOUND.",
+      "requires_fresh_install": true,
+      "note": "Requires a second fresh install. The onPause/onResume cycle is mandatory — direct onNewIntent without prior onPause does NOT trigger onDeepLinking on either platform.",
+      "baseline_ref": "deeplink_foreground",
+      "deep_link_url": "afexample://deeplink?deep_link_value=qa_deeplink_fg&af_sub1=foreground_test&pid=testmedia&c=deeplink_test",
+      "procedure": {
+        "android": [
+          "confirm app is in foreground: adb shell dumpsys activity activities | grep mResumedActivity | grep appsflyer",
+          "briefly switch to launcher: adb shell am start -a android.intent.action.MAIN -c android.intent.category.HOME",
+          "sleep 1",
+          "trigger deep link: adb shell am start -a android.intent.action.VIEW -d \"afexample://deeplink?deep_link_value=qa_deeplink_fg&af_sub1=foreground_test&pid=testmedia&c=deeplink_test\"",
+          "sleep 4"
+        ],
+        "ios": [
+          "confirm app is in foreground",
+          "briefly switch to Settings: xcrun simctl launch <UDID> com.apple.Preferences",
+          "sleep 1",
+          "trigger deep link: xcrun simctl openurl <UDID> \"afexample://deeplink?deep_link_value=qa_deeplink_fg&af_sub1=foreground_test&pid=testmedia&c=deeplink_test\"",
+          "sleep 4"
+        ]
+      },
+      "checks": {
+        "is_first_launch_true_before_deeplink": {
+          "description": "Confirm onInstallConversionData fired with is_first_launch=true before triggering deep link",
+          "log_pattern": "[AF_QA][CALLBACK][onInstallConversionData]",
+          "payload_field": "is_first_launch",
+          "expected_value": true,
+          "type": "exact_match",
+          "fail_action": "abort_phase"
+        },
+        "onDeepLinking_found": {
+          "description": "onDeepLinking fires with Status.FOUND",
+          "log_pattern": "[AF_QA][CALLBACK][onDeepLinking] received: status=Status.FOUND deepLinkValue=qa_deeplink_fg error=null",
+          "type": "exact_match",
+          "fail_action": "fail_phase"
+        },
+        "deepLinkValue_correct": {
+          "description": "deepLinkValue matches qa_deeplink_fg",
+          "expected": "qa_deeplink_fg",
+          "type": "exact_match",
+          "fail_action": "fail_phase"
+        },
+        "second_conversion_data": {
+          "description": "onInstallConversionData fires again with is_first_launch=false",
+          "log_pattern": "[AF_QA][CALLBACK][onInstallConversionData]",
+          "payload_field": "is_first_launch",
+          "expected_value": false,
+          "type": "exact_match",
+          "fail_action": "fail_phase"
+        },
+        "launch_http_200": {
+          "description": "LAUNCH HTTP event with af_deeplink returns 200",
+          "android_pattern": "response code:200 OK",
+          "ios_pattern": "response_status=200",
+          "type": "http_200_present",
+          "fail_action": "fail_phase"
+        },
+        "no_fatal_errors": {
+          "description": "No fatal exceptions",
+          "must_not_contain": ["Fatal Exception", "FATAL", "[AF_QA][startSDK] error:"],
+          "type": "absent",
+          "fail_action": "fail_phase"
+        }
+      }
+    }
+  ],
+
+  "execution_order": {
+    "description": "Run Phase 1 first on a platform. Phase 2 immediately follows using the same running app. Phase 3 requires a new fresh install.",
+    "sequence": ["phase_1", "phase_2", "phase_3"],
+    "phase_1_to_phase_2": "no_reinstall_needed — app is still running after Phase 1",
+    "phase_2_to_phase_3": "fresh_install_required"
+  },
+
+  "report_schema": {
+    "description": "Schema for the JSON report file saved after each full plan run",
+    "fields": {
+      "_meta": "run_date, plan_version, overall_status, platforms_run, total_checks, passed, failed, warned",
+      "results": "array of phase+platform result objects, each with: phase_id, platform, device, status, checks (map of check_id to {status, evidence, note}), captured_logs",
+      "summary_table": "flat map of phase+platform to PASS|FAIL|SKIP",
+      "comparison_hint": "baseline versions used — useful for spotting baseline drift"
+    }
+  }
+}
