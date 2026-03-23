@@ -46,7 +46,7 @@ concurrency:
 jobs:
   e2e:
     name: E2E Tests (Android + iOS)
-    runs-on: macos-13
+    runs-on: macos-14
 
     steps:
       # ── Checkout ────────────────────────────────────────────────────────────
@@ -75,11 +75,11 @@ jobs:
       - name: Install Android emulator image (API 34, x86_64)
         run: |
           sdkmanager --install "emulator" "platform-tools" \
-            "system-images;android-29;default;x86_64" \
+            "system-images;android-29;google_apis;x86_64" \
             "platforms;android-29"
           echo "no" | avdmanager create avd \
             --name "e2e_avd" \
-            --package "system-images;android-29;default;x86_64" \
+            --package "system-images;android-29;google_apis;x86_64" \
             --device "pixel_4" \
             --force
 
@@ -157,7 +157,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
-          target: default
+          target: google_apis
           arch: x86_64
           avd-name: e2e_avd
           force-avd-creation: false
