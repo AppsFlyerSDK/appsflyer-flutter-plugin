@@ -18,12 +18,15 @@ class AfDemoLogger extends ChangeNotifier {
   AfDemoLogger._();
   factory AfDemoLogger() => _instance;
 
+  /// Serializes file writes so concurrent log calls don't interleave lines.
+  Future<void> _writeLock = Future.value();
+
   final List<String> lines = [];
 
   void log(String method, String message) {
     final line = '[AF_QA][$method] $message';
     debugPrint(line);
-    unawaited(_writeToFile(line));
+    _writeLock = _writeLock.then((_) => _writeToFile(line));
     lines.add(line);
     notifyListeners();
   }
@@ -43,7 +46,7 @@ class AfDemoLogger extends ChangeNotifier {
   void logCallback(String callbackName, dynamic payload) {
     final line = '[AF_QA][CALLBACK][$callbackName] received: $payload';
     debugPrint(line);
-    unawaited(_writeToFile(line));
+    _writeLock = _writeLock.then((_) => _writeToFile(line));
     lines.add(line);
     notifyListeners();
   }
