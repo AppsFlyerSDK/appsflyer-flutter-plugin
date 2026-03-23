@@ -46,7 +46,7 @@ concurrency:
 jobs:
   e2e:
     name: E2E Tests (Android + iOS)
-    runs-on: macos-14
+    runs-on: macos-13
 
     steps:
       # ── Checkout ────────────────────────────────────────────────────────────
@@ -75,12 +75,12 @@ jobs:
       - name: Install Android emulator image (API 34, x86_64)
         run: |
           sdkmanager --install "emulator" "platform-tools" \
-            "system-images;android-34;google_apis;x86_64" \
-            "platforms;android-34"
+            "system-images;android-29;default;x86_64" \
+            "platforms;android-29"
           echo "no" | avdmanager create avd \
             --name "e2e_avd" \
-            --package "system-images;android-34;google_apis;x86_64" \
-            --device "pixel_6" \
+            --package "system-images;android-29;default;x86_64" \
+            --device "pixel_4" \
             --force
 
       # ── iOS simulator ───────────────────────────────────────────────────
@@ -156,14 +156,14 @@ jobs:
       - name: Run E2E tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
-          target: google_apis
+          api-level: 29
+          target: default
           arch: x86_64
           avd-name: e2e_avd
           force-avd-creation: false
-          emulator-options: -no-snapshot -no-window -no-audio -no-boot-anim -camera-back none -gpu swiftshader_indirect
+          emulator-options: -no-snapshot -no-window -no-audio -no-boot-anim -camera-back none -gpu swiftshader_indirect -memory 2048
           disable-animations: true
-          emulator-boot-timeout: 300
+          emulator-boot-timeout: 600
           script: |
             # Determine platform flags from workflow input
             PLATFORM_FLAG=""
