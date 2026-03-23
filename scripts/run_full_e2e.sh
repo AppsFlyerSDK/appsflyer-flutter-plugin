@@ -153,25 +153,23 @@ ios_fresh_install() {
   xcrun simctl install "$IOS_UDID" "$IOS_APP_PATH"
 }
 
+IOS_LOG_FILE="/tmp/af_ios_runner_logs.txt"
+
 ios_launch() {
   step "Launching app"
-  IOS_LAUNCH_OUT=$(xcrun simctl launch "$IOS_UDID" "$IOS_BUNDLE" 2>&1)
+  rm -f "$IOS_LOG_FILE"
+  # Launch with stdout/stderr captured to file — Flutter debugPrint goes here
+  IOS_LAUNCH_OUT=$(xcrun simctl launch --stdout "$IOS_LOG_FILE" --stderr "$IOS_LOG_FILE" "$IOS_UDID" "$IOS_BUNDLE" 2>&1)
   IOS_PID=$(echo "$IOS_LAUNCH_OUT" | grep -oE '[0-9]+$' | tail -1 || true)
   note "PID: $IOS_PID"
 }
 
 ios_logs() {
-  xcrun simctl spawn "$IOS_UDID" log show \
-    --predicate 'process == "Runner"' \
-    --last "${1:-30}s" \
-    --style compact 2>/dev/null | grep -E "AF_QA|response_status=" || true
+  cat "$IOS_LOG_FILE" 2>/dev/null | grep -E "AF_QA|response_status=" || true
 }
 
 ios_http_count() {
-  xcrun simctl spawn "$IOS_UDID" log show \
-    --predicate 'process == "Runner"' \
-    --last "${1:-30}s" \
-    --style compact 2>/dev/null | grep -c "response_status=200" || echo 0
+  cat "$IOS_LOG_FILE" 2>/dev/null | grep -c "response_status=200" || echo 0
 }
 
 # ═════════════════════════════════════════════════════════════════════════════
