@@ -178,9 +178,10 @@ ios_launch() {
   # SIMCTL_CHILD_* vars are passed to the app process — enables NSLog in headless CI
   IOS_LAUNCH_OUT=$(SIMCTL_CHILD_OS_ACTIVITY_DT_MODE=enable \
     xcrun simctl launch \
+    "$IOS_UDID" "$IOS_BUNDLE" \
     --stdout "$IOS_LOG_FILE" \
     --stderr "$IOS_ERR_FILE" \
-    "$IOS_UDID" "$IOS_BUNDLE" 2>&1)
+    2>&1)
   note "launch output: $IOS_LAUNCH_OUT"
   IOS_PID=$(echo "$IOS_LAUNCH_OUT" | grep -oE '[0-9]+$' | tail -1 || true)
   note "PID: $IOS_PID"
