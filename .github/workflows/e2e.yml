@@ -139,8 +139,9 @@ jobs:
           arch: x86_64
           avd-name: e2e_avd
           force-avd-creation: false
-          emulator-options: -no-snapshot -no-window -no-audio -no-boot-anim -camera-back none
+          emulator-options: -no-snapshot -no-window -no-audio -no-boot-anim -camera-back none -gpu swiftshader_indirect
           disable-animations: true
+          emulator-boot-timeout: 300
           script: |
             # Determine platform flags from workflow input
             PLATFORM_FLAG=""
