@@ -104,6 +104,18 @@ jobs:
       - name: Clear previous E2E reports
         run: rm -f .claude/e2e-reports/full_e2e_report_*.json
 
+      # ── Dump raw iOS logs for debugging ─────────────────────────────────
+      - name: Debug — dump raw iOS logs (30s after launch)
+        run: |
+          UDID="$IOS_SIMULATOR_UDID"
+          xcrun simctl launch "$UDID" com.appsflyer.example 2>&1 || true
+          sleep 30
+          echo "=== log show (process==Runner) ==="
+          xcrun simctl spawn "$UDID" log show --predicate 'process == "Runner"' --last 35s --style compact 2>/dev/null | head -100 || true
+          echo "=== log show (AF_QA) ==="
+          xcrun simctl spawn "$UDID" log show --predicate 'eventMessage CONTAINS "AF_QA"' --last 35s --style compact 2>/dev/null | head -50 || true
+          xcrun simctl terminate "$UDID" com.appsflyer.example 2>/dev/null || true
+
       # ── Run E2E tests (iOS only) ─────────────────────────────────────────
       - name: Run E2E tests
         run: ./scripts/run_full_e2e.sh --no-build --ios-only
