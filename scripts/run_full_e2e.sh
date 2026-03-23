@@ -153,49 +153,37 @@ ios_fresh_install() {
   xcrun simctl install "$IOS_UDID" "$IOS_APP_PATH"
 }
 
-IOS_LOG_FILE="/tmp/af_ios_stdout.txt"
-IOS_ERR_FILE="/tmp/af_ios_stderr.txt"
-IOS_STREAM_FILE="/tmp/af_ios_syslog.txt"
-IOS_STREAM_PID=""
+IOS_QA_LOG_FILE=""  # resolved after launch
 
-ios_start_logstream() {
-  rm -f "$IOS_STREAM_FILE"
-  # Capture system log in background — with OS_ACTIVITY_DT_MODE enabled, Flutter NSLog appears here
-  SIMCTL_CHILD_OS_ACTIVITY_DT_MODE=enable \
-    xcrun simctl spawn "$IOS_UDID" log stream --level debug \
-    --predicate 'process == "Runner"' > "$IOS_STREAM_FILE" 2>/dev/null &
-  IOS_STREAM_PID=$!
-  sleep 1
+ios_find_log_file() {
+  local sim_data="$HOME/Library/Developer/CoreSimulator/Devices/$IOS_UDID/data"
+  IOS_QA_LOG_FILE=$(find "$sim_data/Containers/Data/Application" \
+    -name "af_qa_logs.txt" 2>/dev/null | head -1 || true)
+  note "QA log file: ${IOS_QA_LOG_FILE:-not found yet}"
 }
 
-ios_stop_logstream() {
-  [[ -n "$IOS_STREAM_PID" ]] && kill "$IOS_STREAM_PID" 2>/dev/null || true
-}
+ios_start_logstream() { :; }
+ios_stop_logstream()  { :; }
 
 ios_launch() {
   step "Launching app"
-  rm -f "$IOS_LOG_FILE" "$IOS_ERR_FILE"
-  # SIMCTL_CHILD_* vars are passed to the app process — enables NSLog in headless CI
-  IOS_LAUNCH_OUT=$(SIMCTL_CHILD_OS_ACTIVITY_DT_MODE=enable \
-    xcrun simctl launch \
-    "$IOS_UDID" "$IOS_BUNDLE" \
-    --stdout "$IOS_LOG_FILE" \
-    --stderr "$IOS_ERR_FILE" \
-    2>&1)
-  note "launch output: $IOS_LAUNCH_OUT"
+  # Clear previous session log
+  local sim_data="$HOME/Library/Developer/CoreSimulator/Devices/$IOS_UDID/data"
+  find "$sim_data/Containers/Data/Application" -name "af_qa_logs.txt" \
+    -exec rm -f {} \; 2>/dev/null || true
+  IOS_LAUNCH_OUT=$(xcrun simctl launch "$IOS_UDID" "$IOS_BUNDLE" 2>&1)
   IOS_PID=$(echo "$IOS_LAUNCH_OUT" | grep -oE '[0-9]+$' | tail -1 || true)
   note "PID: $IOS_PID"
 }
 
 ios_logs() {
-  # Merge stdout, stderr, and system log — Flutter print may go to any of these
-  { cat "$IOS_LOG_FILE" "$IOS_ERR_FILE" "$IOS_STREAM_FILE" 2>/dev/null; } \
-    | grep -E "AF_QA|response_status=" || true
+  ios_find_log_file
+  cat "$IOS_QA_LOG_FILE" 2>/dev/null | grep -E "AF_QA|response_status=" || true
 }
 
 ios_http_count() {
-  { cat "$IOS_LOG_FILE" "$IOS_ERR_FILE" "$IOS_STREAM_FILE" 2>/dev/null; } \
-    | grep -c "response_status=200" || echo 0
+  ios_find_log_file
+  cat "$IOS_QA_LOG_FILE" 2>/dev/null | grep -c "response_status=200" || echo 0
 }
 
 # ═════════════════════════════════════════════════════════════════════════════

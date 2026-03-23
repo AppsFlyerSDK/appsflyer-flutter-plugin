@@ -117,12 +117,13 @@ jobs:
         run: ./scripts/run_full_e2e.sh --no-build --ios-only
 
       # ── Dump captured iOS logs for debugging ─────────────────────────────
-      - name: Dump iOS log files (debug)
+      - name: Dump iOS QA log file (debug)
         if: always()
         run: |
-          echo "=== stdout ===" && cat /tmp/af_ios_stdout.txt 2>/dev/null | head -50 || echo "(empty)"
-          echo "=== stderr ===" && cat /tmp/af_ios_stderr.txt 2>/dev/null | head -50 || echo "(empty)"
-          echo "=== syslog ===" && cat /tmp/af_ios_syslog.txt 2>/dev/null | head -50 || echo "(empty)"
+          SIM_DATA="$HOME/Library/Developer/CoreSimulator/Devices/$IOS_SIMULATOR_UDID/data"
+          LOG=$(find "$SIM_DATA/Containers/Data/Application" -name "af_qa_logs.txt" 2>/dev/null | head -1)
+          echo "=== QA log: ${LOG:-not found} ==="
+          cat "$LOG" 2>/dev/null | head -100 || echo "(empty)"
 
       # ── Upload report artifact ──────────────────────────────────────────
       - name: Upload E2E report
