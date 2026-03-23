@@ -130,6 +130,10 @@ jobs:
         working-directory: example
         run: flutter build ios --simulator --debug
 
+      # ── Clear old reports so only this run's report is shown ────────────
+      - name: Clear previous E2E reports
+        run: rm -f .claude/e2e-reports/full_e2e_report_*.json
+
       # ── Start Android emulator and run E2E ──────────────────────────────
       - name: Run E2E tests
         uses: reactivecircus/android-emulator-runner@v2
