@@ -373,6 +373,10 @@ run_ios_phase2() {
   if [[ "$(get_phase ios_phase_1)" != "PASS" ]]; then
     note "Skipping — Phase 1 did not pass"; set_phase ios_phase_2 SKIP; return
   fi
+  if [[ "${CI:-}" == "true" ]]; then
+    note "Skipping on CI — xcrun simctl openurl does not deliver custom URL schemes on GitHub-hosted runners"
+    set_phase ios_phase_2 SKIP; return
+  fi
   local _f=$FAILED
 
   # App is still running from Phase 1. Trigger the URL while it is
@@ -393,6 +397,10 @@ run_ios_phase2() {
 
 run_ios_phase3() {
   header "iOS — Phase 3: Foreground Deep Link (fresh install #2)"
+  if [[ "${CI:-}" == "true" ]]; then
+    note "Skipping on CI — xcrun simctl openurl does not deliver custom URL schemes on GitHub-hosted runners"
+    set_phase ios_phase_3 SKIP; return
+  fi
   local _f=$FAILED
   ios_fresh_install
   ios_start_logstream
