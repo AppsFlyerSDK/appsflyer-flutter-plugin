@@ -336,8 +336,8 @@ run_ios_phase1() {
   ios_fresh_install
   ios_start_logstream
   ios_launch
-  step "Waiting 30s for SDK start + events..."
-  sleep 30
+  step "Waiting 50s for SDK start + events (CI runners can be slow)..."
+  sleep 50
   ios_stop_logstream
   local logs; logs=$(ios_logs)
 
@@ -397,8 +397,8 @@ run_ios_phase3() {
   ios_fresh_install
   ios_start_logstream
   ios_launch
-  step "Waiting 28s for SDK start + first conversion data (iOS cold install needs ~21s)..."
-  sleep 28
+  step "Waiting 50s for SDK start + first conversion data (CI runners can be slow)..."
+  sleep 50
 
   local pre_logs; pre_logs=$(ios_logs)
   if ! echo "$pre_logs" | grep -qF "is_first_launch: true"; then
