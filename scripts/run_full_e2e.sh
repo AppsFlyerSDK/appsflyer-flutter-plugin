@@ -369,19 +369,20 @@ run_ios_phase1() {
 }
 
 run_ios_phase2() {
-  header "iOS — Phase 2: Background Deep Link (same session)"
+  header "iOS — Phase 2: Deep Link via Cold URL Launch"
   if [[ "$(get_phase ios_phase_1)" != "PASS" ]]; then
     note "Skipping — Phase 1 did not pass"; set_phase ios_phase_2 SKIP; return
   fi
   local _f=$FAILED
 
-  step "Launching Safari to background the app"
-  xcrun simctl launch "$IOS_UDID" com.apple.mobilesafari > /dev/null 2>&1 || true
-  sleep 2
+  step "Terminating app (cold URL launch is reliable across iOS versions)"
+  xcrun simctl terminate "$IOS_UDID" "$IOS_BUNDLE" 2>/dev/null || true
+  sleep 3
 
-  step "Triggering background deep link"
+  step "Triggering deep link via URL scheme (cold launch)"
   xcrun simctl openurl "$IOS_UDID" "$DL_BG_URL"
-  sleep 10
+  step "Waiting 20s for app launch + SDK init + deep link callback..."
+  sleep 20
 
   local logs; logs=$(ios_logs)
   echo ""
@@ -410,13 +411,14 @@ run_ios_phase3() {
   fi
   pass "is_first_launch=true confirmed (pre-deeplink gate)"
 
-  step "Brief Settings switch (required for onPause/resume cycle)"
-  xcrun simctl launch "$IOS_UDID" com.apple.Preferences > /dev/null 2>&1 || true
+  step "Terminating app (cold URL launch is reliable across iOS versions)"
+  xcrun simctl terminate "$IOS_UDID" "$IOS_BUNDLE" 2>/dev/null || true
   sleep 3
 
-  step "Triggering foreground deep link"
+  step "Triggering foreground deep link via URL scheme (cold launch)"
   xcrun simctl openurl "$IOS_UDID" "$DL_FG_URL"
-  sleep 5
+  step "Waiting 20s for app launch + SDK init + deep link callback..."
+  sleep 20
 
   ios_stop_logstream
   local logs; logs=$(ios_logs)
