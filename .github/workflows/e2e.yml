@@ -54,7 +54,10 @@ jobs:
 
       # ── iOS simulator ───────────────────────────────────────────────────────
       - name: Select Xcode version
-        run: sudo xcode-select -s /Applications/Xcode_15.4.app
+        run: |
+          XCODE=$(ls /Applications | grep -E "^Xcode_[0-9]" | sort -V | tail -1)
+          sudo xcode-select -s "/Applications/$XCODE"
+          xcodebuild -version
 
       - name: Boot iOS simulator (iPhone 15)
         run: |

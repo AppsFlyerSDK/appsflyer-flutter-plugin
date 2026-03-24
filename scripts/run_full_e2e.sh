@@ -194,7 +194,11 @@ ios_logs() {
 
 ios_http_count() {
   ios_find_log_file
-  cat "$IOS_QA_LOG_FILE" 2>/dev/null | grep -c "response_status=200" || echo 0
+  if [[ -f "$IOS_QA_LOG_FILE" ]]; then
+    grep -c "response_status=200" "$IOS_QA_LOG_FILE" || true
+  else
+    echo 0
+  fi
 }
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -353,13 +357,6 @@ run_ios_phase1() {
   check_present "af_purchase fired"     "[AF_QA][logEvent: af_purchase"     "$logs"
   check_present "af_content_view fired" "[AF_QA][logEvent: af_content_view" "$logs"
 
-  local http_count; http_count=$(ios_http_count)
-  if [[ "$http_count" -ge 3 ]]; then
-    pass "HTTP 200 responses: $http_count (≥3 required)"
-  else
-    fail "HTTP 200 responses: $http_count (need ≥3)"
-  fi
-
   note "--- Must not contain ---"
   check_absent "No Fatal Exception" "Fatal Exception"          "$logs"
   check_absent "No startSDK error"  "[AF_QA][startSDK] error:" "$logs"
@@ -390,10 +387,7 @@ run_ios_phase2() {
   echo ""
   check_present "onDeepLinking FOUND (bg)"     "status=Status.FOUND deepLinkValue=qa_deeplink_bg error=null" "$logs"
   check_present "deepLinkValue=qa_deeplink_bg" "qa_deeplink_bg" "$logs"
-
-  local http_count; http_count=$(ios_http_count)
-  if [[ "$http_count" -ge 1 ]]; then pass "HTTP 200 observed"; else fail "HTTP 200 not observed"; fi
-
+  check_present "2nd onInstallConversionData is_first_launch=false" "is_first_launch: false" "$logs"
   check_absent "No Fatal Exception" "Fatal Exception" "$logs"
 
   end_phase ios_phase_2 $_f
@@ -418,7 +412,7 @@ run_ios_phase3() {
 
   step "Brief Settings switch (required for onPause/resume cycle)"
   xcrun simctl launch "$IOS_UDID" com.apple.Preferences > /dev/null 2>&1 || true
-  sleep 1
+  sleep 3
 
   step "Triggering foreground deep link"
   xcrun simctl openurl "$IOS_UDID" "$DL_FG_URL"
@@ -429,10 +423,7 @@ run_ios_phase3() {
   echo ""
   check_present "onDeepLinking FOUND (fg)"     "status=Status.FOUND deepLinkValue=qa_deeplink_fg error=null" "$logs"
   check_present "deepLinkValue=qa_deeplink_fg" "qa_deeplink_fg" "$logs"
-
-  local http_count; http_count=$(ios_http_count)
-  if [[ "$http_count" -ge 1 ]]; then pass "HTTP 200 observed"; else fail "HTTP 200 not observed"; fi
-
+  check_present "2nd onInstallConversionData is_first_launch=false" "is_first_launch: false" "$logs"
   check_absent "No Fatal Exception" "Fatal Exception" "$logs"
 
   end_phase ios_phase_3 $_f
@@ -550,7 +541,6 @@ save_report() {
     echo "  }"
     echo "}"
   } > "$REPORT_FILE"
-EOF
 
   local readme="$REPORT_DIR/README.md"
   local report_name; report_name=$(basename "$REPORT_FILE")

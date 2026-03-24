@@ -15,3 +15,6 @@
 | 2026-03-17 14:22 | FAIL | PASS | PASS | PASS | PASS | PASS | FAIL | [full_e2e_report_2026-03-17_142046.json](./full_e2e_report_2026-03-17_142046.json) |
 | 2026-03-17 14:26 | FAIL | PASS | PASS | FAIL | FAIL | SKIP | PASS | [full_e2e_report_2026-03-17_142424.json](./full_e2e_report_2026-03-17_142424.json) |
 | 2026-03-17 14:29 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | [full_e2e_report_2026-03-17_142653.json](./full_e2e_report_2026-03-17_142653.json) |
+| 2026-03-24 09:57 | FAIL | PASS | PASS | PASS | FAIL | SKIP | FAIL | [full_e2e_report_2026-03-24_095511.json](./full_e2e_report_2026-03-24_095511.json) |
+| 2026-03-24 10:38 | FAIL | FAIL | SKIP | FAIL | FAIL | SKIP | FAIL | [full_e2e_report_2026-03-24_103606.json](./full_e2e_report_2026-03-24_103606.json) |
+| 2026-03-24 10:43 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | [full_e2e_report_2026-03-24_104107.json](./full_e2e_report_2026-03-24_104107.json) |
