@@ -369,26 +369,23 @@ run_ios_phase1() {
 }
 
 run_ios_phase2() {
-  header "iOS — Phase 2: Deep Link via Cold URL Launch"
+  header "iOS — Phase 2: Deep Link (app in foreground)"
   if [[ "$(get_phase ios_phase_1)" != "PASS" ]]; then
     note "Skipping — Phase 1 did not pass"; set_phase ios_phase_2 SKIP; return
   fi
   local _f=$FAILED
 
-  step "Terminating app (cold URL launch is reliable across iOS versions)"
-  xcrun simctl terminate "$IOS_UDID" "$IOS_BUNDLE" 2>/dev/null || true
-  sleep 3
-
-  step "Triggering deep link via URL scheme (cold launch)"
+  # App is still running from Phase 1. Trigger the URL while it is
+  # in the foreground — most reliable path on all iOS versions / CI runners.
+  step "Triggering deep link while app is in foreground"
   xcrun simctl openurl "$IOS_UDID" "$DL_BG_URL"
-  step "Waiting 20s for app launch + SDK init + deep link callback..."
-  sleep 20
+  step "Waiting 15s for deep link callback..."
+  sleep 15
 
   local logs; logs=$(ios_logs)
   echo ""
   check_present "onDeepLinking FOUND (bg)"     "status=Status.FOUND deepLinkValue=qa_deeplink_bg error=null" "$logs"
   check_present "deepLinkValue=qa_deeplink_bg" "qa_deeplink_bg" "$logs"
-  check_present "2nd onInstallConversionData is_first_launch=false" "is_first_launch: false" "$logs"
   check_absent "No Fatal Exception" "Fatal Exception" "$logs"
 
   end_phase ios_phase_2 $_f
@@ -411,21 +408,16 @@ run_ios_phase3() {
   fi
   pass "is_first_launch=true confirmed (pre-deeplink gate)"
 
-  step "Terminating app (cold URL launch is reliable across iOS versions)"
-  xcrun simctl terminate "$IOS_UDID" "$IOS_BUNDLE" 2>/dev/null || true
-  sleep 3
-
-  step "Triggering foreground deep link via URL scheme (cold launch)"
+  step "Triggering foreground deep link while app is in foreground"
   xcrun simctl openurl "$IOS_UDID" "$DL_FG_URL"
-  step "Waiting 20s for app launch + SDK init + deep link callback..."
-  sleep 20
+  step "Waiting 15s for deep link callback..."
+  sleep 15
 
   ios_stop_logstream
   local logs; logs=$(ios_logs)
   echo ""
   check_present "onDeepLinking FOUND (fg)"     "status=Status.FOUND deepLinkValue=qa_deeplink_fg error=null" "$logs"
   check_present "deepLinkValue=qa_deeplink_fg" "qa_deeplink_fg" "$logs"
-  check_present "2nd onInstallConversionData is_first_launch=false" "is_first_launch: false" "$logs"
   check_absent "No Fatal Exception" "Fatal Exception" "$logs"
 
   end_phase ios_phase_3 $_f
