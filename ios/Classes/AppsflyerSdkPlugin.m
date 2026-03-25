@@ -68,7 +68,9 @@ static BOOL _isSKADEnabled = false;
     [registrar addMethodCallDelegate:instance channel:channel];
     [registrar addMethodCallDelegate:instance channel:callbackChannel];
     [registrar addApplicationDelegate:instance];
-    
+    if (@available(iOS 13.0, *)) {
+        [registrar addSceneDelegate:instance];
+    }
 
 }
 
@@ -947,8 +949,34 @@ static BOOL _isSKADEnabled = false;
 // Open Universal Links
 - (BOOL)application:(UIApplication *)application continueUserActivity:(NSUserActivity *)userActivity restorationHandler:(void (^)(NSArray * _Nullable))restorationHandler {
     [[AppsFlyerAttribution shared] continueUserActivity:userActivity restorationHandler:restorationHandler];
-    
+
     // Results of this are ORed and NO doesn't affect other delegate interceptors' result.
+    return NO;
+}
+
+#pragma mark - FlutterSceneLifeCycleDelegate
+
+// UIScene-based URI-scheme deep links (iOS 13+, Flutter 3.41+ UIScene migration)
+- (BOOL)scene:(UIScene*)scene openURLContexts:(NSSet<UIOpenURLContext*>*)URLContexts API_AVAILABLE(ios(13.0)) {
+    for (UIOpenURLContext *context in URLContexts) {
+        [[AppsFlyerAttribution shared] handleOpenUrl:context.URL options:@{}];
+    }
+    return NO;
+}
+
+// Cold-start URI-scheme deep links delivered via UISceneConnectionOptions (iOS 13+)
+- (BOOL)scene:(UIScene*)scene
+    willConnectToSession:(UISceneSession*)session
+                 options:(UISceneConnectionOptions*)connectionOptions API_AVAILABLE(ios(13.0)) {
+    for (UIOpenURLContext *context in connectionOptions.URLContexts) {
+        [[AppsFlyerAttribution shared] handleOpenUrl:context.URL options:@{}];
+    }
+    return NO;
+}
+
+// UIScene-based Universal Links (iOS 13+)
+- (BOOL)scene:(UIScene*)scene continueUserActivity:(NSUserActivity*)userActivity API_AVAILABLE(ios(13.0)) {
+    [[AppsFlyerAttribution shared] continueUserActivity:userActivity restorationHandler:nil];
     return NO;
 }
 
