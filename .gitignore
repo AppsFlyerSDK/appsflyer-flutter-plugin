@@ -115,3 +115,8 @@ node_modules/
 covBadgeGen.js
 coverage/
 .env
+
+# AI agent tooling and E2E scripts (not part of plugin release)
+.claude/
+scripts/
+example/
