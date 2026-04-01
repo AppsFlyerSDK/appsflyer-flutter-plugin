@@ -1,5 +1,16 @@
 # Versions
 
+## 6.17.9
+
+- Added UIScene lifecycle support for iOS deep linking (Flutter 3.41+ compatibility)
+  - Adopted `FlutterSceneLifeCycleDelegate` with compile-time guard for backward compatibility
+  - Added `scene:openURLContexts:` for warm-start URI-scheme deep links
+  - Added `scene:willConnectToSession:options:` for cold-start URI-scheme and Universal Links
+  - Added `scene:continueUserActivity:` for Universal Links via UIScene
+- Fixed `getViewController` to use `UIWindowScene` lookup on iOS 13+ (replaces deprecated `UIApplication.delegate.window`)
+- Updated iOS SDK from 6.17.8 to 6.17.9
+- Updated iOS Purchase Connector from 6.17.8 to 6.17.9
+
 ## 6.17.8
 
 - Updated Android SDK from 6.17.4 to 6.17.5

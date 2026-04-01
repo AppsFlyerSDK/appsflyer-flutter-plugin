@@ -68,7 +68,11 @@ static BOOL _isSKADEnabled = false;
     [registrar addMethodCallDelegate:instance channel:channel];
     [registrar addMethodCallDelegate:instance channel:callbackChannel];
     [registrar addApplicationDelegate:instance];
-    
+#if __has_include(<Flutter/FlutterSceneLifeCycleDelegate.h>)
+    if (@available(iOS 13.0, *)) {
+        [registrar addSceneDelegate:instance];
+    }
+#endif
 
 }
 
@@ -904,9 +908,20 @@ static BOOL _isSKADEnabled = false;
 
 
 + (FlutterViewController*) getViewController{
-    UIViewController *topMostViewControllerObj =  [[[UIApplication sharedApplication] delegate] window].rootViewController;
+    UIWindow *window = nil;
+    if (@available(iOS 13.0, *)) {
+        for (UIWindowScene *scene in [UIApplication sharedApplication].connectedScenes) {
+            if (scene.activationState == UISceneActivationStateForegroundActive) {
+                window = scene.windows.firstObject;
+                break;
+            }
+        }
+    }
+    if (window == nil) {
+        window = [[[UIApplication sharedApplication] delegate] window];
+    }
+    UIViewController *topMostViewControllerObj = window.rootViewController;
     FlutterViewController *flutterViewController = (FlutterViewController *)topMostViewControllerObj;
-    
     return flutterViewController;
 }
 
@@ -947,10 +962,52 @@ static BOOL _isSKADEnabled = false;
 // Open Universal Links
 - (BOOL)application:(UIApplication *)application continueUserActivity:(NSUserActivity *)userActivity restorationHandler:(void (^)(NSArray * _Nullable))restorationHandler {
     [[AppsFlyerAttribution shared] continueUserActivity:userActivity restorationHandler:restorationHandler];
-    
+
     // Results of this are ORed and NO doesn't affect other delegate interceptors' result.
     return NO;
 }
+
+#if __has_include(<Flutter/FlutterSceneLifeCycleDelegate.h>)
+#pragma mark - FlutterSceneLifeCycleDelegate
+
+// UIScene-based URI-scheme deep links (iOS 13+, Flutter 3.41+ UIScene migration)
+- (BOOL)scene:(UIScene*)scene openURLContexts:(NSSet<UIOpenURLContext*>*)URLContexts API_AVAILABLE(ios(13.0)) {
+    for (UIOpenURLContext *context in URLContexts) {
+        NSDictionary *opts = @{};
+        if (context.options.sourceApplication) {
+            opts = @{UIApplicationOpenURLOptionsSourceApplicationKey: context.options.sourceApplication};
+        }
+        [[AppsFlyerAttribution shared] handleOpenUrl:context.URL options:opts];
+    }
+    return NO;
+}
+
+// Cold-start deep links delivered via UISceneConnectionOptions (iOS 13+)
+// Handles both URI-scheme links (URLContexts) and Universal Links (userActivities)
+- (BOOL)scene:(UIScene*)scene
+    willConnectToSession:(UISceneSession*)session
+                 options:(UISceneConnectionOptions*)connectionOptions API_AVAILABLE(ios(13.0)) {
+    for (UIOpenURLContext *context in connectionOptions.URLContexts) {
+        NSDictionary *opts = @{};
+        if (context.options.sourceApplication) {
+            opts = @{UIApplicationOpenURLOptionsSourceApplicationKey: context.options.sourceApplication};
+        }
+        [[AppsFlyerAttribution shared] handleOpenUrl:context.URL options:opts];
+    }
+    for (NSUserActivity *activity in connectionOptions.userActivities) {
+        if ([activity.activityType isEqualToString:NSUserActivityTypeBrowsingWeb]) {
+            [[AppsFlyerAttribution shared] continueUserActivity:activity restorationHandler:nil];
+        }
+    }
+    return NO;
+}
+
+// UIScene-based Universal Links (iOS 13+)
+- (BOOL)scene:(UIScene*)scene continueUserActivity:(NSUserActivity*)userActivity API_AVAILABLE(ios(13.0)) {
+    [[AppsFlyerAttribution shared] continueUserActivity:userActivity restorationHandler:nil];
+    return NO;
+}
+#endif // __has_include(<Flutter/FlutterSceneLifeCycleDelegate.h>)
 
 
 @end

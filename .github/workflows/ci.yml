@@ -164,19 +164,26 @@ jobs:
         working-directory: example
         run: flutter pub get
       
-      # Step 7: Build Android APK (debug mode)
+      # Step 7: Create dummy .env file for CI (not committed to repo)
+      - name: 🔑 Create dummy .env for CI build
+        working-directory: example
+        run: |
+          echo "DEV_KEY=dummy_dev_key" > .env
+          echo "APP_ID=dummy_app_id" >> .env
+
+      # Step 8: Build Android APK (debug mode)
       # This validates that the plugin integrates correctly with Android
       - name: 🔨 Build Android APK (debug)
         working-directory: example
         run: flutter build apk --debug
       
-      # Step 8: Build Android App Bundle (release mode, no signing)
+      # Step 9: Build Android App Bundle (release mode, no signing)
       # App Bundle is the preferred format for Play Store
       - name: 🔨 Build Android App Bundle (release)
         working-directory: example
         run: flutter build appbundle --release
-      
-      # Step 9: Upload build artifacts (optional)
+
+      # Step 10: Upload build artifacts (optional)
       # Useful for manual testing or archiving
       - name: 📤 Upload APK artifact
         if: success()
@@ -239,19 +246,26 @@ jobs:
         working-directory: example/ios
         run: pod install
       
-      # Step 8: Build for iOS Simulator (fastest iOS build)
+      # Step 8: Create dummy .env file for CI (not committed to repo)
+      - name: 🔑 Create dummy .env for CI build
+        working-directory: example
+        run: |
+          echo "DEV_KEY=dummy_dev_key" > .env
+          echo "APP_ID=dummy_app_id" >> .env
+
+      # Step 9: Build for iOS Simulator (fastest iOS build)
       # Validates that the plugin compiles for iOS
       - name: 🔨 Build iOS for Simulator
         working-directory: example
         run: flutter build ios --simulator --debug
       
-      # Step 9: Build iOS IPA without code signing (release mode)
+      # Step 10: Build iOS IPA without code signing (release mode)
       # This validates a full release build without requiring certificates
       - name: 🔨 Build iOS IPA (no codesign)
         working-directory: example
         run: flutter build ipa --release --no-codesign
-      
-      # Step 10: Upload build artifacts (optional)
+
+      # Step 11: Upload build artifacts (optional)
       - name: 📤 Upload iOS build artifact
         if: success()
         uses: actions/upload-artifact@v4

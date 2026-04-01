@@ -6,7 +6,11 @@
 #import "AppsFlyerLib.h"
 #endif
 
+#if __has_include(<Flutter/FlutterSceneLifeCycleDelegate.h>)
+@interface AppsflyerSdkPlugin: NSObject<FlutterPlugin, FlutterSceneLifeCycleDelegate>
+#else
 @interface AppsflyerSdkPlugin: NSObject<FlutterPlugin>
+#endif
 
 @property (readwrite, nonatomic) BOOL isManualStart;
 
@@ -18,7 +22,7 @@
 @end
 
 // Appsflyer JS objects
-#define kAppsFlyerPluginVersion             @"6.17.8"
+#define kAppsFlyerPluginVersion             @"6.17.9"
 #define afDevKey                            @"afDevKey"
 #define afAppId                             @"afAppId"
 #define afIsDebug                           @"isDebug"
