@@ -970,33 +970,14 @@ static BOOL _isSKADEnabled = false;
 #if __has_include(<Flutter/FlutterSceneLifeCycleDelegate.h>)
 #pragma mark - FlutterSceneLifeCycleDelegate
 
-// UIScene-based URI-scheme deep links (iOS 13+, Flutter 3.41+ UIScene migration)
-- (BOOL)scene:(UIScene*)scene openURLContexts:(NSSet<UIOpenURLContext*>*)URLContexts API_AVAILABLE(ios(13.0)) {
-    for (UIOpenURLContext *context in URLContexts) {
-        NSDictionary *opts = @{};
-        if (context.options.sourceApplication) {
-            opts = @{UIApplicationOpenURLOptionsSourceApplicationKey: context.options.sourceApplication};
-        }
-        [[AppsFlyerAttribution shared] handleOpenUrl:context.URL options:opts];
-    }
-    return NO;
-}
-
 // Cold-start deep links delivered via UISceneConnectionOptions (iOS 13+)
-// Handles both URI-scheme links (URLContexts) and Universal Links (userActivities)
 - (BOOL)scene:(UIScene*)scene
     willConnectToSession:(UISceneSession*)session
-                 options:(UISceneConnectionOptions*)connectionOptions API_AVAILABLE(ios(13.0)) {
-    for (UIOpenURLContext *context in connectionOptions.URLContexts) {
-        NSDictionary *opts = @{};
-        if (context.options.sourceApplication) {
-            opts = @{UIApplicationOpenURLOptionsSourceApplicationKey: context.options.sourceApplication};
-        }
-        [[AppsFlyerAttribution shared] handleOpenUrl:context.URL options:opts];
-    }
-    for (NSUserActivity *activity in connectionOptions.userActivities) {
-        if ([activity.activityType isEqualToString:NSUserActivityTypeBrowsingWeb]) {
-            [[AppsFlyerAttribution shared] continueUserActivity:activity restorationHandler:nil];
+                 options:(nullable UISceneConnectionOptions*)connectionOptions API_AVAILABLE(ios(13.0)) {
+    if ([scene isKindOfClass:[UIWindowScene class]]) {
+        NSUserActivity *userActivity = connectionOptions.userActivities.allObjects.firstObject;
+        if (userActivity) {
+            [self scene:scene continueUserActivity:userActivity];
         }
     }
     return NO;
