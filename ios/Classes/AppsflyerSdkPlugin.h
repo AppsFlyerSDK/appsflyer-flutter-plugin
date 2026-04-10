@@ -6,11 +6,7 @@
 #import "AppsFlyerLib.h"
 #endif
 
-#if __has_include(<Flutter/FlutterSceneLifeCycleDelegate.h>)
 @interface AppsflyerSdkPlugin: NSObject<FlutterPlugin, FlutterSceneLifeCycleDelegate>
-#else
-@interface AppsflyerSdkPlugin: NSObject<FlutterPlugin>
-#endif
 
 @property (readwrite, nonatomic) BOOL isManualStart;
 

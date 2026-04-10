@@ -68,11 +68,9 @@ static BOOL _isSKADEnabled = false;
     [registrar addMethodCallDelegate:instance channel:channel];
     [registrar addMethodCallDelegate:instance channel:callbackChannel];
     [registrar addApplicationDelegate:instance];
-#if __has_include(<Flutter/FlutterSceneLifeCycleDelegate.h>)
     if (@available(iOS 13.0, *)) {
         [registrar addSceneDelegate:instance];
     }
-#endif
 
 }
 
@@ -967,9 +965,6 @@ static BOOL _isSKADEnabled = false;
     return NO;
 }
 
-#if __has_include(<Flutter/FlutterSceneLifeCycleDelegate.h>)
-#pragma mark - FlutterSceneLifeCycleDelegate
-
 // Cold-start deep links delivered via UISceneConnectionOptions (iOS 13+)
 - (BOOL)scene:(UIScene*)scene
     willConnectToSession:(UISceneSession*)session
@@ -988,7 +983,5 @@ static BOOL _isSKADEnabled = false;
     [[AppsFlyerAttribution shared] continueUserActivity:userActivity restorationHandler:nil];
     return NO;
 }
-#endif // __has_include(<Flutter/FlutterSceneLifeCycleDelegate.h>)
-
 
 @end
