@@ -88,24 +88,30 @@ jobs:
           sed -i "s/^version: .*/version: $VERSION/" pubspec.yaml
           grep "^version:" pubspec.yaml
       
-      - name: 📝 Update plugin version constants (Android)
+      - name: 📝 Update plugin version constants (Android/iOS/Dart)
         run: |
           VERSION='${{ steps.compute-version.outputs.version }}'
-          FILE="android/src/main/java/com/appsflyer/appsflyersdk/AppsFlyerConstants.java"
-          if [ -f "$FILE" ]; then
-            sed -i "s/kPluginVersion = \".*\"/kPluginVersion = \"$VERSION\"/" "$FILE"
-            echo "Updated Android constants:"
-            grep "kPluginVersion" "$FILE"
+          echo "Updating PLUGIN_VERSION constants to: $VERSION"
+
+          # Android - AppsFlyerConstants.java
+          ANDROID_FILE="android/src/main/java/com/appsflyer/appsflyersdk/AppsFlyerConstants.java"
+          if [ -f "$ANDROID_FILE" ]; then
+            sed -i "s/PLUGIN_VERSION = \".*\"/PLUGIN_VERSION = \"$VERSION\"/" "$ANDROID_FILE"
+            echo "✅ Android:" && grep "PLUGIN_VERSION" "$ANDROID_FILE"
           fi
-      
-      - name: 📝 Update plugin version constants (iOS)
-        run: |
-          VERSION='${{ steps.compute-version.outputs.version }}'
-          FILE="ios/Classes/AppsflyerSdkPlugin.m"
-          if [ -f "$FILE" ]; then
-            sed -i "s/kPluginVersion = @\".*\"/kPluginVersion = @\"$VERSION\"/" "$FILE"
-            echo "Updated iOS constants:"
-            grep "kPluginVersion" "$FILE"
+
+          # Dart - appsflyer_constants.dart
+          DART_FILE="lib/src/appsflyer_constants.dart"
+          if [ -f "$DART_FILE" ]; then
+            sed -i "s/PLUGIN_VERSION = \".*\"/PLUGIN_VERSION = \"$VERSION\"/" "$DART_FILE"
+            echo "✅ Dart:" && grep "PLUGIN_VERSION" "$DART_FILE"
+          fi
+
+          # iOS - AppsflyerSdkPlugin.h (#define)
+          IOS_FILE="ios/Classes/AppsflyerSdkPlugin.h"
+          if [ -f "$IOS_FILE" ]; then
+            sed -i 's/kAppsFlyerPluginVersion[[:space:]]*@"[^"]*"/kAppsFlyerPluginVersion             @"'"$VERSION"'"/' "$IOS_FILE"
+            echo "✅ iOS:" && grep "kAppsFlyerPluginVersion" "$IOS_FILE"
           fi
       
       - name: 💾 Commit and push version changes

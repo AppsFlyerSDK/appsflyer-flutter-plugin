@@ -230,27 +230,58 @@ jobs:
             echo "⚠️ $FILE not found"
           fi
 
-      - name: 📝 Update plugin version constants (Android/iOS)
+      - name: 📝 Update plugin version constants (Android/iOS/Dart)
         run: |
           VERSION='${{ needs.validate-release.outputs.version }}'
-          AND_FILE="android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerConstants.java"
-          IOS_FILE="ios/Classes/AppsflyerSdkPlugin.m"
-          if [ -f "$AND_FILE" ]; then
-            sed -i.bak "s/kPluginVersion = \".*\"/kPluginVersion = \"$VERSION\"/" "$AND_FILE" && rm "$AND_FILE.bak" || true
-          fi
-          if [ -f "$IOS_FILE" ]; then
-            sed -i.bak "s/kPluginVersion = @\".*\"/kPluginVersion = @\"$VERSION\"/" "$IOS_FILE" && rm "$IOS_FILE.bak" || true
+          echo "Updating PLUGIN_VERSION constants to: $VERSION"
+
+          # Android - AppsFlyerConstants.java
+          ANDROID_FILE="android/src/main/java/com/appsflyer/appsflyersdk/AppsFlyerConstants.java"
+          if [ -f "$ANDROID_FILE" ]; then
+            sed -i.bak "s/PLUGIN_VERSION = \".*\"/PLUGIN_VERSION = \"$VERSION\"/" "$ANDROID_FILE"
+            rm "$ANDROID_FILE.bak"
+            echo "✅ Android:" && grep "PLUGIN_VERSION" "$ANDROID_FILE"
           fi
 
-      - name: 📝 Update README SDK versions
+          # Dart - appsflyer_constants.dart
+          DART_FILE="lib/src/appsflyer_constants.dart"
+          if [ -f "$DART_FILE" ]; then
+            sed -i.bak "s/PLUGIN_VERSION = \".*\"/PLUGIN_VERSION = \"$VERSION\"/" "$DART_FILE"
+            rm "$DART_FILE.bak"
+            echo "✅ Dart:" && grep "PLUGIN_VERSION" "$DART_FILE"
+          fi
+
+          # iOS - AppsflyerSdkPlugin.h (#define)
+          IOS_FILE="ios/Classes/AppsflyerSdkPlugin.h"
+          if [ -f "$IOS_FILE" ]; then
+            sed -i.bak 's/kAppsFlyerPluginVersion[[:space:]]*@"[^"]*"/kAppsFlyerPluginVersion             @"'"$VERSION"'"/' "$IOS_FILE"
+            rm "$IOS_FILE.bak"
+            echo "✅ iOS:" && grep "kAppsFlyerPluginVersion" "$IOS_FILE"
+          fi
+
+      - name: 📝 Update README SDK and Purchase Connector versions
         run: |
           IOS_VER='${{ needs.validate-release.outputs.ios_sdk_version }}'
           AND_VER='${{ needs.validate-release.outputs.android_sdk_version }}'
+
+          # Main SDK versions
           sed -i.bak -E "s/- Android AppsFlyer SDK \*\*v[0-9.]+\*\*/- Android AppsFlyer SDK **v${AND_VER}**/" README.md
           sed -i.bak -E "s/- iOS AppsFlyer SDK \*\*v[0-9.]+\*\*/- iOS AppsFlyer SDK **v${IOS_VER}**/" README.md
-          rm README.md.bak
-          echo "README updated SDK versions:"
-          sed -n '12,20p' README.md | cat
+
+          # Purchase Connector versions (extract from build files)
+          AND_PC=$(grep "purchase-connector:" android/build.gradle | sed -n "s/.*purchase-connector:\([^']*\).*/\1/p" | head -1)
+          IOS_PC=$(grep "PurchaseConnector" ios/appsflyer_sdk.podspec | sed -n "s/.*PurchaseConnector',.*'\([^']*\)'.*/\1/p" | head -1)
+
+          if [ -n "$AND_PC" ]; then
+            sed -i.bak -E "/^### Purchase Connector/,/^##|^$/{s/^- Android [0-9.]+$/- Android ${AND_PC}/;}" README.md
+          fi
+          if [ -n "$IOS_PC" ]; then
+            sed -i.bak -E "/^### Purchase Connector/,/^##|^$/{s/^- iOS [0-9.]+$/- iOS ${IOS_PC}/;}" README.md
+          fi
+
+          rm -f README.md.bak
+          echo "README updated versions:"
+          sed -n '/## SDK Versions/,/## ❗/p' README.md | head -12
 
       - name: 💾 Commit & push changes
         id: push
@@ -444,12 +475,15 @@ jobs:
   notify-team:
     name: 📢 Notify Team
     runs-on: ubuntu-latest
-    needs: [validate-release, create-prerelease]
+    needs: [validate-release, create-prerelease, prepare-branch]
     if: always()
     
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.prepare-branch.outputs.release_branch }}
       
       - name: 📝 Extract SDK versions and changelog
         id: extract-info
