@@ -59,8 +59,10 @@ jobs:
       
       - name: 🔍 Compute production version
         id: compute-version
+        env:
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
-          RELEASE_BRANCH="${{ github.event.pull_request.head.ref }}"
+          RELEASE_BRANCH="$PR_HEAD_REF"
           echo "Release branch: $RELEASE_BRANCH"
           
           # Get current version from pubspec.yaml
