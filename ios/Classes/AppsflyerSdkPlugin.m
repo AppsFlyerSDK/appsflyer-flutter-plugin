@@ -68,7 +68,7 @@ static BOOL _isSKADEnabled = false;
     [registrar addMethodCallDelegate:instance channel:channel];
     [registrar addMethodCallDelegate:instance channel:callbackChannel];
     [registrar addApplicationDelegate:instance];
-#if __has_include(<Flutter/FlutterSceneLifeCycleDelegate.h>)
+#if __has_include(<Flutter/FlutterSceneLifeCycle.h>)
     if (@available(iOS 13.0, *)) {
         [registrar addSceneDelegate:instance];
     }
@@ -967,7 +967,7 @@ static BOOL _isSKADEnabled = false;
     return NO;
 }
 
-#if __has_include(<Flutter/FlutterSceneLifeCycleDelegate.h>)
+#if __has_include(<Flutter/FlutterSceneLifeCycle.h>)
 #pragma mark - FlutterSceneLifeCycleDelegate
 
 // UIScene-based URI-scheme deep links (iOS 13+, Flutter 3.41+ UIScene migration)
@@ -1007,7 +1007,7 @@ static BOOL _isSKADEnabled = false;
     [[AppsFlyerAttribution shared] continueUserActivity:userActivity restorationHandler:nil];
     return NO;
 }
-#endif // __has_include(<Flutter/FlutterSceneLifeCycleDelegate.h>)
+#endif // __has_include(<Flutter/FlutterSceneLifeCycle.h>)
 
 
 @end
