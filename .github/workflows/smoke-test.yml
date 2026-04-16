@@ -65,7 +65,7 @@ jobs:
               | grep "iPhone" | grep -oE '[A-F0-9-]{36}' | head -1)
           fi
           echo "Booting simulator: $UDID"
-          xcrun simctl boot "$UDID"
+          xcrun simctl boot "$UDID" 2>/dev/null || true
           xcrun simctl bootstatus "$UDID" -b
           echo "UDID=$UDID" >> "$GITHUB_ENV"
 
