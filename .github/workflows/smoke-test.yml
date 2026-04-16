@@ -134,12 +134,9 @@ jobs:
       # ── Phase 2: Warm start / background deep link ────────────────────────────
       - name: "Phase 2 — Background deep link"
         run: |
-          # Background the app via Safari
-          xcrun simctl launch "$UDID" com.apple.mobilesafari
-          sleep 3
-          # Trigger deep link
+          # Trigger deep link while app is in foreground — most reliable path
           xcrun simctl openurl "$UDID" "$DL_BG"
-          sleep 8
+          sleep 15
 
       - name: "Phase 2 — Validate deep link callback"
         id: phase2
@@ -165,8 +162,8 @@ jobs:
           xcrun simctl install   "$UDID" "$APP"
           PID=$(xcrun simctl launch "$UDID" "$IOS_BUNDLE" | awk '{print $2}')
           echo "App PID: $PID"
-          echo "Waiting 35s for SDK to start..."
-          sleep 35
+          echo "Waiting 50s for SDK to start..."
+          sleep 50
 
       - name: "Phase 3 — Confirm is_first_launch=true then trigger foreground deep link"
         run: |
@@ -176,7 +173,7 @@ jobs:
           grep -q "is_first_launch: true" "$LOG" || { echo "❌ is_first_launch not true — invalid test env"; exit 1; }
           echo "✅ is_first_launch=true confirmed — app is in foreground"
           xcrun simctl openurl "$UDID" "$DL_FG"
-          sleep 8
+          sleep 15
 
       - name: "Phase 3 — Validate foreground deep link callback"
         id: phase3
