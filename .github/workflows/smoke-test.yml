@@ -51,11 +51,8 @@ jobs:
           flutter --version
 
       # ── Xcode ────────────────────────────────────────────────────────────────
-      - name: Select latest Xcode
-        run: |
-          XCODE=$(ls /Applications | grep -E "^Xcode_[0-9]" | sort -V | tail -1)
-          sudo xcode-select -s "/Applications/$XCODE"
-          xcodebuild -version
+      - name: Verify Xcode
+        run: xcodebuild -version
 
       # ── Boot simulator ───────────────────────────────────────────────────────
       - name: Boot iOS simulator (iPhone 15)
