@@ -94,11 +94,14 @@ jobs:
       - name: "Phase 1 — Fresh install + cold start"
         run: |
           APP="example/build/ios/iphonesimulator/Runner.app"
+          SIM_DATA="$HOME/Library/Developer/CoreSimulator/Devices/$UDID/data"
+          xcrun simctl terminate "$UDID" "$IOS_BUNDLE" 2>/dev/null || true
           xcrun simctl uninstall "$UDID" "$IOS_BUNDLE" 2>/dev/null || true
+          # Purge any leftover log files from previous runs so we never read stale data
+          find "$SIM_DATA/Containers/Data/Application" -name "af_qa_logs.txt" -delete 2>/dev/null || true
           xcrun simctl install   "$UDID" "$APP"
           xcrun simctl launch "$UDID" "$IOS_BUNDLE"
-          echo "Waiting for is_first_launch=true (up to 90s)..."
-          SIM_DATA="$HOME/Library/Developer/CoreSimulator/Devices/$UDID/data"
+          echo "Waiting for is_first_launch=true (up to 120s)..."
           DEADLINE=$((SECONDS + 120))
           LOG=""
           while [[ $SECONDS -lt $DEADLINE ]]; do
@@ -144,7 +147,7 @@ jobs:
         run: |
           # Trigger deep link while app is in foreground — most reliable path
           xcrun simctl openurl "$UDID" "$DL_BG"
-          sleep 15
+          sleep 25
 
       - name: "Phase 2 — Validate deep link callback"
         id: phase2
@@ -166,11 +169,14 @@ jobs:
       - name: "Phase 3 — Fresh install #2"
         run: |
           APP="example/build/ios/iphonesimulator/Runner.app"
+          SIM_DATA="$HOME/Library/Developer/CoreSimulator/Devices/$UDID/data"
+          xcrun simctl terminate "$UDID" "$IOS_BUNDLE" 2>/dev/null || true
           xcrun simctl uninstall "$UDID" "$IOS_BUNDLE"
+          # Purge any leftover log files so Phase 3 validation reads only fresh data
+          find "$SIM_DATA/Containers/Data/Application" -name "af_qa_logs.txt" -delete 2>/dev/null || true
           xcrun simctl install   "$UDID" "$APP"
           xcrun simctl launch "$UDID" "$IOS_BUNDLE"
-          echo "Waiting for is_first_launch=true (up to 90s)..."
-          SIM_DATA="$HOME/Library/Developer/CoreSimulator/Devices/$UDID/data"
+          echo "Waiting for is_first_launch=true (up to 120s)..."
           DEADLINE=$((SECONDS + 120))
           LOG=""
           while [[ $SECONDS -lt $DEADLINE ]]; do
@@ -191,7 +197,7 @@ jobs:
       - name: "Phase 3 — Trigger foreground deep link"
         run: |
           xcrun simctl openurl "$UDID" "$DL_FG"
-          sleep 15
+          sleep 25
 
       - name: "Phase 3 — Validate foreground deep link callback"
         id: phase3
