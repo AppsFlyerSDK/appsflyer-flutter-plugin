@@ -1,0 +1,234 @@
+# =============================================================================
+# Smoke Test Workflow — iOS Simulator
+# =============================================================================
+#
+# Runs 3 phases on iOS simulator using the published appsflyer_sdk from pub.dev:
+#   Phase 1 — Cold start: SDK init, events, HTTP 200s, is_first_launch=true
+#   Phase 2 — Warm start (background deep link): onDeepLinking Status.FOUND
+#   Phase 3 — Foreground deep link: fresh install + onDeepLinking Status.FOUND
+#
+# Triggers:
+#   - Push to main
+#   - Pull request targeting main
+#   - Manual (workflow_dispatch)
+# =============================================================================
+
+name: 🧪 Smoke Test — iOS
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Smoke Test (iOS Simulator)
+    runs-on: macos-14
+
+    env:
+      IOS_BUNDLE: com.appsflyer.example
+      DL_BG: "afexample://deeplink?deep_link_value=qa_deeplink_bg&af_sub1=background_test&pid=testmedia&c=deeplink_test"
+      DL_FG: "afexample://deeplink?deep_link_value=qa_deeplink_fg&af_sub1=foreground_test&pid=testmedia&c=deeplink_test"
+
+    steps:
+      # ── Checkout ─────────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Flutter ──────────────────────────────────────────────────────────────
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # ── Xcode ────────────────────────────────────────────────────────────────
+      - name: Select latest Xcode
+        run: |
+          XCODE=$(ls /Applications | grep -E "^Xcode_[0-9]" | sort -V | tail -1)
+          sudo xcode-select -s "/Applications/$XCODE"
+          xcodebuild -version
+
+      # ── Boot simulator ───────────────────────────────────────────────────────
+      - name: Boot iOS simulator (iPhone 15)
+        run: |
+          UDID=$(xcrun simctl list devices available \
+            | grep "iPhone 15" | grep -v "Plus\|Pro\|Max" \
+            | grep -oE '[A-F0-9-]{36}' | head -1)
+          if [[ -z "$UDID" ]]; then
+            UDID=$(xcrun simctl list devices available \
+              | grep "iPhone" | grep -oE '[A-F0-9-]{36}' | head -1)
+          fi
+          echo "Booting simulator: $UDID"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+
+      # ── Dependencies ─────────────────────────────────────────────────────────
+      - name: Install plugin dependencies
+        run: flutter pub get
+
+      - name: Install example dependencies
+        working-directory: example
+        run: flutter pub get
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: example/ios/Pods
+          key: pods-${{ hashFiles('example/ios/Podfile.lock') }}
+          restore-keys: pods-
+
+      - name: Pod install
+        working-directory: example/ios
+        run: pod install
+
+      # ── .env ─────────────────────────────────────────────────────────────────
+      - name: Create .env
+        run: echo "${{ secrets.ENV_FILE }}" > example/.env
+
+      # ── Build ─────────────────────────────────────────────────────────────────
+      - name: Cache iOS build
+        uses: actions/cache@v4
+        with:
+          path: example/build/ios
+          key: ios-smoke-${{ hashFiles('ios/**', 'lib/**', 'example/lib/**', 'example/ios/**', 'pubspec.yaml', 'example/pubspec.yaml') }}
+          restore-keys: ios-smoke-
+
+      - name: Build iOS simulator app
+        working-directory: example
+        run: flutter build ios --simulator --debug
+
+      # ── Phase 1: Cold start ───────────────────────────────────────────────────
+      - name: "Phase 1 — Fresh install + cold start"
+        run: |
+          APP="example/build/ios/iphonesimulator/Runner.app"
+          xcrun simctl uninstall "$UDID" "$IOS_BUNDLE" 2>/dev/null || true
+          xcrun simctl install   "$UDID" "$APP"
+          PID=$(xcrun simctl launch "$UDID" "$IOS_BUNDLE" | awk '{print $2}')
+          echo "App PID: $PID"
+          echo "APP_PID=$PID" >> "$GITHUB_ENV"
+          echo "Waiting 40s for SDK to complete HTTP calls..."
+          sleep 40
+
+      - name: "Phase 1 — Read QA logs"
+        id: phase1
+        run: |
+          SIM_DATA="$HOME/Library/Developer/CoreSimulator/Devices/$UDID/data"
+          LOG=$(find "$SIM_DATA/Containers/Data/Application" -name "af_qa_logs.txt" 2>/dev/null | head -1)
+          echo "Log file: ${LOG:-NOT FOUND}"
+          if [[ -z "$LOG" ]]; then echo "PHASE1=FAIL" >> "$GITHUB_ENV"; exit 1; fi
+          cat "$LOG"
+          echo "LOG_FILE=$LOG" >> "$GITHUB_ENV"
+
+          # Validate
+          FAIL=0
+          grep -q "startSDK.*SUCCESS"              "$LOG" || { echo "❌ startSDK not SUCCESS";       FAIL=1; }
+          grep -q "is_first_launch: true"          "$LOG" || { echo "❌ is_first_launch not true";   FAIL=1; }
+          grep -q "af_status: Organic"             "$LOG" || { echo "❌ af_status not Organic";      FAIL=1; }
+          grep -q "af_demo_launch.*result: true"   "$LOG" || { echo "❌ af_demo_launch not sent";    FAIL=1; }
+          grep -q "af_purchase.*result: true"      "$LOG" || { echo "❌ af_purchase not sent";       FAIL=1; }
+          grep -q "af_content_view.*result: true"  "$LOG" || { echo "❌ af_content_view not sent";   FAIL=1; }
+          grep -q "getVersionNumber"               "$LOG" || { echo "❌ getVersionNumber missing";   FAIL=1; }
+          grep -q "getSDKVersion"                  "$LOG" || { echo "❌ getSDKVersion missing";      FAIL=1; }
+
+          if [[ "$FAIL" == 0 ]]; then
+            echo "✅ Phase 1 PASSED"
+            echo "PHASE1=PASS" >> "$GITHUB_ENV"
+          else
+            echo "PHASE1=FAIL" >> "$GITHUB_ENV"
+            exit 1
+          fi
+
+      # ── Phase 2: Warm start / background deep link ────────────────────────────
+      - name: "Phase 2 — Background deep link"
+        run: |
+          # Background the app via Safari
+          xcrun simctl launch "$UDID" com.apple.mobilesafari
+          sleep 3
+          # Trigger deep link
+          xcrun simctl openurl "$UDID" "$DL_BG"
+          sleep 8
+
+      - name: "Phase 2 — Validate deep link callback"
+        id: phase2
+        run: |
+          cat "$LOG_FILE"
+          FAIL=0
+          grep -q "deepLinkValue=qa_deeplink_bg" "$LOG_FILE" || { echo "❌ deepLinkValue=qa_deeplink_bg not found"; FAIL=1; }
+          grep -q "status=Status.FOUND"          "$LOG_FILE" || { echo "❌ Status.FOUND not found";                FAIL=1; }
+
+          if [[ "$FAIL" == 0 ]]; then
+            echo "✅ Phase 2 PASSED"
+            echo "PHASE2=PASS" >> "$GITHUB_ENV"
+          else
+            echo "PHASE2=FAIL" >> "$GITHUB_ENV"
+            exit 1
+          fi
+
+      # ── Phase 3: Foreground deep link (fresh install) ─────────────────────────
+      - name: "Phase 3 — Fresh install #2"
+        run: |
+          APP="example/build/ios/iphonesimulator/Runner.app"
+          xcrun simctl uninstall "$UDID" "$IOS_BUNDLE"
+          xcrun simctl install   "$UDID" "$APP"
+          PID=$(xcrun simctl launch "$UDID" "$IOS_BUNDLE" | awk '{print $2}')
+          echo "App PID: $PID"
+          echo "Waiting 35s for SDK to start..."
+          sleep 35
+
+      - name: "Phase 3 — Confirm is_first_launch=true then trigger foreground deep link"
+        run: |
+          SIM_DATA="$HOME/Library/Developer/CoreSimulator/Devices/$UDID/data"
+          LOG=$(find "$SIM_DATA/Containers/Data/Application" -name "af_qa_logs.txt" 2>/dev/null | head -1)
+          echo "LOG_FILE=$LOG" >> "$GITHUB_ENV"
+          grep -q "is_first_launch: true" "$LOG" || { echo "❌ is_first_launch not true — invalid test env"; exit 1; }
+          echo "✅ is_first_launch=true confirmed — app is in foreground"
+          xcrun simctl openurl "$UDID" "$DL_FG"
+          sleep 8
+
+      - name: "Phase 3 — Validate foreground deep link callback"
+        id: phase3
+        run: |
+          cat "$LOG_FILE"
+          FAIL=0
+          grep -q "deepLinkValue=qa_deeplink_fg" "$LOG_FILE" || { echo "❌ deepLinkValue=qa_deeplink_fg not found"; FAIL=1; }
+          grep -q "status=Status.FOUND"          "$LOG_FILE" || { echo "❌ Status.FOUND not found";                FAIL=1; }
+
+          if [[ "$FAIL" == 0 ]]; then
+            echo "✅ Phase 3 PASSED"
+            echo "PHASE3=PASS" >> "$GITHUB_ENV"
+          else
+            echo "PHASE3=FAIL" >> "$GITHUB_ENV"
+            exit 1
+          fi
+
+      # ── Summary ───────────────────────────────────────────────────────────────
+      - name: Print smoke test summary
+        if: always()
+        run: |
+          echo "## 🧪 Smoke Test Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Phase | Status |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Phase 1 — Cold start (SDK init + events) | ${PHASE1:-❓} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Phase 2 — Warm start background deep link | ${PHASE2:-❓} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Phase 3 — Foreground deep link            | ${PHASE3:-❓} |" >> "$GITHUB_STEP_SUMMARY"
+
+      # ── Upload QA logs ────────────────────────────────────────────────────────
+      - name: Upload QA logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-logs-${{ github.run_number }}
+          path: |
+            ~/Library/Developer/CoreSimulator/Devices/${{ env.UDID }}/data/Containers/Data/Application/**/af_qa_logs.txt
+          retention-days: 14
