@@ -96,17 +96,25 @@ jobs:
           APP="example/build/ios/iphonesimulator/Runner.app"
           xcrun simctl uninstall "$UDID" "$IOS_BUNDLE" 2>/dev/null || true
           xcrun simctl install   "$UDID" "$APP"
-          PID=$(xcrun simctl launch "$UDID" "$IOS_BUNDLE" | awk '{print $2}')
-          echo "App PID: $PID"
-          echo "APP_PID=$PID" >> "$GITHUB_ENV"
-          echo "Waiting 40s for SDK to complete HTTP calls..."
-          sleep 40
+          xcrun simctl launch "$UDID" "$IOS_BUNDLE"
+          echo "Waiting for is_first_launch=true (up to 90s)..."
+          SIM_DATA="$HOME/Library/Developer/CoreSimulator/Devices/$UDID/data"
+          DEADLINE=$((SECONDS + 90))
+          LOG=""
+          while [[ $SECONDS -lt $DEADLINE ]]; do
+            LOG=$(find "$SIM_DATA/Containers/Data/Application" -name "af_qa_logs.txt" 2>/dev/null | head -1)
+            if [[ -n "$LOG" ]] && grep -q "is_first_launch: true" "$LOG" 2>/dev/null; then
+              echo "✅ SDK ready after $SECONDS seconds"
+              break
+            fi
+            sleep 3
+          done
+          echo "APP_LOG=$LOG" >> "$GITHUB_ENV"
 
       - name: "Phase 1 — Read QA logs"
         id: phase1
         run: |
-          SIM_DATA="$HOME/Library/Developer/CoreSimulator/Devices/$UDID/data"
-          LOG=$(find "$SIM_DATA/Containers/Data/Application" -name "af_qa_logs.txt" 2>/dev/null | head -1)
+          LOG="$APP_LOG"
           echo "Log file: ${LOG:-NOT FOUND}"
           if [[ -z "$LOG" ]]; then echo "PHASE1=FAIL" >> "$GITHUB_ENV"; exit 1; fi
           cat "$LOG"
@@ -160,18 +168,28 @@ jobs:
           APP="example/build/ios/iphonesimulator/Runner.app"
           xcrun simctl uninstall "$UDID" "$IOS_BUNDLE"
           xcrun simctl install   "$UDID" "$APP"
-          PID=$(xcrun simctl launch "$UDID" "$IOS_BUNDLE" | awk '{print $2}')
-          echo "App PID: $PID"
-          echo "Waiting 50s for SDK to start..."
-          sleep 50
-
-      - name: "Phase 3 — Confirm is_first_launch=true then trigger foreground deep link"
-        run: |
+          xcrun simctl launch "$UDID" "$IOS_BUNDLE"
+          echo "Waiting for is_first_launch=true (up to 90s)..."
           SIM_DATA="$HOME/Library/Developer/CoreSimulator/Devices/$UDID/data"
-          LOG=$(find "$SIM_DATA/Containers/Data/Application" -name "af_qa_logs.txt" 2>/dev/null | head -1)
+          DEADLINE=$((SECONDS + 90))
+          LOG=""
+          while [[ $SECONDS -lt $DEADLINE ]]; do
+            LOG=$(find "$SIM_DATA/Containers/Data/Application" -name "af_qa_logs.txt" 2>/dev/null | head -1)
+            if [[ -n "$LOG" ]] && grep -q "is_first_launch: true" "$LOG" 2>/dev/null; then
+              echo "✅ is_first_launch=true confirmed after $SECONDS seconds"
+              break
+            fi
+            sleep 3
+          done
+          if [[ -z "$LOG" ]] || ! grep -q "is_first_launch: true" "$LOG" 2>/dev/null; then
+            echo "❌ is_first_launch: true not found within 90s"
+            cat "$LOG" 2>/dev/null || echo "(no log file)"
+            exit 1
+          fi
           echo "LOG_FILE=$LOG" >> "$GITHUB_ENV"
-          grep -q "is_first_launch: true" "$LOG" || { echo "❌ is_first_launch not true — invalid test env"; exit 1; }
-          echo "✅ is_first_launch=true confirmed — app is in foreground"
+
+      - name: "Phase 3 — Trigger foreground deep link"
+        run: |
           xcrun simctl openurl "$UDID" "$DL_FG"
           sleep 15
 
