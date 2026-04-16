@@ -37,18 +37,18 @@ jobs:
       IOS_BUNDLE: com.appsflyer.example
       DL_BG: "afexample://deeplink?deep_link_value=qa_deeplink_bg&af_sub1=background_test&pid=testmedia&c=deeplink_test"
       DL_FG: "afexample://deeplink?deep_link_value=qa_deeplink_fg&af_sub1=foreground_test&pid=testmedia&c=deeplink_test"
+      PATH: "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
     steps:
       # ── Checkout ─────────────────────────────────────────────────────────────
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── Flutter ──────────────────────────────────────────────────────────────
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
+      # ── Flutter (use locally installed — self-hosted runner) ─────────────────
+      - name: Verify Flutter
+        run: |
+          export PATH="$PATH:/opt/homebrew/bin"
+          flutter --version
 
       # ── Xcode ────────────────────────────────────────────────────────────────
       - name: Select latest Xcode
@@ -80,13 +80,6 @@ jobs:
         working-directory: example
         run: flutter pub get
 
-      - name: Cache CocoaPods
-        uses: actions/cache@v4
-        with:
-          path: example/ios/Pods
-          key: pods-${{ hashFiles('example/ios/Podfile.lock') }}
-          restore-keys: pods-
-
       - name: Pod install
         working-directory: example/ios
         run: pod install
@@ -96,13 +89,6 @@ jobs:
         run: echo "${{ secrets.ENV_FILE }}" > example/.env
 
       # ── Build ─────────────────────────────────────────────────────────────────
-      - name: Cache iOS build
-        uses: actions/cache@v4
-        with:
-          path: example/build/ios
-          key: ios-smoke-${{ hashFiles('ios/**', 'lib/**', 'example/lib/**', 'example/ios/**', 'pubspec.yaml', 'example/pubspec.yaml') }}
-          restore-keys: ios-smoke-
-
       - name: Build iOS simulator app
         working-directory: example
         run: flutter build ios --simulator --debug
