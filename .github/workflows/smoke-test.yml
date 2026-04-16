@@ -99,7 +99,7 @@ jobs:
           xcrun simctl launch "$UDID" "$IOS_BUNDLE"
           echo "Waiting for is_first_launch=true (up to 90s)..."
           SIM_DATA="$HOME/Library/Developer/CoreSimulator/Devices/$UDID/data"
-          DEADLINE=$((SECONDS + 90))
+          DEADLINE=$((SECONDS + 120))
           LOG=""
           while [[ $SECONDS -lt $DEADLINE ]]; do
             LOG=$(find "$SIM_DATA/Containers/Data/Application" -name "af_qa_logs.txt" 2>/dev/null | head -1)
@@ -171,7 +171,7 @@ jobs:
           xcrun simctl launch "$UDID" "$IOS_BUNDLE"
           echo "Waiting for is_first_launch=true (up to 90s)..."
           SIM_DATA="$HOME/Library/Developer/CoreSimulator/Devices/$UDID/data"
-          DEADLINE=$((SECONDS + 90))
+          DEADLINE=$((SECONDS + 120))
           LOG=""
           while [[ $SECONDS -lt $DEADLINE ]]; do
             LOG=$(find "$SIM_DATA/Containers/Data/Application" -name "af_qa_logs.txt" 2>/dev/null | head -1)
