@@ -31,7 +31,7 @@ concurrency:
 jobs:
   smoke:
     name: Smoke Test (iOS Simulator)
-    runs-on: macos-14
+    runs-on: [self-hosted, macos, ios]
 
     env:
       IOS_BUNDLE: com.appsflyer.example
@@ -224,11 +224,20 @@ jobs:
           echo "| Phase 3 — Foreground deep link            | ${PHASE3:-❓} |" >> "$GITHUB_STEP_SUMMARY"
 
       # ── Upload QA logs ────────────────────────────────────────────────────────
+      - name: Collect QA logs for upload
+        if: always()
+        run: |
+          LOG=$(find "$HOME/Library/Developer/CoreSimulator/Devices/$UDID/data/Containers/Data/Application" \
+            -name "af_qa_logs.txt" 2>/dev/null | head -1)
+          if [[ -n "$LOG" ]]; then
+            mkdir -p /tmp/qa-logs
+            cp "$LOG" /tmp/qa-logs/af_qa_logs.txt
+          fi
+
       - name: Upload QA logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: qa-logs-${{ github.run_number }}
-          path: |
-            ~/Library/Developer/CoreSimulator/Devices/${{ env.UDID }}/data/Containers/Data/Application/**/af_qa_logs.txt
+          path: /tmp/qa-logs/af_qa_logs.txt
           retention-days: 14
