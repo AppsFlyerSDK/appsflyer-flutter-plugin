@@ -1,0 +1,227 @@
+{
+  "_meta": {
+    "plan_id": "flutter-e2e",
+    "plugin": "flutter",
+    "version": "1.0.0",
+    "description": "Thorough end-to-end test plan for the AppsFlyer Flutter plugin. Runs against plugin source (appsflyer_sdk: path: ..) in example/. Covers cold launch coverage, background deep link, and foreground deep link. Mapped to E2E-001, E2E-002, E2E-003 in appsflyer-mobile-plugin-tooling/contracts/e2e-test-contract.md.",
+    "platforms": ["android", "ios"],
+    "schema_version": "1.0.0",
+    "tooling_contract_ref": "E2E-001, E2E-002, E2E-003"
+  },
+
+  "config": {
+    "android": {
+      "package_name": "com.appsflyer.appsflyersdkexample",
+      "activity": ".MainActivity",
+      "apk_path": "example/build/app/outputs/flutter-apk/app-debug.apk",
+      "build_cmd": "cd example && flutter build apk --debug"
+    },
+    "ios": {
+      "bundle_id": "com.appsflyer.example",
+      "app_path": "example/build/ios/iphonesimulator/Runner.app",
+      "build_cmd": "cd example && flutter build ios --simulator --debug"
+    }
+  },
+
+  "phases": [
+    {
+      "id": "phase_1",
+      "name": "Cold launch coverage",
+      "scenario_ref": "E2E-001",
+      "description": "Fresh install. Validate SDK startup, pre/post-start APIs, three auto-launched events with HTTP 200, and all standard callbacks.",
+      "requires_fresh_install": true,
+      "wait_after_launch_sec": 25,
+      "checks": [
+        {
+          "id": "sdk_started",
+          "description": "startSDK returns SUCCESS",
+          "type": "log_contains",
+          "pattern": "[AF_QA][startSDK] result: SUCCESS",
+          "fail_action": "abort"
+        },
+        {
+          "id": "is_first_launch_true",
+          "description": "onInstallConversionData fires with is_first_launch=true",
+          "type": "log_contains",
+          "pattern": "[AF_QA][CALLBACK][onInstallConversionData]",
+          "payload_check": {"field": "is_first_launch", "expected": "true"},
+          "fail_action": "abort"
+        },
+        {
+          "id": "pre_start_apis_complete",
+          "description": "Pre-start auto APIs ran",
+          "type": "log_contains",
+          "pattern": "[AF_QA][AUTO_APIS] --- Pre-start auto APIs complete ---",
+          "fail_action": "fail"
+        },
+        {
+          "id": "post_start_apis_complete",
+          "description": "Post-start auto APIs ran",
+          "type": "log_contains",
+          "pattern": "[AF_QA][AUTO_APIS] --- Post-start auto APIs complete ---",
+          "fail_action": "fail"
+        },
+        {
+          "id": "get_sdk_version",
+          "description": "getSDKVersion returns a value",
+          "type": "log_contains",
+          "pattern": "[AF_QA][getSDKVersion] result:",
+          "fail_action": "fail"
+        },
+        {
+          "id": "get_appsflyer_uid",
+          "description": "getAppsFlyerUID returns a value",
+          "type": "log_contains",
+          "pattern": "[AF_QA][getAppsFlyerUID] result:",
+          "fail_action": "fail"
+        },
+        {
+          "id": "event_af_demo_launch",
+          "description": "af_demo_launch event fires",
+          "type": "log_contains",
+          "pattern": "[AF_QA][logEvent(af_demo_launch)] result:",
+          "fail_action": "fail"
+        },
+        {
+          "id": "event_af_purchase",
+          "description": "af_purchase event fires",
+          "type": "log_contains",
+          "pattern": "[AF_QA][logEvent: af_purchase sent] result:",
+          "fail_action": "fail"
+        },
+        {
+          "id": "event_af_content_view",
+          "description": "af_content_view event fires",
+          "type": "log_contains",
+          "pattern": "[AF_QA][logEvent: af_content_view sent] result:",
+          "fail_action": "fail"
+        },
+        {
+          "id": "http_200_count",
+          "description": "At least 3 HTTP 200 responses from AppsFlyer servers",
+          "type": "count_matches",
+          "pattern": "response code:200 OK|response_status=200",
+          "minimum": 3,
+          "fail_action": "fail"
+        },
+        {
+          "id": "on_deep_linking_callback",
+          "description": "onDeepLinking callback fires (NOT_FOUND expected on clean launch)",
+          "type": "log_contains",
+          "pattern": "[AF_QA][CALLBACK][onDeepLinking]",
+          "fail_action": "fail"
+        },
+        {
+          "id": "no_fatal_errors",
+          "description": "No fatal exceptions or SDK start errors in logs",
+          "type": "absent",
+          "patterns": ["Fatal Exception", "FATAL", "[AF_QA][startSDK] error:", "response code:4", "response code:5"],
+          "fail_action": "fail"
+        }
+      ]
+    },
+
+    {
+      "id": "phase_2",
+      "name": "Background deep link",
+      "scenario_ref": "E2E-002",
+      "description": "App is backgrounded after Phase 1 SDK start. Deep link URL brings app back to foreground. onDeepLinking fires with Status.FOUND.",
+      "requires_fresh_install": false,
+      "wait_after_trigger_sec": 5,
+      "deep_link_url": "afexample://deeplink?deep_link_value=qa_deeplink_bg&af_sub1=background_test&pid=testmedia&c=deeplink_test",
+      "pre_actions": {
+        "android": ["adb shell input keyevent KEYCODE_HOME", "sleep 2"],
+        "ios": ["xcrun simctl launch {{UDID}} com.apple.mobilesafari", "sleep 2"]
+      },
+      "trigger": {
+        "android": "adb shell am start -a android.intent.action.VIEW -d \"{{DEEP_LINK_URL}}\"",
+        "ios": "xcrun simctl openurl {{UDID}} \"{{DEEP_LINK_URL}}\""
+      },
+      "checks": [
+        {
+          "id": "deeplink_found",
+          "description": "onDeepLinking fires with Status.FOUND",
+          "type": "log_contains",
+          "pattern": "status=Status.FOUND",
+          "fail_action": "fail"
+        },
+        {
+          "id": "deeplink_value_bg",
+          "description": "deepLinkValue matches qa_deeplink_bg",
+          "type": "log_contains",
+          "pattern": "deepLinkValue=qa_deeplink_bg",
+          "fail_action": "fail"
+        },
+        {
+          "id": "no_fatal_errors",
+          "description": "No fatal exceptions after deep link",
+          "type": "absent",
+          "patterns": ["Fatal Exception", "FATAL"],
+          "fail_action": "fail"
+        }
+      ]
+    },
+
+    {
+      "id": "phase_3",
+      "name": "Foreground deep link",
+      "scenario_ref": "E2E-003",
+      "description": "Fresh install. App is in foreground after SDK start. Brief launcher switch triggers onPause. Deep link brings app back. onDeepLinking fires with Status.FOUND.",
+      "requires_fresh_install": true,
+      "wait_after_launch_sec": 25,
+      "wait_after_trigger_sec": 5,
+      "deep_link_url": "afexample://deeplink?deep_link_value=qa_deeplink_fg&af_sub1=foreground_test&pid=testmedia&c=deeplink_test",
+      "pre_actions": {
+        "android": ["adb shell am start -a android.intent.action.MAIN -c android.intent.category.HOME", "sleep 1"],
+        "ios": ["xcrun simctl launch {{UDID}} com.apple.Preferences", "sleep 1"]
+      },
+      "trigger": {
+        "android": "adb shell am start -a android.intent.action.VIEW -d \"{{DEEP_LINK_URL}}\"",
+        "ios": "xcrun simctl openurl {{UDID}} \"{{DEEP_LINK_URL}}\""
+      },
+      "checks": [
+        {
+          "id": "sdk_started",
+          "description": "startSDK returns SUCCESS on fresh install",
+          "type": "log_contains",
+          "pattern": "[AF_QA][startSDK] result: SUCCESS",
+          "fail_action": "abort"
+        },
+        {
+          "id": "is_first_launch_true",
+          "description": "onInstallConversionData fires with is_first_launch=true before deep link",
+          "type": "log_contains",
+          "pattern": "[AF_QA][CALLBACK][onInstallConversionData]",
+          "payload_check": {"field": "is_first_launch", "expected": "true"},
+          "fail_action": "abort"
+        },
+        {
+          "id": "deeplink_found_fg",
+          "description": "onDeepLinking fires with Status.FOUND after foreground deep link",
+          "type": "log_contains",
+          "pattern": "status=Status.FOUND",
+          "fail_action": "fail"
+        },
+        {
+          "id": "deeplink_value_fg",
+          "description": "deepLinkValue matches qa_deeplink_fg",
+          "type": "log_contains",
+          "pattern": "deepLinkValue=qa_deeplink_fg",
+          "fail_action": "fail"
+        },
+        {
+          "id": "no_fatal_errors",
+          "description": "No fatal exceptions",
+          "type": "absent",
+          "patterns": ["Fatal Exception", "FATAL"],
+          "fail_action": "fail"
+        }
+      ]
+    }
+  ],
+
+  "report": {
+    "output_dir": ".af-e2e/reports/",
+    "format": "json"
+  }
+}
