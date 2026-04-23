@@ -1,0 +1,369 @@
+# =============================================================================
+# RC Smoke — post-publish validation against the pub.dev RC artifact
+# =============================================================================
+#
+# Stage: RC-SMOKE in appsflyer-mobile-plugin-tooling/contracts/rc-release-contract.md.
+#
+# Fires automatically after rc-release.yml ("RC - Release Candidate") completes
+# with conclusion: success and dry_run: false. Builds example_rc_smoke/ with
+# appsflyer_sdk: =<X.Y.Z-rcN> pinned from pub.dev, runs SMOKE-001/002/003 via
+# af-smoke-runner.sh on both platforms, uploads JSON reports, and posts a
+# check_run named rc-smoke/pub.dev on the release branch head SHA. That
+# check_run is what promote-release.yml verifies before stripping -rcN.
+#
+# Manual dispatch is supported for reruns (rc_version input).
+#
+# When the parent RC-release run was dry_run=true, this workflow still fires
+# but short-circuits and posts a skipped check-run so promotion can
+# distinguish "not applicable" from "failing".
+# =============================================================================
+
+name: RC Smoke - pub.dev artifact
+
+on:
+  workflow_run:
+    workflows: ["RC - Release Candidate"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      rc_version:
+        description: 'RC version to smoke, e.g. 6.18.0-rc1 (must exist on pub.dev)'
+        required: true
+        type: string
+      release_branch:
+        description: 'Release branch the smoke result should be associated with'
+        required: true
+        type: string
+
+concurrency:
+  group: rc-smoke-${{ github.event.workflow_run.head_sha || github.event.inputs.release_branch }}
+  cancel-in-progress: false
+
+jobs:
+  # ===========================================================================
+  # Resolve RC version and branch context. Short-circuit on dry-run or failure
+  # of the parent RC-release run.
+  # ===========================================================================
+  resolve:
+    name: 🔍 Resolve RC context
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.decide.outputs.should_run }}
+      skip_reason: ${{ steps.decide.outputs.skip_reason }}
+      rc_version: ${{ steps.decide.outputs.rc_version }}
+      release_branch: ${{ steps.decide.outputs.release_branch }}
+      head_sha: ${{ steps.decide.outputs.head_sha }}
+    steps:
+      - name: 📋 Log trigger context
+        run: |
+          echo "event_name=${{ github.event_name }}"
+          echo "workflow_run.conclusion=${{ github.event.workflow_run.conclusion }}"
+          echo "workflow_run.head_branch=${{ github.event.workflow_run.head_branch }}"
+          echo "workflow_run.head_sha=${{ github.event.workflow_run.head_sha }}"
+
+      - name: 📥 Checkout release branch (workflow_run path)
+        if: github.event_name == 'workflow_run'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 1
+
+      - name: 📥 Checkout release branch (manual dispatch path)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.release_branch }}
+          fetch-depth: 1
+
+      - name: 🧠 Decide whether to run
+        id: decide
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PARENT_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          INPUT_VERSION: ${{ github.event.inputs.rc_version }}
+          INPUT_BRANCH: ${{ github.event.inputs.release_branch }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            RC_VERSION="$INPUT_VERSION"
+            REL_BRANCH="$INPUT_BRANCH"
+            HEAD="$(git rev-parse HEAD)"
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "skip_reason=" >> "$GITHUB_OUTPUT"
+            echo "rc_version=$RC_VERSION" >> "$GITHUB_OUTPUT"
+            echo "release_branch=$REL_BRANCH" >> "$GITHUB_OUTPUT"
+            echo "head_sha=$HEAD" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # workflow_run path
+          if [[ "$PARENT_CONCLUSION" != "success" ]]; then
+            echo "Parent RC-release run was $PARENT_CONCLUSION; skipping smoke."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "skip_reason=parent_not_success" >> "$GITHUB_OUTPUT"
+            echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+            echo "release_branch=$HEAD_BRANCH" >> "$GITHUB_OUTPUT"
+            echo "rc_version=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Detect dry-run signal: parent's dry_run input propagated through
+          # the release branch's pubspec.yaml content (present on real runs,
+          # still present on dry runs because prepare-branch commits bumps
+          # regardless). We look at the parent workflow run's inputs via the
+          # API instead, since event payload inputs are not exposed to
+          # workflow_run listeners.
+          PARENT_RUN_ID='${{ github.event.workflow_run.id }}'
+          DRY_RUN=$(gh run view "$PARENT_RUN_ID" --json displayTitle,jobs -q '.jobs[] | select(.name == "🔍 Validate Inputs & Compute Branch").steps[0].name' 2>/dev/null || echo "")
+          # Fallback: parse release branch name for the -rcN shape and read pubspec from checkout.
+          VERSION=$(grep "^version:" pubspec.yaml | sed 's/version: //' | tr -d ' ')
+          if [[ ! "$VERSION" =~ -rc[0-9]+$ ]]; then
+            echo "pubspec version is not an RC ($VERSION); skipping."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "skip_reason=not_rc_version" >> "$GITHUB_OUTPUT"
+            echo "rc_version=$VERSION" >> "$GITHUB_OUTPUT"
+            echo "release_branch=$HEAD_BRANCH" >> "$GITHUB_OUTPUT"
+            echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # If the RC is not yet on pub.dev, the parent run was dry or indexing is slow.
+          if ! curl -fsSL "https://pub.dev/api/packages/appsflyer_sdk" | jq -r '.versions[].version' | grep -Fxq "$VERSION"; then
+            echo "RC $VERSION is not on pub.dev (dry run or indexing); will emit skipped check."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "skip_reason=not_on_pubdev" >> "$GITHUB_OUTPUT"
+            echo "rc_version=$VERSION" >> "$GITHUB_OUTPUT"
+            echo "release_branch=$HEAD_BRANCH" >> "$GITHUB_OUTPUT"
+            echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "should_run=true" >> "$GITHUB_OUTPUT"
+          echo "skip_reason=" >> "$GITHUB_OUTPUT"
+          echo "rc_version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "release_branch=$HEAD_BRANCH" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ===========================================================================
+  # iOS smoke against the published RC on pub.dev.
+  # ===========================================================================
+  smoke-ios:
+    name: 🧪 rc-smoke iOS
+    needs: resolve
+    if: needs.resolve.outputs.should_run == 'true'
+    runs-on: macos-14
+    steps:
+      - name: 📥 Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.head_sha }}
+          fetch-depth: 1
+
+      - name: 🔧 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: 🛠 Synthesize example_rc_smoke from example/
+        run: |
+          set -euo pipefail
+          rsync -a --exclude=pubspec.yaml --exclude=pubspec.lock --exclude=build/ --exclude=.dart_tool/ --exclude=ios/Pods/ --exclude=.env example/ example_rc_smoke/
+          sed -i.bak "s|^  appsflyer_sdk: .*|  appsflyer_sdk: =${{ needs.resolve.outputs.rc_version }}|" example_rc_smoke/pubspec.yaml
+          rm -f example_rc_smoke/pubspec.yaml.bak
+          grep "^  appsflyer_sdk:" example_rc_smoke/pubspec.yaml
+
+      - name: 🔐 Write example_rc_smoke/.env
+        run: echo "${{ secrets.ENV_FILE }}" > example_rc_smoke/.env
+
+      - name: 🧭 Select Xcode version
+        run: |
+          XCODE=$(ls /Applications | grep -E "^Xcode_[0-9]" | sort -V | tail -1)
+          sudo xcode-select -s "/Applications/$XCODE"
+          xcodebuild -version
+
+      - name: 📱 Boot iOS simulator (iPhone 15)
+        run: |
+          UDID=$(xcrun simctl list devices available 2>/dev/null \
+            | grep "iPhone 15" | grep -v "Plus\|Pro\|Max" \
+            | grep -oE '[A-F0-9-]{36}' | head -1)
+          if [[ -z "$UDID" ]]; then
+            UDID=$(xcrun simctl list devices available 2>/dev/null \
+              | grep "iPhone" | grep -oE '[A-F0-9-]{36}' | head -1)
+          fi
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          echo "IOS_SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
+
+      - name: 📦 Resolve pub.dev RC + CocoaPods
+        working-directory: example_rc_smoke
+        run: |
+          flutter pub get
+          cd ios && pod install
+
+      - name: 🏗 Build iOS simulator app
+        working-directory: example_rc_smoke
+        run: flutter build ios --simulator --debug
+
+      - name: 🧪 Run smoke (SMOKE-001/002/003)
+        run: ./scripts/af-smoke-runner.sh --platform ios --plan .af-smoke/rc-test-plan.json
+
+      - name: 📤 Upload smoke reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc-smoke-ios-${{ github.run_number }}
+          path: .af-smoke/reports/
+          retention-days: 30
+
+  # ===========================================================================
+  # Android smoke against the published RC on pub.dev.
+  # ===========================================================================
+  smoke-android:
+    name: 🧪 rc-smoke Android
+    needs: resolve
+    if: needs.resolve.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.head_sha }}
+          fetch-depth: 1
+
+      - name: ☕ Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: 🔧 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: 🛠 Synthesize example_rc_smoke from example/
+        run: |
+          set -euo pipefail
+          rsync -a --exclude=pubspec.yaml --exclude=pubspec.lock --exclude=build/ --exclude=.dart_tool/ --exclude=.env example/ example_rc_smoke/
+          sed -i.bak "s|^  appsflyer_sdk: .*|  appsflyer_sdk: =${{ needs.resolve.outputs.rc_version }}|" example_rc_smoke/pubspec.yaml
+          rm -f example_rc_smoke/pubspec.yaml.bak
+          grep "^  appsflyer_sdk:" example_rc_smoke/pubspec.yaml
+
+      - name: 🔐 Write example_rc_smoke/.env
+        run: echo "${{ secrets.ENV_FILE }}" > example_rc_smoke/.env
+
+      - name: 📦 Resolve pub.dev RC
+        working-directory: example_rc_smoke
+        run: flutter pub get
+
+      - name: 🏗 Build Android APK + run smoke on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          arch: x86_64
+          profile: pixel_6
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            cd example_rc_smoke && flutter build apk --debug && cd ..
+            ./scripts/af-smoke-runner.sh --platform android --plan .af-smoke/rc-test-plan.json
+
+      - name: 📤 Upload smoke reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc-smoke-android-${{ github.run_number }}
+          path: .af-smoke/reports/
+          retention-days: 30
+
+  # ===========================================================================
+  # Post the rc-smoke/pub.dev check-run on the release branch head SHA. This
+  # is the gate promote-release.yml verifies before stripping -rcN.
+  # ===========================================================================
+  post-check-run:
+    name: ✅ Post rc-smoke/pub.dev check-run
+    needs: [resolve, smoke-ios, smoke-android]
+    if: always() && needs.resolve.outputs.should_run == 'true' && needs.resolve.outputs.head_sha != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🧾 Post check-run
+        uses: actions/github-script@v7
+        env:
+          HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+          RC_VERSION: ${{ needs.resolve.outputs.rc_version }}
+          IOS_RESULT: ${{ needs.smoke-ios.result }}
+          ANDROID_RESULT: ${{ needs.smoke-android.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const { HEAD_SHA, RC_VERSION, IOS_RESULT, ANDROID_RESULT, RUN_URL } = process.env;
+            const bothGreen = IOS_RESULT === 'success' && ANDROID_RESULT === 'success';
+            const conclusion = bothGreen ? 'success' : 'failure';
+            const summary = `rc-smoke on pub.dev RC \`${RC_VERSION}\`\n\n` +
+              `- iOS:     **${IOS_RESULT}**\n` +
+              `- Android: **${ANDROID_RESULT}**\n\n` +
+              `Reports: ${RUN_URL}`;
+            await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'rc-smoke/pub.dev',
+              head_sha: HEAD_SHA,
+              status: 'completed',
+              conclusion,
+              details_url: RUN_URL,
+              output: {
+                title: bothGreen ? 'rc-smoke PASS' : 'rc-smoke FAIL',
+                summary
+              }
+            });
+
+  # ===========================================================================
+  # Post a skipped check-run when the parent run was dry, the version is not
+  # on pub.dev, or the parent did not succeed. Lets promote-release
+  # differentiate "not applicable" from "failing".
+  # ===========================================================================
+  post-skipped-check:
+    name: ⏭ Post rc-smoke/pub.dev (skipped)
+    needs: [resolve]
+    if: needs.resolve.outputs.should_run == 'false' && needs.resolve.outputs.head_sha != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🧾 Post skipped check-run
+        uses: actions/github-script@v7
+        env:
+          HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+          SKIP_REASON: ${{ needs.resolve.outputs.skip_reason }}
+          RC_VERSION: ${{ needs.resolve.outputs.rc_version }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const { HEAD_SHA, SKIP_REASON, RC_VERSION, RUN_URL } = process.env;
+            const reasonLabels = {
+              parent_not_success: 'Parent RC-release run did not succeed',
+              not_rc_version: 'Head branch version is not an RC',
+              not_on_pubdev: 'RC not yet on pub.dev (dry run or indexing delay)'
+            };
+            await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'rc-smoke/pub.dev',
+              head_sha: HEAD_SHA,
+              status: 'completed',
+              conclusion: 'skipped',
+              details_url: RUN_URL,
+              output: {
+                title: 'rc-smoke skipped',
+                summary: `Skipped: ${reasonLabels[SKIP_REASON] || SKIP_REASON}\n\n` +
+                  `Version: \`${RC_VERSION || '(unknown)'}\`\n\n` +
+                  `Run: ${RUN_URL}\n\n` +
+                  `promote-release.yml does not accept \`skipped\` as a green gate; if this was a dry run, start a new RC-release with \`dry_run=false\` to publish and re-smoke.`
+              }
+            });
