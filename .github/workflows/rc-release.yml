@@ -49,11 +49,6 @@ on:
         description: 'Android native AppsFlyer SDK version (e.g., 6.17.4)'
         required: true
         type: string
-      deploy_to_qa:
-        description: 'Open PR to master and publish RC to pub.dev'
-        required: false
-        type: boolean
-        default: false
       skip_tests:
         description: 'Skip reusable CI when running this workflow (PR and production flows still run CI)'
         required: false
@@ -91,7 +86,6 @@ jobs:
       release_branch: ${{ steps.compute.outputs.release_branch }}
       ios_sdk_version: ${{ steps.compute.outputs.ios_sdk_version }}
       android_sdk_version: ${{ steps.compute.outputs.android_sdk_version }}
-      deploy_to_qa: ${{ steps.compute.outputs.deploy_to_qa }}
       dry_run: ${{ steps.compute.outputs.dry_run }}
     
     steps:
@@ -105,7 +99,6 @@ jobs:
           IOS_VER: ${{ github.event.inputs.ios_sdk_version }}
           AND_VER: ${{ github.event.inputs.android_sdk_version }}
           BASE_BRANCH_INPUT: ${{ github.event.inputs.base_branch }}
-          DEPLOY_TO_QA: ${{ github.event.inputs.deploy_to_qa }}
           DRY_RUN_INPUT: ${{ github.event.inputs.dry_run }}
         run: |
           set -euo pipefail
@@ -143,7 +136,6 @@ jobs:
           echo "release_branch=$RELEASE_BRANCH" >> $GITHUB_OUTPUT
           echo "ios_sdk_version=$IOS_VER" >> $GITHUB_OUTPUT
           echo "android_sdk_version=$AND_VER" >> $GITHUB_OUTPUT
-          echo "deploy_to_qa=$DEPLOY_TO_QA" >> $GITHUB_OUTPUT
           echo "dry_run=$DRY_RUN_INPUT" >> $GITHUB_OUTPUT
 
   # ===========================================================================
@@ -304,7 +296,39 @@ jobs:
           fi
           echo "release_branch=$REL_BRANCH" >> $GITHUB_OUTPUT
 
-  # (Deprecated) Legacy update-version job removed; handled by prepare-branch
+  # ===========================================================================
+  # Stage RC-E2E: End-to-end validation on plugin source (iOS)
+  # ===========================================================================
+  # Reuses .github/workflows/e2e.yml. Gates publish-rc. Aligns with
+  # appsflyer-mobile-plugin-tooling/contracts/rc-release-contract.md#rc-e2e.
+  # ===========================================================================
+
+  run-e2e-ios:
+    name: 🧪 RC-E2E iOS
+    needs: [validate-release, prepare-branch]
+    if: needs.validate-release.outputs.is_valid == 'true'
+    uses: ./.github/workflows/e2e.yml
+    secrets: inherit
+
+  # ===========================================================================
+  # Stage RC-E2E: End-to-end validation on plugin source (Android)
+  # ===========================================================================
+
+  run-e2e-android:
+    name: 🧪 RC-E2E Android
+    needs: [validate-release, prepare-branch]
+    if: needs.validate-release.outputs.is_valid == 'true'
+    uses: ./.github/workflows/e2e-android.yml
+    secrets: inherit
+
+  # ===========================================================================
+  # Stage RC-PUBLISH: Publish RC to pub.dev (moved earlier to gate side-effects)
+  # ===========================================================================
+  # Runs only after BOTH E2E workflows pass. Honors dry_run (default true).
+  # Aligns with rc-release-contract.md#rc-publish. Side effects downstream
+  # (prerelease tag, PR, Slack, Jira) depend on publish-rc succeeding so they
+  # reflect a real published RC — or a documented dry run.
+  # ===========================================================================
 
   # ===========================================================================
   # Job 4: Create Pre-Release
@@ -315,8 +339,8 @@ jobs:
   create-prerelease:
     name: 🏷️ Create Pre-Release
     runs-on: ubuntu-latest
-    needs: [validate-release, run-ci, prepare-branch]
-    if: always() && needs.validate-release.outputs.is_rc == 'true' && needs.validate-release.outputs.deploy_to_qa == 'true'
+    needs: [validate-release, prepare-branch, publish-rc]
+    if: always() && needs.validate-release.outputs.is_rc == 'true' && needs.publish-rc.result == 'success'
     
     steps:
       - name: 📥 Checkout repository
@@ -392,8 +416,8 @@ jobs:
   open-pr:
     name: 🔀 Open PR to master
     runs-on: ubuntu-latest
-    needs: [validate-release, prepare-branch]
-    if: always() && needs.validate-release.outputs.deploy_to_qa == 'true'
+    needs: [validate-release, prepare-branch, publish-rc]
+    if: always() && needs.publish-rc.result == 'success'
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
@@ -422,8 +446,8 @@ jobs:
   publish-rc:
     name: 📦 Publish RC to pub.dev
     runs-on: ubuntu-latest
-    needs: [validate-release, prepare-branch]
-    if: always() && needs.validate-release.outputs.deploy_to_qa == 'true'
+    needs: [validate-release, prepare-branch, run-e2e-ios, run-e2e-android]
+    if: needs.validate-release.outputs.is_valid == 'true' && needs.run-e2e-ios.result == 'success' && needs.run-e2e-android.result == 'success'
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
@@ -636,7 +660,7 @@ jobs:
   rc-summary:
     name: 📋 RC Summary
     runs-on: ubuntu-latest
-    needs: [validate-release, run-ci, prepare-branch, create-prerelease]
+    needs: [validate-release, run-ci, prepare-branch, run-e2e-ios, run-e2e-android, publish-rc, create-prerelease]
     if: always()
     
     steps:
@@ -646,24 +670,30 @@ jobs:
           echo "RC Release Summary"
           echo "========================================="
           echo "Version: ${{ needs.validate-release.outputs.version }}"
-          echo "Is RC: ${{ needs.validate-release.outputs.is_rc }}"
-          echo "Is Valid: ${{ needs.validate-release.outputs.is_valid }}"
+          echo "Dry Run: ${{ needs.validate-release.outputs.dry_run }}"
           echo "-----------------------------------------"
-          echo "Validation: ${{ needs.validate-release.result }}"
-          echo "CI Pipeline: ${{ needs.run-ci.result }}"
-          echo "Prepare Branch: ${{ needs.prepare-branch.result }}"
-          echo "Pre-Release: ${{ needs.create-prerelease.result }}"
+          echo "RC-PREP validate:     ${{ needs.validate-release.result }}"
+          echo "CI pipeline:          ${{ needs.run-ci.result }}"
+          echo "RC-PREP branch:       ${{ needs.prepare-branch.result }}"
+          echo "RC-E2E iOS:           ${{ needs.run-e2e-ios.result }}"
+          echo "RC-E2E Android:       ${{ needs.run-e2e-android.result }}"
+          echo "RC-PUBLISH:           ${{ needs.publish-rc.result }}"
+          echo "Pre-release tag + PR: ${{ needs.create-prerelease.result }}"
           echo "========================================="
-          
-          # Check if all critical jobs succeeded
+          echo ""
+          echo "Next stage: rc-smoke.yml fires automatically via workflow_run"
+          echo "when publish-rc succeeds with dry_run=false. On success it posts"
+          echo "rc-smoke/pub.dev check-run on the release branch head SHA."
+          echo "See appsflyer-mobile-plugin-tooling/contracts/rc-release-contract.md"
+          echo "for the full stage table."
+          echo ""
+
           if [[ "${{ needs.validate-release.result }}" == "success" ]] && \
+             [[ "${{ needs.run-e2e-ios.result }}" == "success" ]] && \
+             [[ "${{ needs.run-e2e-android.result }}" == "success" ]] && \
+             [[ "${{ needs.publish-rc.result }}" == "success" ]] && \
              [[ "${{ needs.create-prerelease.result }}" == "success" ]]; then
             echo "✅ RC Release Process Completed Successfully"
-            echo ""
-            echo "Next Steps:"
-            echo "1. Notify QA team to begin testing"
-            echo "2. Test the RC version thoroughly"
-            echo "3. If approved, proceed with production release"
           else
             echo "❌ RC Release Process Failed"
             echo "Please check the logs above for details"
