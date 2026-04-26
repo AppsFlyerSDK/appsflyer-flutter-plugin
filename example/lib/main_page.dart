@@ -33,7 +33,7 @@ class MainPageState extends State<MainPage> {
         appId: dotenv.env["APP_ID"]!,
         showDebug: true,
         timeToWaitForATTUserAuthorization: 15,
-        manualStart: true);
+        manualStart: false);
     /*
     final Map? map = {
       'afDevKey': dotenv.env["DEV_KEY"]!,
@@ -56,15 +56,11 @@ class MainPageState extends State<MainPage> {
     _appsflyerSdk.setConsentData(nonGdpr);
      */
 
-    // Init of AppsFlyer SDK
-    await _appsflyerSdk.initSdk(
-        registerConversionDataCallback: true,
-        registerOnAppOpenAttributionCallback: true,
-        registerOnDeepLinkingCallback: true);
 
     // Conversion data callback
     _appsflyerSdk.onInstallConversionData((res) {
       print("onInstallConversionData res: $res");
+      showMessage("onInstallConversionData res: $res");
       setState(() {
         _gcd = res;
       });
@@ -73,6 +69,7 @@ class MainPageState extends State<MainPage> {
     // App open attribution callback
     _appsflyerSdk.onAppOpenAttribution((res) {
       print("onAppOpenAttribution res: $res");
+      showMessage("onAppOpenAttribution res: $res");
       setState(() {
         _deepLinkData = res;
       });
@@ -83,28 +80,39 @@ class MainPageState extends State<MainPage> {
       switch (dp.status) {
         case Status.FOUND:
           print(dp.deepLink?.toString());
+          showMessage(dp.deepLink?.toString() ?? "nil");
           print("deep link value: ${dp.deepLink?.deepLinkValue}");
           break;
         case Status.NOT_FOUND:
           print("deep link not found");
+          showMessage("deep link not found");
           break;
         case Status.ERROR:
           print("deep link error: ${dp.error}");
+          showMessage("deep link error: ${dp.error}");
           break;
         case Status.PARSE_ERROR:
           print("deep link status parsing error");
+          showMessage("deep link status parsing error");
           break;
       }
       print("onDeepLinking res: $dp");
+      showMessage("onDeepLinking res: $dp");
       setState(() {
         _deepLinkData = dp.toJson();
       });
     });
+    // Init of AppsFlyer SDK
+    await _appsflyerSdk.initSdk(
+        registerConversionDataCallback: true,
+        registerOnAppOpenAttributionCallback: true,
+        registerOnDeepLinkingCallback: false);
 
-    //_appsflyerSdk.anonymizeUser(true);
-    if (Platform.isAndroid) {
-      _appsflyerSdk.performOnDeepLinking();
-    }
+
+    // //_appsflyerSdk.anonymizeUser(true);
+    // if (Platform.isAndroid) {
+    //   _appsflyerSdk.performOnDeepLinking();
+    // }
     setState(() {}); // Call setState to rebuild the widget
   }
 

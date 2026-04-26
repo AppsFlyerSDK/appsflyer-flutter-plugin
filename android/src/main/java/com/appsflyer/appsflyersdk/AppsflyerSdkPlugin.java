@@ -59,9 +59,21 @@ import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_SUCCESS;
 import androidx.annotation.NonNull;
 
 /**
- * AppsflyerSdkPlugin
+ * AppsflyerSdkPlugin - Singleton implementation of the AppsFlyer Flutter plugin.
+ * 
+ * This class holds all the plugin logic and state. It is designed as a singleton to ensure
+ * state is preserved when the Flutter engine is recreated (e.g., when the app goes to
+ * background via back button and returns to foreground).
+ * 
+ * For Flutter plugin registration, use {@link AppsflyerSdkPluginDelegate} which delegates
+ * all calls to this singleton instance.
+ * 
+ * @see AppsflyerSdkPluginDelegate
  */
 public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
+    // Singleton instance to ensure plugin reuse across engine recreations
+    private static AppsflyerSdkPlugin instance;
+
     // RD-65582
     private static boolean saveCallbacks;
     private static Map<String, Object> cachedOnConversionDataSuccess;
@@ -89,9 +101,34 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private Boolean isSetDisableAdvertisingIdentifiersEnable = false;
     private Map<String, Map<String, Object>> mCallbacks = new HashMap<>();
 
+    /**
+     * Returns the singleton instance of the plugin.
+     * Creates a new instance if one doesn't exist.
+     * 
+     * @return The singleton AppsflyerSdkPlugin instance.
+     */
+    public static synchronized AppsflyerSdkPlugin getInstance() {
+        if (instance == null) {
+            PluginLogger.d("Singleton: Creating new AppsflyerSdkPlugin instance");
+            instance = new AppsflyerSdkPlugin();
+        } else {
+            PluginLogger.d("Singleton: Returning existing AppsflyerSdkPlugin instance");
+        }
+        return instance;
+    }
+
+    /**
+     * Private constructor to enforce singleton pattern.
+     * Use {@link #getInstance()} to get the singleton instance.
+     */
+    private AppsflyerSdkPlugin() {
+        PluginLogger.d("Singleton: AppsflyerSdkPlugin constructor called");
+    }
+
     PluginRegistry.NewIntentListener onNewIntentListener = new PluginRegistry.NewIntentListener() {
         @Override
         public boolean onNewIntent(Intent intent) {
+            PluginLogger.d("onNewIntent: Received new intent");
             activity.setIntent(intent);
             return false;
         }
@@ -100,11 +137,14 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     private final AppsFlyerConversionListener afConversionListener = new AppsFlyerConversionListener() {
         @Override
         public void onConversionDataSuccess(Map<String, Object> map) {
+            PluginLogger.d("ConversionListener: onConversionDataSuccess received");
             if (saveCallbacks) {
+                PluginLogger.d("ConversionListener: Caching conversion data (activity detached)");
                 cachedOnConversionDataSuccess = map;
                 return;
             }
             if (gcdCallback) {
+                PluginLogger.d("ConversionListener: Sending conversion data to Flutter");
                 JSONObject dataObj = new JSONObject(replaceNullValues(map));
                 runOnUIThread(dataObj, AppsFlyerConstants.AF_GCD_CALLBACK, AF_SUCCESS);
             }
@@ -112,7 +152,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
         @Override
         public void onConversionDataFail(String s) {
+            PluginLogger.d("ConversionListener: onConversionDataFail - " + s);
             if (saveCallbacks) {
+                PluginLogger.d("ConversionListener: Caching conversion failure (activity detached)");
                 cachedOnConversionDataFail = s;
                 return;
             }
@@ -124,12 +166,15 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
         @Override
         public void onAppOpenAttribution(Map<String, String> map) {
+            PluginLogger.d("ConversionListener: onAppOpenAttribution received");
             if (saveCallbacks) {
+                PluginLogger.d("ConversionListener: Caching app open attribution (activity detached)");
                 cachedOnAppOpenAttribution = map;
                 return;
             }
             Map<String, Object> objMap = (Map) map;
             if (oaoaCallback) {
+                PluginLogger.d("ConversionListener: Sending app open attribution to Flutter");
                 JSONObject obj = new JSONObject(replaceNullValues(objMap));
                 runOnUIThread(obj, AppsFlyerConstants.AF_OAOA_CALLBACK, AF_SUCCESS);
             }
@@ -137,7 +182,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
         @Override
         public void onAttributionFailure(String errorMessage) {
+            PluginLogger.d("ConversionListener: onAttributionFailure - " + errorMessage);
             if (saveCallbacks) {
+                PluginLogger.d("ConversionListener: Caching attribution failure (activity detached)");
                 cachedOnAttributionFailure = errorMessage;
                 return;
             }
@@ -151,11 +198,14 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
         @Override
         public void onDeepLinking(DeepLinkResult deepLinkResult) {
+            PluginLogger.d("DeepLinkListener: onDeepLinking - status: " + deepLinkResult.getStatus());
             if (saveCallbacks) {
+                PluginLogger.d("DeepLinkListener: Caching deep link result (activity detached)");
                 cachedDeepLinkResult = deepLinkResult;
                 return;
             }
             if (udlCallback) {
+                PluginLogger.d("DeepLinkListener: Sending deep link to Flutter");
                 runOnUIThread(deepLinkResult, AppsFlyerConstants.AF_UDL_CALLBACK, AF_SUCCESS);
             }
         }
@@ -174,18 +224,20 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     };
 
     private void onAttachedToEngine(Context applicationContext, BinaryMessenger messenger) {
+        PluginLogger.d("Setting up method channels");
         this.mContext = applicationContext;
         this.mEventChannel = new EventChannel(messenger, AF_EVENTS_CHANNEL);
         mMethodChannel = new MethodChannel(messenger, AppsFlyerConstants.AF_METHOD_CHANNEL);
         mMethodChannel.setMethodCallHandler(this);
         mCallbackChannel = new MethodChannel(messenger, AppsFlyerConstants.AF_CALLBACK_CHANNEL);
         mCallbackChannel.setMethodCallHandler(callbacksHandler);
+        PluginLogger.d("Method channels setup complete");
     }
 
 
     private void startListening(Object arguments, Result rawResult) {
-        // Get callback id
         String callbackName = (String) arguments;
+        PluginLogger.d("startListening: Registering callback - " + callbackName);
         if (callbackName.equals(AppsFlyerConstants.AF_GCD_CALLBACK)) {
             gcdCallback = true;
         }
@@ -207,7 +259,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onMethodCall(MethodCall call, Result result) {
+        PluginLogger.d("onMethodCall: " + call.method);
         if (activity == null) {
+            PluginLogger.d("onMethodCall: Activity is null, returning error");
             Log.d(AF_PLUGIN_TAG, LogMessages.ACTIVITY_NOT_ATTACHED_TO_ENGINE);
             result.error("NO_ACTIVITY", "The current activity is null", null);
             return;
@@ -393,12 +447,14 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     }
 
     private void startSDKwithHandler(MethodCall call, final Result result) {
+        PluginLogger.d("startSDKwithHandler: Starting SDK with response handler");
         try {
             final AppsFlyerLib appsFlyerLib = AppsFlyerLib.getInstance();
 
             appsFlyerLib.start(activity, null, new AppsFlyerRequestListener() {
                 @Override
                 public void onSuccess() {
+                    PluginLogger.d("startSDKwithHandler: SDK started successfully");
                     uiThreadHandler.post(() -> {
                         if (mMethodChannel != null) {
                             mMethodChannel.invokeMethod("onSuccess", null);
@@ -410,6 +466,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
                 @Override
                 public void onError(final int errorCode, final String errorMessage) {
+                    PluginLogger.d("startSDKwithHandler: SDK start failed - code: " + errorCode + ", message: " + errorMessage);
                     uiThreadHandler.post(() -> {
                         if (mMethodChannel != null) {
                             HashMap<String, Object> errorDetails = new HashMap<>();
@@ -424,6 +481,7 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             });
             result.success(null);
         } catch (Throwable t) {
+            PluginLogger.d("startSDKwithHandler: Unexpected error - " + t.getMessage());
             result.error("UNEXPECTED_ERROR", t.getMessage(), null);
         }
     }
@@ -433,8 +491,10 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
      * only submitted once, preventing the "Reply already submitted" exception in Flutter.
      */
     private void startSDK(MethodCall call, final Result result) {
+        PluginLogger.d("startSDK: Starting SDK");
         final AppsFlyerLib instance = AppsFlyerLib.getInstance();
         instance.start(activity);
+        PluginLogger.d("startSDK: SDK started");
         result.success(null);
     }
 
@@ -1047,37 +1107,46 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     }
 
     private void initSdk(MethodCall call, final MethodChannel.Result result) {
+        PluginLogger.d("initSdk: Starting SDK initialization");
         AppsFlyerConversionListener gcdListener = null;
         DeepLinkListener udlListener = null;
         AppsFlyerLib instance = AppsFlyerLib.getInstance();
 
         boolean isManualStartMode = (boolean) call.argument(AppsFlyerConstants.AF_MANUAL_START);
+        PluginLogger.d("initSdk: manualStart=" + isManualStartMode);
 
         String afDevKey = (String) call.argument(AppsFlyerConstants.AF_DEV_KEY);
         if (afDevKey == null || afDevKey.equals("")) {
+            PluginLogger.d("initSdk: ERROR - Dev key is empty");
             Log.e(AF_PLUGIN_TAG, LogMessages.AF_DEV_KEY_IS_EMPTY);
             result.error("INIT_ERROR", LogMessages.AF_DEV_KEY_IS_EMPTY, null);
             return;
         }
+        PluginLogger.d("initSdk: Dev key configured");
 
         boolean advertiserIdDisabled = (boolean) call.argument(AppsFlyerConstants.DISABLE_ADVERTISING_IDENTIFIER);
         if (advertiserIdDisabled) {
+            PluginLogger.d("initSdk: Disabling advertising identifiers");
             instance.setDisableAdvertisingIdentifiers(true);
         }
 
         boolean getGCD = (boolean) call.argument(AppsFlyerConstants.AF_GCD);
         if (getGCD) {
+            PluginLogger.d("initSdk: Registering conversion data listener");
             gcdListener = afConversionListener;
         }
         // added Unified deeplink
         boolean getUdl = (boolean) call.argument(AppsFlyerConstants.AF_UDL);
         if (getUdl) {
+            PluginLogger.d("initSdk: Subscribing for deep links (UDL)");
             instance.subscribeForDeepLink(afDeepLinkListener);
         }
 
         boolean isDebug = (boolean) call.argument(AppsFlyerConstants.AF_IS_DEBUG);
         if (isDebug) {
-            instance.setLogLevel(AFLogger.LogLevel.DEBUG);
+            PluginLogger.setDebugLoggingEnabled(true); // Enable plugin logging when SDK debug is on
+            PluginLogger.d("initSdk: Debug mode enabled");
+             instance.setLogLevel(AFLogger.LogLevel.DEBUG);
             instance.setDebugLog(true);
         } else {
             instance.setDebugLog(false);
@@ -1085,16 +1154,22 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
         PluginInfo pluginInfo = new PluginInfo(Plugin.FLUTTER, AppsFlyerConstants.PLUGIN_VERSION);
         instance.setPluginInfo(pluginInfo);
+        PluginLogger.d("initSdk: Plugin version " + AppsFlyerConstants.PLUGIN_VERSION);
 
         instance.init(afDevKey, gcdListener, mContext);
+        PluginLogger.d("initSdk: SDK initialized");
 
         String appInviteOneLink = (String) call.argument(AppsFlyerConstants.AF_APP_INVITE_ONE_LINK);
         if (appInviteOneLink != null) {
+            PluginLogger.d("initSdk: Setting app invite OneLink: " + appInviteOneLink);
             instance.setAppInviteOneLink(appInviteOneLink);
         }
 
         if (!isManualStartMode) {
+            PluginLogger.d("initSdk: Auto-starting SDK");
             instance.start(activity);
+        } else {
+            PluginLogger.d("initSdk: Manual start mode - SDK not started yet");
         }
 
         if (saveCallbacks) {
@@ -1102,15 +1177,17 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
             sendCachedCallbacksToDart();
         }
 
+        PluginLogger.d("initSdk: Initialization complete");
         result.success("success");
     }
 
     private void logEvent(MethodCall call, MethodChannel.Result result) {
-
         AppsFlyerLib instance = AppsFlyerLib.getInstance();
 
         final String eventName = call.argument(AppsFlyerConstants.AF_EVENT_NAME);
         final Map<String, Object> eventValues = call.argument(AppsFlyerConstants.AF_EVENT_VALUES);
+
+        PluginLogger.d("logEvent: " + eventName + " with " + (eventValues != null ? eventValues.size() : 0) + " parameters");
 
         // Send event data through appsflyer sdk
         instance.logEvent(mContext, eventName, eventValues);
@@ -1170,23 +1247,36 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     //RD-65582
     private void sendCachedCallbacksToDart() {
+        boolean hasCachedData = cachedDeepLinkResult != null || cachedOnConversionDataSuccess != null 
+                || cachedOnAppOpenAttribution != null || cachedOnAttributionFailure != null 
+                || cachedOnConversionDataFail != null;
+        
+        if (hasCachedData) {
+            PluginLogger.d("Singleton: Sending cached callbacks to Dart");
+        }
+        
         if (cachedDeepLinkResult != null) {
+            PluginLogger.d("Singleton: Sending cached deep link result");
             afDeepLinkListener.onDeepLinking(cachedDeepLinkResult);
             cachedDeepLinkResult = null;
         }
         if (cachedOnConversionDataSuccess != null) {
+            PluginLogger.d("Singleton: Sending cached conversion data success");
             afConversionListener.onConversionDataSuccess(cachedOnConversionDataSuccess);
             cachedOnConversionDataSuccess = null;
         }
         if (cachedOnAppOpenAttribution != null) {
+            PluginLogger.d("Singleton: Sending cached app open attribution");
             afConversionListener.onAppOpenAttribution(cachedOnAppOpenAttribution);
             cachedOnAppOpenAttribution = null;
         }
         if (cachedOnAttributionFailure != null) {
+            PluginLogger.d("Singleton: Sending cached attribution failure");
             afConversionListener.onAttributionFailure(cachedOnAttributionFailure);
             cachedOnAttributionFailure = null;
         }
         if (cachedOnConversionDataFail != null) {
+            PluginLogger.d("Singleton: Sending cached conversion data fail");
             afConversionListener.onConversionDataFail(cachedOnConversionDataFail);
             cachedOnConversionDataFail = null;
         }
@@ -1225,23 +1315,34 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onAttachedToEngine(FlutterPluginBinding binding) {
+        PluginLogger.d("Singleton: onAttachedToEngine - setting up channels");
         onAttachedToEngine(binding.getApplicationContext(), binding.getBinaryMessenger());
         AppsFlyerPurchaseConnector.INSTANCE.onAttachedToEngine(binding);
     }
 
     @Override
     public void onDetachedFromEngine(FlutterPluginBinding binding) {
-        mMethodChannel.setMethodCallHandler(null);
-        mMethodChannel = null;
-        mEventChannel.setStreamHandler(null);
-        mEventChannel = null;
+        PluginLogger.d("Singleton: onDetachedFromEngine - cleaning up channels");
+        if (mMethodChannel != null) {
+            mMethodChannel.setMethodCallHandler(null);
+            mMethodChannel = null;
+        }
+        if (mEventChannel != null) {
+            mEventChannel.setStreamHandler(null);
+            mEventChannel = null;
+        }
+        if (mCallbackChannel != null) {
+            mCallbackChannel.setMethodCallHandler(null);
+            mCallbackChannel = null;
+        }
         AppsFlyerPurchaseConnector.INSTANCE.onDetachedFromEngine(binding);
-        mContext = null;
-        mApplication = null;
+        // Note: Don't null out mContext and mApplication to preserve state for potential reattachment
+        PluginLogger.d("Singleton: onDetachedFromEngine - channels cleaned, preserving context for reattachment");
     }
 
     @Override
     public void onAttachedToActivity(ActivityPluginBinding binding) {
+        PluginLogger.d("Singleton: onAttachedToActivity - activity: " + binding.getActivity().getClass().getSimpleName());
         activity = binding.getActivity();
         mApplication = binding.getActivity().getApplication();
         binding.addOnNewIntentListener(onNewIntentListener);
@@ -1249,11 +1350,13 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onDetachedFromActivityForConfigChanges() {
+        PluginLogger.d("Singleton: onDetachedFromActivityForConfigChanges - clearing activity reference");
         this.activity = null;
     }
 
     @Override
     public void onReattachedToActivityForConfigChanges(ActivityPluginBinding binding) {
+        PluginLogger.d("Singleton: onReattachedToActivityForConfigChanges - restoring activity: " + binding.getActivity().getClass().getSimpleName());
         sendCachedCallbacksToDart();
         binding.addOnNewIntentListener(onNewIntentListener);
         activity = binding.getActivity();
@@ -1261,9 +1364,9 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onDetachedFromActivity() {
+        PluginLogger.d("Singleton: onDetachedFromActivity - clearing activity, enabling callback caching");
         activity = null;
         saveCallbacks = true;
-        AppsFlyerLib.getInstance().unregisterConversionListener();
     }
 
 }

@@ -28,7 +28,7 @@ flutter:
     platforms:
       android:
         package: com.appsflyer.appsflyersdk
-        pluginClass: AppsflyerSdkPlugin
+        pluginClass: AppsflyerSdkPluginDelegate
       ios:
         pluginClass: AppsflyerSdkPlugin
         package: com.appsflyer.appsflyersdk
