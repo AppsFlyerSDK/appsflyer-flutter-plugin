@@ -130,9 +130,29 @@ jobs:
             exit 0
           fi
 
-          # If the RC is not yet on pub.dev, the parent run was dry or indexing is slow.
-          if ! curl -fsSL "https://pub.dev/api/packages/appsflyer_sdk" | jq -r '.versions[].version' | grep -Fxq "$VERSION"; then
-            echo "RC $VERSION is not on pub.dev (dry run or indexing); will emit skipped check."
+          # Pub.dev indexing can lag a few minutes after a successful publish.
+          # Poll the API until the RC version appears, with a hard timeout.
+          # Only emit a skipped check if it never shows up (genuine dry run /
+          # publish failure that the success-conclusion check missed).
+          MAX_WAIT_SECONDS=900   # 15 min
+          POLL_INTERVAL_SECONDS=30
+          ELAPSED=0
+          FOUND=false
+          while (( ELAPSED < MAX_WAIT_SECONDS )); do
+            if curl -fsSL "https://pub.dev/api/packages/appsflyer_sdk" \
+              | jq -r '.versions[].version' \
+              | grep -Fxq "$VERSION"; then
+              echo "RC $VERSION visible on pub.dev API after ${ELAPSED}s."
+              FOUND=true
+              break
+            fi
+            echo "RC $VERSION not yet on pub.dev API (waited ${ELAPSED}s, retrying in ${POLL_INTERVAL_SECONDS}s)"
+            sleep "$POLL_INTERVAL_SECONDS"
+            ELAPSED=$(( ELAPSED + POLL_INTERVAL_SECONDS ))
+          done
+
+          if [[ "$FOUND" != "true" ]]; then
+            echo "RC $VERSION never appeared on pub.dev within ${MAX_WAIT_SECONDS}s; emitting skipped check."
             echo "should_run=false" >> "$GITHUB_OUTPUT"
             echo "skip_reason=not_on_pubdev" >> "$GITHUB_OUTPUT"
             echo "rc_version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -203,7 +223,23 @@ jobs:
       - name: 📦 Resolve pub.dev RC + CocoaPods
         working-directory: example_rc_smoke
         run: |
-          flutter pub get
+          set -euo pipefail
+          # CDN propagation can lag the API; retry pub get with backoff.
+          ATTEMPTS=5
+          SLEEP=30
+          for i in $(seq 1 "$ATTEMPTS"); do
+            echo "flutter pub get attempt $i/$ATTEMPTS"
+            if flutter pub get; then
+              echo "pub get succeeded on attempt $i"
+              break
+            fi
+            if [[ "$i" == "$ATTEMPTS" ]]; then
+              echo "pub get failed after $ATTEMPTS attempts" >&2
+              exit 1
+            fi
+            flutter pub cache clean -f || true
+            sleep "$SLEEP"
+          done
           cd ios && pod install
 
       - name: 🏗 Build iOS simulator app
@@ -262,7 +298,24 @@ jobs:
 
       - name: 📦 Resolve pub.dev RC
         working-directory: example_rc_smoke
-        run: flutter pub get
+        run: |
+          set -euo pipefail
+          # CDN propagation can lag the API; retry pub get with backoff.
+          ATTEMPTS=5
+          SLEEP=30
+          for i in $(seq 1 "$ATTEMPTS"); do
+            echo "flutter pub get attempt $i/$ATTEMPTS"
+            if flutter pub get; then
+              echo "pub get succeeded on attempt $i"
+              break
+            fi
+            if [[ "$i" == "$ATTEMPTS" ]]; then
+              echo "pub get failed after $ATTEMPTS attempts" >&2
+              exit 1
+            fi
+            flutter pub cache clean -f || true
+            sleep "$SLEEP"
+          done
 
       - name: 🏗 Build Android APK + run smoke on emulator
         uses: reactivecircus/android-emulator-runner@v2
