@@ -11,8 +11,8 @@ Thin pointer. Contract text lives only in the tooling repo. Do not duplicate it 
 ## Sources of truth
 
 - **Stages (RC-PREP, RC-E2E, RC-PUBLISH, RC-SMOKE, RC-PROMOTE, RC-RELEASE)**: [`../../../appsflyer-mobile-plugin-tooling/contracts/rc-release-contract.md`](../../../appsflyer-mobile-plugin-tooling/contracts/rc-release-contract.md)
-- **E2E scenarios (E2E-001/002/003)**: [`../../../appsflyer-mobile-plugin-tooling/contracts/e2e-test-contract.md`](../../../appsflyer-mobile-plugin-tooling/contracts/e2e-test-contract.md)
-- **Smoke scenarios (SMOKE-001/002/003)**: [`../../../appsflyer-mobile-plugin-tooling/contracts/smoke-test-contract.md`](../../../appsflyer-mobile-plugin-tooling/contracts/smoke-test-contract.md)
+- **E2E scenarios**: [`../../../appsflyer-mobile-plugin-tooling/contracts/e2e-test-contract.md`](../../../appsflyer-mobile-plugin-tooling/contracts/e2e-test-contract.md) (current required set: `E2E-001` … `E2E-006`; planned: `E2E-007`, `E2E-008`)
+- **Smoke scenarios**: [`../../../appsflyer-mobile-plugin-tooling/contracts/smoke-test-contract.md`](../../../appsflyer-mobile-plugin-tooling/contracts/smoke-test-contract.md) (`SMOKE-001`, `SMOKE-002`, `SMOKE-003`)
 - **Test-app behavior**: [`../../../appsflyer-mobile-plugin-tooling/contracts/test-app-contract.md`](../../../appsflyer-mobile-plugin-tooling/contracts/test-app-contract.md)
 - **Operator manual (for humans)**: [`docs/RELEASE_USER_MANUAL.md`](../../docs/RELEASE_USER_MANUAL.md)
 
@@ -32,8 +32,8 @@ Thin pointer. Contract text lives only in the tooling repo. Do not duplicate it 
 A healthy RC PR has all of these green before promotion:
 
 - `CI`
-- `E2E — Full Integration Tests` (iOS)
-- `E2E — Android Integration Tests`
+- `E2E - Full Integration Tests` (iOS)
+- `E2E - Android Integration Tests`
 - `rc-smoke/pub.dev`
 
 `promote-release.yml` specifically verifies `rc-smoke/pub.dev` before stripping `-rcN`.

@@ -18,7 +18,7 @@ For contract meaning and stage IDs, see [`appsflyer-mobile-plugin-tooling/contra
 
    | Input | Example | Notes |
    |-------|---------|-------|
-   | `base_branch` | `development` | Usually leave as default |
+   | `base_branch` | `development` | Default. Override only when cutting a hotfix off another branch (e.g. `master`-derived patch). |
    | `flutter_version` | `6.18.0-rc1` | Must match `^\d+\.\d+\.\d+(\+\d+)?-rc\d+$` |
    | `ios_sdk_version` | `6.17.7` | Native wrapper version |
    | `android_sdk_version` | `6.17.4` | Native wrapper version |
@@ -34,13 +34,14 @@ Four checks must go green before you do anything:
 | Check | Workflow | Notes |
 |-------|----------|-------|
 | `CI` | `ci.yml` (via `rc-release.yml`) | Unit + lint |
-| `E2E — Full Integration Tests` | `e2e.yml` | RC-E2E iOS gate |
-| `E2E — Android Integration Tests` | `e2e-android.yml` | RC-E2E Android gate |
+| `E2E - Full Integration Tests` | `e2e.yml` | RC-E2E iOS gate |
+| `E2E - Android Integration Tests` | `e2e-android.yml` | RC-E2E Android gate |
 | `rc-smoke/pub.dev` | `rc-smoke.yml` | Only appears after `publish-rc` succeeds with `dry_run=false` |
 
 - If any E2E gate fails, fix the code on the release branch and push. E2E re-runs automatically.
 - If publish fails on a version collision, bump to `rcN+1` and rerun Step 1 with the new version.
 - If `rc-smoke/pub.dev` is red, the RC is broken on pub.dev. Bump to `rcN+1`.
+- If `rc-smoke/pub.dev` is `skipped`, the parent run was a dry run or the RC isn't on pub.dev yet. See Troubleshooting → "`rc-smoke/pub.dev` is skipped" before applying the promote label; promotion will reject `skipped` as a green gate.
 
 ## Step 3 - Review the auto-opened PR
 

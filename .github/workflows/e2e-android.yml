@@ -1,0 +1,86 @@
+# =============================================================================
+# E2E - Android Integration Tests (pre-publish)
+# =============================================================================
+#
+# Stage: RC-E2E in appsflyer-mobile-plugin-tooling/contracts/rc-release-contract.md.
+#
+# Runs the .af-e2e/test-plan.json scenarios against the plugin source
+# (example/ app linked to appsflyer_sdk via path: ..). Drives the unified
+# scripts/af-smoke-runner.sh on an Android emulator via
+# reactivecircus/android-emulator-runner (KVM on ubuntu-latest).
+#
+# Triggers:
+#   - workflow_call from rc-release.yml (the gate before publish-rc)
+#   - workflow_dispatch for manual reruns
+#   - Weekly cron (Sunday 03:00 UTC) to catch SDK / Flutter drift
+#
+# Reports land in .af-e2e/reports/ and are uploaded as e2e-android-<run>
+# artifacts. Check name (E2E - Android Integration Tests) is what
+# RELEASE_USER_MANUAL.md and rc-release.yml expect.
+# =============================================================================
+
+name: E2E - Android Integration Tests
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 0'
+
+concurrency:
+  group: e2e-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e-android:
+    name: E2E Tests (Android)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: ☕ Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: 🔧 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Install plugin dependencies
+        run: flutter pub get
+
+      - name: 📦 Install example app dependencies
+        working-directory: example
+        run: flutter pub get
+
+      - name: 🔐 Write example/.env
+        env:
+          ENV_FILE: ${{ secrets.ENV_FILE }}
+        run: printf '%s\n' "$ENV_FILE" > example/.env
+
+      - name: 🏗 Build + 🧪 run E2E on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          arch: x86_64
+          profile: pixel_6
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            cd example && flutter build apk --debug && cd ..
+            ./scripts/af-smoke-runner.sh --platform android --plan .af-e2e/test-plan.json
+
+      - name: 📤 Upload E2E reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-android-${{ github.run_number }}
+          path: .af-e2e/reports/
+          retention-days: 30
