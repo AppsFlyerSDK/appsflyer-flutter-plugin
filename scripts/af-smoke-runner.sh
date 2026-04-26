@@ -367,7 +367,7 @@ build_app() {
   log_step "Building app"
   log_info "Running: $BUILD_CMD"
   if ! $DRY_RUN; then
-    eval "$BUILD_CMD"
+    (eval "$BUILD_CMD")
   fi
 }
 
