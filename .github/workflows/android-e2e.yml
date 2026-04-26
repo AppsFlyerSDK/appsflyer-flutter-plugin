@@ -1,5 +1,5 @@
 # =============================================================================
-# E2E - Android Integration Tests (pre-publish)
+# Android E2E - integration tests (pre-publish)
 # =============================================================================
 #
 # Stage: RC-E2E in appsflyer-mobile-plugin-tooling/contracts/rc-release-contract.md.
@@ -14,12 +14,12 @@
 #   - workflow_dispatch for manual reruns
 #   - Weekly cron (Sunday 03:00 UTC) to catch SDK / Flutter drift
 #
-# Reports land in .af-e2e/reports/ and are uploaded as e2e-android-<run>
-# artifacts. Check name (E2E - Android Integration Tests) is what
-# RELEASE_USER_MANUAL.md and rc-release.yml expect.
+# Reports land in .af-e2e/reports/ and are uploaded as android-e2e-<run>
+# artifacts. Workflow name (Android E2E) is what RELEASE_USER_MANUAL.md,
+# .cursor/rules, and rc-release.yml refer to.
 # =============================================================================
 
-name: E2E - Android Integration Tests
+name: Android E2E
 
 on:
   workflow_call:
@@ -81,6 +81,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-android-${{ github.run_number }}
+          name: android-e2e-${{ github.run_number }}
           path: .af-e2e/reports/
           retention-days: 30

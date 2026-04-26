@@ -299,7 +299,7 @@ jobs:
   # ===========================================================================
   # Stage RC-E2E: End-to-end validation on plugin source (iOS)
   # ===========================================================================
-  # Reuses .github/workflows/e2e.yml. Gates publish-rc. Aligns with
+  # Reuses .github/workflows/ios-e2e.yml. Gates publish-rc. Aligns with
   # appsflyer-mobile-plugin-tooling/contracts/rc-release-contract.md#rc-e2e.
   # ===========================================================================
 
@@ -307,18 +307,19 @@ jobs:
     name: 🧪 RC-E2E iOS
     needs: [validate-release, prepare-branch]
     if: needs.validate-release.outputs.is_valid == 'true'
-    uses: ./.github/workflows/e2e.yml
+    uses: ./.github/workflows/ios-e2e.yml
     secrets: inherit
 
   # ===========================================================================
   # Stage RC-E2E: End-to-end validation on plugin source (Android)
   # ===========================================================================
+  # Reuses .github/workflows/android-e2e.yml.
 
   run-e2e-android:
     name: 🧪 RC-E2E Android
     needs: [validate-release, prepare-branch]
     if: needs.validate-release.outputs.is_valid == 'true'
-    uses: ./.github/workflows/e2e-android.yml
+    uses: ./.github/workflows/android-e2e.yml
     secrets: inherit
 
   # ===========================================================================

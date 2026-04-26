@@ -1,5 +1,5 @@
 # =============================================================================
-# E2E - iOS Integration Tests (pre-publish)
+# iOS E2E - integration tests (pre-publish)
 # =============================================================================
 #
 # Stage: RC-E2E in appsflyer-mobile-plugin-tooling/contracts/rc-release-contract.md.
@@ -13,12 +13,12 @@
 #   - workflow_dispatch for manual reruns and ad-hoc validation
 #   - Weekly cron (Sunday 02:00 UTC) to catch SDK / Flutter drift
 #
-# Reports land in .af-e2e/reports/ and are uploaded as e2e-ios-<run> artifacts.
-# Check name (E2E - Full Integration Tests) is what RELEASE_USER_MANUAL.md and
-# rc-release.yml expect.
+# Reports land in .af-e2e/reports/ and are uploaded as ios-e2e-<run> artifacts.
+# Workflow name (iOS E2E) is what RELEASE_USER_MANUAL.md, .cursor/rules, and
+# rc-release.yml refer to.
 # =============================================================================
 
-name: E2E - Full Integration Tests
+name: iOS E2E
 
 on:
   workflow_call:
@@ -114,6 +114,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-ios-${{ github.run_number }}
+          name: ios-e2e-${{ github.run_number }}
           path: .af-e2e/reports/
           retention-days: 30

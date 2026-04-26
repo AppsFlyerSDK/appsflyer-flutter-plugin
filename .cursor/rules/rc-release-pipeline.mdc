@@ -1,6 +1,6 @@
 ---
 description: RC release pipeline - thin pointer to the tooling contract. Activated when editing any release workflow or the operator manual.
-globs: .github/workflows/rc-release.yml,.github/workflows/rc-smoke.yml,.github/workflows/promote-release.yml,.github/workflows/production-release.yml,.github/workflows/e2e.yml,.github/workflows/e2e-android.yml,docs/RELEASE_USER_MANUAL.md,.af-e2e/**,.af-smoke/rc-test-plan.json,scripts/af-smoke-runner.sh,scripts/simulate-rc-pipeline.sh,example_rc_smoke/**
+globs: .github/workflows/rc-release.yml,.github/workflows/rc-smoke.yml,.github/workflows/promote-release.yml,.github/workflows/production-release.yml,.github/workflows/ios-e2e.yml,.github/workflows/android-e2e.yml,docs/RELEASE_USER_MANUAL.md,.af-e2e/**,.af-smoke/rc-test-plan.json,scripts/af-smoke-runner.sh,scripts/simulate-rc-pipeline.sh,example_rc_smoke/**
 alwaysApply: false
 ---
 
@@ -21,7 +21,7 @@ Thin pointer. Contract text lives only in the tooling repo. Do not duplicate it 
 | Stage | Workflow | Trigger |
 |-------|----------|---------|
 | `RC-PREP` | [`.github/workflows/rc-release.yml`](../../.github/workflows/rc-release.yml) | `workflow_dispatch` |
-| `RC-E2E` | [`.github/workflows/e2e.yml`](../../.github/workflows/e2e.yml), [`.github/workflows/e2e-android.yml`](../../.github/workflows/e2e-android.yml) | `workflow_call` from RC-release |
+| `RC-E2E` | [`.github/workflows/ios-e2e.yml`](../../.github/workflows/ios-e2e.yml), [`.github/workflows/android-e2e.yml`](../../.github/workflows/android-e2e.yml) | `workflow_call` from RC-release |
 | `RC-PUBLISH` | [`.github/workflows/rc-release.yml`](../../.github/workflows/rc-release.yml) | `publish-rc` job (honours `dry_run`) |
 | `RC-SMOKE` | [`.github/workflows/rc-smoke.yml`](../../.github/workflows/rc-smoke.yml) | `workflow_run` on RC-release success; manual `workflow_dispatch` |
 | `RC-PROMOTE` | [`.github/workflows/promote-release.yml`](../../.github/workflows/promote-release.yml) | `pull_request: labeled` with `pass QA ready for deploy` |
@@ -32,8 +32,8 @@ Thin pointer. Contract text lives only in the tooling repo. Do not duplicate it 
 A healthy RC PR has all of these green before promotion:
 
 - `CI`
-- `E2E - Full Integration Tests` (iOS)
-- `E2E - Android Integration Tests`
+- `iOS E2E`
+- `Android E2E`
 - `rc-smoke/pub.dev`
 
 `promote-release.yml` specifically verifies `rc-smoke/pub.dev` before stripping `-rcN`.
@@ -50,7 +50,7 @@ Names only (never values):
 
 | Secret | Consumed by | Purpose |
 |--------|-------------|---------|
-| `ENV_FILE` | `e2e.yml`, `e2e-android.yml`, `rc-smoke.yml` | `.env` contents (`DEV_KEY`, `APP_ID`) |
+| `ENV_FILE` | `ios-e2e.yml`, `android-e2e.yml`, `rc-smoke.yml` | `.env` contents (`DEV_KEY`, `APP_ID`) |
 | `PUB_DEV_CREDENTIALS` | `rc-release.yml` (`publish-rc`), `production-release.yml` | pub.dev publish credentials |
 | `CI_SLACK_WEBHOOK_URL` | `rc-release.yml`, `promote-release.yml`, `production-release.yml` | Release notifications |
 | `CI_JIRA_EMAIL`, `CI_JIRA_TOKEN`, `CI_JIRA_DOMAIN` | `rc-release.yml`, `production-release.yml` | Jira fixVersion lookup |

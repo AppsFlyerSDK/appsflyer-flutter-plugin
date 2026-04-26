@@ -22,7 +22,7 @@ Always follow the operator manual for step-by-step actions. This skill tells you
 | Stage | Workflow file | Notes |
 |-------|---------------|-------|
 | `RC-PREP` | [`.github/workflows/rc-release.yml`](../../../.github/workflows/rc-release.yml) | `prepare-branch` job; cuts `releases/<major>.x.x/<minor>.x/<version>` |
-| `RC-E2E` | [`.github/workflows/e2e.yml`](../../../.github/workflows/e2e.yml), [`.github/workflows/e2e-android.yml`](../../../.github/workflows/e2e-android.yml) | Called via `workflow_call` from RC-release |
+| `RC-E2E` | [`.github/workflows/ios-e2e.yml`](../../../.github/workflows/ios-e2e.yml), [`.github/workflows/android-e2e.yml`](../../../.github/workflows/android-e2e.yml) | Called via `workflow_call` from RC-release |
 | `RC-PUBLISH` | [`.github/workflows/rc-release.yml`](../../../.github/workflows/rc-release.yml) | `publish-rc` job; honors `dry_run` |
 | `RC-SMOKE` | [`.github/workflows/rc-smoke.yml`](../../../.github/workflows/rc-smoke.yml) | `workflow_run` on RC-release success; manual `workflow_dispatch` for reruns |
 | `RC-PROMOTE` | [`.github/workflows/promote-release.yml`](../../../.github/workflows/promote-release.yml) | Triggered by `pass QA ready for deploy` label |

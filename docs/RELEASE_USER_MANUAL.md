@@ -34,8 +34,8 @@ Four checks must go green before you do anything:
 | Check | Workflow | Notes |
 |-------|----------|-------|
 | `CI` | `ci.yml` (via `rc-release.yml`) | Unit + lint |
-| `E2E - Full Integration Tests` | `e2e.yml` | RC-E2E iOS gate |
-| `E2E - Android Integration Tests` | `e2e-android.yml` | RC-E2E Android gate |
+| `iOS E2E` | `ios-e2e.yml` | RC-E2E iOS gate |
+| `Android E2E` | `android-e2e.yml` | RC-E2E Android gate |
 | `rc-smoke/pub.dev` | `rc-smoke.yml` | Only appears after `publish-rc` succeeds with `dry_run=false` |
 
 - If any E2E gate fails, fix the code on the release branch and push. E2E re-runs automatically.
@@ -82,10 +82,10 @@ Verify at <https://pub.dev/packages/appsflyer_sdk> (may take a few minutes to in
 
 ## Troubleshooting
 
-### E2E iOS or Android is red
+### `iOS E2E` or `Android E2E` is red
 
-1. Open the failing workflow run and download the `e2e-report` artifact.
-2. Open the JSON report; find the first `"status": "FAIL"` check; read its `evidence`.
+1. Open the failing workflow run (`ios-e2e.yml` or `android-e2e.yml`) and download the `ios-e2e-<n>` or `android-e2e-<n>` artifact.
+2. Open the JSON report under `.af-e2e/reports/`; find the first `"status": "FAIL"` check; read its `evidence`.
 3. Cross-reference [`appsflyer-mobile-plugin-tooling/docs/troubleshooting.md`](https://github.com/AppsFlyerSDK/appsflyer-mobile-plugin-tooling/blob/main/docs/troubleshooting.md) for boot timeouts, adb flakes, simctl issues.
 4. Fix the plugin source on the release branch, push. E2E re-runs automatically.
 
