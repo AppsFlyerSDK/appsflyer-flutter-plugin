@@ -110,15 +110,12 @@ jobs:
             exit 0
           fi
 
-          # Detect dry-run signal: parent's dry_run input propagated through
-          # the release branch's pubspec.yaml content (present on real runs,
-          # still present on dry runs because prepare-branch commits bumps
-          # regardless). We look at the parent workflow run's inputs via the
-          # API instead, since event payload inputs are not exposed to
-          # workflow_run listeners.
-          PARENT_RUN_ID='${{ github.event.workflow_run.id }}'
-          DRY_RUN=$(gh run view "$PARENT_RUN_ID" --json displayTitle,jobs -q '.jobs[] | select(.name == "🔍 Validate Inputs & Compute Branch").steps[0].name' 2>/dev/null || echo "")
-          # Fallback: parse release branch name for the -rcN shape and read pubspec from checkout.
+          # workflow_run listeners cannot read the parent's inputs directly,
+          # so we infer state from the release branch checkout: pubspec.yaml
+          # carries the bumped RC version (committed by prepare-branch on both
+          # real and dry runs), and the pub.dev API tells us if it was
+          # actually published. Dry runs naturally fail the visibility poll
+          # below and emit a skipped check-run.
           VERSION=$(grep "^version:" pubspec.yaml | sed 's/version: //' | tr -d ' ')
           if [[ ! "$VERSION" =~ -rc[0-9]+$ ]]; then
             echo "pubspec version is not an RC ($VERSION); skipping."
@@ -166,8 +163,6 @@ jobs:
           echo "rc_version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "release_branch=$HEAD_BRANCH" >> "$GITHUB_OUTPUT"
           echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ===========================================================================
   # iOS smoke against the published RC on pub.dev.
@@ -199,7 +194,9 @@ jobs:
           grep "^  appsflyer_sdk:" example_rc_smoke/pubspec.yaml
 
       - name: 🔐 Write example_rc_smoke/.env
-        run: echo "${{ secrets.ENV_FILE }}" > example_rc_smoke/.env
+        env:
+          ENV_FILE: ${{ secrets.ENV_FILE }}
+        run: printf '%s\n' "$ENV_FILE" > example_rc_smoke/.env
 
       - name: 🧭 Select Xcode version
         run: |
@@ -294,7 +291,9 @@ jobs:
           grep "^  appsflyer_sdk:" example_rc_smoke/pubspec.yaml
 
       - name: 🔐 Write example_rc_smoke/.env
-        run: echo "${{ secrets.ENV_FILE }}" > example_rc_smoke/.env
+        env:
+          ENV_FILE: ${{ secrets.ENV_FILE }}
+        run: printf '%s\n' "$ENV_FILE" > example_rc_smoke/.env
 
       - name: 📦 Resolve pub.dev RC
         working-directory: example_rc_smoke
