@@ -115,3 +115,6 @@ node_modules/
 covBadgeGen.js
 coverage/
 .env
+
+.af-e2e/reports/
+.af-smoke/reports/
