@@ -92,7 +92,14 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     PluginRegistry.NewIntentListener onNewIntentListener = new PluginRegistry.NewIntentListener() {
         @Override
         public boolean onNewIntent(Intent intent) {
-            activity.setIntent(intent);
+            if (activity != null) {
+                activity.setIntent(intent);
+            }
+            if (mApplication != null) {
+                AppsFlyerLib.getInstance().performOnDeepLinking(intent, mApplication);
+            } else {
+                Log.d(AF_PLUGIN_TAG, "onNewIntent: application is null, skipping performOnDeepLinking");
+            }
             return false;
         }
     };
