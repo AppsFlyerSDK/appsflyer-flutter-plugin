@@ -53,7 +53,7 @@ Expected behavior with `dry_run=false` on the same scratch version (run after th
 
 - Everything above, plus `publish-rc` actually publishes `99.99.99-rc1` to pub.dev.
 - `rc-smoke.yml` templates `example_rc_smoke/pubspec.yaml` with `appsflyer_sdk: =99.99.99-rc1`, builds, runs `SMOKE-001/002/003` on both platforms, uploads reports, and posts `rc-smoke/pub.dev` with conclusion `success`.
-- The PR shows all four checks green: `CI`, `E2E — Full Integration Tests`, `E2E — Android Integration Tests`, `rc-smoke/pub.dev`.
+- The PR shows all four checks green: `CI`, `iOS E2E`, `Android E2E`, `rc-smoke/pub.dev`.
 
 Negative promote test (proves the gate):
 

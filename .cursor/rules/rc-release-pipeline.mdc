@@ -1,0 +1,66 @@
+---
+description: RC release pipeline - thin pointer to the tooling contract. Activated when editing any release workflow or the operator manual.
+globs: .github/workflows/rc-release.yml,.github/workflows/rc-smoke.yml,.github/workflows/promote-release.yml,.github/workflows/production-release.yml,.github/workflows/ios-e2e.yml,.github/workflows/android-e2e.yml,docs/RELEASE_USER_MANUAL.md,.af-e2e/**,.af-smoke/rc-test-plan.json,scripts/af-smoke-runner.sh,scripts/simulate-rc-pipeline.sh,example_rc_smoke/**
+alwaysApply: false
+---
+
+# RC release pipeline - Flutter plugin
+
+Thin pointer. Contract text lives only in the tooling repo. Do not duplicate it here.
+
+## Sources of truth
+
+- **Stages (RC-PREP, RC-E2E, RC-PUBLISH, RC-SMOKE, RC-PROMOTE, RC-RELEASE)**: [`../../../appsflyer-mobile-plugin-tooling/contracts/rc-release-contract.md`](../../../appsflyer-mobile-plugin-tooling/contracts/rc-release-contract.md)
+- **E2E scenarios**: [`../../../appsflyer-mobile-plugin-tooling/contracts/e2e-test-contract.md`](../../../appsflyer-mobile-plugin-tooling/contracts/e2e-test-contract.md) (current required set: `E2E-001` … `E2E-006`; planned: `E2E-007`, `E2E-008`)
+- **Smoke scenarios**: [`../../../appsflyer-mobile-plugin-tooling/contracts/smoke-test-contract.md`](../../../appsflyer-mobile-plugin-tooling/contracts/smoke-test-contract.md) (`SMOKE-001`, `SMOKE-002`, `SMOKE-003`)
+- **Test-app behavior**: [`../../../appsflyer-mobile-plugin-tooling/contracts/test-app-contract.md`](../../../appsflyer-mobile-plugin-tooling/contracts/test-app-contract.md)
+- **Operator manual (for humans)**: [`docs/RELEASE_USER_MANUAL.md`](../../docs/RELEASE_USER_MANUAL.md)
+
+## Stage → workflow map
+
+| Stage | Workflow | Trigger |
+|-------|----------|---------|
+| `RC-PREP` | [`.github/workflows/rc-release.yml`](../../.github/workflows/rc-release.yml) | `workflow_dispatch` |
+| `RC-E2E` | [`.github/workflows/ios-e2e.yml`](../../.github/workflows/ios-e2e.yml), [`.github/workflows/android-e2e.yml`](../../.github/workflows/android-e2e.yml) | `workflow_call` from RC-release |
+| `RC-PUBLISH` | [`.github/workflows/rc-release.yml`](../../.github/workflows/rc-release.yml) | `publish-rc` job (honours `dry_run`) |
+| `RC-SMOKE` | [`.github/workflows/rc-smoke.yml`](../../.github/workflows/rc-smoke.yml) | `workflow_run` on RC-release success; manual `workflow_dispatch` |
+| `RC-PROMOTE` | [`.github/workflows/promote-release.yml`](../../.github/workflows/promote-release.yml) | `pull_request: labeled` with `pass QA ready for deploy` |
+| `RC-RELEASE` | [`.github/workflows/production-release.yml`](../../.github/workflows/production-release.yml) | `pull_request: closed` (merged) |
+
+## Expected PR checks
+
+A healthy RC PR has all of these green before promotion:
+
+- `CI`
+- `iOS E2E`
+- `Android E2E`
+- `rc-smoke/pub.dev`
+
+`promote-release.yml` specifically verifies `rc-smoke/pub.dev` before stripping `-rcN`.
+
+## When smoke runs vs when it doesn't
+
+- **Auto** after RC-release succeeds with `dry_run=false`.
+- **Manual** via `workflow_dispatch` on `rc-smoke.yml` with `rc_version` + `release_branch` inputs (for reruns).
+- **Skipped** when parent RC-release was `dry_run=true`, the head branch version is not an RC, or the RC isn't yet on pub.dev. In all three cases the workflow posts a `skipped` check-run.
+
+## Secrets
+
+Names only (never values):
+
+| Secret | Consumed by | Purpose |
+|--------|-------------|---------|
+| `ENV_FILE` | `ios-e2e.yml`, `android-e2e.yml`, `rc-smoke.yml` | `.env` contents (`DEV_KEY`, `APP_ID`) |
+| `PUB_DEV_CREDENTIALS` | `rc-release.yml` (`publish-rc`), `production-release.yml` | pub.dev publish credentials |
+| `CI_SLACK_WEBHOOK_URL` | `rc-release.yml`, `promote-release.yml`, `production-release.yml` | Release notifications |
+| `CI_JIRA_EMAIL`, `CI_JIRA_TOKEN`, `CI_JIRA_DOMAIN` | `rc-release.yml`, `production-release.yml` | Jira fixVersion lookup |
+| `GITHUB_TOKEN` | `rc-smoke.yml`, `promote-release.yml` | Check-run creation + lookup |
+
+All repo-level. No GitHub Environments.
+
+## Do not
+
+- Do not add new release stages that are not documented in the tooling `rc-release-contract.md`.
+- Do not bypass `RC-PROMOTE` by pushing a version-strip commit directly to the release branch.
+- Do not republish the same RC version; bump to `rcN+1`.
+- Do not duplicate contract text in this rule; link to the tooling repo.
