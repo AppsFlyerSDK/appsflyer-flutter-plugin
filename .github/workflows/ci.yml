@@ -121,9 +121,8 @@ jobs:
             echo "  git add $(echo "$changed" | tr '\n' ' ')"
             echo "  git commit --amend --no-edit  # or make a new commit"
             echo ""
-            echo "Tip: install the shared pre-commit hook once with"
-            echo "  ./scripts/install-hooks.sh"
-            echo "to catch this before the push."
+            echo "Maintainer tip: ./scripts/install-hooks.sh installs a"
+            echo "pre-commit hook that runs the same check locally."
             exit $rc
           fi
       

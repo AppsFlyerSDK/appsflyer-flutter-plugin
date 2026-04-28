@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
-# Shared pre-commit hook for the AppsFlyer Flutter plugin.
+# Pre-commit hook for the AppsFlyer Flutter plugin (maintainer team only).
 #
-# Mirrors the CI "Check code formatting" step (.github/workflows/ci.yml) so
-# developers catch dart-format issues before pushing. Only checks staged Dart
-# files for speed.
+# Mirrors the CI "Check code formatting" step (.github/workflows/ci.yml) to
+# catch dart-format issues before pushing. Only checks staged Dart files for
+# speed.
 #
 # Install once per clone:
 #   ./scripts/install-hooks.sh
 #
-# Skip a single commit (rarely needed):
-#   git commit --no-verify
+# Skip a single commit (rare): git commit --no-verify
 #
 # Portability note: written for bash 3.2 (macOS default), so no mapfile.
 
@@ -64,6 +63,6 @@ echo "     dart format ${CHANGED[*]}"
 echo "     git add ${CHANGED[*]}"
 echo ""
 echo "   Then retry the commit. CI runs the same check on every push."
-echo "   To skip just this commit (not recommended): git commit --no-verify"
+echo "   Skip just this commit (rare): git commit --no-verify"
 echo ""
 exit 1

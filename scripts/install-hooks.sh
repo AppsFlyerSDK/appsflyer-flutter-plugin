@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Point this clone's git hooks at the tracked .githooks directory so every
-# developer gets the same pre-commit checks (currently: dart format on staged
-# Dart files, mirroring the CI "Check code formatting" step).
+# Point this clone's git hooks at the tracked .githooks directory.
+# Currently installs: dart format on staged Dart files, mirroring the CI
+# "Check code formatting" step. Local repo scope only.
 #
 # Run once per clone:
 #   ./scripts/install-hooks.sh
