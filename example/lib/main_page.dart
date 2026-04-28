@@ -126,8 +126,7 @@ class MainPageState extends State<MainPage> {
         if (!completer.isCompleted) completer.complete();
       },
       onError: (int errorCode, String errorMessage) {
-        AfQaLogger.error(
-            "startSDK", "code=$errorCode msg=$errorMessage");
+        AfQaLogger.error("startSDK", "code=$errorCode msg=$errorMessage");
         if (!completer.isCompleted) completer.complete();
       },
     );
@@ -346,8 +345,8 @@ class MainPageState extends State<MainPage> {
           revenue: 100.3,
           additionalParameters: customParams);
       _appsflyerSdk.logAdRevenue(adRevenueData);
-      AfQaLogger.log(
-          "logAdRevenue", "monetizationNetwork=SpongeBob currency=USD revenue=100.3");
+      AfQaLogger.log("logAdRevenue",
+          "monetizationNetwork=SpongeBob currency=USD revenue=100.3");
       print("Ad Revenue event logged with no errors");
     } catch (e) {
       AfQaLogger.error("logAdRevenue", e);
