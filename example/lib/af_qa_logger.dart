@@ -1,0 +1,65 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
+
+/// QA log emitter consumed by `scripts/af-smoke-runner.sh`.
+///
+/// Every line emitted via [log] is prefixed with `[AF_QA]` so the smoke runner
+/// can grep for it. On iOS, lines are also appended to a file under the app's
+/// Documents directory; the runner pulls that file off the simulator with
+/// `xcrun simctl get_app_container`. On Android, stdout is enough because the
+/// runner uses `adb logcat`.
+class AfQaLogger {
+  static IOSink? _sink;
+  static bool _initialized = false;
+
+  /// Resolve the iOS log file once at startup and open it in append mode.
+  /// Safe to call multiple times. No-op on Android.
+  static Future<void> init() async {
+    if (_initialized) return;
+    _initialized = true;
+    if (!Platform.isIOS) return;
+    try {
+      final docs = await getApplicationDocumentsDirectory();
+      final file = File('${docs.path}/af_qa_logs.txt');
+      _sink = file.openWrite(mode: FileMode.append);
+    } catch (e) {
+      _sink = null;
+      debugPrint('[AF_QA][LOGGER] init failed: $e');
+    }
+  }
+
+  /// Emit a single QA log line. Tag goes between brackets, message after.
+  static void log(String tag, String message) {
+    final line = '[AF_QA][$tag] $message';
+    debugPrint(line);
+    final sink = _sink;
+    if (sink != null) {
+      try {
+        sink.writeln(line);
+      } catch (_) {}
+    }
+  }
+
+  /// Helper for `[AF_QA][<method>] result: <value>` lines.
+  static void result(String method, Object? value) {
+    log(method, 'result: $value');
+  }
+
+  /// Helper for `[AF_QA][<method>] error: <err>` lines.
+  static void error(String method, Object err) {
+    log(method, 'error: $err');
+  }
+
+  /// Helper for `[AF_QA][CALLBACK][<name>] received: <payload>` lines.
+  static void callback(String name, Object? payload) {
+    log('CALLBACK][$name', 'received: $payload');
+  }
+
+  /// Helper for `[AF_QA][AUTO_APIS] <message>` lines.
+  static void autoApis(String message) {
+    log('AUTO_APIS', message);
+  }
+}

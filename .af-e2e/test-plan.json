@@ -3,10 +3,10 @@
     "plan_id": "flutter-e2e",
     "plugin": "flutter",
     "version": "1.0.0",
-    "description": "Thorough end-to-end test plan for the AppsFlyer Flutter plugin. Runs against plugin source (appsflyer_sdk: path: ..) in example/. Covers cold launch coverage, background deep link, and foreground deep link. Mapped to E2E-001, E2E-002, E2E-003 in appsflyer-mobile-plugin-tooling/contracts/e2e-test-contract.md.",
+    "description": "Thorough end-to-end test plan for the AppsFlyer Flutter plugin. Runs against plugin source (appsflyer_sdk: path: ..) in example/. Covers six scenarios: cold launch, background deep link, foreground deep link, custom event with parameters, identity APIs round-trip, and consent / SDK stop toggle. Mapped to E2E-001..E2E-006 in appsflyer-mobile-plugin-tooling/contracts/e2e-test-contract.md.",
     "platforms": ["android", "ios"],
     "schema_version": "1.0.0",
-    "tooling_contract_ref": "E2E-001, E2E-002, E2E-003"
+    "tooling_contract_ref": "E2E-001, E2E-002, E2E-003, E2E-004, E2E-005, E2E-006"
   },
 
   "config": {
@@ -212,6 +212,175 @@
         {
           "id": "no_fatal_errors",
           "description": "No fatal exceptions",
+          "type": "absent",
+          "patterns": ["Fatal Exception", "FATAL"],
+          "fail_action": "fail"
+        }
+      ]
+    },
+
+    {
+      "id": "phase_4",
+      "name": "Custom in-app event with parameters",
+      "scenario_ref": "E2E-004",
+      "description": "Verifies the custom logEvent with multi-type parameters (string, number, nested map) fired by the example app's auto-run after cold launch. Covers E2E-004.",
+      "requires_fresh_install": false,
+      "wait_after_trigger_sec": 5,
+      "checks": [
+        {
+          "id": "custom_event_logged",
+          "description": "logEvent invocation with name and full param map is logged",
+          "type": "log_contains",
+          "pattern": "[AF_QA][logEvent] name=af_qa_custom_purchase",
+          "fail_action": "fail"
+        },
+        {
+          "id": "param_revenue_present",
+          "description": "Revenue parameter present in serialized payload",
+          "type": "log_contains",
+          "pattern": "af_revenue",
+          "fail_action": "fail"
+        },
+        {
+          "id": "param_currency_present",
+          "description": "Currency parameter present",
+          "type": "log_contains",
+          "pattern": "af_currency",
+          "fail_action": "fail"
+        },
+        {
+          "id": "param_nested_metadata",
+          "description": "Nested metadata map preserved in payload",
+          "type": "log_contains",
+          "pattern": "metadata",
+          "fail_action": "fail"
+        },
+        {
+          "id": "custom_event_http_200",
+          "description": "Custom event request returns HTTP 200",
+          "type": "count_matches",
+          "pattern": "response code:200 OK|response_status=200",
+          "minimum": 1,
+          "fail_action": "fail"
+        },
+        {
+          "id": "no_log_event_error",
+          "description": "No logEvent error reported",
+          "type": "absent",
+          "patterns": ["[AF_QA][logEvent] error:"],
+          "fail_action": "fail"
+        }
+      ]
+    },
+
+    {
+      "id": "phase_5",
+      "name": "Identity APIs round-trip",
+      "scenario_ref": "E2E-005",
+      "description": "Sets customer user id, currency code, and additional data before start. Verifies readback and propagation into a post-start event payload. Covers E2E-005.",
+      "requires_fresh_install": true,
+      "wait_after_launch_sec": 25,
+      "wait_after_trigger_sec": 5,
+      "pre_start_apis": {
+        "set_customer_user_id": "e2e_user_42",
+        "set_currency_code": "EUR",
+        "set_additional_data": {"tenant": "qa_eu", "experiment": "rc_pipeline_v1"}
+      },
+      "checks": [
+        {
+          "id": "set_customer_user_id_logged",
+          "description": "setCustomerUserId readback present",
+          "type": "log_contains",
+          "pattern": "[AF_QA][setCustomerUserId] result: e2e_user_42",
+          "fail_action": "fail"
+        },
+        {
+          "id": "set_currency_code_logged",
+          "description": "setCurrencyCode readback present",
+          "type": "log_contains",
+          "pattern": "[AF_QA][setCurrencyCode] result: EUR",
+          "fail_action": "fail"
+        },
+        {
+          "id": "set_additional_data_logged",
+          "description": "setAdditionalData echoes its keys",
+          "type": "log_contains",
+          "pattern": "[AF_QA][setAdditionalData]",
+          "fail_action": "fail"
+        },
+        {
+          "id": "user_id_in_payload",
+          "description": "Post-start event payload carries customer_user_id",
+          "type": "log_contains",
+          "pattern": "customer_user_id=e2e_user_42",
+          "fail_action": "fail"
+        },
+        {
+          "id": "additional_data_in_payload",
+          "description": "Post-start event payload contains additional data tenant key",
+          "type": "log_contains",
+          "pattern": "tenant",
+          "fail_action": "fail"
+        },
+        {
+          "id": "is_first_launch_true",
+          "description": "Install conversion still fires with is_first_launch=true",
+          "type": "log_contains",
+          "pattern": "[AF_QA][CALLBACK][onInstallConversionData]",
+          "payload_check": {"field": "is_first_launch", "expected": "true"},
+          "fail_action": "fail"
+        },
+        {
+          "id": "identity_event_http_200",
+          "description": "Identity check event receives HTTP 200",
+          "type": "count_matches",
+          "pattern": "response code:200 OK|response_status=200",
+          "minimum": 1,
+          "fail_action": "fail"
+        }
+      ]
+    },
+
+    {
+      "id": "phase_6",
+      "name": "Consent / SDK stop toggle",
+      "scenario_ref": "E2E-006",
+      "description": "Auto-run dispatches stop(true), an event that must be suppressed, then stop(false), and an event that must succeed. Verifies the privacy kill switch. Covers E2E-006.",
+      "requires_fresh_install": false,
+      "wait_after_trigger_sec": 5,
+      "checks": [
+        {
+          "id": "stop_true_logged",
+          "description": "stop(true) readback present",
+          "type": "log_contains",
+          "pattern": "[AF_QA][stop] result: true",
+          "fail_action": "fail"
+        },
+        {
+          "id": "stop_false_logged",
+          "description": "stop(false) readback present",
+          "type": "log_contains",
+          "pattern": "[AF_QA][stop] result: false",
+          "fail_action": "fail"
+        },
+        {
+          "id": "suppressed_event_no_http",
+          "description": "While stopped, af_qa_suppressed must not produce an HTTP 200 response",
+          "type": "absent",
+          "patterns": ["af_qa_suppressed.*response code:200", "af_qa_suppressed.*response_status=200"],
+          "fail_action": "fail"
+        },
+        {
+          "id": "resumed_event_http_200",
+          "description": "After stop(false), af_qa_resumed produces HTTP 200",
+          "type": "count_matches",
+          "pattern": "response code:200 OK|response_status=200",
+          "minimum": 1,
+          "fail_action": "fail"
+        },
+        {
+          "id": "no_fatal_errors",
+          "description": "No fatal exceptions across the stop/start cycle",
           "type": "absent",
           "patterns": ["Fatal Exception", "FATAL"],
           "fail_action": "fail"
