@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Shared pre-commit hook for the AppsFlyer Flutter plugin.
+#
+# Mirrors the CI "Check code formatting" step (.github/workflows/ci.yml) so
+# developers catch dart-format issues before pushing. Only checks staged Dart
+# files for speed.
+#
+# Install once per clone:
+#   ./scripts/install-hooks.sh
+#
+# Skip a single commit (rarely needed):
+#   git commit --no-verify
+#
+# Portability note: written for bash 3.2 (macOS default), so no mapfile.
+
+set -euo pipefail
+
+# Resolve `dart` binary. Prefer plain `dart`; fall back to Flutter's bundled one.
+if command -v dart >/dev/null 2>&1; then
+  DART_BIN="dart"
+elif command -v flutter >/dev/null 2>&1; then
+  DART_BIN="flutter dart"
+else
+  echo "pre-commit: skipping format check; neither 'dart' nor 'flutter' is on PATH." >&2
+  exit 0
+fi
+
+# Collect staged Dart files (added/copied/modified/renamed).
+STAGED_DART_FILES=()
+while IFS= read -r file; do
+  [[ -z "$file" ]] && continue
+  STAGED_DART_FILES+=("$file")
+done < <(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.dart$' || true)
+
+if [[ ${#STAGED_DART_FILES[@]} -eq 0 ]]; then
+  exit 0
+fi
+
+set +e
+output=$(${DART_BIN} format --output=none --set-exit-if-changed "${STAGED_DART_FILES[@]}" 2>&1)
+rc=$?
+set -e
+
+if [[ $rc -eq 0 ]]; then
+  exit 0
+fi
+
+CHANGED=()
+while IFS= read -r line; do
+  [[ -z "$line" ]] && continue
+  CHANGED+=("$line")
+done < <(echo "$output" | awk '/^Changed / {sub(/^Changed /, ""); print}')
+
+echo ""
+echo "❌ pre-commit: dart format would change ${#CHANGED[@]} staged file(s)."
+echo ""
+echo "   Files needing formatting:"
+for f in "${CHANGED[@]}"; do
+  echo "     - $f"
+done
+echo ""
+echo "   Fix locally and re-stage:"
+echo "     dart format ${CHANGED[*]}"
+echo "     git add ${CHANGED[*]}"
+echo ""
+echo "   Then retry the commit. CI runs the same check on every push."
+echo "   To skip just this commit (not recommended): git commit --no-verify"
+echo ""
+exit 1

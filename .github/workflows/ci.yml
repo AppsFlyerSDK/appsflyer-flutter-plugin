@@ -97,9 +97,35 @@ jobs:
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
       
       # Step 6: Format check
-      # Ensures code follows Dart formatting standards
+      # Ensures code follows Dart formatting standards. On failure, prints
+      # the offending files and the exact one-liner devs can run locally,
+      # plus a GitHub Actions `::error::` annotation at the top of the run.
       - name: 💅 Check code formatting
-        run: dart format --set-exit-if-changed .
+        run: |
+          set +e
+          output=$(dart format --output=none --set-exit-if-changed . 2>&1)
+          rc=$?
+          set -e
+          echo "$output"
+          if [[ $rc -ne 0 ]]; then
+            changed=$(echo "$output" | awk '/^Changed / {sub(/^Changed /, ""); print}')
+            echo ""
+            echo "::group::🔧 Files that need formatting"
+            echo "$changed"
+            echo "::endgroup::"
+            echo ""
+            echo "::error title=Code formatting check failed::Run 'dart format .' locally, commit the result, and push again. Files: $(echo "$changed" | tr '\n' ' ')"
+            echo ""
+            echo "Fix locally with:"
+            echo "  dart format $(echo "$changed" | tr '\n' ' ')"
+            echo "  git add $(echo "$changed" | tr '\n' ' ')"
+            echo "  git commit --amend --no-edit  # or make a new commit"
+            echo ""
+            echo "Tip: install the shared pre-commit hook once with"
+            echo "  ./scripts/install-hooks.sh"
+            echo "to catch this before the push."
+            exit $rc
+          fi
       
       # Step 7: Run unit tests
       # Executes all tests in the test/ directory
