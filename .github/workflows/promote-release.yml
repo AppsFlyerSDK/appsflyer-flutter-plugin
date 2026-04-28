@@ -50,7 +50,7 @@ jobs:
       release_branch: ${{ steps.compute-version.outputs.release_branch }}
     
     steps:
-      - name: 🛡 Verify rc-smoke/pub.dev check-run is green
+      - name: Verify rc-smoke/pub.dev check-run is green
         uses: actions/github-script@v7
         with:
           script: |
@@ -89,14 +89,14 @@ jobs:
 
             core.info(`${checkName} is success on ${sha}; proceeding with promotion.`);
 
-      - name: 📥 Checkout release branch
-        uses: actions/checkout@v4
+      - name: Checkout release branch
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: 🔍 Compute production version
+      - name: Compute production version
         id: compute-version
         env:
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
@@ -122,14 +122,14 @@ jobs:
           echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           echo "release_branch=$RELEASE_BRANCH" >> $GITHUB_OUTPUT
       
-      - name: 📝 Update pubspec.yaml to production version
+      - name: Update pubspec.yaml to production version
         run: |
           VERSION='${{ steps.compute-version.outputs.version }}'
           echo "Updating pubspec.yaml to production version: $VERSION"
           sed -i "s/^version: .*/version: $VERSION/" pubspec.yaml
           grep "^version:" pubspec.yaml
       
-      - name: 📝 Update plugin version constants (Android/iOS/Dart)
+      - name: Update plugin version constants (Android/iOS/Dart)
         run: |
           VERSION='${{ steps.compute-version.outputs.version }}'
           echo "Updating PLUGIN_VERSION constants to: $VERSION"
@@ -155,7 +155,7 @@ jobs:
             echo "✅ iOS:" && grep "kAppsFlyerPluginVersion" "$IOS_FILE"
           fi
       
-      - name: 💾 Commit and push version changes
+      - name: Commit and push version changes
         run: |
           VERSION='${{ steps.compute-version.outputs.version }}'
           CURRENT='${{ steps.compute-version.outputs.current_version }}'
@@ -172,7 +172,7 @@ jobs:
             echo "ℹ️ No version changes needed"
           fi
       
-      - name: 📝 Update PR description
+      - name: Update PR description
         uses: actions/github-script@v7
         with:
           script: |
@@ -206,7 +206,7 @@ jobs:
               body: newBody
             });
       
-      - name: 📢 Add comment to PR
+      - name: Add comment to PR
         uses: actions/github-script@v7
         with:
           script: |
@@ -243,7 +243,7 @@ jobs:
     if: always() && needs.prepare-for-production.result == 'success'
     
     steps:
-      - name: 📨 Send Slack notification
+      - name: Send Slack notification
         uses: slackapi/slack-github-action@v1
         with:
           payload: |

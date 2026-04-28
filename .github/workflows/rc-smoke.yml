@@ -54,28 +54,28 @@ jobs:
       release_branch: ${{ steps.decide.outputs.release_branch }}
       head_sha: ${{ steps.decide.outputs.head_sha }}
     steps:
-      - name: 📋 Log trigger context
+      - name: Log trigger context
         run: |
           echo "event_name=${{ github.event_name }}"
           echo "workflow_run.conclusion=${{ github.event.workflow_run.conclusion }}"
           echo "workflow_run.head_branch=${{ github.event.workflow_run.head_branch }}"
           echo "workflow_run.head_sha=${{ github.event.workflow_run.head_sha }}"
 
-      - name: 📥 Checkout release branch (workflow_run path)
+      - name: Checkout release branch (workflow_run path)
         if: github.event_name == 'workflow_run'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 1
 
-      - name: 📥 Checkout release branch (manual dispatch path)
+      - name: Checkout release branch (manual dispatch path)
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.inputs.release_branch }}
           fetch-depth: 1
 
-      - name: 🧠 Decide whether to run
+      - name: Decide whether to run
         id: decide
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -173,19 +173,19 @@ jobs:
     if: needs.resolve.outputs.should_run == 'true'
     runs-on: macos-14
     steps:
-      - name: 📥 Checkout release branch
-        uses: actions/checkout@v4
+      - name: Checkout release branch
+        uses: actions/checkout@v5
         with:
           ref: ${{ needs.resolve.outputs.head_sha }}
           fetch-depth: 1
 
-      - name: 🔧 Setup Flutter
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
-      - name: 🛠 Synthesize example_rc_smoke from example/
+      - name: Synthesize example_rc_smoke from example/
         run: |
           set -euo pipefail
           rsync -a --exclude=pubspec.yaml --exclude=pubspec.lock --exclude=build/ --exclude=.dart_tool/ --exclude=ios/Pods/ --exclude=.env example/ example_rc_smoke/
@@ -193,18 +193,18 @@ jobs:
           rm -f example_rc_smoke/pubspec.yaml.bak
           grep "^  appsflyer_sdk:" example_rc_smoke/pubspec.yaml
 
-      - name: 🔐 Write example_rc_smoke/.env
+      - name: Write example_rc_smoke/.env
         env:
           ENV_FILE: ${{ secrets.ENV_FILE }}
         run: printf '%s\n' "$ENV_FILE" > example_rc_smoke/.env
 
-      - name: 🧭 Select Xcode version
+      - name: Select Xcode version
         run: |
           XCODE=$(ls /Applications | grep -E "^Xcode_[0-9]" | sort -V | tail -1)
           sudo xcode-select -s "/Applications/$XCODE"
           xcodebuild -version
 
-      - name: 📱 Boot iOS simulator (iPhone 15)
+      - name: Boot iOS simulator (iPhone 15)
         run: |
           UDID=$(xcrun simctl list devices available 2>/dev/null \
             | grep "iPhone 15" | grep -v "Plus\|Pro\|Max" \
@@ -217,7 +217,7 @@ jobs:
           xcrun simctl bootstatus "$UDID" -b
           echo "IOS_SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
 
-      - name: 📦 Resolve pub.dev RC + CocoaPods
+      - name: Resolve pub.dev RC + CocoaPods
         working-directory: example_rc_smoke
         run: |
           set -euo pipefail
@@ -239,16 +239,16 @@ jobs:
           done
           cd ios && pod install
 
-      - name: 🏗 Build iOS simulator app
+      - name: Build iOS simulator app
         working-directory: example_rc_smoke
         run: flutter build ios --simulator --debug
 
-      - name: 🧪 Run smoke (SMOKE-001/002/003)
+      - name: Run smoke (SMOKE-001/002/003)
         run: ./scripts/af-smoke-runner.sh --platform ios --plan .af-smoke/rc-test-plan.json
 
-      - name: 📤 Upload smoke reports
+      - name: Upload smoke reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: rc-smoke-ios-${{ github.run_number }}
           path: .af-smoke/reports/
@@ -263,26 +263,26 @@ jobs:
     if: needs.resolve.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: 📥 Checkout release branch
-        uses: actions/checkout@v4
+      - name: Checkout release branch
+        uses: actions/checkout@v5
         with:
           ref: ${{ needs.resolve.outputs.head_sha }}
           fetch-depth: 1
 
-      - name: ☕ Setup Java
-        uses: actions/setup-java@v4
+      - name: Setup Java
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
           cache: 'gradle'
 
-      - name: 🔧 Setup Flutter
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
-      - name: 🛠 Synthesize example_rc_smoke from example/
+      - name: Synthesize example_rc_smoke from example/
         run: |
           set -euo pipefail
           rsync -a --exclude=pubspec.yaml --exclude=pubspec.lock --exclude=build/ --exclude=.dart_tool/ --exclude=.env example/ example_rc_smoke/
@@ -290,12 +290,12 @@ jobs:
           rm -f example_rc_smoke/pubspec.yaml.bak
           grep "^  appsflyer_sdk:" example_rc_smoke/pubspec.yaml
 
-      - name: 🔐 Write example_rc_smoke/.env
+      - name: Write example_rc_smoke/.env
         env:
           ENV_FILE: ${{ secrets.ENV_FILE }}
         run: printf '%s\n' "$ENV_FILE" > example_rc_smoke/.env
 
-      - name: 📦 Resolve pub.dev RC
+      - name: Resolve pub.dev RC
         working-directory: example_rc_smoke
         run: |
           set -euo pipefail
@@ -316,7 +316,7 @@ jobs:
             sleep "$SLEEP"
           done
 
-      - name: 🏗 Build Android APK + run smoke on emulator
+      - name: Build Android APK + run smoke on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
@@ -328,9 +328,9 @@ jobs:
             cd example_rc_smoke && flutter build apk --debug && cd ..
             ./scripts/af-smoke-runner.sh --platform android --plan .af-smoke/rc-test-plan.json
 
-      - name: 📤 Upload smoke reports
+      - name: Upload smoke reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: rc-smoke-android-${{ github.run_number }}
           path: .af-smoke/reports/
@@ -346,7 +346,7 @@ jobs:
     if: always() && needs.resolve.outputs.should_run == 'true' && needs.resolve.outputs.head_sha != ''
     runs-on: ubuntu-latest
     steps:
-      - name: 🧾 Post check-run
+      - name: Post check-run
         uses: actions/github-script@v7
         env:
           HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
@@ -388,7 +388,7 @@ jobs:
     if: needs.resolve.outputs.should_run == 'false' && needs.resolve.outputs.head_sha != ''
     runs-on: ubuntu-latest
     steps:
-      - name: 🧾 Post skipped check-run
+      - name: Post skipped check-run
         uses: actions/github-script@v7
         env:
           HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}

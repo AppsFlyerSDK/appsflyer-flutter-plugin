@@ -37,35 +37,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
 
-      - name: ☕ Setup Java
-        uses: actions/setup-java@v4
+      - name: Setup Java
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
           cache: 'gradle'
 
-      - name: 🔧 Setup Flutter
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
-      - name: 📦 Install plugin dependencies
+      - name: Install plugin dependencies
         run: flutter pub get
 
-      - name: 📦 Install example app dependencies
+      - name: Install example app dependencies
         working-directory: example
         run: flutter pub get
 
-      - name: 🔐 Write example/.env
+      - name: Write example/.env
         env:
           ENV_FILE: ${{ secrets.ENV_FILE }}
         run: printf '%s\n' "$ENV_FILE" > example/.env
 
-      - name: 🏗 Build + 🧪 run E2E on Android emulator
+      - name: Build and run E2E on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
@@ -77,9 +77,9 @@ jobs:
             cd example && flutter build apk --debug && cd ..
             ./scripts/af-smoke-runner.sh --platform android --plan .af-e2e/test-plan.json
 
-      - name: 📤 Upload E2E reports
+      - name: Upload E2E reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: android-e2e-${{ github.run_number }}
           path: .af-e2e/reports/
