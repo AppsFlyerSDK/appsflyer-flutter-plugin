@@ -24,7 +24,10 @@ if (flutterVersionName == null) {
 
 android {
     compileSdkVersion flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"
+    // Pinned to the highest NDK required by any transitive Flutter plugin
+    // (jni 1.0.0 needs 28.2.13676358). Gradle warns and the app crashes at
+    // runtime before main() if this is older than what plugins ship with.
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17

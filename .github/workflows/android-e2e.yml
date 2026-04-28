@@ -75,7 +75,15 @@ jobs:
           disable-animations: true
           script: |
             cd example && flutter build apk --debug && cd ..
-            ./scripts/af-smoke-runner.sh --platform android --plan .af-e2e/test-plan.json
+            ./scripts/af-smoke-runner.sh --platform android --plan .af-e2e/test-plan.json || (
+              echo "::group::adb logcat dump (last 500 lines, unfiltered)"
+              adb logcat -d -t 500 || true
+              echo "::endgroup::"
+              echo "::group::AndroidRuntime crashes (full buffer)"
+              adb logcat -d -b crash *:E AndroidRuntime:E DEBUG:E flutter:I 2>/dev/null | tail -200 || true
+              echo "::endgroup::"
+              exit 1
+            )
 
       - name: Upload E2E reports
         if: always()
