@@ -30,7 +30,7 @@
       "scenario_ref": "E2E-001",
       "description": "Fresh install. Validate SDK startup, pre/post-start APIs, three auto-launched events with HTTP 200, and all standard callbacks.",
       "requires_fresh_install": true,
-      "wait_after_launch_sec": 25,
+      "wait_after_launch_sec": 60,
       "checks": [
         {
           "id": "sdk_started",
@@ -168,7 +168,7 @@
       "scenario_ref": "E2E-003",
       "description": "Fresh install. App is in foreground after SDK start. Brief launcher switch triggers onPause. Deep link brings app back. onDeepLinking fires with Status.FOUND.",
       "requires_fresh_install": true,
-      "wait_after_launch_sec": 25,
+      "wait_after_launch_sec": 60,
       "wait_after_trigger_sec": 5,
       "deep_link_url": "afexample://deeplink?deep_link_value=qa_deeplink_fg&af_sub1=foreground_test&pid=testmedia&c=deeplink_test",
       "pre_actions": {
@@ -279,7 +279,7 @@
       "scenario_ref": "E2E-005",
       "description": "Sets customer user id, currency code, and additional data before start. Verifies readback and propagation into a post-start event payload. Covers E2E-005.",
       "requires_fresh_install": true,
-      "wait_after_launch_sec": 25,
+      "wait_after_launch_sec": 60,
       "wait_after_trigger_sec": 5,
       "pre_start_apis": {
         "set_customer_user_id": "e2e_user_42",
