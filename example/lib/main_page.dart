@@ -62,35 +62,26 @@ class MainPageState extends State<MainPage> {
 
   void _registerCallbacks() {
     _appsflyerSdk.onInstallConversionData((res) {
-      AfQaLogger.callback("onInstallConversionData", res.toString());
-      if (mounted) {
-        setState(() {
-          _gcd = res is Map ? res : {};
-        });
-      }
+      AfQaLogger.callback("onInstallConversionData", res);
+      if (mounted) setState(() => _gcd = res);
     });
 
     _appsflyerSdk.onAppOpenAttribution((res) {
-      AfQaLogger.callback("onAppOpenAttribution", res.toString());
-      if (mounted) {
-        setState(() {
-          _deepLinkData = res is Map ? res : {};
-        });
-      }
+      AfQaLogger.callback("onAppOpenAttribution", res);
+      if (mounted) setState(() => _deepLinkData = res);
     });
 
     _appsflyerSdk.onDeepLinking((DeepLinkResult dp) {
-      final payload = dp.deepLink == null ? {} : dp.toJson();
+      // Empty payload when the SDK didn't resolve a deep link, so the
+      // smoke runner's pattern check sees a stable `payload={}` shape.
+      final payload = dp.deepLink == null ? const {} : dp.toJson();
       AfQaLogger.callback(
-          "onDeepLinking",
-          "status=${dp.status}, "
-              "deepLinkValue=${dp.deepLink?.deepLinkValue}, "
-              "payload=$payload");
-      if (mounted) {
-        setState(() {
-          _deepLinkData = dp.toJson();
-        });
-      }
+        "onDeepLinking",
+        "status=${dp.status}, "
+            "deepLinkValue=${dp.deepLink?.deepLinkValue}, "
+            "payload=$payload",
+      );
+      if (mounted) setState(() => _deepLinkData = dp.toJson());
     });
   }
 
@@ -156,37 +147,28 @@ class MainPageState extends State<MainPage> {
   }
 
   Future<void> _runStandardEvents() async {
-    final r1 = await _logEventLogged(
-      eventName: "af_demo_launch",
-      values: const {},
-      logTag: "logEvent(af_demo_launch)",
-    );
-    AfQaLogger.result("logEvent(af_demo_launch)", r1);
-
-    final r2 = await _logEventLogged(
-      eventName: "af_purchase",
-      values: const {
+    await _logEvent("af_demo_launch", const {});
+    await _logEvent(
+      "af_purchase",
+      const {
         "af_revenue": 19.99,
         "af_currency": "EUR",
         "af_content_id": "id_42",
       },
-      logTag: "logEvent: af_purchase sent",
+      resultTag: "logEvent: af_purchase sent",
     );
-    AfQaLogger.result("logEvent: af_purchase sent", r2);
-
-    final r3 = await _logEventLogged(
-      eventName: "af_content_view",
-      values: const {
+    await _logEvent(
+      "af_content_view",
+      const {
         "af_content_id": "id_42",
         "af_content_type": "demo",
       },
-      logTag: "logEvent: af_content_view sent",
+      resultTag: "logEvent: af_content_view sent",
     );
-    AfQaLogger.result("logEvent: af_content_view sent", r3);
   }
 
   Future<void> _runCustomEvent() async {
-    final params = <String, dynamic>{
+    await _logEvent("af_qa_custom_purchase", const {
       "af_revenue": 42.5,
       "af_currency": "EUR",
       "metadata": {
@@ -194,16 +176,7 @@ class MainPageState extends State<MainPage> {
         "experiment": "rc_pipeline_v1",
         "ab_variant": "B",
       },
-    };
-    AfQaLogger.log(
-      "logEvent",
-      "name=af_qa_custom_purchase params=$params",
-    );
-    try {
-      await _appsflyerSdk.logEvent("af_qa_custom_purchase", params);
-    } catch (e) {
-      AfQaLogger.error("logEvent", e);
-    }
+    });
   }
 
   Future<void> _runIdentityCheck() async {
@@ -215,7 +188,7 @@ class MainPageState extends State<MainPage> {
       _appsflyerSdk.setCurrencyCode("EUR");
       AfQaLogger.result("setCurrencyCode", "EUR");
     });
-    final Map<String, dynamic> additionalData = {
+    const additionalData = {
       "tenant": "qa_eu",
       "experiment": "rc_pipeline_v1",
     };
@@ -225,20 +198,11 @@ class MainPageState extends State<MainPage> {
           "setAdditionalData", "keys=${additionalData.keys.toList()}");
     });
 
-    final params = <String, dynamic>{
+    await _logEvent("af_qa_identity_check", const {
       "customer_user_id": "e2e_user_42",
       "tenant": "qa_eu",
       "experiment": "rc_pipeline_v1",
-    };
-    AfQaLogger.log(
-      "logEvent",
-      "name=af_qa_identity_check params=$params",
-    );
-    try {
-      await _appsflyerSdk.logEvent("af_qa_identity_check", params);
-    } catch (e) {
-      AfQaLogger.error("logEvent", e);
-    }
+    });
   }
 
   Future<void> _runStopResumeSequence() async {
@@ -246,13 +210,7 @@ class MainPageState extends State<MainPage> {
       _appsflyerSdk.stop(true);
       AfQaLogger.result("stop", true);
     });
-
-    AfQaLogger.log("logEvent", "name=af_qa_suppressed params={}");
-    try {
-      await _appsflyerSdk.logEvent("af_qa_suppressed", const {});
-    } catch (e) {
-      AfQaLogger.error("logEvent", e);
-    }
+    await _logEvent("af_qa_suppressed", const {});
 
     await Future<void>.delayed(const Duration(seconds: 3));
 
@@ -260,24 +218,26 @@ class MainPageState extends State<MainPage> {
       _appsflyerSdk.stop(false);
       AfQaLogger.result("stop", false);
     });
-
-    AfQaLogger.log("logEvent", "name=af_qa_resumed params={}");
-    try {
-      await _appsflyerSdk.logEvent("af_qa_resumed", const {});
-    } catch (e) {
-      AfQaLogger.error("logEvent", e);
-    }
+    await _logEvent("af_qa_resumed", const {});
   }
 
-  Future<bool?> _logEventLogged({
-    required String eventName,
-    required Map values,
-    required String logTag,
+  /// Emit `[AF_QA][logEvent] name=... params=...`, call the SDK, then emit
+  /// `[AF_QA][<resultTag>] result: ...` on success (default tag:
+  /// `logEvent(<name>)`) or the unified `[AF_QA][logEvent] error: ...` on
+  /// throw — the latter shape is what the smoke runner's `no_log_event_error`
+  /// absent check greps for, so any logEvent failure surfaces uniformly.
+  Future<bool?> _logEvent(
+    String name,
+    Map params, {
+    String? resultTag,
   }) async {
+    AfQaLogger.log("logEvent", "name=$name params=$params");
     try {
-      return await _appsflyerSdk.logEvent(eventName, values);
+      final r = await _appsflyerSdk.logEvent(name, params);
+      AfQaLogger.result(resultTag ?? "logEvent($name)", r);
+      return r;
     } catch (e) {
-      AfQaLogger.error(logTag, e);
+      AfQaLogger.error("logEvent", e);
       return null;
     }
   }
@@ -315,20 +275,9 @@ class MainPageState extends State<MainPage> {
   }
 
   Future<bool?> logEvent(String eventName, Map eventValues) async {
-    bool? logResult;
-    try {
-      AfQaLogger.log(
-        "logEvent",
-        "name=$eventName params=$eventValues",
-      );
-      logResult = await _appsflyerSdk.logEvent(eventName, eventValues);
-      AfQaLogger.result("logEvent($eventName)", logResult);
-      print("Event logged");
-    } catch (e) {
-      AfQaLogger.error("logEvent($eventName)", e);
-      print("Failed to log event: $e");
-    }
-    return logResult;
+    final result = await _logEvent(eventName, eventValues);
+    print(result == null ? "Failed to log event" : "Event logged");
+    return result;
   }
 
   void logAdRevenueEvent() {
@@ -383,11 +332,5 @@ class MainPageState extends State<MainPage> {
       print("Purchase validation failed: $e");
       rethrow;
     }
-  }
-
-  void showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-    ));
   }
 }

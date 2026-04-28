@@ -98,33 +98,30 @@ jobs:
       
       # Step 6: Format check
       # Ensures code follows Dart formatting standards. On failure, prints
-      # the offending files and the exact one-liner devs can run locally,
-      # plus a GitHub Actions `::error::` annotation at the top of the run.
+      # the offending files and the exact one-liner to fix locally, plus a
+      # GitHub Actions `::error::` annotation at the top of the run.
       - name: 💅 Check code formatting
         run: |
-          set +e
-          output=$(dart format --output=none --set-exit-if-changed . 2>&1)
-          rc=$?
-          set -e
-          echo "$output"
-          if [[ $rc -ne 0 ]]; then
-            changed=$(echo "$output" | awk '/^Changed / {sub(/^Changed /, ""); print}')
-            echo ""
-            echo "::group::🔧 Files that need formatting"
-            echo "$changed"
-            echo "::endgroup::"
-            echo ""
-            echo "::error title=Code formatting check failed::Run 'dart format .' locally, commit the result, and push again. Files: $(echo "$changed" | tr '\n' ' ')"
-            echo ""
-            echo "Fix locally with:"
-            echo "  dart format $(echo "$changed" | tr '\n' ' ')"
-            echo "  git add $(echo "$changed" | tr '\n' ' ')"
-            echo "  git commit --amend --no-edit  # or make a new commit"
-            echo ""
-            echo "Maintainer tip: ./scripts/install-hooks.sh installs a"
-            echo "pre-commit hook that runs the same check locally."
-            exit $rc
+          if output=$(dart format --output=none --set-exit-if-changed . 2>&1); then
+            echo "$output"
+            exit 0
           fi
+          echo "$output"
+          changed=$(echo "$output" | awk '/^Changed / {sub(/^Changed /, ""); print}')
+          inline=$(echo "$changed" | tr '\n' ' ')
+          echo "::group::🔧 Files that need formatting"
+          echo "$changed"
+          echo "::endgroup::"
+          echo "::error title=Code formatting check failed::Run 'dart format .' locally, commit the result, and push again. Files: $inline"
+          echo
+          echo "Fix locally with:"
+          echo "  dart format $inline"
+          echo "  git add $inline"
+          echo "  git commit --amend --no-edit  # or make a new commit"
+          echo
+          echo "Maintainer tip: ./scripts/install-hooks.sh installs a"
+          echo "pre-commit hook that runs the same check locally."
+          exit 1
       
       # Step 7: Run unit tests
       # Executes all tests in the test/ directory
