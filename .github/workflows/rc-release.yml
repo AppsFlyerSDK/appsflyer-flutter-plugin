@@ -89,10 +89,10 @@ jobs:
       dry_run: ${{ steps.compute.outputs.dry_run }}
     
     steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
       
-      - name: 🔍 Validate and compute
+      - name: Validate and compute
         id: compute
         env:
           VERSION: ${{ github.event.inputs.flutter_version }}
@@ -163,19 +163,19 @@ jobs:
     outputs:
       release_branch: ${{ steps.push.outputs.release_branch }}
     steps:
-      - name: 📥 Checkout base branch
-        uses: actions/checkout@v4
+      - name: Checkout base branch
+        uses: actions/checkout@v5
         with:
           ref: ${{ needs.validate-release.outputs.base_branch }}
           fetch-depth: 0
 
-      - name: 🔧 Setup Flutter SDK
+      - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
-      - name: 🌿 Create release branch
+      - name: Create release branch
         id: branch
         run: |
           set -e
@@ -189,7 +189,7 @@ jobs:
             git checkout -b "$REL_BRANCH"
           fi
 
-      - name: 📝 Update pubspec.yaml version (RC full)
+      - name: Update pubspec.yaml version (RC full)
         run: |
           VERSION='${{ needs.validate-release.outputs.version }}'
           echo "Setting pubspec.yaml version to $VERSION (includes -rcN)"
@@ -197,14 +197,14 @@ jobs:
           rm pubspec.yaml.bak
           grep "^version:" pubspec.yaml
 
-      - name: 📝 Update Android SDK dependency
+      - name: Update Android SDK dependency
         run: |
           AND_VER='${{ needs.validate-release.outputs.android_sdk_version }}'
           sed -i.bak "s/com.appsflyer:af-android-sdk:[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/com.appsflyer:af-android-sdk:${AND_VER}/" android/build.gradle
           rm android/build.gradle.bak
           grep "af-android-sdk:" -n android/build.gradle | head -1
 
-      - name: 📝 Update iOS podspec version and dependencies
+      - name: Update iOS podspec version and dependencies
         run: |
           PODSPEC_VERSION='${{ needs.validate-release.outputs.podspec_version }}'
           IOS_VER='${{ needs.validate-release.outputs.ios_sdk_version }}'
@@ -223,7 +223,7 @@ jobs:
             echo "⚠️ $FILE not found"
           fi
 
-      - name: 📝 Update plugin version constants (Android/iOS/Dart)
+      - name: Update plugin version constants (Android/iOS/Dart)
         run: |
           VERSION='${{ needs.validate-release.outputs.version }}'
           echo "Updating PLUGIN_VERSION constants to: $VERSION"
@@ -252,7 +252,7 @@ jobs:
             echo "✅ iOS:" && grep "kAppsFlyerPluginVersion" "$IOS_FILE"
           fi
 
-      - name: 📝 Update README SDK and Purchase Connector versions
+      - name: Update README SDK and Purchase Connector versions
         run: |
           IOS_VER='${{ needs.validate-release.outputs.ios_sdk_version }}'
           AND_VER='${{ needs.validate-release.outputs.android_sdk_version }}'
@@ -276,7 +276,7 @@ jobs:
           echo "README updated versions:"
           sed -n '/## SDK Versions/,/## ❗/p' README.md | head -12
 
-      - name: 💾 Commit & push changes
+      - name: Commit & push changes
         id: push
         run: |
           set -e
@@ -344,13 +344,13 @@ jobs:
     if: always() && needs.validate-release.outputs.is_rc == 'true' && needs.publish-rc.result == 'success'
     
     steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           ref: ${{ needs.prepare-branch.outputs.release_branch }}
       
-      - name: 📝 Generate release notes
+      - name: Generate release notes
         id: release-notes
         run: |
           VERSION="${{ needs.validate-release.outputs.version }}"
@@ -397,7 +397,7 @@ jobs:
           
           echo "Release notes generated"
       
-      - name: 🏷️ Create GitHub Pre-Release
+      - name: Create GitHub Pre-Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.validate-release.outputs.version }}
@@ -420,12 +420,12 @@ jobs:
     needs: [validate-release, prepare-branch, publish-rc]
     if: always() && needs.publish-rc.result == 'success'
     steps:
-      - name: 📥 Checkout
-        uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           ref: ${{ needs.prepare-branch.outputs.release_branch }}
-      - name: 🧠 Create or update PR
+      - name: Create or update PR
         uses: actions/github-script@v7
         with:
           script: |
@@ -450,19 +450,19 @@ jobs:
     needs: [validate-release, prepare-branch, run-e2e-ios, run-e2e-android]
     if: needs.validate-release.outputs.is_valid == 'true' && needs.run-e2e-ios.result == 'success' && needs.run-e2e-android.result == 'success'
     steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           ref: ${{ needs.prepare-branch.outputs.release_branch }}
-      - name: 🔧 Setup Flutter SDK
+      - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
-      - name: 📦 Get dependencies
+      - name: Get dependencies
         run: flutter pub get
-      - name: 📝 Validate package (dry-run)
+      - name: Validate package (dry-run)
         run: |
           # Run dry-run and capture output
           # Exit code 65 = warnings only (acceptable for RC builds since CHANGELOG won't have -rcN suffix)
@@ -482,11 +482,11 @@ jobs:
             echo "❌ Package validation failed with exit code $EXIT_CODE"
             exit $EXIT_CODE
           fi
-      - name: ℹ️ RC dry-run active — skipping publish
+      - name: RC dry-run active — skipping publish
         if: ${{ needs.validate-release.outputs.dry_run == 'true' }}
         run: |
           echo "RC dry_run is true — will not publish to pub.dev."
-      - name: 🚀 Publish RC to pub.dev
+      - name: Publish RC to pub.dev
         if: ${{ needs.validate-release.outputs.dry_run != 'true' }}
         env:
           PUB_DEV_CREDENTIALS: ${{ secrets.PUB_DEV_CREDENTIALS }}
@@ -505,13 +505,13 @@ jobs:
     if: always()
     
     steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           ref: ${{ needs.prepare-branch.outputs.release_branch }}
       
-      - name: 📝 Extract SDK versions and changelog
+      - name: Extract SDK versions and changelog
         id: extract-info
         run: |
           VERSION="${{ needs.validate-release.outputs.version }}"
@@ -552,7 +552,7 @@ jobs:
           echo "$CHANGELOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
       
-      - name: 🎫 Fetch Jira tickets
+      - name: Fetch Jira tickets
         id: jira-tickets
         continue-on-error: true  # Don't fail CI if Jira fetch fails
         run: |
@@ -619,7 +619,7 @@ jobs:
             echo "EOF" >> $GITHUB_OUTPUT
           fi
       
-      - name: 📢 Determine status
+      - name: Determine status
         id: status
         run: |
           STATUS="${{ needs.create-prerelease.result }}"
@@ -630,7 +630,7 @@ jobs:
             echo "success=false" >> $GITHUB_OUTPUT
           fi
       
-      - name: 📨 Send Slack notification (Success)
+      - name: Send Slack notification (Success)
         if: steps.status.outputs.success == 'true'
         uses: slackapi/slack-github-action@v1
         with:
@@ -641,7 +641,7 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.CI_SLACK_WEBHOOK_URL }}
       
-      - name: 📨 Send failure notification
+      - name: Send failure notification
         if: steps.status.outputs.success == 'false'
         uses: slackapi/slack-github-action@v1
         with:
@@ -665,7 +665,7 @@ jobs:
     if: always()
     
     steps:
-      - name: 📊 Display RC Summary
+      - name: Display RC Summary
         run: |
           echo "========================================="
           echo "RC Release Summary"

@@ -80,12 +80,12 @@ EOF
 
 # ─── Logging helpers ─────────────────────────────────────────────────────────
 
-log_info()  { echo -e "${CYAN}[INFO]${NC}  $*"; }
-log_ok()    { echo -e "${GREEN}[PASS]${NC}  $*"; }
-log_fail()  { echo -e "${RED}[FAIL]${NC}  $*"; }
-log_warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
-log_step()  { echo -e "${BOLD}────── $* ──────${NC}"; }
-log_debug() { if $VERBOSE; then echo -e "[DEBUG] $*"; fi; }
+log_info()  { echo -e "${CYAN}[INFO]${NC}  $*" >&2; }
+log_ok()    { echo -e "${GREEN}[PASS]${NC}  $*" >&2; }
+log_fail()  { echo -e "${RED}[FAIL]${NC}  $*" >&2; }
+log_warn()  { echo -e "${YELLOW}[WARN]${NC}  $*" >&2; }
+log_step()  { echo -e "${BOLD}────── $* ──────${NC}" >&2; }
+log_debug() { if $VERBOSE; then echo -e "[DEBUG] $*" >&2; fi; }
 
 # ─── Argument parsing ────────────────────────────────────────────────────────
 
@@ -294,28 +294,30 @@ ios_collect_logs() {
 
   ios_ensure_udid
 
-  # Strategy 1: Read the app's af_qa_logs.txt from the simulator filesystem
+  # Always start from an empty file so each phase capture is self-contained.
+  : > "$log_file"
+
+  # Strategy 1: Read the app's af_qa_logs.txt from the simulator filesystem.
+  # This file is the source of truth for [AF_QA] markers because the IOSink
+  # in af_qa_logger.dart guarantees every line is appended.
   local sim_data_dir
   sim_data_dir="$HOME/Library/Developer/CoreSimulator/Devices/${IOS_UDID}/data"
-  local qa_log_found=false
-
   if [[ -d "$sim_data_dir" ]]; then
     local qa_log
     qa_log=$(find "$sim_data_dir/Containers/Data/Application" -name "af_qa_logs.txt" -maxdepth 4 2>/dev/null | head -1)
     if [[ -n "$qa_log" && -f "$qa_log" ]]; then
       log_debug "Found iOS QA log file: $qa_log"
-      cp "$qa_log" "$log_file"
-      qa_log_found=true
+      cat "$qa_log" >> "$log_file"
     fi
   fi
 
-  # Strategy 2: Fall back to xcrun simctl log show
-  if ! $qa_log_found; then
-    log_debug "QA log file not found, falling back to simctl log show"
-    xcrun simctl spawn "$IOS_UDID" log show \
-      --last 120s --style compact 2>&1 | \
-      grep -E "${LOG_TAG}|appsflyer|CFNetwork:Summary|response_status" > "$log_file" || true
-  fi
+  # Strategy 2: Always also append simctl log show output. The file logger
+  # only carries [AF_QA] lines; SDK HTTP traffic (response code:200, etc.)
+  # only shows up via os_log and is required by count_matches checks.
+  log_debug "Appending simctl log show output"
+  xcrun simctl spawn "$IOS_UDID" log show \
+    --last 120s --style compact 2>&1 | \
+    grep -E "${LOG_TAG}|appsflyer|CFNetwork:Summary|response_status|response code" >> "$log_file" || true
 }
 
 ios_background_app() {

@@ -91,12 +91,12 @@ jobs:
       is_release_branch: ${{ steps.validate.outputs.is_release_branch }}
     
     steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
       
-      - name: 🔍 Validate release source
+      - name: Validate release source
         id: validate
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -124,7 +124,7 @@ jobs:
             fi
           fi
       
-      - name: 📝 Get version from pubspec.yaml
+      - name: Get version from pubspec.yaml
         id: get-version
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -149,7 +149,7 @@ jobs:
             exit 1
           fi
       
-      - name: 🏷️ Check if tag already exists
+      - name: Check if tag already exists
         env:
           VERSION: ${{ steps.get-version.outputs.version }}
           DRY_RUN: ${{ github.event.inputs.dry_run }}
@@ -207,24 +207,24 @@ jobs:
     if: always() && needs.validate-release.outputs.is_valid == 'true'
     
     steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
       
-      - name: 🔧 Setup Flutter SDK
+      - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
       
-      - name: ℹ️ Display Flutter version
+      - name: Display Flutter version
         run: |
           flutter --version
           dart --version
       
-      - name: 📦 Get dependencies
+      - name: Get dependencies
         run: flutter pub get
       
-      - name: 🔍 Validate package
+      - name: Validate package
         run: |
           echo "Running pub publish dry-run to validate package..."
           # Run dry-run and capture exit code
@@ -246,7 +246,7 @@ jobs:
             exit $EXIT_CODE
           fi
       
-      - name: 📝 Check pub.dev credentials
+      - name: Check pub.dev credentials
         env:
           PUB_CREDS_SET: ${{ secrets.PUB_DEV_CREDENTIALS != '' }}
           DRY_RUN: ${{ github.event.inputs.dry_run }}
@@ -263,7 +263,7 @@ jobs:
             echo "✅ pub.dev credentials found"
           fi
       
-      - name: 🚀 Publish to pub.dev
+      - name: Publish to pub.dev
         if: github.event.inputs.dry_run != 'true'
         run: |
           VERSION="${{ needs.validate-release.outputs.version }}"
@@ -281,7 +281,7 @@ jobs:
           
           echo "✅ Successfully published to pub.dev"
       
-      - name: 🏷️ Verify publication
+      - name: Verify publication
         if: github.event.inputs.dry_run != 'true'
         run: |
           VERSION="${{ needs.validate-release.outputs.version }}"
@@ -312,12 +312,12 @@ jobs:
     if: always() && needs.validate-release.outputs.is_valid == 'true' && github.event.inputs.dry_run != 'true'
     
     steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
       
-      - name: 📝 Extract release notes from CHANGELOG
+      - name: Extract release notes from CHANGELOG
         id: changelog
         run: |
           VERSION="${{ needs.validate-release.outputs.version }}"
@@ -343,7 +343,7 @@ jobs:
           
           echo "Release notes extracted"
       
-      - name: 📝 Enhance release notes
+      - name: Enhance release notes
         run: |
           VERSION="${{ needs.validate-release.outputs.version }}"
           
@@ -399,7 +399,7 @@ jobs:
           
           echo "Enhanced release notes created"
       
-      - name: 🏷️ Create GitHub Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.validate-release.outputs.version }}
@@ -410,7 +410,7 @@ jobs:
           generate_release_notes: false
           token: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: ✅ Release created
+      - name: Release created
         run: |
           VERSION="${{ needs.validate-release.outputs.version }}"
           echo "✅ GitHub release v$VERSION created successfully"
@@ -429,10 +429,10 @@ jobs:
     if: always() && github.event.inputs.dry_run != 'true'
     
     steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
       
-      - name: 📝 Extract SDK versions and changelog
+      - name: Extract SDK versions and changelog
         id: extract-info
         run: |
           VERSION="${{ needs.validate-release.outputs.version }}"
@@ -475,7 +475,7 @@ jobs:
           echo "$CHANGELOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
       
-      - name: 🎫 Fetch Jira tickets
+      - name: Fetch Jira tickets
         id: jira-tickets
         continue-on-error: true  # Don't fail CI if Jira fetch fails
         run: |
@@ -542,7 +542,7 @@ jobs:
             echo "EOF" >> $GITHUB_OUTPUT
           fi
       
-      - name: 📢 Determine status
+      - name: Determine status
         id: status
         run: |
           PUBLISH_STATUS="${{ needs.publish-to-pubdev.result }}"
@@ -554,7 +554,7 @@ jobs:
             echo "success=false" >> $GITHUB_OUTPUT
           fi
       
-      - name: 📨 Send Slack notification
+      - name: Send Slack notification
         if: steps.status.outputs.success == 'true'
         uses: slackapi/slack-github-action@v1
         with:
@@ -565,7 +565,7 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.CI_SLACK_WEBHOOK_URL }}
       
-      - name: 📨 Send failure notification
+      - name: Send failure notification
         if: steps.status.outputs.success == 'false'
         uses: slackapi/slack-github-action@v1
         with:
@@ -589,7 +589,7 @@ jobs:
     if: always()
     
     steps:
-      - name: 📊 Display Release Summary
+      - name: Display Release Summary
         env:
           VERSION: ${{ needs.validate-release.outputs.version }}
           DRY_RUN: ${{ github.event.inputs.dry_run }}

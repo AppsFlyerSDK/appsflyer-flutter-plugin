@@ -36,22 +36,22 @@ jobs:
     runs-on: macos-14
 
     steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
 
-      - name: 🔧 Setup Flutter
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
-      - name: 🧭 Select Xcode version
+      - name: Select Xcode version
         run: |
           XCODE=$(ls /Applications | grep -E "^Xcode_[0-9]" | sort -V | tail -1)
           sudo xcode-select -s "/Applications/$XCODE"
           xcodebuild -version
 
-      - name: 📱 Boot iOS simulator (iPhone 15)
+      - name: Boot iOS simulator (iPhone 15)
         run: |
           UDID=$(xcrun simctl list devices available 2>/dev/null \
             | grep "iPhone 15" | grep -v "Plus\|Pro\|Max" \
@@ -65,44 +65,44 @@ jobs:
           xcrun simctl bootstatus "$UDID" -b
           echo "IOS_SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
 
-      - name: 🗃 Cache CocoaPods
-        uses: actions/cache@v4
+      - name: Cache CocoaPods
+        uses: actions/cache@v5
         with:
           path: example/ios/Pods
           key: pods-${{ hashFiles('example/ios/Podfile.lock') }}
           restore-keys: pods-
 
-      - name: 📦 Install plugin dependencies
+      - name: Install plugin dependencies
         run: flutter pub get
 
-      - name: 📦 Install example app dependencies
+      - name: Install example app dependencies
         working-directory: example
         run: flutter pub get
 
-      - name: 📦 Install CocoaPods
+      - name: Install CocoaPods
         working-directory: example/ios
         run: pod install
 
-      - name: 🔐 Write example/.env
+      - name: Write example/.env
         env:
           ENV_FILE: ${{ secrets.ENV_FILE }}
         run: printf '%s\n' "$ENV_FILE" > example/.env
 
-      - name: 🗃 Cache iOS build output
-        uses: actions/cache@v4
+      - name: Cache iOS build output
+        uses: actions/cache@v5
         with:
           path: example/build/ios
           key: ios-build-${{ hashFiles('ios/**', 'lib/**', 'example/lib/**', 'example/ios/**', 'pubspec.yaml') }}
           restore-keys: ios-build-
 
-      - name: 🏗 Build iOS simulator app (debug)
+      - name: Build iOS simulator app (debug)
         working-directory: example
         run: flutter build ios --simulator --debug
 
-      - name: 🧪 Run E2E (af-smoke-runner against .af-e2e/test-plan.json)
+      - name: Run E2E (af-smoke-runner against .af-e2e/test-plan.json)
         run: ./scripts/af-smoke-runner.sh --platform ios --plan .af-e2e/test-plan.json
 
-      - name: 🧾 Dump iOS QA log file (debug)
+      - name: Dump iOS QA log file (debug)
         if: always()
         run: |
           SIM_DATA="$HOME/Library/Developer/CoreSimulator/Devices/$IOS_SIMULATOR_UDID/data"
@@ -110,9 +110,9 @@ jobs:
           echo "=== QA log: ${LOG:-not found} ==="
           cat "$LOG" 2>/dev/null | head -200 || echo "(empty)"
 
-      - name: 📤 Upload E2E reports
+      - name: Upload E2E reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ios-e2e-${{ github.run_number }}
           path: .af-e2e/reports/
