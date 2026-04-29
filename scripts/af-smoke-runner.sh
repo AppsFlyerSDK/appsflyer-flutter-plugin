@@ -203,15 +203,35 @@ android_get_pid() {
 
 android_collect_logs() {
   local log_file="$1"
-  local pid
-  pid=$(android_get_pid)
-  if [[ -n "$pid" ]]; then
-    log_debug "Collecting logs for PID $pid"
-    adb logcat -d 2>&1 | grep -E "${LOG_TAG}|AppsFlyer|response code:|preparing data:" > "$log_file" || true
-  else
-    log_warn "Could not find PID for $PACKAGE_NAME, collecting all AF logs"
-    adb logcat -d 2>&1 | grep -E "${LOG_TAG}|AppsFlyer|response code:|preparing data:" > "$log_file" || true
+
+  # Always start from an empty file so each phase capture is self-contained.
+  : > "$log_file"
+
+  # Strategy 1: Read the app's af_qa_logs.txt from internal storage via
+  # `run-as`. Required because Flutter debug APKs launched standalone (no
+  # `flutter run` host) do not forward Dart `debugPrint` to logcat, so the
+  # file is the only reliable source of [AF_QA] markers. The Documents dir
+  # path on Android is `app_flutter/` for path_provider, but newer versions
+  # may write directly under `files/`, so try both. `run-as` works because
+  # `flutter build apk --debug` produces a debuggable APK.
+  local found=0
+  for path in app_flutter/af_qa_logs.txt files/af_qa_logs.txt; do
+    if adb shell "run-as $PACKAGE_NAME cat $path 2>/dev/null" >> "$log_file" 2>/dev/null; then
+      if [[ -s "$log_file" ]]; then
+        log_debug "Pulled Android QA log from $path"
+        found=1
+        break
+      fi
+    fi
+  done
+  if [[ "$found" -eq 0 ]]; then
+    log_debug "No af_qa_logs.txt found via run-as; relying on logcat only"
   fi
+
+  # Strategy 2: Always also append logcat output. AppsFlyer SDK native logs
+  # (HTTP response codes, etc.) reach logcat regardless of the Dart-print
+  # routing, and the count_matches checks need them.
+  adb logcat -d 2>&1 | grep -E "${LOG_TAG}|AppsFlyer|response code:|preparing data:" >> "$log_file" || true
 }
 
 android_background_app() {

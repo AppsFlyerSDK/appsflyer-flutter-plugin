@@ -7,20 +7,25 @@ import 'package:path_provider/path_provider.dart';
 /// QA log emitter consumed by `scripts/af-smoke-runner.sh`.
 ///
 /// Every line emitted via [log] is prefixed with `[AF_QA]` so the smoke runner
-/// can grep for it. On iOS, lines are also appended to a file under the app's
-/// Documents directory; the runner pulls that file off the simulator with
-/// `xcrun simctl get_app_container`. On Android, stdout is enough because the
-/// runner uses `adb logcat`.
+/// can grep for it. Lines are also appended to `af_qa_logs.txt` under the
+/// app's Documents directory on both iOS and Android. The runner pulls that
+/// file off the device:
+///   - iOS: `xcrun simctl get_app_container`
+///   - Android: `adb shell run-as <package> cat app_flutter/af_qa_logs.txt`
+///     (works because `flutter build apk --debug` sets `android:debuggable=true`)
+///
+/// On Android, Flutter 3.41 debug APKs launched via `adb shell am start` (i.e.
+/// without an attached `flutter run` host) do not forward Dart `debugPrint`
+/// output to logcat, so the file is the only reliable source of QA markers.
 class AfQaLogger {
   static IOSink? _sink;
   static bool _initialized = false;
 
-  /// Resolve the iOS log file once at startup and open it in append mode.
-  /// Safe to call multiple times. No-op on Android.
+  /// Resolve the QA log file once at startup and open it in append mode.
+  /// Safe to call multiple times.
   static Future<void> init() async {
     if (_initialized) return;
     _initialized = true;
-    if (!Platform.isIOS) return;
     try {
       final docs = await getApplicationDocumentsDirectory();
       final file = File('${docs.path}/af_qa_logs.txt');
