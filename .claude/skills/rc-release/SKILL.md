@@ -32,7 +32,7 @@ Always follow the operator manual for step-by-step actions. This skill tells you
 
 - E2E (pre-publish, against plugin source): [`.af-e2e/test-plan.json`](../../../.af-e2e/test-plan.json)
 - Smoke (post-publish, against pub.dev RC): [`.af-smoke/rc-test-plan.json`](../../../.af-smoke/rc-test-plan.json)
-- Runner: [`scripts/af-smoke-runner.sh`](../../../scripts/af-smoke-runner.sh)
+- Runner: [`scripts/af-scenario-runner.sh`](../../../scripts/af-scenario-runner.sh)
 - Local simulator: [`scripts/simulate-rc-pipeline.sh`](../../../scripts/simulate-rc-pipeline.sh)
 
 ## How to run an RC

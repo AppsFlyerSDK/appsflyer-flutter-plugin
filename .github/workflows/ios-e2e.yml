@@ -6,7 +6,7 @@
 #
 # Runs the .af-e2e/test-plan.json scenarios against the plugin source
 # (example/ app linked to appsflyer_sdk via path: ..). Drives the unified
-# scripts/af-smoke-runner.sh on an iOS simulator.
+# scripts/af-scenario-runner.sh on an iOS simulator.
 #
 # Triggers:
 #   - workflow_call from rc-release.yml (the gate before publish-rc)
@@ -99,8 +99,8 @@ jobs:
         working-directory: example
         run: flutter build ios --simulator --debug
 
-      - name: Run E2E (af-smoke-runner against .af-e2e/test-plan.json)
-        run: ./scripts/af-smoke-runner.sh --platform ios --plan .af-e2e/test-plan.json
+      - name: Run E2E (af-scenario-runner against .af-e2e/test-plan.json)
+        run: ./scripts/af-scenario-runner.sh --platform ios --plan .af-e2e/test-plan.json
 
       - name: Dump iOS QA log file (debug)
         if: always()

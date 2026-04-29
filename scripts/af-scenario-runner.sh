@@ -1,17 +1,20 @@
 #!/usr/bin/env bash
 #
-# af-smoke-runner.sh — Unified AppsFlyer plugin smoke test runner
+# af-scenario-runner.sh — Unified AppsFlyer plugin scenario runner
 #
-# Drives a full smoke test cycle for any AppsFlyer plugin using ADB (Android)
-# and xcrun simctl (iOS). Reads a JSON test plan, executes each phase, validates
-# log output against expected patterns, and produces a structured JSON report.
+# Drives a JSON-driven scenario cycle for any AppsFlyer plugin using ADB
+# (Android) and xcrun simctl (iOS). Reads a test plan, executes each phase,
+# validates log output against expected patterns, and produces a structured
+# JSON report. Used for both pre-publish E2E (.af-e2e/test-plan.json) and
+# post-publish smoke (.af-smoke/rc-test-plan.json) — the runner is the same;
+# the plan is what differs.
 #
 # Usage:
-#   ./af-smoke-runner.sh --platform android --plan .af-smoke/test-plan.json
-#   ./af-smoke-runner.sh --platform ios --plan .af-smoke/test-plan.json
-#   ./af-smoke-runner.sh --platform android --plan .af-smoke/test-plan.json --phase phase_1
-#   ./af-smoke-runner.sh --platform android --plan .af-smoke/test-plan.json --dry-run
-#   ./af-smoke-runner.sh --platform android --plan .af-smoke/test-plan.json --build
+#   ./af-scenario-runner.sh --platform android --plan .af-e2e/test-plan.json
+#   ./af-scenario-runner.sh --platform ios --plan .af-smoke/rc-test-plan.json
+#   ./af-scenario-runner.sh --platform android --plan <plan> --phase phase_1
+#   ./af-scenario-runner.sh --platform android --plan <plan> --dry-run
+#   ./af-scenario-runner.sh --platform android --plan <plan> --build
 #
 # Requirements:
 #   - bash 4+, jq
@@ -71,9 +74,9 @@ Options:
   -h, --help                 Show this help
 
 Examples:
-  $(basename "$0") --platform android --plan .af-smoke/test-plan.json
-  $(basename "$0") --platform ios --plan .af-smoke/test-plan.json --phase phase_1
-  $(basename "$0") --platform android --plan .af-smoke/test-plan.json --build --verbose
+  $(basename "$0") --platform android --plan .af-e2e/test-plan.json
+  $(basename "$0") --platform ios --plan .af-smoke/rc-test-plan.json --phase phase_1
+  $(basename "$0") --platform android --plan .af-e2e/test-plan.json --build --verbose
 EOF
   exit 0
 }

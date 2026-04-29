@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
-/// QA log emitter consumed by `scripts/af-smoke-runner.sh`.
+/// QA log emitter consumed by `scripts/af-scenario-runner.sh`.
 ///
 /// Every line emitted via [log] is prefixed with `[AF_QA]` so the smoke runner
 /// can grep for it. Lines are also appended to `af_qa_logs.txt` under the

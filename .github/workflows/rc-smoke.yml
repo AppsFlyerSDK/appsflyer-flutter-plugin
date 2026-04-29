@@ -7,7 +7,7 @@
 # Fires automatically after rc-release.yml ("RC - Release Candidate") completes
 # with conclusion: success and dry_run: false. Builds example_rc_smoke/ with
 # appsflyer_sdk: =<X.Y.Z-rcN> pinned from pub.dev, runs SMOKE-001/002/003 via
-# af-smoke-runner.sh on both platforms, uploads JSON reports, and posts a
+# af-scenario-runner.sh on both platforms, uploads JSON reports, and posts a
 # check_run named rc-smoke/pub.dev on the release branch head SHA. That
 # check_run is what promote-release.yml verifies before stripping -rcN.
 #
@@ -244,7 +244,7 @@ jobs:
         run: flutter build ios --simulator --debug
 
       - name: Run smoke (SMOKE-001/002/003)
-        run: ./scripts/af-smoke-runner.sh --platform ios --plan .af-smoke/rc-test-plan.json
+        run: ./scripts/af-scenario-runner.sh --platform ios --plan .af-smoke/rc-test-plan.json
 
       - name: Upload smoke reports
         if: always()
@@ -326,7 +326,7 @@ jobs:
           disable-animations: true
           script: |
             cd example_rc_smoke && flutter build apk --debug && cd ..
-            ./scripts/af-smoke-runner.sh --platform android --plan .af-smoke/rc-test-plan.json
+            ./scripts/af-scenario-runner.sh --platform android --plan .af-smoke/rc-test-plan.json
 
       - name: Upload smoke reports
         if: always()

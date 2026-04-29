@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Pre-commit hook for the AppsFlyer Flutter plugin (maintainer team only).
 #
-# Mirrors the CI "Check code formatting" step (.github/workflows/ci.yml) to
-# catch dart-format issues before pushing. Only checks staged Dart files for
-# speed.
+# Mirrors the "Check code formatting" step in
+# .github/workflows/lint-test-build.yml so dart-format issues are caught
+# before pushing. Only checks staged Dart files for speed.
 #
 # Install once per clone:
 #   ./scripts/install-hooks.sh

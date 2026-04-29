@@ -9,7 +9,7 @@
 #   1. Cut a throwaway release branch (releases/99.99.99-rc1-poc).
 #   2. Apply the version bumps that rc-release.yml would apply.
 #   3. Run the E2E test plan (.af-e2e/test-plan.json) against example/ via
-#      scripts/af-smoke-runner.sh.
+#      scripts/af-scenario-runner.sh.
 #   4. Run the smoke test plan (.af-smoke/rc-test-plan.json) against example/,
 #      simulating the pub.dev pin with a local path: .. dependency.
 #   5. Emit a combined PASS/FAIL summary and reset local state.
@@ -106,7 +106,7 @@ fi
 
 E2E_OK="true"
 if [[ "$PLATFORM" == "ios" || "$PLATFORM" == "both" ]]; then
-  if scripts/af-smoke-runner.sh --platform ios --plan .af-e2e/test-plan.json --build; then
+  if scripts/af-scenario-runner.sh --platform ios --plan .af-e2e/test-plan.json --build; then
     ok "RC-E2E iOS: PASS"
   else
     err "RC-E2E iOS: FAIL"
@@ -114,7 +114,7 @@ if [[ "$PLATFORM" == "ios" || "$PLATFORM" == "both" ]]; then
   fi
 fi
 if [[ "$PLATFORM" == "android" || "$PLATFORM" == "both" ]]; then
-  if scripts/af-smoke-runner.sh --platform android --plan .af-e2e/test-plan.json --build; then
+  if scripts/af-scenario-runner.sh --platform android --plan .af-e2e/test-plan.json --build; then
     ok "RC-E2E Android: PASS"
   else
     err "RC-E2E Android: FAIL"
@@ -149,7 +149,7 @@ jq '(.config.android.build_cmd) = "cd example && flutter pub get && flutter buil
 
 SMOKE_OK="true"
 if [[ "$PLATFORM" == "ios" || "$PLATFORM" == "both" ]]; then
-  if scripts/af-smoke-runner.sh --platform ios --plan "$SMOKE_PLAN_TMP" --build; then
+  if scripts/af-scenario-runner.sh --platform ios --plan "$SMOKE_PLAN_TMP" --build; then
     ok "RC-SMOKE iOS: PASS"
   else
     err "RC-SMOKE iOS: FAIL"
@@ -157,7 +157,7 @@ if [[ "$PLATFORM" == "ios" || "$PLATFORM" == "both" ]]; then
   fi
 fi
 if [[ "$PLATFORM" == "android" || "$PLATFORM" == "both" ]]; then
-  if scripts/af-smoke-runner.sh --platform android --plan "$SMOKE_PLAN_TMP" --build; then
+  if scripts/af-scenario-runner.sh --platform android --plan "$SMOKE_PLAN_TMP" --build; then
     ok "RC-SMOKE Android: PASS"
   else
     err "RC-SMOKE Android: FAIL"

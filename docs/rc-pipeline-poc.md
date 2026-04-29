@@ -22,7 +22,7 @@ What the script does:
 
 1. Cuts a throwaway branch `releases/poc/99.99.99-rc1-poc`.
 2. Stamps `pubspec.yaml` with `99.99.99-rc1-poc` (the RC-PREP stage in the contract).
-3. Runs `.af-e2e/test-plan.json` against `example/` via `scripts/af-smoke-runner.sh` (the RC-E2E stage).
+3. Runs `.af-e2e/test-plan.json` against `example/` via `scripts/af-scenario-runner.sh` (the RC-E2E stage).
 4. Simulates RC-PUBLISH — nothing real happens here, it prints a confirmation.
 5. Runs `.af-smoke/rc-test-plan.json` against `example/` using a runtime-rewritten plan that substitutes `path: ..` for the pub.dev pin (the RC-SMOKE stage, minus the registry dependency).
 6. Restores `pubspec.yaml` and deletes the throwaway branch.

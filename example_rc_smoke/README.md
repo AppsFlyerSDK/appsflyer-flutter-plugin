@@ -29,7 +29,7 @@ It rewrites the smoke plan at runtime to point at `example/` with a `path: ..` d
 
 ## Related files
 
-- `../scripts/af-smoke-runner.sh` — the runner `rc-smoke.yml` calls.
+- `../scripts/af-scenario-runner.sh` — the runner `rc-smoke.yml` calls.
 - `../.af-smoke/rc-test-plan.json` — the test plan; `build_cmd` targets `example_rc_smoke/`.
 - `../.github/workflows/rc-smoke.yml` — the workflow that templates this `pubspec.yaml` and runs smoke.
 - `../docs/RELEASE_USER_MANUAL.md` — operator manual.

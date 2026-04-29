@@ -22,10 +22,11 @@ For contract meaning and stage IDs, see [`appsflyer-mobile-plugin-tooling/contra
    | `flutter_version` | `6.18.0-rc1` | Must match `^\d+\.\d+\.\d+(\+\d+)?-rc\d+$` |
    | `ios_sdk_version` | `6.17.7` | Native wrapper version |
    | `android_sdk_version` | `6.17.4` | Native wrapper version |
-   | `skip_tests` | `false` | Only set true for doc-only re-runs |
+   | `skip_unit` | `false` | Skips the lint/format/unit-test job inside Lint, Test & Build. Release builds still run. Does **not** block publish. |
+   | `skip_e2e` | `false` | Skips RC-E2E iOS + Android. **Blocks publish-rc** (E2E success is the publish gate). Use only for iterative work on the rest of the pipeline. |
    | `dry_run` | `false` | Leave `true` for drills; set `false` for a real RC |
 
-3. Click **Run workflow**. The workflow runs `validate-release`, `prepare-branch` (cuts `releases/6.x.x/6.18.x/6.18.0-rc1`, commits version bumps), then `run-e2e-ios` and `run-e2e-android` in parallel.
+3. Click **Run workflow**. The workflow runs `validate-release`, then `prepare-branch` and `run-ci` (Lint, Test & Build) in parallel; once `prepare-branch` finishes, `run-e2e-ios` and `run-e2e-android` start in parallel too. `publish-rc` waits only on E2E success — Lint, Test & Build is informational, not a publish gate.
 
 ## Step 2 - Wait for the automated gates
 
@@ -33,7 +34,7 @@ Four checks must go green before you do anything:
 
 | Check | Workflow | Notes |
 |-------|----------|-------|
-| `CI` | `ci.yml` (via `rc-release.yml`) | Unit + lint |
+| `Lint, Test & Build` | `lint-test-build.yml` (via `rc-release.yml`) | Lint + format + unit tests + release-mode Android/iOS builds |
 | `iOS E2E` | `ios-e2e.yml` | RC-E2E iOS gate |
 | `Android E2E` | `android-e2e.yml` | RC-E2E Android gate |
 | `rc-smoke/pub.dev` | `rc-smoke.yml` | Only appears after `publish-rc` succeeds with `dry_run=false` |

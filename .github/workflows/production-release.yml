@@ -191,7 +191,7 @@ jobs:
     name: 🚀 Final CI Check
     needs: validate-release
     if: needs.validate-release.outputs.is_valid == 'true' && github.event.inputs.skip_tests != 'true'
-    uses: ./.github/workflows/ci.yml
+    uses: ./.github/workflows/lint-test-build.yml
     secrets: inherit
 
   # ===========================================================================
