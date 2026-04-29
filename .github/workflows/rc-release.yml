@@ -631,7 +631,9 @@ jobs:
           fi
       
       - name: Send Slack notification (Success)
-        if: steps.status.outputs.success == 'true'
+        # Skip during dry runs so iterative pipeline testing doesn't spam
+        # the QA channel. Real RCs (dry_run=false) still post normally.
+        if: steps.status.outputs.success == 'true' && needs.validate-release.outputs.dry_run != 'true'
         uses: slackapi/slack-github-action@v1
         with:
           payload: |
@@ -642,7 +644,9 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.CI_SLACK_WEBHOOK_URL }}
       
       - name: Send failure notification
-        if: steps.status.outputs.success == 'false'
+        # Skip during dry runs so iterative pipeline testing doesn't spam
+        # the QA channel. Real RCs (dry_run=false) still post normally.
+        if: steps.status.outputs.success == 'false' && needs.validate-release.outputs.dry_run != 'true'
         uses: slackapi/slack-github-action@v1
         with:
           payload: |
