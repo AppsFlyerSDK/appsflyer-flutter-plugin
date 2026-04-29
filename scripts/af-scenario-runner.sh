@@ -337,10 +337,20 @@ ios_collect_logs() {
   # Strategy 2: Always also append simctl log show output. The file logger
   # only carries [AF_QA] lines; SDK HTTP traffic (response code:200, etc.)
   # only shows up via os_log and is required by count_matches checks.
+  # Window is 240s so back-to-back phases (cold launch -> 60s settle -> deep
+  # link -> 12s wait) still fit. The grep filter also captures URL-open
+  # events from CoreSimulatorBridge / launchservices so deep-link triage has
+  # something to look at when onDeepLinking doesn't fire.
   log_debug "Appending simctl log show output"
   xcrun simctl spawn "$IOS_UDID" log show \
-    --last 120s --style compact 2>&1 | \
-    grep -E "${LOG_TAG}|appsflyer|CFNetwork:Summary|response_status|response code" >> "$log_file" || true
+    --last 240s --style compact 2>&1 | \
+    grep -E "${LOG_TAG}|appsflyer|CFNetwork:Summary|response_status|response code|Opening URL|launchservices|openURL|continueUserActivity" >> "$log_file" || true
+
+  # Best-effort screenshot for failure triage (no-op if nothing booted).
+  local shot_dir="${log_file%/*}"
+  local shot_file="${shot_dir}/${log_file##*/}.png"
+  shot_file="${shot_file%_logs.txt.png}_screen.png"
+  xcrun simctl io "$IOS_UDID" screenshot "$shot_file" 2>/dev/null || true
 }
 
 ios_background_app() {
@@ -575,6 +585,8 @@ run_phase() {
     trigger_cmd=$(echo "$phase_json" | jq -r ".trigger.${PLATFORM} // empty")
     if [[ -n "$trigger_cmd" && "$trigger_cmd" != "null" ]]; then
       trigger_cmd="${trigger_cmd//\{\{DEEP_LINK_URL\}\}/$deep_link_url}"
+      trigger_cmd="${trigger_cmd//\{\{BUNDLE_ID\}\}/$PACKAGE_NAME}"
+      trigger_cmd="${trigger_cmd//\{\{PACKAGE_NAME\}\}/$PACKAGE_NAME}"
       if [[ "$PLATFORM" == "ios" ]]; then
         ios_ensure_udid
         trigger_cmd="${trigger_cmd//\{\{UDID\}\}/$IOS_UDID}"

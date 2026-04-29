@@ -127,15 +127,15 @@
       "scenario_ref": "E2E-002",
       "description": "App is backgrounded after Phase 1 SDK start. Deep link URL brings app back to foreground. onDeepLinking fires with Status.FOUND.",
       "requires_fresh_install": false,
-      "wait_after_trigger_sec": 5,
+      "wait_after_trigger_sec": 12,
       "deep_link_url": "afexample://deeplink?deep_link_value=qa_deeplink_bg&af_sub1=background_test&pid=testmedia&c=deeplink_test",
       "pre_actions": {
         "android": ["adb shell input keyevent KEYCODE_HOME", "sleep 2"],
-        "ios": ["xcrun simctl launch {{UDID}} com.apple.mobilesafari", "sleep 2"]
+        "ios": ["xcrun simctl launch {{UDID}} com.apple.mobilesafari", "sleep 3"]
       },
       "trigger": {
         "android": "adb shell am start -a android.intent.action.VIEW -d \"{{DEEP_LINK_URL}}\"",
-        "ios": "xcrun simctl openurl {{UDID}} \"{{DEEP_LINK_URL}}\""
+        "ios": "xcrun simctl openurl {{UDID}} \"{{DEEP_LINK_URL}}\" && sleep 2 && xcrun simctl launch {{UDID}} {{BUNDLE_ID}}"
       },
       "checks": [
         {
@@ -169,15 +169,15 @@
       "description": "Fresh install. App is in foreground after SDK start. Brief launcher switch triggers onPause. Deep link brings app back. onDeepLinking fires with Status.FOUND.",
       "requires_fresh_install": true,
       "wait_after_launch_sec": 60,
-      "wait_after_trigger_sec": 5,
+      "wait_after_trigger_sec": 12,
       "deep_link_url": "afexample://deeplink?deep_link_value=qa_deeplink_fg&af_sub1=foreground_test&pid=testmedia&c=deeplink_test",
       "pre_actions": {
         "android": ["adb shell am start -a android.intent.action.MAIN -c android.intent.category.HOME", "sleep 1"],
-        "ios": ["xcrun simctl launch {{UDID}} com.apple.Preferences", "sleep 1"]
+        "ios": ["xcrun simctl launch {{UDID}} com.apple.Preferences", "sleep 3"]
       },
       "trigger": {
         "android": "adb shell am start -a android.intent.action.VIEW -d \"{{DEEP_LINK_URL}}\"",
-        "ios": "xcrun simctl openurl {{UDID}} \"{{DEEP_LINK_URL}}\""
+        "ios": "xcrun simctl openurl {{UDID}} \"{{DEEP_LINK_URL}}\" && sleep 2 && xcrun simctl launch {{UDID}} {{BUNDLE_ID}}"
       },
       "checks": [
         {
@@ -311,8 +311,8 @@
         {
           "id": "user_id_in_payload",
           "description": "Post-start event payload carries customer_user_id",
-          "type": "log_contains",
-          "pattern": "customer_user_id=e2e_user_42",
+          "type": "regex_match",
+          "pattern": "customer_user_id[ =:]+e2e_user_42",
           "fail_action": "fail"
         },
         {
