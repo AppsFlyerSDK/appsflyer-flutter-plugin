@@ -18,20 +18,28 @@ import 'package:path_provider/path_provider.dart';
 /// without an attached `flutter run` host) do not forward Dart `debugPrint`
 /// output to logcat, so the file is the only reliable source of QA markers.
 class AfQaLogger {
-  static IOSink? _sink;
+  static File? _file;
   static bool _initialized = false;
 
-  /// Resolve the QA log file once at startup and open it in append mode.
-  /// Safe to call multiple times.
+  /// Resolve the QA log file once at startup. Safe to call multiple times.
+  ///
+  /// We do NOT keep an [IOSink] around: its writes are buffered and the smoke
+  /// runner kills the process before a flush ever happens. Each [log] call
+  /// instead does a synchronous append so every marker is on disk immediately.
   static Future<void> init() async {
     if (_initialized) return;
     _initialized = true;
     try {
       final docs = await getApplicationDocumentsDirectory();
       final file = File('${docs.path}/af_qa_logs.txt');
-      _sink = file.openWrite(mode: FileMode.append);
+      file.writeAsStringSync(
+        '[AF_QA][LOGGER] init: ${file.path}\n',
+        mode: FileMode.append,
+        flush: true,
+      );
+      _file = file;
     } catch (e) {
-      _sink = null;
+      _file = null;
       debugPrint('[AF_QA][LOGGER] init failed: $e');
     }
   }
@@ -40,10 +48,10 @@ class AfQaLogger {
   static void log(String tag, String message) {
     final line = '[AF_QA][$tag] $message';
     debugPrint(line);
-    final sink = _sink;
-    if (sink != null) {
+    final file = _file;
+    if (file != null) {
       try {
-        sink.writeln(line);
+        file.writeAsStringSync('$line\n', mode: FileMode.append, flush: true);
       } catch (_) {}
     }
   }

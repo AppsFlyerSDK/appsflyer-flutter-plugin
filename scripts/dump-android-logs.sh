@@ -11,6 +11,23 @@
 
 set +e
 
+PKG="${PACKAGE_NAME:-com.appsflyer.appsflyersdkexample}"
+
+echo "::group::App private storage (run-as ${PKG})"
+echo "--- ls -la (root) ---"
+adb shell "run-as ${PKG} ls -la" 2>&1
+echo "--- ls -la app_flutter ---"
+adb shell "run-as ${PKG} ls -la app_flutter" 2>&1
+echo "--- ls -la files ---"
+adb shell "run-as ${PKG} ls -la files" 2>&1
+echo "--- cat app_flutter/af_qa_logs.txt ---"
+adb shell "run-as ${PKG} cat app_flutter/af_qa_logs.txt" 2>&1
+echo "::endgroup::"
+
+echo "::group::Process check"
+adb shell "ps -A | grep -E '${PKG}|flutter' || true" 2>&1
+echo "::endgroup::"
+
 echo "::group::adb logcat dump (last 500 lines, unfiltered)"
 adb logcat -d -t 500
 echo "::endgroup::"
