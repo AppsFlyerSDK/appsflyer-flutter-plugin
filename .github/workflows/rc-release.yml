@@ -100,14 +100,15 @@ jobs:
       
       - name: 🔍 Validate and compute
         id: compute
+        env:
+          VERSION: ${{ github.event.inputs.flutter_version }}
+          IOS_VER: ${{ github.event.inputs.ios_sdk_version }}
+          AND_VER: ${{ github.event.inputs.android_sdk_version }}
+          BASE_BRANCH_INPUT: ${{ github.event.inputs.base_branch }}
+          DEPLOY_TO_QA: ${{ github.event.inputs.deploy_to_qa }}
+          DRY_RUN_INPUT: ${{ github.event.inputs.dry_run }}
         run: |
           set -euo pipefail
-          VERSION="${{ github.event.inputs.flutter_version }}"
-          IOS_VER="${{ github.event.inputs.ios_sdk_version }}"
-          AND_VER="${{ github.event.inputs.android_sdk_version }}"
-          BASE_BRANCH_INPUT="${{ github.event.inputs.base_branch }}"
-          DEPLOY_TO_QA="${{ github.event.inputs.deploy_to_qa }}"
-          DRY_RUN_INPUT="${{ github.event.inputs.dry_run }}"
 
           if [[ -z "$VERSION" || -z "$IOS_VER" || -z "$AND_VER" ]]; then
             echo "❌ Missing required inputs"; exit 1

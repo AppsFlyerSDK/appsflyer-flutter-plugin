@@ -98,14 +98,17 @@ jobs:
       
       - name: 🔍 Validate release source
         id: validate
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.event_name }}" == "workflow_call" ]]; then
+          if [[ "$EVENT_NAME" == "workflow_dispatch" || "$EVENT_NAME" == "workflow_call" ]]; then
             echo "Manual/called run - skipping branch validation"
             echo "is_release_branch=true" >> $GITHUB_OUTPUT
             echo "is_valid=true" >> $GITHUB_OUTPUT
           else
             # Check if the merged PR came from a release branch
-            SOURCE_BRANCH="${{ github.event.pull_request.head.ref }}"
+            SOURCE_BRANCH="$PR_HEAD_REF"
             echo "Source branch: $SOURCE_BRANCH"
             
             if [[ $SOURCE_BRANCH =~ ^releases/ ]]; then
@@ -123,9 +126,12 @@ jobs:
       
       - name: 📝 Get version from pubspec.yaml
         id: get-version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_VERSION: ${{ inputs.version || github.event.inputs.version }}
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.event_name }}" == "workflow_call" ]]; then
-            VERSION="${{ inputs.version || github.event.inputs.version }}"
+          if [[ "$EVENT_NAME" == "workflow_dispatch" || "$EVENT_NAME" == "workflow_call" ]]; then
+            VERSION="$INPUT_VERSION"
             echo "Using provided version: $VERSION"
           else
             # Extract version from pubspec.yaml
@@ -144,14 +150,15 @@ jobs:
           fi
       
       - name: 🏷️ Check if tag already exists
+        env:
+          VERSION: ${{ steps.get-version.outputs.version }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: |
-          VERSION="${{ steps.get-version.outputs.version }}"
-          
           # Check if tag exists locally or remotely
           if git rev-parse "$VERSION" >/dev/null 2>&1; then
             echo "⚠️ Tag $VERSION already exists locally"
             
-            if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+            if [[ "$DRY_RUN" == "true" ]]; then
               echo "Dry run mode - continuing anyway"
             else
               echo "❌ Cannot create duplicate release"
@@ -164,7 +171,7 @@ jobs:
           if git rev-parse "origin/$VERSION" >/dev/null 2>&1; then
             echo "⚠️ Tag $VERSION already exists remotely"
             
-            if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+            if [[ "$DRY_RUN" == "true" ]]; then
               echo "Dry run mode - continuing anyway"
             else
               echo "❌ Cannot create duplicate release"
@@ -240,15 +247,16 @@ jobs:
           fi
       
       - name: 📝 Check pub.dev credentials
+        env:
+          PUB_CREDS_SET: ${{ secrets.PUB_DEV_CREDENTIALS != '' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: |
-          # Check if pub-credentials.json exists
-          # Note: This should be set up as a repository secret
-          if [[ -z "${{ secrets.PUB_DEV_CREDENTIALS }}" ]]; then
+          if [[ "$PUB_CREDS_SET" != "true" ]]; then
             echo "⚠️ PUB_DEV_CREDENTIALS secret not found"
             echo "Please set up pub.dev credentials as a repository secret"
             echo "See: https://dart.dev/tools/pub/automated-publishing"
             
-            if [[ "${{ github.event.inputs.dry_run }}" != "true" ]]; then
+            if [[ "$DRY_RUN" != "true" ]]; then
               exit 1
             fi
           else
@@ -582,35 +590,43 @@ jobs:
     
     steps:
       - name: 📊 Display Release Summary
+        env:
+          VERSION: ${{ needs.validate-release.outputs.version }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+          VALIDATE_RESULT: ${{ needs.validate-release.result }}
+          CI_RESULT: ${{ needs.final-ci-check.result }}
+          PUBLISH_RESULT: ${{ needs.publish-to-pubdev.result }}
+          RELEASE_RESULT: ${{ needs.create-github-release.result }}
+          REPO: ${{ github.repository }}
         run: |
           echo "========================================="
           echo "Production Release Summary"
           echo "========================================="
-          echo "Version: ${{ needs.validate-release.outputs.version }}"
-          echo "Dry Run: ${{ github.event.inputs.dry_run }}"
+          echo "Version: $VERSION"
+          echo "Dry Run: $DRY_RUN"
           echo "-----------------------------------------"
-          echo "Validation: ${{ needs.validate-release.result }}"
-          echo "Final CI Check: ${{ needs.final-ci-check.result }}"
-          echo "pub.dev Publish: ${{ needs.publish-to-pubdev.result }}"
-          echo "GitHub Release: ${{ needs.create-github-release.result }}"
+          echo "Validation: $VALIDATE_RESULT"
+          echo "Final CI Check: $CI_RESULT"
+          echo "pub.dev Publish: $PUBLISH_RESULT"
+          echo "GitHub Release: $RELEASE_RESULT"
           echo "========================================="
           
-          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+          if [[ "$DRY_RUN" == "true" ]]; then
             echo "ℹ️ This was a DRY RUN - no actual publishing occurred"
             exit 0
           fi
           
           # Check if all critical jobs succeeded
-          if [[ "${{ needs.validate-release.result }}" == "success" ]] && \
-             [[ "${{ needs.publish-to-pubdev.result }}" == "success" ]] && \
-             [[ "${{ needs.create-github-release.result }}" == "success" ]]; then
+          if [[ "$VALIDATE_RESULT" == "success" ]] && \
+             [[ "$PUBLISH_RESULT" == "success" ]] && \
+             [[ "$RELEASE_RESULT" == "success" ]]; then
             echo ""
             echo "✅ Production Release Completed Successfully!"
             echo ""
-            echo "🎉 Version ${{ needs.validate-release.outputs.version }} is now live!"
+            echo "🎉 Version $VERSION is now live!"
             echo ""
             echo "📦 pub.dev: https://pub.dev/packages/appsflyer_sdk"
-            echo "🏷️ GitHub: https://github.com/${{ github.repository }}/releases/tag/${{ needs.validate-release.outputs.version }}"
+            echo "🏷️ GitHub: https://github.com/$REPO/releases/tag/$VERSION"
             echo ""
             echo "Next Steps:"
             echo "1. Verify the package on pub.dev"
