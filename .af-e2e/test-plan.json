@@ -125,17 +125,17 @@
       "id": "phase_2",
       "name": "Background deep link",
       "scenario_ref": "E2E-002",
-      "description": "App is backgrounded after Phase 1 SDK start. Deep link URL brings app back to foreground. onDeepLinking fires with Status.FOUND.",
+      "description": "App is brought down after Phase 1 SDK start; the deep-link URL re-launches it. On Android the app is HOME-keyed to background and re-entered via VIEW intent. On iOS the app is terminated and `simctl openurl` cold-launches it with the URL in launchOptions, since iOS-simulator's cross-app open from Safari triggers a system 'Open in <App>?' confirmation dialog that nothing in a non-interactive run can dismiss. Both paths land in the same SDK flow and fire onDeepLinking with Status.FOUND.",
       "requires_fresh_install": false,
       "wait_after_trigger_sec": 12,
       "deep_link_url": "afexample://deeplink?deep_link_value=qa_deeplink_bg&af_sub1=background_test&pid=testmedia&c=deeplink_test",
       "pre_actions": {
         "android": ["adb shell input keyevent KEYCODE_HOME", "sleep 2"],
-        "ios": ["xcrun simctl launch {{UDID}} com.apple.mobilesafari", "sleep 3"]
+        "ios": ["xcrun simctl terminate {{UDID}} {{BUNDLE_ID}}", "sleep 2"]
       },
       "trigger": {
         "android": "adb shell am start -a android.intent.action.VIEW -d \"{{DEEP_LINK_URL}}\"",
-        "ios": "xcrun simctl openurl {{UDID}} \"{{DEEP_LINK_URL}}\" && sleep 2 && xcrun simctl launch {{UDID}} {{BUNDLE_ID}}"
+        "ios": "xcrun simctl openurl {{UDID}} \"{{DEEP_LINK_URL}}\""
       },
       "checks": [
         {
@@ -166,18 +166,17 @@
       "id": "phase_3",
       "name": "Foreground deep link",
       "scenario_ref": "E2E-003",
-      "description": "Fresh install. App is in foreground after SDK start. Brief launcher switch triggers onPause. Deep link brings app back. onDeepLinking fires with Status.FOUND.",
+      "description": "Fresh install. App is in foreground after SDK start. On Android a brief HOME switch triggers onPause and the VIEW intent brings the app back. On iOS the app stays foregrounded and `simctl openurl` delivers the URL straight to a running process (skipping the Safari/Preferences pre-action that would otherwise make iOS show a system 'Open in <App>?' confirmation dialog). Both paths fire onDeepLinking with Status.FOUND.",
       "requires_fresh_install": true,
       "wait_after_launch_sec": 60,
       "wait_after_trigger_sec": 12,
       "deep_link_url": "afexample://deeplink?deep_link_value=qa_deeplink_fg&af_sub1=foreground_test&pid=testmedia&c=deeplink_test",
       "pre_actions": {
-        "android": ["adb shell am start -a android.intent.action.MAIN -c android.intent.category.HOME", "sleep 1"],
-        "ios": ["xcrun simctl launch {{UDID}} com.apple.Preferences", "sleep 3"]
+        "android": ["adb shell am start -a android.intent.action.MAIN -c android.intent.category.HOME", "sleep 1"]
       },
       "trigger": {
         "android": "adb shell am start -a android.intent.action.VIEW -d \"{{DEEP_LINK_URL}}\"",
-        "ios": "xcrun simctl openurl {{UDID}} \"{{DEEP_LINK_URL}}\" && sleep 2 && xcrun simctl launch {{UDID}} {{BUNDLE_ID}}"
+        "ios": "xcrun simctl openurl {{UDID}} \"{{DEEP_LINK_URL}}\""
       },
       "checks": [
         {
