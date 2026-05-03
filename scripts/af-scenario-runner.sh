@@ -257,6 +257,7 @@ android_is_alive() {
 # --- iOS ---
 
 IOS_UDID=""
+IOS_LAST_PID=""
 
 ios_get_booted_udid() {
   xcrun simctl list devices booted -j 2>/dev/null | \
@@ -304,7 +305,15 @@ ios_install() {
 ios_launch() {
   ios_ensure_udid
   log_info "Launching $PACKAGE_NAME..."
-  xcrun simctl launch "$IOS_UDID" "$PACKAGE_NAME" 2>&1 || true
+  # Capture launch output so we can pin log filtering to this PID. simctl
+  # prints "<bundle_id>: <pid>" on success; anything else (already running,
+  # error) leaves IOS_LAST_PID empty and the collector falls back to the
+  # unfiltered window.
+  local out
+  out=$(xcrun simctl launch "$IOS_UDID" "$PACKAGE_NAME" 2>&1 || true)
+  echo "$out"
+  IOS_LAST_PID=$(echo "$out" | awk -F': ' '/^'"$PACKAGE_NAME"': [0-9]+$/ {print $2}' | tail -1)
+  [[ -n "$IOS_LAST_PID" ]] && log_debug "Launched PID: $IOS_LAST_PID"
 }
 
 ios_get_pid() {
@@ -341,9 +350,19 @@ ios_collect_logs() {
   # link -> 12s wait) still fit. The grep filter also captures URL-open
   # events from CoreSimulatorBridge / launchservices so deep-link triage has
   # something to look at when onDeepLinking doesn't fire.
+  #
+  # Pin the predicate to the current Runner PID when known so prior-run
+  # entries that still sit inside the rolling window can't poison absent-
+  # pattern checks (e.g. phase_1 no_fatal_errors). Falls back to unfiltered
+  # when PID is unknown (first phase before launch, or `simctl launch`
+  # failed to print one).
   log_debug "Appending simctl log show output"
+  local predicate_args=()
+  if [[ -n "$IOS_LAST_PID" ]]; then
+    predicate_args=(--predicate "processIdentifier == $IOS_LAST_PID")
+  fi
   xcrun simctl spawn "$IOS_UDID" log show \
-    --last 240s --style compact 2>&1 | \
+    --last 240s --style compact "${predicate_args[@]}" 2>&1 | \
     grep -E "${LOG_TAG}|appsflyer|CFNetwork:Summary|response_status|response code|Opening URL|launchservices|openURL|continueUserActivity" >> "$log_file" || true
 
   # Best-effort screenshot for failure triage (no-op if nothing booted).
