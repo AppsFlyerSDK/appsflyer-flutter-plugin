@@ -585,7 +585,8 @@ run_phase() {
     log_info "Executing pre-actions..."
     while IFS= read -r action; do
       action=$(echo "$action" | jq -r '.')
-      # Replace {{UDID}} placeholder for iOS
+      action="${action//\{\{BUNDLE_ID\}\}/$PACKAGE_NAME}"
+      action="${action//\{\{PACKAGE_NAME\}\}/$PACKAGE_NAME}"
       if [[ "$PLATFORM" == "ios" ]]; then
         ios_ensure_udid
         action="${action//\{\{UDID\}\}/$IOS_UDID}"
