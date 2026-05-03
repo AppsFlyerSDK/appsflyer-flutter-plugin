@@ -51,16 +51,41 @@ jobs:
           sudo xcode-select -s "/Applications/$XCODE"
           xcodebuild -version
 
-      - name: Boot iOS simulator (iPhone 15)
+      - name: Boot iOS simulator (newest iOS runtime)
         run: |
-          UDID=$(xcrun simctl list devices available 2>/dev/null \
-            | grep "iPhone 15" | grep -v "Plus\|Pro\|Max" \
-            | grep -oE '[A-F0-9-]{36}' | head -1)
+          # Pick an iPhone (15/16/17) from the newest available iOS runtime.
+          # macos-14 ships several runtimes (17.0, 17.2, 17.4, 17.5, 18.1,
+          # 18.2). iOS 17.0's simulator forces a "Open in <App>?" prompt for
+          # `simctl openurl` against custom URL schemes, which blocks the
+          # deep-link phases. iOS 17.4+ delivers the URL straight to
+          # `application:openURL:options:` without a prompt.
+          DEVICES_JSON=$(xcrun simctl list -j devices available)
+          UDID=$(echo "$DEVICES_JSON" | jq -r '
+            .devices
+            | to_entries
+            | map(select(.key | test("iOS-1[78]")))
+            | sort_by(.key) | reverse
+            | map(
+                . as $rt
+                | $rt.value
+                | map(select(.name | test("^iPhone 1[5-7]$")))
+                | first
+                | (if . then {udid, runtime: $rt.key, name} else empty end)
+              )
+            | first // empty
+            | .udid // empty
+          ')
           if [[ -z "$UDID" ]]; then
-            echo "iPhone 15 not found; falling back to first available iPhone."
-            UDID=$(xcrun simctl list devices available 2>/dev/null \
-              | grep "iPhone" | grep -oE '[A-F0-9-]{36}' | head -1)
+            echo "No iPhone 15/16/17 on iOS 17/18 found; falling back to first available iPhone."
+            UDID=$(echo "$DEVICES_JSON" | jq -r '.devices[][] | select(.name | test("^iPhone")) | .udid' | head -1)
           fi
+          [[ -z "$UDID" ]] && { echo "::error::No iOS simulator available"; exit 1; }
+          echo "Selected simulator UDID: $UDID"
+          echo "$DEVICES_JSON" | jq -r --arg u "$UDID" '
+            .devices | to_entries[] | . as $rt
+            | $rt.value[] | select(.udid == $u)
+            | "Runtime: \($rt.key)  Device: \(.name)"
+          '
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID" -b
           echo "IOS_SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
