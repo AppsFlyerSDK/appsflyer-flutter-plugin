@@ -11,7 +11,7 @@
 
   "config": {
     "android": {
-      "package_name": "com.appsflyer.appsflyersdkexample",
+      "package_name": "com.appsflyer.engagement",
       "activity": ".MainActivity",
       "apk_path": "example_rc_smoke/build/app/outputs/flutter-apk/app-debug.apk",
       "build_cmd": "cd example_rc_smoke && flutter pub get && flutter build apk --debug"

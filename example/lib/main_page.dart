@@ -17,15 +17,42 @@ class MainPage extends StatefulWidget {
   }
 }
 
-class MainPageState extends State<MainPage> {
+class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   late AppsflyerSdk _appsflyerSdk;
   Map _deepLinkData = {};
   Map _gcd = {};
+  // Resolves on the first onInstallConversionData callback so the auto-run
+  // doesn't race ahead and call stop(true) before the install GCD response
+  // lands. AppsFlyer's SDK substitutes the conversion-data payload with
+  // "isStopTracking enabled" when the callback fires after stop(true), which
+  // makes phase_1's is_first_launch=true check flake.
+  final Completer<void> _gcdReady = Completer<void>();
+  bool _afStartCompleted = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     afStart();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Android plugin's onNewIntent listener stashes the new VIEW intent on the
+  // activity but doesn't kick AppsFlyerLib to process it. Re-running
+  // performOnDeepLinking on each foreground resume gives warm-app deep links
+  // (E2E phase_2) the same onDeepLinking callback path as cold-launch ones.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed &&
+        _afStartCompleted &&
+        Platform.isAndroid) {
+      _appsflyerSdk.performOnDeepLinking();
+    }
   }
 
   Future<void> afStart() async {
@@ -55,14 +82,22 @@ class MainPageState extends State<MainPage> {
     await _runStandardEvents();
     await _runCustomEvent();
     await _runIdentityCheck();
+
+    try {
+      await _gcdReady.future.timeout(const Duration(seconds: 20));
+    } on TimeoutException {
+      AfQaLogger.error("onInstallConversionData", "code=-1 msg=gcd_timeout");
+    }
     await _runStopResumeSequence();
 
+    _afStartCompleted = true;
     if (mounted) setState(() {});
   }
 
   void _registerCallbacks() {
     _appsflyerSdk.onInstallConversionData((res) {
       AfQaLogger.callback("onInstallConversionData", res);
+      if (!_gcdReady.isCompleted) _gcdReady.complete();
       if (mounted) setState(() => _gcd = res);
     });
 

@@ -11,7 +11,7 @@
 
 set +e
 
-PKG="${PACKAGE_NAME:-com.appsflyer.appsflyersdkexample}"
+PKG="${PACKAGE_NAME:-com.appsflyer.engagement}"
 
 echo "::group::App private storage (run-as ${PKG})"
 echo "--- ls -la (root) ---"

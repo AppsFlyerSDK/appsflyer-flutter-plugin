@@ -457,9 +457,14 @@ validate_check() {
              echo "$match" | grep -q "\"${payload_field}\":.*${payload_expected}" 2>/dev/null || \
              echo "$match" | grep -q "${payload_field}=${payload_expected}" 2>/dev/null || \
              echo "$match" | grep -q "${payload_field}: ${payload_expected}" 2>/dev/null; then
-            echo "{\"status\":\"PASS\",\"evidence\":$(echo "$match" | head -c 500 | jq -Rs .)}"
+            jq -n --arg evidence "$(echo "$match" | head -c 500)" \
+              '{status: "PASS", evidence: $evidence}'
           else
-            echo "{\"status\":\"FAIL\",\"evidence\":\"Pattern found but payload check failed: ${payload_field} != ${payload_expected}. Line: $(echo "$match" | head -c 300 | jq -Rs .)\"}"
+            jq -n \
+              --arg field "$payload_field" \
+              --arg expected "$payload_expected" \
+              --arg line "$(echo "$match" | head -c 300)" \
+              '{status: "FAIL", evidence: "Pattern found but payload check failed: \($field) != \($expected). Line: \($line)"}'
           fi
         else
           echo "{\"status\":\"PASS\",\"evidence\":$(echo "$match" | head -c 500 | jq -Rs .)}"
