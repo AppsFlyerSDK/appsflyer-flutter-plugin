@@ -214,6 +214,7 @@ android_get_pid() {
 
 android_collect_logs() {
   local log_file="$1"
+  local tail_lines="${ANDROID_LOGCAT_TAIL_LINES:-2000}"
 
   # Always start from an empty file so each phase capture is self-contained.
   : > "$log_file"
@@ -241,8 +242,9 @@ android_collect_logs() {
 
   # Strategy 2: Always also append logcat output. AppsFlyer SDK native logs
   # (HTTP response codes, etc.) reach logcat regardless of the Dart-print
-  # routing, and the count_matches checks need them.
-  adb logcat -d 2>&1 | grep -E "${LOG_TAG}|AppsFlyer|response code:|preparing data:" >> "$log_file" || true
+  # routing, and the count_matches checks need them. Limit to the recent tail
+  # so CI does not spend a minute dumping the whole emulator buffer every phase.
+  adb logcat -d -t "$tail_lines" 2>&1 | grep -E "${LOG_TAG}|AppsFlyer|response code:|preparing data:" >> "$log_file" || true
 }
 
 android_background_app() {
@@ -440,24 +442,37 @@ platform_peek_qa_log() {
   cat "$qa_log" 2>/dev/null || true
 }
 
-# wait_for_qa_marker <marker_substring> <timeout_sec>
-# Polls the device-side QA log every 3s and returns 0 as soon as the marker
+# wait_for_qa_marker <marker_substring> <timeout_sec> [interval_sec]
+# Polls the device-side QA log and returns 0 as soon as the marker
 # appears, or after the timeout (also 0 — caller still runs validation against
 # whatever logs exist). Lets local runs finish quickly while CI runs use the
 # full ceiling for slow no-KVM emulators / cold macOS sims.
 wait_for_qa_marker() {
   local marker="$1"
   local timeout_sec="$2"
-  local elapsed=0
-  local interval=3
-  log_info "Waiting up to ${timeout_sec}s for marker: ${marker}"
-  while (( elapsed < timeout_sec )); do
+  local interval="${3:-3}"
+  local start_ts now elapsed remaining sleep_for
+
+  start_ts=$(date +%s)
+  log_info "Waiting up to ${timeout_sec}s for marker: ${marker} (poll every ${interval}s)"
+  while true; do
+    now=$(date +%s)
+    elapsed=$(( now - start_ts ))
+    if (( elapsed >= timeout_sec )); then
+      break
+    fi
+
     if platform_peek_qa_log | grep -qF -- "$marker" 2>/dev/null; then
       log_info "Marker observed after ${elapsed}s"
       return 0
     fi
-    sleep "$interval"
-    elapsed=$(( elapsed + interval ))
+
+    remaining=$(( timeout_sec - elapsed ))
+    sleep_for="$interval"
+    if (( sleep_for > remaining )); then
+      sleep_for="$remaining"
+    fi
+    sleep "$sleep_for"
   done
   log_warn "Marker not observed within ${timeout_sec}s; proceeding to log collection anyway"
   return 0
@@ -670,9 +685,9 @@ run_phase() {
 
     platform_launch
     # Poll the QA log for the auto-run-complete marker rather than always
-    # sleeping the full ceiling. Local runs finish in ~10s; CI runs (no-KVM
-    # Linux emulator, cold macOS sim) get the full $wait_sec budget.
-    wait_for_qa_marker "[AF_QA][AUTO_APIS] --- Auto run complete ---" "$wait_sec"
+    # sleeping the full ceiling. Use a slower interval here because each ADB
+    # `run-as cat` is costly on GitHub's emulator.
+    wait_for_qa_marker "[AF_QA][AUTO_APIS] --- Auto run complete ---" "$wait_sec" 10
   fi
 
   # Pre-actions (deep link phases: background the app, etc.)
@@ -719,7 +734,7 @@ run_phase() {
     local deep_link_marker
     deep_link_marker=$(deep_link_wait_marker "$phase_json")
     if [[ -n "$deep_link_marker" ]]; then
-      wait_for_qa_marker "$deep_link_marker" "$wait_trigger_sec"
+      wait_for_qa_marker "$deep_link_marker" "$wait_trigger_sec" 3
     else
       log_info "Waiting ${wait_trigger_sec}s for deep link to propagate..."
       sleep "$wait_trigger_sec"
