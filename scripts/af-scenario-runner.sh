@@ -26,6 +26,14 @@
 
 set -euo pipefail
 
+# Bash 5.2+ enables patsub_replacement by default, which makes `&` in the
+# replacement string of ${var//pat/repl} expand to the matched pattern (sed
+# style). That mangles deep link URLs like `?a=1&b=2` into `?a=1{{DEEP_LINK_URL}}b=2`
+# when we substitute the URL into trigger templates below. Disable it so
+# replacements are taken literally on every supported runner (macOS bash 3.2,
+# Ubuntu bash 5.2+, etc.).
+shopt -u patsub_replacement 2>/dev/null || true
+
 # ─── Defaults ────────────────────────────────────────────────────────────────
 
 PLATFORM=""
