@@ -30,7 +30,7 @@
       "scenario_ref": "SMOKE-001",
       "description": "Fresh install using the pub.dev-pinned RC build. Validates SDK startup, install conversion data, pre/post-start API markers, three standard events, and HTTP 200 responses.",
       "requires_fresh_install": true,
-      "wait_after_launch_sec": 25,
+      "wait_after_launch_sec": 240,
       "checks": [
         {
           "id": "sdk_started",
@@ -133,7 +133,7 @@
       "scenario_ref": "SMOKE-003",
       "description": "Fresh install of the RC build. Brief launcher switch then deep link. onDeepLinking fires with Status.FOUND and deepLinkValue=qa_deeplink_fg.",
       "requires_fresh_install": true,
-      "wait_after_launch_sec": 25,
+      "wait_after_launch_sec": 240,
       "wait_after_trigger_sec": 5,
       "deep_link_url": "afexample://deeplink?deep_link_value=qa_deeplink_fg&af_sub1=foreground_test&pid=testmedia&c=deeplink_test",
       "pre_actions": {

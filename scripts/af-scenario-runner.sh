@@ -411,6 +411,50 @@ platform_trigger_deeplink() {
   if [[ "$PLATFORM" == "android" ]]; then android_trigger_deeplink "$1"; else ios_trigger_deeplink "$1"; fi
 }
 
+# Print the device-side af_qa_logs.txt to stdout (best effort, empty on miss).
+# Used by `wait_for_qa_marker` to poll mid-phase without reshuffling the full
+# log-collection pipeline.
+platform_peek_qa_log() {
+  if [[ "$PLATFORM" == "android" ]]; then
+    for path in app_flutter/af_qa_logs.txt files/af_qa_logs.txt; do
+      adb shell "run-as $PACKAGE_NAME cat $path 2>/dev/null" 2>/dev/null && return 0
+    done
+    return 0
+  fi
+  ios_ensure_udid
+  local sim_data_dir
+  sim_data_dir="$HOME/Library/Developer/CoreSimulator/Devices/${IOS_UDID}/data"
+  [[ -d "$sim_data_dir" ]] || return 0
+  local qa_log
+  qa_log=$(find "$sim_data_dir/Containers/Data/Application" \
+    -name "af_qa_logs.txt" -maxdepth 4 2>/dev/null | head -1)
+  [[ -n "$qa_log" && -f "$qa_log" ]] || return 0
+  cat "$qa_log" 2>/dev/null || true
+}
+
+# wait_for_qa_marker <marker_substring> <timeout_sec>
+# Polls the device-side QA log every 3s and returns 0 as soon as the marker
+# appears, or after the timeout (also 0 — caller still runs validation against
+# whatever logs exist). Lets local runs finish in ~10s while CI runs use the
+# full ceiling for slow no-KVM emulators / cold macOS sims.
+wait_for_qa_marker() {
+  local marker="$1"
+  local timeout_sec="$2"
+  local elapsed=0
+  local interval=3
+  log_info "Waiting up to ${timeout_sec}s for marker: ${marker}"
+  while (( elapsed < timeout_sec )); do
+    if platform_peek_qa_log | grep -qF -- "$marker" 2>/dev/null; then
+      log_info "Marker observed after ${elapsed}s; SDK settle complete"
+      return 0
+    fi
+    sleep "$interval"
+    elapsed=$(( elapsed + interval ))
+  done
+  log_warn "Marker not observed within ${timeout_sec}s; proceeding to log collection anyway"
+  return 0
+}
+
 # ─── Build ───────────────────────────────────────────────────────────────────
 
 build_app() {
@@ -579,8 +623,10 @@ run_phase() {
     sleep 1
 
     platform_launch
-    log_info "Waiting ${wait_sec}s for SDK to settle..."
-    sleep "$wait_sec"
+    # Poll the QA log for the auto-run-complete marker rather than always
+    # sleeping the full ceiling. Local runs finish in ~10s; CI runs (no-KVM
+    # Linux emulator, cold macOS sim) get the full $wait_sec budget.
+    wait_for_qa_marker "[AF_QA][AUTO_APIS] --- Auto run complete ---" "$wait_sec"
   fi
 
   # Pre-actions (deep link phases: background the app, etc.)

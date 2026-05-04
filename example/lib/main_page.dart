@@ -92,6 +92,11 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
     _afStartCompleted = true;
     if (mounted) setState(() {});
+    // Emit a single terminal marker the smoke runner can poll for. Lets the
+    // runner replace its fixed `wait_after_launch_sec` sleep with an early
+    // exit, which matters on CI where the SDK's first-launch HTTP round-trip
+    // can take 60-120s on a no-KVM Linux emulator or a cold macOS sim.
+    AfQaLogger.autoApis("--- Auto run complete ---");
   }
 
   void _registerCallbacks() {
