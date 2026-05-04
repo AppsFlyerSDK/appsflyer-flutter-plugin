@@ -127,14 +127,14 @@
       "scenario_ref": "E2E-002",
       "description": "App is brought down after Phase 1 SDK start; the deep-link URL re-launches it. On Android the app is HOME-keyed to background and re-entered via VIEW intent. On iOS the app is terminated and re-launched with `-deepLinkURL <url>`, which the example app's AppDelegate replays through `application:openURL:options:` — same SDK pipeline as a real custom-scheme open, but without iOS 17/18-simulator's 'Open in <App>?' confirmation prompt that `simctl openurl` triggers and that nothing in a non-interactive CI run can dismiss. Both paths fire onDeepLinking with Status.FOUND.",
       "requires_fresh_install": false,
-      "wait_after_trigger_sec": 12,
+      "wait_after_trigger_sec": 90,
       "deep_link_url": "afexample://deeplink?deep_link_value=qa_deeplink_bg&af_sub1=background_test&pid=testmedia&c=deeplink_test",
       "pre_actions": {
         "android": ["adb shell input keyevent KEYCODE_HOME", "sleep 2"],
         "ios": ["xcrun simctl terminate {{UDID}} {{BUNDLE_ID}}", "sleep 1"]
       },
       "trigger": {
-        "android": "adb shell am start -a android.intent.action.VIEW -d \"{{DEEP_LINK_URL}}\"",
+        "android": "adb shell am start -W -a android.intent.action.VIEW -d \"{{DEEP_LINK_URL}}\"",
         "ios": "xcrun simctl launch {{UDID}} {{BUNDLE_ID}} -deepLinkURL \"{{DEEP_LINK_URL}}\""
       },
       "checks": [
@@ -169,14 +169,14 @@
       "description": "Fresh install. App is in foreground after SDK start. On Android a brief HOME switch triggers onPause and the VIEW intent brings the app back. On iOS the app is terminated and re-launched with `-deepLinkURL <url>` (same launch-arg path as phase_2), since `simctl openurl` against a running iOS-simulator app still triggers the 'Open in <App>?' confirmation prompt; the foreground-vs-killed distinction is Android-only. Both paths fire onDeepLinking with Status.FOUND.",
       "requires_fresh_install": true,
       "wait_after_launch_sec": 240,
-      "wait_after_trigger_sec": 12,
+      "wait_after_trigger_sec": 90,
       "deep_link_url": "afexample://deeplink?deep_link_value=qa_deeplink_fg&af_sub1=foreground_test&pid=testmedia&c=deeplink_test",
       "pre_actions": {
         "android": ["adb shell am start -a android.intent.action.MAIN -c android.intent.category.HOME", "sleep 1"],
         "ios": ["xcrun simctl terminate {{UDID}} {{BUNDLE_ID}}", "sleep 1"]
       },
       "trigger": {
-        "android": "adb shell am start -a android.intent.action.VIEW -d \"{{DEEP_LINK_URL}}\"",
+        "android": "adb shell am start -W -a android.intent.action.VIEW -d \"{{DEEP_LINK_URL}}\"",
         "ios": "xcrun simctl launch {{UDID}} {{BUNDLE_ID}} -deepLinkURL \"{{DEEP_LINK_URL}}\""
       },
       "checks": [

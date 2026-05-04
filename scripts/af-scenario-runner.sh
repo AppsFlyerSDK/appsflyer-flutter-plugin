@@ -253,7 +253,7 @@ android_background_app() {
 android_trigger_deeplink() {
   local url="$1"
   log_info "Triggering deep link: $url"
-  adb shell am start -a android.intent.action.VIEW -d "$url" 2>/dev/null || true
+  adb shell am start -W -a android.intent.action.VIEW -d "$url"
 }
 
 android_is_alive() {
@@ -443,7 +443,7 @@ platform_peek_qa_log() {
 # wait_for_qa_marker <marker_substring> <timeout_sec>
 # Polls the device-side QA log every 3s and returns 0 as soon as the marker
 # appears, or after the timeout (also 0 — caller still runs validation against
-# whatever logs exist). Lets local runs finish in ~10s while CI runs use the
+# whatever logs exist). Lets local runs finish quickly while CI runs use the
 # full ceiling for slow no-KVM emulators / cold macOS sims.
 wait_for_qa_marker() {
   local marker="$1"
@@ -453,7 +453,7 @@ wait_for_qa_marker() {
   log_info "Waiting up to ${timeout_sec}s for marker: ${marker}"
   while (( elapsed < timeout_sec )); do
     if platform_peek_qa_log | grep -qF -- "$marker" 2>/dev/null; then
-      log_info "Marker observed after ${elapsed}s; SDK settle complete"
+      log_info "Marker observed after ${elapsed}s"
       return 0
     fi
     sleep "$interval"
@@ -461,6 +461,44 @@ wait_for_qa_marker() {
   done
   log_warn "Marker not observed within ${timeout_sec}s; proceeding to log collection anyway"
   return 0
+}
+
+run_phase_command() {
+  local label="$1"
+  local command="$2"
+  local allow_failure="$3"
+  local output status
+
+  log_info "${label}: ${command}"
+  set +e
+  output=$(eval "$command" 2>&1)
+  status=$?
+  set -e
+
+  if [[ -n "$output" ]]; then
+    printf '%s\n' "$output" >&2
+  fi
+
+  if [[ "$status" -ne 0 ]]; then
+    if [[ "$allow_failure" == "true" ]]; then
+      log_warn "${label} failed with exit code ${status}; continuing"
+      return 0
+    fi
+    log_fail "${label} failed with exit code ${status}"
+    return "$status"
+  fi
+}
+
+deep_link_wait_marker() {
+  local phase_json="$1"
+  echo "$phase_json" | jq -r '
+    [
+      .checks[]?
+      | select(.type == "log_contains")
+      | .pattern
+      | select(startswith("deepLinkValue="))
+    ][0] // empty
+  '
 }
 
 # ─── Build ───────────────────────────────────────────────────────────────────
@@ -650,8 +688,7 @@ run_phase() {
         ios_ensure_udid
         action="${action//\{\{UDID\}\}/$IOS_UDID}"
       fi
-      log_debug "Pre-action: $action"
-      eval "$action" 2>/dev/null || true
+      run_phase_command "Pre-action" "$action" true
     done < <(echo "$phase_json" | jq -c ".pre_actions.${PLATFORM}[]")
   fi
 
@@ -670,13 +707,23 @@ run_phase() {
         ios_ensure_udid
         trigger_cmd="${trigger_cmd//\{\{UDID\}\}/$IOS_UDID}"
       fi
-      log_debug "Trigger command: $trigger_cmd"
-      eval "$trigger_cmd" 2>/dev/null || true
+      if ! run_phase_command "Deep link trigger" "$trigger_cmd" false; then
+        log_warn "Deep link trigger failed; continuing to collect logs and run checks"
+      fi
     else
-      platform_trigger_deeplink "$deep_link_url"
+      if ! platform_trigger_deeplink "$deep_link_url"; then
+        log_warn "Deep link trigger failed; continuing to collect logs and run checks"
+      fi
     fi
-    log_info "Waiting ${wait_trigger_sec}s for deep link to propagate..."
-    sleep "$wait_trigger_sec"
+
+    local deep_link_marker
+    deep_link_marker=$(deep_link_wait_marker "$phase_json")
+    if [[ -n "$deep_link_marker" ]]; then
+      wait_for_qa_marker "$deep_link_marker" "$wait_trigger_sec"
+    else
+      log_info "Waiting ${wait_trigger_sec}s for deep link to propagate..."
+      sleep "$wait_trigger_sec"
+    fi
   fi
 
   # Collect logs
