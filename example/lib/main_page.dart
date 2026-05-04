@@ -17,7 +17,7 @@ class MainPage extends StatefulWidget {
   }
 }
 
-class MainPageState extends State<MainPage> with WidgetsBindingObserver {
+class MainPageState extends State<MainPage> {
   late AppsflyerSdk _appsflyerSdk;
   Map _deepLinkData = {};
   Map _gcd = {};
@@ -27,32 +27,11 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
   // "isStopTracking enabled" when the callback fires after stop(true), which
   // makes phase_1's is_first_launch=true check flake.
   final Completer<void> _gcdReady = Completer<void>();
-  bool _afStartCompleted = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     afStart();
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  // Android plugin's onNewIntent listener stashes the new VIEW intent on the
-  // activity but doesn't kick AppsFlyerLib to process it. Re-running
-  // performOnDeepLinking on each foreground resume gives warm-app deep links
-  // (E2E phase_2) the same onDeepLinking callback path as cold-launch ones.
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed &&
-        _afStartCompleted &&
-        Platform.isAndroid) {
-      _appsflyerSdk.performOnDeepLinking();
-    }
   }
 
   Future<void> afStart() async {
@@ -90,7 +69,6 @@ class MainPageState extends State<MainPage> with WidgetsBindingObserver {
     }
     await _runStopResumeSequence();
 
-    _afStartCompleted = true;
     if (mounted) setState(() {});
     // Emit a single terminal marker the smoke runner can poll for. Lets the
     // runner replace its fixed `wait_after_launch_sec` sleep with an early
