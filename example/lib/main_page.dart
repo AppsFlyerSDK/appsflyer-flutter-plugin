@@ -63,7 +63,11 @@ class MainPageState extends State<MainPage> {
     await _runIdentityCheck();
 
     try {
-      await _gcdReady.future.timeout(const Duration(seconds: 20));
+      // GCD lands after the launch event is acknowledged by AppsFlyer servers.
+      // On slow CI emulators that round-trip can stretch past 60s. 90s here
+      // matches the startSDK budget and keeps the rest of the auto-run
+      // (stop/resume sequence + final marker) deterministic.
+      await _gcdReady.future.timeout(const Duration(seconds: 90));
     } on TimeoutException {
       AfQaLogger.error("onInstallConversionData", "code=-1 msg=gcd_timeout");
     }
@@ -140,7 +144,11 @@ class MainPageState extends State<MainPage> {
       },
     );
     try {
-      await completer.future.timeout(const Duration(seconds: 20));
+      // 20s is too tight on the no-KVM Linux emulator: GAID lookups burn ~7s
+      // and the AppsFlyer CDN-config GET can hang for ~50s before the SDK can
+      // send the launch event that triggers onSuccess. 90s comfortably covers
+      // a slow boot and still fails fast on a hung start.
+      await completer.future.timeout(const Duration(seconds: 90));
     } on TimeoutException {
       AfQaLogger.error("startSDK", "code=-1 msg=startSDK_callback_timeout");
     }
