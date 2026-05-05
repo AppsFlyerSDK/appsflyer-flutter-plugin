@@ -1,5 +1,12 @@
 # Versions
 
+## 6.18.0
+
+- Updated Android SDK from 6.17.6 to 6.18.0
+- Updated iOS SDK from 6.17.9 to 6.18.0
+- Updated iOS Purchase Connector from 6.17.9 to 6.18.0
+- Fixed Android warm-app deep link consumption race so `DeepLinkListener` fires reliably when the app is resumed from a `VIEW` intent (forward new intents to `AppsFlyerLib` from the plugin's `onNewIntentListener` before the SDK's `onResume` auto-handler marks them `af_consumed`)
+
 ## 6.17.9
 
 - Added UIScene lifecycle support for iOS deep linking (Flutter 3.41+ compatibility)
