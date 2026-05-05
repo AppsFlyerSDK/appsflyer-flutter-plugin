@@ -111,22 +111,18 @@ jobs:
           disable-animations: true
           script: |
             set -e
-            # Connectivity precheck: fail fast with a clear message if the
-            # emulator can't reach AppsFlyer hosts. Cheaper than discovering
-            # this via a 4-minute phase_1 abort. We retry the ping for up
-            # to 30s because eth0 can take a beat to come up after
-            # sys.boot_completed flips to 1.
-            for i in 1 2 3 4 5 6; do
-              if adb shell 'ping -c 1 -W 2 8.8.8.8' >/dev/null 2>&1; then
-                echo "emulator IP connectivity OK (attempt $i)"
-                break
-              fi
-              if [ "$i" = "6" ]; then
-                echo "::error::Emulator has no IP connectivity after 30s"
-                exit 1
-              fi
-              sleep 5
-            done
+            # IMPORTANT: reactivecircus/android-emulator-runner@v2 runs each
+            # newline-separated line of `script:` as its own `sh -c` invocation,
+            # so multi-line shell constructs (for/while/if blocks) MUST be
+            # collapsed onto a single logical line. A multi-line `for ... done`
+            # here failed with "Syntax error: end of file unexpected (expecting
+            # done)" because the action passed only the `for ...; do` line to
+            # the first shell.
+            #
+            # Connectivity precheck with a single retry: fail fast with a clear
+            # message if the emulator can't reach AppsFlyer hosts. Cheaper than
+            # discovering this via a 4-minute phase_1 abort.
+            adb shell 'ping -c 1 -W 2 8.8.8.8' >/dev/null 2>&1 || { sleep 10; adb shell 'ping -c 1 -W 2 8.8.8.8' >/dev/null 2>&1; } || { echo "::error::Emulator has no IP connectivity"; exit 1; }
             adb shell 'getprop net.dns1; getprop net.dns2' || true
             adb shell 'nslookup oyoxfj.conversions.appsflyersdk.com 2>&1 | head -5' || { echo "::error::Emulator DNS cannot resolve AppsFlyer hosts"; exit 1; }
             cd example && flutter build apk --debug && cd ..
