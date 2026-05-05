@@ -363,6 +363,12 @@ jobs:
     # by design: skipping E2E is for iterative pipeline work, not for shipping.
     if: ${{ needs.validate-release.outputs.is_valid == 'true' && github.event.inputs.skip_e2e != 'true' }}
     uses: ./.github/workflows/ios-e2e.yml
+    # Build E2E from the freshly-cut release branch so the version bumps
+    # applied by prepare-branch (pubspec, podspec, native constants) are in
+    # the APK/IPA under test. Without this, workflow_call inherits the
+    # caller's SHA (development) and the bumps never reach the build.
+    with:
+      ref: ${{ needs.prepare-branch.outputs.release_branch }}
     secrets: inherit
 
   # ===========================================================================
@@ -375,6 +381,8 @@ jobs:
     needs: [validate-release, prepare-branch]
     if: ${{ needs.validate-release.outputs.is_valid == 'true' && github.event.inputs.skip_e2e != 'true' }}
     uses: ./.github/workflows/android-e2e.yml
+    with:
+      ref: ${{ needs.prepare-branch.outputs.release_branch }}
     secrets: inherit
 
   # ===========================================================================

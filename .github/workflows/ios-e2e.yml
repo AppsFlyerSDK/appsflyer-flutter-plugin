@@ -22,7 +22,19 @@ name: iOS E2E
 
 on:
   workflow_call:
+    inputs:
+      ref:
+        description: 'Branch, tag, or SHA to check out. Defaults to the calling workflow''s ref so existing callers keep working.'
+        required: false
+        type: string
+        default: ''
   workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch, tag, or SHA to check out (default: workflow ref)'
+        required: false
+        type: string
+        default: ''
   schedule:
     - cron: '0 2 * * 0'
 
@@ -38,6 +50,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref != '' && inputs.ref || github.ref }}
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
