@@ -114,17 +114,19 @@ jobs:
             # IMPORTANT: reactivecircus/android-emulator-runner@v2 runs each
             # newline-separated line of `script:` as its own `sh -c` invocation,
             # so multi-line shell constructs (for/while/if blocks) MUST be
-            # collapsed onto a single logical line. A multi-line `for ... done`
-            # here failed with "Syntax error: end of file unexpected (expecting
-            # done)" because the action passed only the `for ...; do` line to
-            # the first shell.
+            # collapsed onto a single logical line.
             #
-            # Connectivity precheck with a single retry: fail fast with a clear
-            # message if the emulator can't reach AppsFlyer hosts. Cheaper than
-            # discovering this via a 4-minute phase_1 abort.
-            adb shell 'ping -c 1 -W 2 8.8.8.8' >/dev/null 2>&1 || { sleep 10; adb shell 'ping -c 1 -W 2 8.8.8.8' >/dev/null 2>&1; } || { echo "::error::Emulator has no IP connectivity"; exit 1; }
+            # Connectivity precheck via DNS (UDP), NOT ping (ICMP). The Android
+            # emulator on Linux uses QEMU's slirp NAT, which does TCP/UDP fine
+            # but cannot forward ICMP echo without CAP_NET_RAW on the host
+            # process -- which the GitHub-hosted runner user does not have.
+            # `adb shell ping` therefore fails even when the SDK's HTTPS calls
+            # succeed. `nslookup` is a UDP DNS query that goes through slirp
+            # cleanly and validates the actual failure mode that triggered
+            # this whole investigation (`Unable to resolve host` for AppsFlyer
+            # domains). One retry absorbs any post-boot DNS startup grace.
             adb shell 'getprop net.dns1; getprop net.dns2' || true
-            adb shell 'nslookup oyoxfj.conversions.appsflyersdk.com 2>&1 | head -5' || { echo "::error::Emulator DNS cannot resolve AppsFlyer hosts"; exit 1; }
+            adb shell 'nslookup oyoxfj.conversions.appsflyersdk.com 2>&1 | head -5' || { sleep 10; adb shell 'nslookup oyoxfj.conversions.appsflyersdk.com 2>&1 | head -5'; } || { echo "::error::Emulator DNS cannot resolve AppsFlyer hosts"; exit 1; }
             cd example && flutter build apk --debug && cd ..
             ./scripts/af-scenario-runner.sh --platform android --plan .af-e2e/test-plan.json || ./scripts/dump-android-logs.sh
 
