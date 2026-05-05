@@ -85,9 +85,22 @@ jobs:
           api-level: 33
           arch: x86_64
           profile: pixel_6
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          # -dns-server bypasses the host's systemd-resolved stub at 127.0.0.53,
+          # which the emulator's network namespace can't reach. Without this,
+          # every AppsFlyer SDK HTTP call fails with `Unable to resolve host`,
+          # startSDK returns code=40, and phase_1's sdk_started abort fires.
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -dns-server 8.8.8.8,1.1.1.1
           disable-animations: true
           script: |
+            set -e
+            # Connectivity precheck: fail fast with a clear message if the
+            # emulator can't reach AppsFlyer hosts. Cheaper than discovering
+            # this via a 4-minute phase_1 abort.
+            adb shell 'ping -c 1 -W 2 8.8.8.8' >/dev/null 2>&1 \
+              || { echo "::error::Emulator has no IP connectivity"; exit 1; }
+            adb shell 'getprop net.dns1; getprop net.dns2' || true
+            adb shell 'nslookup oyoxfj.conversions.appsflyersdk.com 2>&1 | head -5' \
+              || { echo "::error::Emulator DNS cannot resolve AppsFlyer hosts"; exit 1; }
             cd example && flutter build apk --debug && cd ..
             ./scripts/af-scenario-runner.sh --platform android --plan .af-e2e/test-plan.json || ./scripts/dump-android-logs.sh
 
