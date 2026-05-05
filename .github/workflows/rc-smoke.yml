@@ -378,6 +378,32 @@ jobs:
             });
 
   # ===========================================================================
+  # Notify Slack on a real smoke failure. Only fires for non-skipped runs
+  # (dry-run / not-on-pubdev runs go down the post-skipped-check path and
+  # produce no Slack noise). Production is blocked until the RC is bumped to
+  # rcN+1 and re-smoked.
+  # ===========================================================================
+  notify-failure:
+    name: 📢 Notify Smoke Failure
+    needs: [resolve, smoke-ios, smoke-android]
+    if: >-
+      always() &&
+      needs.resolve.outputs.should_run == 'true' &&
+      (needs.smoke-ios.result == 'failure' || needs.smoke-android.result == 'failure' ||
+       needs.smoke-ios.result == 'cancelled' || needs.smoke-android.result == 'cancelled')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack failure notification
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "<!here>\n:warning: *Flutter rc-smoke failed for `${{ needs.resolve.outputs.rc_version }}`*\n\nThe RC is published on pub.dev but smoke checks did not pass on the artifact. Production promotion is blocked.\n\n*Smoke results:*\n• iOS: ${{ needs.smoke-ios.result }}\n• Android: ${{ needs.smoke-android.result }}\n\n*Branch:* ${{ needs.resolve.outputs.release_branch }}\n*Run:* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\n*Next step:* Bump to `rcN+1` and rerun the RC-release workflow with `dry_run=false`. Republishing the same RC version is not supported by pub.dev."
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.CI_SLACK_WEBHOOK_URL }}
+
+  # ===========================================================================
   # Post a skipped check-run when the parent run was dry, the version is not
   # on pub.dev, or the parent did not succeed. Lets promote-release
   # differentiate "not applicable" from "failing".

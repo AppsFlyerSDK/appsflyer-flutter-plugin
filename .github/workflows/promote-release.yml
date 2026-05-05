@@ -234,22 +234,26 @@ jobs:
             });
 
   # ===========================================================================
-  # Job 2: Notify Team
+  # Job 2: Notify Promote Failure
   # ===========================================================================
-  notify-ready:
-    name: 📢 Notify Ready for Merge
+  # Only fires when prepare-for-production fails. The reviewer-facing PR
+  # comment + PR body update inside prepare-for-production already cover the
+  # success path, so a "ready" Slack would be redundant. Production release
+  # itself posts the success Slack once it publishes.
+  notify-failure:
+    name: 📢 Notify Promote Failure
     needs: prepare-for-production
     runs-on: ubuntu-latest
-    if: always() && needs.prepare-for-production.result == 'success'
-    
+    if: always() && needs.prepare-for-production.result == 'failure'
+
     steps:
-      - name: Send Slack notification
+      - name: Send Slack failure notification
         uses: slackapi/slack-github-action@v1
         with:
           payload: |
             {
-              "text": "<!here>\n:white_check_mark: *Flutter Plugin Ready for Production*\n\nVersion: ${{ needs.prepare-for-production.outputs.version }}\nPR: ${{ github.event.pull_request.html_url }}\n\n*Action Required:* A maintainer needs to manually merge the PR to trigger the production release."
+              "text": "<!here>\n:warning: *Flutter promote-release blocked*\n\nPR: ${{ github.event.pull_request.html_url }}\nBranch: ${{ github.event.pull_request.head.ref }}\n\nThe promote workflow could not prepare the release branch for production. Common causes:\n• `rc-smoke/pub.dev` is missing or red on the PR head SHA — bump to `rcN+1` and rerun rc-release.\n• The version-strip push was rejected (branch protection or stale ref).\n\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.CI_SLACK_WEBHOOK_URL }}
-        continue-on-error: true  # Will gracefully fail if webhook not configured
+        continue-on-error: true
