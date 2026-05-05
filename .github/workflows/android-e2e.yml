@@ -96,11 +96,9 @@ jobs:
             # Connectivity precheck: fail fast with a clear message if the
             # emulator can't reach AppsFlyer hosts. Cheaper than discovering
             # this via a 4-minute phase_1 abort.
-            adb shell 'ping -c 1 -W 2 8.8.8.8' >/dev/null 2>&1 \
-              || { echo "::error::Emulator has no IP connectivity"; exit 1; }
+            adb shell 'ping -c 1 -W 2 8.8.8.8' >/dev/null 2>&1 || { echo "::error::Emulator has no IP connectivity"; exit 1; }
             adb shell 'getprop net.dns1; getprop net.dns2' || true
-            adb shell 'nslookup oyoxfj.conversions.appsflyersdk.com 2>&1 | head -5' \
-              || { echo "::error::Emulator DNS cannot resolve AppsFlyer hosts"; exit 1; }
+            adb shell 'nslookup oyoxfj.conversions.appsflyersdk.com 2>&1 | head -5' || { echo "::error::Emulator DNS cannot resolve AppsFlyer hosts"; exit 1; }
             cd example && flutter build apk --debug && cd ..
             ./scripts/af-scenario-runner.sh --platform android --plan .af-e2e/test-plan.json || ./scripts/dump-android-logs.sh
 

@@ -171,7 +171,7 @@ jobs:
     name: 🧪 rc-smoke iOS
     needs: resolve
     if: needs.resolve.outputs.should_run == 'true'
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - name: Checkout release branch
         uses: actions/checkout@v5
@@ -204,15 +204,34 @@ jobs:
           sudo xcode-select -s "/Applications/$XCODE"
           xcodebuild -version
 
-      - name: Boot iOS simulator (iPhone 15)
+      - name: Boot iOS simulator (plain iPhone, newest iOS 17/18)
         run: |
-          UDID=$(xcrun simctl list devices available 2>/dev/null \
-            | grep "iPhone 15" | grep -v "Plus\|Pro\|Max" \
-            | grep -oE '[A-F0-9-]{36}' | head -1)
+          # macos-15 ships iOS 18.5/18.6 (iPhone 16 family) and iOS 26.1/26.2
+          # (iPhone 16 + 17 families). We pick a plain "iPhone NN" (no Plus /
+          # Pro / Max / e / SE suffix) from the newest iOS 17/18 runtime so
+          # smoke runs against the same family the iOS E2E job uses; mirrors
+          # the picker in .github/workflows/ios-e2e.yml.
+          DEVICES_JSON=$(xcrun simctl list -j devices available)
+          UDID=$(echo "$DEVICES_JSON" | jq -r '
+            .devices
+            | to_entries
+            | map(select(.key | test("iOS-1[78]")))
+            | sort_by(.key) | reverse
+            | map(
+                . as $rt
+                | $rt.value
+                | map(select(.name | test("^iPhone 1[5-7]$")))
+                | first
+                | (if . then {udid} else empty end)
+              )
+            | first // empty
+            | .udid // empty
+          ')
           if [[ -z "$UDID" ]]; then
-            UDID=$(xcrun simctl list devices available 2>/dev/null \
-              | grep "iPhone" | grep -oE '[A-F0-9-]{36}' | head -1)
+            echo "No plain iPhone 15/16/17 on iOS 17/18 found; falling back to first available iPhone."
+            UDID=$(echo "$DEVICES_JSON" | jq -r '.devices[][] | select(.name | test("^iPhone")) | .udid' | head -1)
           fi
+          [[ -z "$UDID" ]] && { echo "::error::No iOS simulator available"; exit 1; }
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID" -b
           echo "IOS_SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"

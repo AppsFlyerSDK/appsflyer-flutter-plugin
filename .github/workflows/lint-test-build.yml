@@ -255,7 +255,7 @@ jobs:
   
   build-ios:
     name: 🍎 Build iOS Example
-    runs-on: macos-14  # macOS 14 (Sonoma) with Xcode 15+
+    runs-on: macos-15  # macOS 15 (Sequoia) with Xcode 16.4 default; matches ios-e2e + rc-smoke
     needs: test
     # Run when tests pass OR when skipped (skip_unit=true), AND skip_builds is
     # not set. Keeps today's "test fails -> skip the build" behavior on
