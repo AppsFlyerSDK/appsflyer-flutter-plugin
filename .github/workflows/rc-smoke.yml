@@ -288,6 +288,21 @@ jobs:
           ref: ${{ needs.resolve.outputs.head_sha }}
           fetch-depth: 1
 
+      # Same KVM perms workaround as android-e2e.yml. Some `ubuntu-latest`
+      # images leave /dev/kvm group-owned without adding the runner user
+      # to that group, which makes android-emulator-runner fall back to
+      # `-accel off` (software TCG). The emulator then takes ~9 minutes
+      # to boot and slirp networking comes up unreliably. Granting 0666
+      # via udev lets the action's ProbeKVM check pass and the emulator
+      # launch with `-accel kvm`.
+      - name: Enable KVM group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
+
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
@@ -341,7 +356,10 @@ jobs:
           api-level: 33
           arch: x86_64
           profile: pixel_6
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          # `-dns-server` mirrors android-e2e.yml: bypasses the host's
+          # systemd-resolved stub at 127.0.0.53 which the emulator's
+          # network namespace can't reach.
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -dns-server 8.8.8.8,1.1.1.1
           disable-animations: true
           script: |
             cd example_rc_smoke && flutter build apk --debug && cd ..
