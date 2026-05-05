@@ -54,6 +54,24 @@ jobs:
         with:
           ref: ${{ inputs.ref != '' && inputs.ref || github.ref }}
 
+      # Some `ubuntu-latest` runner images ship `/dev/kvm` owned by group
+      # `kvm` without adding the runner user to that group. When this
+      # happens, reactivecircus/android-emulator-runner falls back to
+      # `-accel off` (software TCG), which boots in ~9 minutes instead of
+      # ~30s and brings up slirp networking unreliably -- leading to
+      # "Emulator has no IP connectivity" even with `-dns-server` set.
+      # The udev rule below grants 0666 perms on /dev/kvm so the action's
+      # ProbeKVM check finds it accessible and uses `-accel kvm`. This is
+      # the fix recommended by GitHub's actions/runner-images team and
+      # the one printed by the action's own diagnostic message.
+      - name: Enable KVM group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
+
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
@@ -95,8 +113,20 @@ jobs:
             set -e
             # Connectivity precheck: fail fast with a clear message if the
             # emulator can't reach AppsFlyer hosts. Cheaper than discovering
-            # this via a 4-minute phase_1 abort.
-            adb shell 'ping -c 1 -W 2 8.8.8.8' >/dev/null 2>&1 || { echo "::error::Emulator has no IP connectivity"; exit 1; }
+            # this via a 4-minute phase_1 abort. We retry the ping for up
+            # to 30s because eth0 can take a beat to come up after
+            # sys.boot_completed flips to 1.
+            for i in 1 2 3 4 5 6; do
+              if adb shell 'ping -c 1 -W 2 8.8.8.8' >/dev/null 2>&1; then
+                echo "emulator IP connectivity OK (attempt $i)"
+                break
+              fi
+              if [ "$i" = "6" ]; then
+                echo "::error::Emulator has no IP connectivity after 30s"
+                exit 1
+              fi
+              sleep 5
+            done
             adb shell 'getprop net.dns1; getprop net.dns2' || true
             adb shell 'nslookup oyoxfj.conversions.appsflyersdk.com 2>&1 | head -5' || { echo "::error::Emulator DNS cannot resolve AppsFlyer hosts"; exit 1; }
             cd example && flutter build apk --debug && cd ..
