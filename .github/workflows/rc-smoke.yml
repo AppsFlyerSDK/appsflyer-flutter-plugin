@@ -6,7 +6,7 @@
 #
 # Fires automatically after rc-release.yml ("RC - Release Candidate") completes
 # with conclusion: success and dry_run: false. Builds example_rc_smoke/ with
-# appsflyer_sdk: =<X.Y.Z-rcN> pinned from pub.dev, runs SMOKE-001/002/003 via
+# appsflyer_sdk: <X.Y.Z-rcN> pinned from pub.dev, runs SMOKE-001/002/003 via
 # af-scenario-runner.sh on both platforms, uploads JSON reports, and posts a
 # check_run named rc-smoke/pub.dev on the release branch head SHA. That
 # check_run is what promote-release.yml verifies before stripping -rcN.
@@ -189,7 +189,12 @@ jobs:
         run: |
           set -euo pipefail
           rsync -a --exclude=pubspec.yaml --exclude=pubspec.lock --exclude=build/ --exclude=.dart_tool/ --exclude=ios/Pods/ --exclude=.env example/ example_rc_smoke/
-          sed -i.bak "s|^  appsflyer_sdk: .*|  appsflyer_sdk: =${{ needs.resolve.outputs.rc_version }}|" example_rc_smoke/pubspec.yaml
+          # Bare version is pub's exact-match syntax. The `=` prefix is
+          # npm/Cargo vocabulary, not pub's -- pub parses `=6.18.0-rc1` as
+          # "Invalid version constraint: Unknown text at =6.18.0-rc1" and
+          # bails before any network call. Plain `6.18.0-rc1` pins to that
+          # version exactly.
+          sed -i.bak "s|^  appsflyer_sdk: .*|  appsflyer_sdk: ${{ needs.resolve.outputs.rc_version }}|" example_rc_smoke/pubspec.yaml
           rm -f example_rc_smoke/pubspec.yaml.bak
           grep "^  appsflyer_sdk:" example_rc_smoke/pubspec.yaml
 
@@ -320,7 +325,12 @@ jobs:
         run: |
           set -euo pipefail
           rsync -a --exclude=pubspec.yaml --exclude=pubspec.lock --exclude=build/ --exclude=.dart_tool/ --exclude=.env example/ example_rc_smoke/
-          sed -i.bak "s|^  appsflyer_sdk: .*|  appsflyer_sdk: =${{ needs.resolve.outputs.rc_version }}|" example_rc_smoke/pubspec.yaml
+          # Bare version is pub's exact-match syntax. The `=` prefix is
+          # npm/Cargo vocabulary, not pub's -- pub parses `=6.18.0-rc1` as
+          # "Invalid version constraint: Unknown text at =6.18.0-rc1" and
+          # bails before any network call. Plain `6.18.0-rc1` pins to that
+          # version exactly.
+          sed -i.bak "s|^  appsflyer_sdk: .*|  appsflyer_sdk: ${{ needs.resolve.outputs.rc_version }}|" example_rc_smoke/pubspec.yaml
           rm -f example_rc_smoke/pubspec.yaml.bak
           grep "^  appsflyer_sdk:" example_rc_smoke/pubspec.yaml
 
