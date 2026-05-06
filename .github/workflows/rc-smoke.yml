@@ -6,7 +6,7 @@
 #
 # Fires automatically after rc-release.yml ("RC - Release Candidate") completes
 # with conclusion: success and dry_run: false. Builds example_rc_smoke/ with
-# appsflyer_sdk: =<X.Y.Z-rcN> pinned from pub.dev, runs SMOKE-001/002/003 via
+# appsflyer_sdk: <X.Y.Z-rcN> pinned from pub.dev, runs SMOKE-001/002/003 via
 # af-scenario-runner.sh on both platforms, uploads JSON reports, and posts a
 # check_run named rc-smoke/pub.dev on the release branch head SHA. That
 # check_run is what promote-release.yml verifies before stripping -rcN.
