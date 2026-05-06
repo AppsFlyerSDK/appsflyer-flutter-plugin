@@ -90,17 +90,17 @@
       "id": "phase_2",
       "name": "Background deep link (RC artifact)",
       "scenario_ref": "SMOKE-002",
-      "description": "Backgrounds the RC build after Phase 1. Deep link returns app to foreground. onDeepLinking fires with Status.FOUND.",
+      "description": "Backgrounds the RC build after Phase 1. Deep link returns app to foreground. onDeepLinking fires with Status.FOUND. iOS terminates the app and re-launches with `-deepLinkURL <url>`, which the example app's AppDelegate replays through `application:openURL:options:` -- bypasses iOS 17/18-simulator's 'Open in <App>?' confirmation prompt that `simctl openurl` triggers and that nothing in CI can dismiss. Mirrors the mechanic in .af-e2e/test-plan.json.",
       "requires_fresh_install": false,
-      "wait_after_trigger_sec": 5,
+      "wait_after_trigger_sec": 90,
       "deep_link_url": "afexample://deeplink?deep_link_value=qa_deeplink_bg&af_sub1=background_test&pid=testmedia&c=deeplink_test",
       "pre_actions": {
         "android": ["adb shell input keyevent KEYCODE_HOME", "sleep 2"],
-        "ios": ["xcrun simctl launch {{UDID}} com.apple.mobilesafari", "sleep 2"]
+        "ios": ["xcrun simctl terminate {{UDID}} {{BUNDLE_ID}}", "sleep 1"]
       },
       "trigger": {
-        "android": "adb shell am start -a android.intent.action.VIEW -d \"{{DEEP_LINK_URL}}\"",
-        "ios": "xcrun simctl openurl {{UDID}} \"{{DEEP_LINK_URL}}\""
+        "android": "adb shell am start -W -a android.intent.action.VIEW -d \"{{DEEP_LINK_URL}}\"",
+        "ios": "xcrun simctl launch {{UDID}} {{BUNDLE_ID}} -deepLinkURL \"{{DEEP_LINK_URL}}\""
       },
       "checks": [
         {
@@ -131,18 +131,18 @@
       "id": "phase_3",
       "name": "Foreground deep link (RC artifact)",
       "scenario_ref": "SMOKE-003",
-      "description": "Fresh install of the RC build. Brief launcher switch then deep link. onDeepLinking fires with Status.FOUND and deepLinkValue=qa_deeplink_fg.",
+      "description": "Fresh install of the RC build, then deep link. onDeepLinking fires with Status.FOUND and deepLinkValue=qa_deeplink_fg. iOS uses `simctl launch -deepLinkURL` + AppDelegate replay; same rationale as phase_2.",
       "requires_fresh_install": true,
       "wait_after_launch_sec": 240,
-      "wait_after_trigger_sec": 5,
+      "wait_after_trigger_sec": 90,
       "deep_link_url": "afexample://deeplink?deep_link_value=qa_deeplink_fg&af_sub1=foreground_test&pid=testmedia&c=deeplink_test",
       "pre_actions": {
         "android": ["adb shell am start -a android.intent.action.MAIN -c android.intent.category.HOME", "sleep 1"],
-        "ios": ["xcrun simctl launch {{UDID}} com.apple.Preferences", "sleep 1"]
+        "ios": ["xcrun simctl terminate {{UDID}} {{BUNDLE_ID}}", "sleep 1"]
       },
       "trigger": {
-        "android": "adb shell am start -a android.intent.action.VIEW -d \"{{DEEP_LINK_URL}}\"",
-        "ios": "xcrun simctl openurl {{UDID}} \"{{DEEP_LINK_URL}}\""
+        "android": "adb shell am start -W -a android.intent.action.VIEW -d \"{{DEEP_LINK_URL}}\"",
+        "ios": "xcrun simctl launch {{UDID}} {{BUNDLE_ID}} -deepLinkURL \"{{DEEP_LINK_URL}}\""
       },
       "checks": [
         {
