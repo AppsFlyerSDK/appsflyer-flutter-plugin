@@ -1,0 +1,139 @@
+# =============================================================================
+# Android E2E - integration tests (pre-publish)
+# =============================================================================
+#
+# Stage: RC-E2E in appsflyer-mobile-plugin-tooling/contracts/rc-release-contract.md.
+#
+# Runs the .af-e2e/test-plan.json scenarios against the plugin source
+# (example/ app linked to appsflyer_sdk via path: ..). Drives the unified
+# scripts/af-scenario-runner.sh on an Android emulator via
+# reactivecircus/android-emulator-runner (KVM on ubuntu-latest).
+#
+# Triggers:
+#   - workflow_call from rc-release.yml (the gate before publish-rc)
+#   - workflow_dispatch for manual reruns
+#   - Weekly cron (Sunday 03:00 UTC) to catch SDK / Flutter drift
+#
+# Reports land in .af-e2e/reports/ and are uploaded as android-e2e-<run>
+# artifacts. Workflow name (Android E2E) is what RELEASE_USER_MANUAL.md,
+# .cursor/rules, and rc-release.yml refer to.
+# =============================================================================
+
+name: Android E2E
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Branch, tag, or SHA to check out. Defaults to the calling workflow''s ref so existing callers keep working.'
+        required: false
+        type: string
+        default: ''
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch, tag, or SHA to check out (default: workflow ref)'
+        required: false
+        type: string
+        default: ''
+  schedule:
+    - cron: '0 3 * * 0'
+
+concurrency:
+  group: e2e-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e-android:
+    name: E2E Tests (Android)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref != '' && inputs.ref || github.ref }}
+
+      # Some `ubuntu-latest` runner images ship `/dev/kvm` owned by group
+      # `kvm` without adding the runner user to that group. When this
+      # happens, reactivecircus/android-emulator-runner falls back to
+      # `-accel off` (software TCG), which boots in ~9 minutes instead of
+      # ~30s and brings up slirp networking unreliably -- leading to
+      # "Emulator has no IP connectivity" even with `-dns-server` set.
+      # The udev rule below grants 0666 perms on /dev/kvm so the action's
+      # ProbeKVM check finds it accessible and uses `-accel kvm`. This is
+      # the fix recommended by GitHub's actions/runner-images team and
+      # the one printed by the action's own diagnostic message.
+      - name: Enable KVM group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install plugin dependencies
+        run: flutter pub get
+
+      - name: Install example app dependencies
+        working-directory: example
+        run: flutter pub get
+
+      - name: Write example/.env
+        env:
+          ENV_FILE: ${{ secrets.ENV_FILE }}
+        run: printf '%s\n' "$ENV_FILE" > example/.env
+
+      - name: Build and run E2E on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          arch: x86_64
+          profile: pixel_6
+          # -dns-server bypasses the host's systemd-resolved stub at 127.0.0.53,
+          # which the emulator's network namespace can't reach. Without this,
+          # every AppsFlyer SDK HTTP call fails with `Unable to resolve host`,
+          # startSDK returns code=40, and phase_1's sdk_started abort fires.
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -dns-server 8.8.8.8,1.1.1.1
+          disable-animations: true
+          script: |
+            set -e
+            # IMPORTANT: reactivecircus/android-emulator-runner@v2 runs each
+            # newline-separated line of `script:` as its own `sh -c` invocation,
+            # so multi-line shell constructs (for/while/if blocks) MUST be
+            # collapsed onto a single logical line.
+            #
+            # Connectivity precheck via DNS (UDP), NOT ping (ICMP). The Android
+            # emulator on Linux uses QEMU's slirp NAT, which does TCP/UDP fine
+            # but cannot forward ICMP echo without CAP_NET_RAW on the host
+            # process -- which the GitHub-hosted runner user does not have.
+            # `adb shell ping` therefore fails even when the SDK's HTTPS calls
+            # succeed. `nslookup` is a UDP DNS query that goes through slirp
+            # cleanly and validates the actual failure mode that triggered
+            # this whole investigation (`Unable to resolve host` for AppsFlyer
+            # domains). One retry absorbs any post-boot DNS startup grace.
+            adb shell 'getprop net.dns1; getprop net.dns2' || true
+            adb shell 'nslookup oyoxfj.conversions.appsflyersdk.com 2>&1 | head -5' || { sleep 10; adb shell 'nslookup oyoxfj.conversions.appsflyersdk.com 2>&1 | head -5'; } || { echo "::error::Emulator DNS cannot resolve AppsFlyer hosts"; exit 1; }
+            cd example && flutter build apk --debug && cd ..
+            ./scripts/af-scenario-runner.sh --platform android --plan .af-e2e/test-plan.json || ./scripts/dump-android-logs.sh
+
+      - name: Upload E2E reports
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: android-e2e-${{ github.run_number }}
+          path: .af-e2e/reports/
+          retention-days: 30

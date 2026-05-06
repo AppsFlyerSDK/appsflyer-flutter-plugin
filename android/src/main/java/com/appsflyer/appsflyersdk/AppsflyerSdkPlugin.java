@@ -92,7 +92,16 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
     PluginRegistry.NewIntentListener onNewIntentListener = new PluginRegistry.NewIntentListener() {
         @Override
         public boolean onNewIntent(Intent intent) {
-            activity.setIntent(intent);
+            if (activity != null) {
+                activity.setIntent(intent);
+            }
+            // Forward the intent to the SDK before its own onResume auto-handler
+            // runs and stamps the URI with af_consumed=true. Without this, warm-app
+            // VIEW intents get silently consumed and the registered DeepLinkListener
+            // never fires for the Dart side.
+            if (mApplication != null) {
+                AppsFlyerLib.getInstance().performOnDeepLinking(intent, mApplication);
+            }
             return false;
         }
     };

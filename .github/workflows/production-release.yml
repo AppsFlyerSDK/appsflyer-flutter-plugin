@@ -40,11 +40,6 @@ on:
         description: 'Version to release (must match pubspec.yaml)'
         required: true
         type: string
-      skip_tests:
-        description: 'Skip CI tests (use with caution!)'
-        required: false
-        type: boolean
-        default: false
       dry_run:
         description: 'Dry run (do not actually publish)'
         required: false
@@ -57,10 +52,6 @@ on:
       version:
         required: true
         type: string
-      skip_tests:
-        required: false
-        type: boolean
-        default: false
       dry_run:
         required: false
         type: boolean
@@ -81,22 +72,66 @@ jobs:
   validate-release:
     name: 🔍 Validate Release
     runs-on: ubuntu-latest
-    
-    # Run when manually dispatched, called by another workflow, or when a PR merge event happens
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event.pull_request.merged == true
+
+    # Merge guard: only run on dispatch / workflow_call, or on a real merge
+    # of a releases/* branch. Closing a release PR without merging, or
+    # merging a non-release branch, must short-circuit every job in this
+    # workflow (see the same guard on notify-team and release-summary).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'workflow_call' ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.merged == true &&
+       startsWith(github.event.pull_request.head.ref, 'releases/'))
     
     outputs:
       version: ${{ steps.get-version.outputs.version }}
       is_valid: ${{ steps.validate.outputs.is_valid }}
       is_release_branch: ${{ steps.validate.outputs.is_release_branch }}
-    
+      # Normalised dry_run across all three trigger paths. workflow_dispatch
+      # exposes inputs via github.event.inputs.* (string), workflow_call via
+      # inputs.* (boolean), and pull_request has no inputs at all. Without
+      # this normalisation, a workflow_call with dry_run: true would still
+      # publish, because downstream gates only saw github.event.inputs.dry_run
+      # which is empty under workflow_call.
+      is_dry_run: ${{ steps.dry-run.outputs.value }}
+
     steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      
-      - name: 🔍 Validate release source
+
+      - name: Resolve dry_run across trigger paths
+        id: dry-run
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DISPATCH_DRY: ${{ github.event.inputs.dry_run }}
+          CALL_DRY: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          case "$EVENT_NAME" in
+            workflow_dispatch)
+              if [[ "$DISPATCH_DRY" == "true" ]]; then
+                echo "value=true" >> "$GITHUB_OUTPUT"
+              else
+                echo "value=false" >> "$GITHUB_OUTPUT"
+              fi
+              ;;
+            workflow_call)
+              if [[ "$CALL_DRY" == "true" ]]; then
+                echo "value=true" >> "$GITHUB_OUTPUT"
+              else
+                echo "value=false" >> "$GITHUB_OUTPUT"
+              fi
+              ;;
+            *)
+              # pull_request and any other event: real release, never dry.
+              echo "value=false" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Validate release source
         id: validate
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -124,7 +159,7 @@ jobs:
             fi
           fi
       
-      - name: 📝 Get version from pubspec.yaml
+      - name: Get version from pubspec.yaml
         id: get-version
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -149,10 +184,10 @@ jobs:
             exit 1
           fi
       
-      - name: 🏷️ Check if tag already exists
+      - name: Check if tag already exists
         env:
           VERSION: ${{ steps.get-version.outputs.version }}
-          DRY_RUN: ${{ github.event.inputs.dry_run }}
+          DRY_RUN: ${{ steps.dry-run.outputs.value }}
         run: |
           # Check if tag exists locally or remotely
           if git rev-parse "$VERSION" >/dev/null 2>&1; then
@@ -182,49 +217,39 @@ jobs:
           echo "✅ Tag $VERSION does not exist - safe to proceed"
 
   # ===========================================================================
-  # Job 2: Run Final CI Check
+  # Job 2: Publish to pub.dev
   # ===========================================================================
-  # Runs the full CI pipeline one last time before publishing
+  # Publishes the Flutter plugin to pub.dev. Lint/Test/Build + E2E coverage
+  # for this version was already run by the RC's pre-publish-gate; running
+  # it again here against post-merge master would not gate publish (no
+  # downstream `if:` consumed its result), so it was removed.
   # ===========================================================================
-  
-  final-ci-check:
-    name: 🚀 Final CI Check
-    needs: validate-release
-    if: needs.validate-release.outputs.is_valid == 'true' && github.event.inputs.skip_tests != 'true'
-    uses: ./.github/workflows/ci.yml
-    secrets: inherit
 
-  # ===========================================================================
-  # Job 3: Publish to pub.dev
-  # ===========================================================================
-  # Publishes the Flutter plugin to pub.dev
-  # ===========================================================================
-  
   publish-to-pubdev:
     name: 📦 Publish to pub.dev
     runs-on: ubuntu-latest
-    needs: [validate-release, final-ci-check]
+    needs: [validate-release]
     if: always() && needs.validate-release.outputs.is_valid == 'true'
     
     steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
       
-      - name: 🔧 Setup Flutter SDK
+      - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
       
-      - name: ℹ️ Display Flutter version
+      - name: Display Flutter version
         run: |
           flutter --version
           dart --version
       
-      - name: 📦 Get dependencies
+      - name: Get dependencies
         run: flutter pub get
       
-      - name: 🔍 Validate package
+      - name: Validate package
         run: |
           echo "Running pub publish dry-run to validate package..."
           # Run dry-run and capture exit code
@@ -246,10 +271,10 @@ jobs:
             exit $EXIT_CODE
           fi
       
-      - name: 📝 Check pub.dev credentials
+      - name: Check pub.dev credentials
         env:
           PUB_CREDS_SET: ${{ secrets.PUB_DEV_CREDENTIALS != '' }}
-          DRY_RUN: ${{ github.event.inputs.dry_run }}
+          DRY_RUN: ${{ needs.validate-release.outputs.is_dry_run }}
         run: |
           if [[ "$PUB_CREDS_SET" != "true" ]]; then
             echo "⚠️ PUB_DEV_CREDENTIALS secret not found"
@@ -263,8 +288,8 @@ jobs:
             echo "✅ pub.dev credentials found"
           fi
       
-      - name: 🚀 Publish to pub.dev
-        if: github.event.inputs.dry_run != 'true'
+      - name: Publish to pub.dev
+        if: needs.validate-release.outputs.is_dry_run != 'true'
         run: |
           VERSION="${{ needs.validate-release.outputs.version }}"
           echo "Publishing version $VERSION to pub.dev..."
@@ -281,8 +306,8 @@ jobs:
           
           echo "✅ Successfully published to pub.dev"
       
-      - name: 🏷️ Verify publication
-        if: github.event.inputs.dry_run != 'true'
+      - name: Verify publication
+        if: needs.validate-release.outputs.is_dry_run != 'true'
         run: |
           VERSION="${{ needs.validate-release.outputs.version }}"
           
@@ -300,7 +325,7 @@ jobs:
           fi
 
   # ===========================================================================
-  # Job 4: Create GitHub Release
+  # Job 3: Create GitHub Release
   # ===========================================================================
   # Creates an official GitHub release with release notes
   # ===========================================================================
@@ -309,15 +334,15 @@ jobs:
     name: 🏷️ Create GitHub Release
     runs-on: ubuntu-latest
     needs: [validate-release, publish-to-pubdev]
-    if: always() && needs.validate-release.outputs.is_valid == 'true' && github.event.inputs.dry_run != 'true'
+    if: always() && needs.validate-release.outputs.is_valid == 'true' && needs.validate-release.outputs.is_dry_run != 'true'
     
     steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
       
-      - name: 📝 Extract release notes from CHANGELOG
+      - name: Extract release notes from CHANGELOG
         id: changelog
         run: |
           VERSION="${{ needs.validate-release.outputs.version }}"
@@ -343,7 +368,7 @@ jobs:
           
           echo "Release notes extracted"
       
-      - name: 📝 Enhance release notes
+      - name: Enhance release notes
         run: |
           VERSION="${{ needs.validate-release.outputs.version }}"
           
@@ -399,7 +424,7 @@ jobs:
           
           echo "Enhanced release notes created"
       
-      - name: 🏷️ Create GitHub Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.validate-release.outputs.version }}
@@ -410,14 +435,14 @@ jobs:
           generate_release_notes: false
           token: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: ✅ Release created
+      - name: Release created
         run: |
           VERSION="${{ needs.validate-release.outputs.version }}"
           echo "✅ GitHub release v$VERSION created successfully"
           echo "🔗 https://github.com/${{ github.repository }}/releases/tag/$VERSION"
 
   # ===========================================================================
-  # Job 5: Notify Team (Placeholder for Slack Integration)
+  # Job 4: Notify Team
   # ===========================================================================
   # Sends notification to Slack channel about the production release
   # ===========================================================================
@@ -426,13 +451,25 @@ jobs:
     name: 📢 Notify Team
     runs-on: ubuntu-latest
     needs: [validate-release, publish-to-pubdev, create-github-release]
-    if: always() && github.event.inputs.dry_run != 'true'
+    # Same merge guard as validate-release / release-summary, plus the
+    # normalised dry_run filter. is_dry_run is computed in validate-release
+    # and works across workflow_dispatch / workflow_call / pull_request.
+    if: >-
+      always() &&
+      needs.validate-release.outputs.is_dry_run != 'true' &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        github.event_name == 'workflow_call' ||
+        (github.event_name == 'pull_request' &&
+         github.event.pull_request.merged == true &&
+         startsWith(github.event.pull_request.head.ref, 'releases/'))
+      )
     
     steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
       
-      - name: 📝 Extract SDK versions and changelog
+      - name: Extract SDK versions and changelog
         id: extract-info
         run: |
           VERSION="${{ needs.validate-release.outputs.version }}"
@@ -475,7 +512,7 @@ jobs:
           echo "$CHANGELOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
       
-      - name: 🎫 Fetch Jira tickets
+      - name: Fetch Jira tickets
         id: jira-tickets
         continue-on-error: true  # Don't fail CI if Jira fetch fails
         run: |
@@ -542,42 +579,55 @@ jobs:
             echo "EOF" >> $GITHUB_OUTPUT
           fi
       
-      - name: 📢 Determine status
+      - name: Determine status and failed stage
         id: status
+        env:
+          VALIDATE_RESULT: ${{ needs.validate-release.result }}
+          PUBLISH_RESULT: ${{ needs.publish-to-pubdev.result }}
+          RELEASE_RESULT: ${{ needs.create-github-release.result }}
         run: |
-          PUBLISH_STATUS="${{ needs.publish-to-pubdev.result }}"
-          RELEASE_STATUS="${{ needs.create-github-release.result }}"
-          
-          if [[ "$PUBLISH_STATUS" == "success" ]] && [[ "$RELEASE_STATUS" == "success" ]]; then
-            echo "success=true" >> $GITHUB_OUTPUT
-          else
-            echo "success=false" >> $GITHUB_OUTPUT
+          set -euo pipefail
+          if [[ "$VALIDATE_RESULT" == "success" \
+             && "$PUBLISH_RESULT"  == "success" \
+             && "$RELEASE_RESULT"  == "success" ]]; then
+            echo "success=true" >> "$GITHUB_OUTPUT"
+            echo "failed_stage=" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
-      
-      - name: 📨 Send Slack notification
+          echo "success=false" >> "$GITHUB_OUTPUT"
+          # Stage attribution: top-down, first non-success wins.
+          if [[ "$VALIDATE_RESULT" != "success" ]]; then
+            echo "failed_stage=validate-release" >> "$GITHUB_OUTPUT"
+          elif [[ "$PUBLISH_RESULT" != "success" ]]; then
+            echo "failed_stage=publish-to-pubdev" >> "$GITHUB_OUTPUT"
+          else
+            echo "failed_stage=create-github-release" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Send Slack notification
         if: steps.status.outputs.success == 'true'
         uses: slackapi/slack-github-action@v1
         with:
           payload: |
             {
-              "text": "<!here>\n:flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter:\n\n*Flutter:*\nappsflyer_sdk: ^${{ needs.validate-release.outputs.version }} is published to Production.\n\n*Sources:*\n:github: https://github.com/${{ github.repository }}/tree/master\n:pubdev: https://pub.dev/packages/appsflyer_sdk/versions/${{ needs.validate-release.outputs.version }}\n\n*Changes and fixes:*\n${{ steps.extract-info.outputs.changelog }}\n\n*Tests:*\n:white_check_mark: CI pipeline passed.\n:white_check_mark: Unit tests passed.\n:white_check_mark: Android and iOS builds successful.\n\n*Linked tickets and issues:*\n${{ steps.jira-tickets.outputs.tickets }}\n\n*Native SDK's:*\n:android: ${{ steps.extract-info.outputs.android_sdk }}\n:apple: ${{ steps.extract-info.outputs.ios_sdk }}\n\n*Purchase Connector:*\n:android: ${{ steps.extract-info.outputs.android_pc }}\n:apple: ${{ steps.extract-info.outputs.ios_pc }}\n\n:flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter:"
+              "text": "<!here>\n:flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter:\n\n*Flutter:*\nappsflyer_sdk: ^${{ needs.validate-release.outputs.version }} is published to Production.\n\n:white_check_mark: rc-smoke/pub.dev passed before promotion (verified by promote-release.yml).\n\n*Sources:*\n:github: https://github.com/${{ github.repository }}/tree/master\n:github: Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n:pubdev: https://pub.dev/packages/appsflyer_sdk/versions/${{ needs.validate-release.outputs.version }}\n\n*Changes and fixes:*\n${{ steps.extract-info.outputs.changelog }}\n\n*Linked tickets and issues:*\n${{ steps.jira-tickets.outputs.tickets }}\n\n*Native SDK's:*\n:android: ${{ steps.extract-info.outputs.android_sdk }}\n:apple: ${{ steps.extract-info.outputs.ios_sdk }}\n\n*Purchase Connector:*\n:android: ${{ steps.extract-info.outputs.android_pc }}\n:apple: ${{ steps.extract-info.outputs.ios_pc }}\n\n:flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter:"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.CI_SLACK_WEBHOOK_URL }}
-      
-      - name: 📨 Send failure notification
+
+      - name: Send failure notification
         if: steps.status.outputs.success == 'false'
         uses: slackapi/slack-github-action@v1
         with:
           payload: |
             {
-              "text": "<!here>\n:warning: *Flutter Plugin Release Failed*\n\nVersion: ${{ needs.validate-release.outputs.version }}\nStatus: Release encountered issues\n\nPlease check the workflow logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              "text": "<!here>\n:warning: *Flutter production release failed at `${{ steps.status.outputs.failed_stage }}`*\n\nVersion: ${{ needs.validate-release.outputs.version }}\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\n*Stage results:*\n• validate-release: ${{ needs.validate-release.result }}\n• publish-to-pubdev: ${{ needs.publish-to-pubdev.result }}\n• create-github-release: ${{ needs.create-github-release.result }}"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.CI_SLACK_WEBHOOK_URL }}
 
   # ===========================================================================
-  # Job 6: Production Release Summary
+  # Job 5: Production Release Summary
   # ===========================================================================
   # Provides a comprehensive summary of the production release
   # ===========================================================================
@@ -585,16 +635,23 @@ jobs:
   release-summary:
     name: 📋 Release Summary
     runs-on: ubuntu-latest
-    needs: [validate-release, final-ci-check, publish-to-pubdev, create-github-release]
-    if: always()
+    needs: [validate-release, publish-to-pubdev, create-github-release]
+    # Same merge guard as validate-release / notify-team.
+    if: >-
+      always() && (
+        github.event_name == 'workflow_dispatch' ||
+        github.event_name == 'workflow_call' ||
+        (github.event_name == 'pull_request' &&
+         github.event.pull_request.merged == true &&
+         startsWith(github.event.pull_request.head.ref, 'releases/'))
+      )
     
     steps:
-      - name: 📊 Display Release Summary
+      - name: Display Release Summary
         env:
           VERSION: ${{ needs.validate-release.outputs.version }}
-          DRY_RUN: ${{ github.event.inputs.dry_run }}
+          DRY_RUN: ${{ needs.validate-release.outputs.is_dry_run }}
           VALIDATE_RESULT: ${{ needs.validate-release.result }}
-          CI_RESULT: ${{ needs.final-ci-check.result }}
           PUBLISH_RESULT: ${{ needs.publish-to-pubdev.result }}
           RELEASE_RESULT: ${{ needs.create-github-release.result }}
           REPO: ${{ github.repository }}
@@ -606,7 +663,6 @@ jobs:
           echo "Dry Run: $DRY_RUN"
           echo "-----------------------------------------"
           echo "Validation: $VALIDATE_RESULT"
-          echo "Final CI Check: $CI_RESULT"
           echo "pub.dev Publish: $PUBLISH_RESULT"
           echo "GitHub Release: $RELEASE_RESULT"
           echo "========================================="

@@ -1,0 +1,31 @@
+name: appsflyer_sdk_rc_smoke
+description: RC smoke test app for the AppsFlyer Flutter plugin. Pins the published RC version from pub.dev. CI workflow rc-smoke.yml templates the version string into this file before building.
+
+version: 1.0.0+1
+
+publish_to: none
+
+environment:
+  sdk: '>=2.12.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # CI templates the exact pinned RC version here, e.g.:
+  #   appsflyer_sdk: =6.18.0-rc1
+  # Local runs via scripts/simulate-rc-pipeline.sh substitute path: ..
+  appsflyer_sdk: RC_VERSION_PLACEHOLDER
+
+  cupertino_icons: ^1.0.6
+  flutter_dotenv: ^5.1.0
+  path_provider: ^2.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - .env

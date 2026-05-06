@@ -21,3 +21,9 @@ example/android/local.properties
 # CI/CD files
 .github/
 .travis.yml
+
+# RC pipeline scaffolding (never part of the pub.dev artifact)
+example_rc_smoke/
+.af-e2e/
+.af-smoke/
+scripts/

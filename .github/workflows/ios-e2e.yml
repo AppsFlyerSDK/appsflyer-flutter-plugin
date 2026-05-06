@@ -1,0 +1,174 @@
+# =============================================================================
+# iOS E2E - integration tests (pre-publish)
+# =============================================================================
+#
+# Stage: RC-E2E in appsflyer-mobile-plugin-tooling/contracts/rc-release-contract.md.
+#
+# Runs the .af-e2e/test-plan.json scenarios against the plugin source
+# (example/ app linked to appsflyer_sdk via path: ..). Drives the unified
+# scripts/af-scenario-runner.sh on an iOS simulator.
+#
+# Triggers:
+#   - workflow_call from rc-release.yml (the gate before publish-rc)
+#   - workflow_dispatch for manual reruns and ad-hoc validation
+#   - Weekly cron (Sunday 02:00 UTC) to catch SDK / Flutter drift
+#
+# Reports land in .af-e2e/reports/ and are uploaded as ios-e2e-<run> artifacts.
+# Workflow name (iOS E2E) is what RELEASE_USER_MANUAL.md, .cursor/rules, and
+# rc-release.yml refer to.
+# =============================================================================
+
+name: iOS E2E
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Branch, tag, or SHA to check out. Defaults to the calling workflow''s ref so existing callers keep working.'
+        required: false
+        type: string
+        default: ''
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch, tag, or SHA to check out (default: workflow ref)'
+        required: false
+        type: string
+        default: ''
+  schedule:
+    - cron: '0 2 * * 0'
+
+concurrency:
+  group: e2e-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e-ios:
+    name: E2E Tests (iOS)
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref != '' && inputs.ref || github.ref }}
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Select Xcode version
+        run: |
+          XCODE=$(ls /Applications | grep -E "^Xcode_[0-9]" | sort -V | tail -1)
+          sudo xcode-select -s "/Applications/$XCODE"
+          xcodebuild -version
+
+      - name: Boot iOS simulator (newest iOS runtime)
+        run: |
+          # Pick a plain iPhone (15/16/17) from the newest available iOS 17/18
+          # runtime. macos-15 ships iOS 18.5, 18.6, 26.1, 26.2 simulators; we
+          # filter to iOS 17/18 for our deep-link phases. The iOS 17.0 sim is
+          # avoided because it forces an "Open in <App>?" confirmation prompt
+          # for `simctl openurl` against custom URL schemes that nothing in CI
+          # can dismiss; iOS 17.4+ and iOS 18.x deliver the URL straight to
+          # `application:openURL:options:` without a prompt. macos-15's 18.x
+          # runtimes are the deterministic happy path here.
+          DEVICES_JSON=$(xcrun simctl list -j devices available)
+          UDID=$(echo "$DEVICES_JSON" | jq -r '
+            .devices
+            | to_entries
+            | map(select(.key | test("iOS-1[78]")))
+            | sort_by(.key) | reverse
+            | map(
+                . as $rt
+                | $rt.value
+                | map(select(.name | test("^iPhone 1[5-7]$")))
+                | first
+                | (if . then {udid, runtime: $rt.key, name} else empty end)
+              )
+            | first // empty
+            | .udid // empty
+          ')
+          if [[ -z "$UDID" ]]; then
+            echo "No iPhone 15/16/17 on iOS 17/18 found; falling back to first available iPhone."
+            UDID=$(echo "$DEVICES_JSON" | jq -r '.devices[][] | select(.name | test("^iPhone")) | .udid' | head -1)
+          fi
+          [[ -z "$UDID" ]] && { echo "::error::No iOS simulator available"; exit 1; }
+          echo "Selected simulator UDID: $UDID"
+          echo "$DEVICES_JSON" | jq -r --arg u "$UDID" '
+            .devices | to_entries[] | . as $rt
+            | $rt.value[] | select(.udid == $u)
+            | "Runtime: \($rt.key)  Device: \(.name)"
+          '
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          echo "IOS_SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v5
+        with:
+          path: example/ios/Pods
+          key: pods-${{ hashFiles('example/ios/Podfile.lock') }}
+          restore-keys: pods-
+
+      - name: Install plugin dependencies
+        run: flutter pub get
+
+      - name: Install example app dependencies
+        working-directory: example
+        run: flutter pub get
+
+      - name: Install CocoaPods
+        working-directory: example/ios
+        run: pod install
+
+      - name: Write example/.env
+        env:
+          ENV_FILE: ${{ secrets.ENV_FILE }}
+        run: printf '%s\n' "$ENV_FILE" > example/.env
+
+      - name: Cache iOS build output
+        uses: actions/cache@v5
+        with:
+          path: example/build/ios
+          key: ios-build-${{ hashFiles('ios/**', 'lib/**', 'example/lib/**', 'example/ios/**', 'pubspec.yaml') }}
+          restore-keys: ios-build-
+
+      - name: Build iOS simulator app (debug)
+        working-directory: example
+        run: flutter build ios --simulator --debug
+
+      - name: Run E2E (af-scenario-runner against .af-e2e/test-plan.json)
+        run: ./scripts/af-scenario-runner.sh --platform ios --plan .af-e2e/test-plan.json
+
+      - name: Dump iOS QA log file (debug)
+        if: always()
+        run: |
+          SIM_DATA="$HOME/Library/Developer/CoreSimulator/Devices/$IOS_SIMULATOR_UDID/data"
+          LOG=$(find "$SIM_DATA/Containers/Data/Application" -name "af_qa_logs.txt" 2>/dev/null | head -1)
+          echo "=== QA log: ${LOG:-not found} ==="
+          cat "$LOG" 2>/dev/null | head -200 || echo "(empty)"
+
+      - name: Dump simulator state and deep-link events (debug)
+        if: failure()
+        run: |
+          echo "=== Booted simulators ==="
+          xcrun simctl list devices booted || true
+          echo "=== Front app / installed apps for $IOS_SIMULATOR_UDID ==="
+          xcrun simctl listapps "$IOS_SIMULATOR_UDID" 2>/dev/null \
+            | grep -E "com.appsflyer|CFBundleURLSchemes|afexample" || true
+          echo "=== Last 90s of simctl URL/launchservices events ==="
+          xcrun simctl spawn "$IOS_SIMULATOR_UDID" log show \
+            --last 90s --style compact 2>/dev/null \
+            | grep -E "Opening URL|openURL|launchservices|com.appsflyer.example|FrontBoard:Process" \
+            | tail -200 || true
+
+      - name: Upload E2E reports
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: ios-e2e-${{ github.run_number }}
+          path: .af-e2e/reports/
+          retention-days: 30

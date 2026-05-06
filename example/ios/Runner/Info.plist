@@ -22,6 +22,26 @@
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.appsflyer.example.deeplink</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>afexample</string>
+			</array>
+		</dict>
+	</array>
+	<!-- Opt out of Flutter's built-in deep link handler so the AppsFlyer
+	     plugin's `application:openURL:options:` and `scene:openURLContexts:`
+	     receive the URL and forward it to AppsFlyerLib, per Flutter's deep
+	     linking guide:
+	     https://docs.flutter.dev/ui/navigation/deep-linking#migrating-from-plugin-based-deep-linking -->
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>

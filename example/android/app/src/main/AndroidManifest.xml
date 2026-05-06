@@ -21,6 +21,14 @@
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme" />
 
+            <!-- Opt out of Flutter's built-in deep link handler so the AppsFlyer
+                 plugin's onNewIntent/getIntent path receives the VIEW intent and
+                 forwards it to AppsFlyerLib, per Flutter's deep linking guide:
+                 https://docs.flutter.dev/ui/navigation/deep-linking#migrating-from-plugin-based-deep-linking -->
+            <meta-data
+                android:name="flutter_deeplinking_enabled"
+                android:value="false" />
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -34,6 +42,13 @@
                 <data
                     android:host="flutterdp.onelink.me"
                     android:scheme="https" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="afexample" />
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
