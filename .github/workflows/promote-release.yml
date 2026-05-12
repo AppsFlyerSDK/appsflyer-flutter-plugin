@@ -50,14 +50,53 @@ jobs:
       release_branch: ${{ steps.compute-version.outputs.release_branch }}
     
     steps:
-      - name: 📥 Checkout release branch
-        uses: actions/checkout@v4
+      - name: Verify rc-smoke/pub.dev check-run is green
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = context.payload.pull_request.head.sha;
+            const checkName = 'rc-smoke/pub.dev';
+
+            const { data } = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: sha,
+              check_name: checkName
+            });
+
+            const runs = (data.check_runs || []).filter(r => r.status === 'completed');
+            runs.sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
+            const latest = runs[0];
+
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/workflows/rc-smoke.yml`;
+            const prNumber = context.payload.pull_request.number;
+
+            if (!latest) {
+              const body = `🛑 **Promote blocked.** No \`${checkName}\` check-run exists on ${sha}.\n\n` +
+                `Run [rc-smoke.yml](${runUrl}) manually with the RC version, or wait for the auto-trigger from the RC-release workflow, then re-apply the label.`;
+              await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: prNumber, body });
+              core.setFailed(`${checkName} is missing on ${sha}`);
+              return;
+            }
+            if (latest.conclusion !== 'success') {
+              const body = `🛑 **Promote blocked.** \`${checkName}\` on ${sha} concluded \`${latest.conclusion}\`.\n\n` +
+                `Details: ${latest.details_url}\n\n` +
+                `If the RC is genuinely broken on pub.dev, bump to \`rcN+1\` and rerun the RC-release workflow. A skipped check-run is not sufficient for promotion — publish the RC for real (\`dry_run=false\`), then re-apply the label.`;
+              await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: prNumber, body });
+              core.setFailed(`${checkName} conclusion is ${latest.conclusion} on ${sha}`);
+              return;
+            }
+
+            core.info(`${checkName} is success on ${sha}; proceeding with promotion.`);
+
+      - name: Checkout release branch
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: 🔍 Compute production version
+      - name: Compute production version
         id: compute-version
         env:
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
@@ -83,14 +122,14 @@ jobs:
           echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           echo "release_branch=$RELEASE_BRANCH" >> $GITHUB_OUTPUT
       
-      - name: 📝 Update pubspec.yaml to production version
+      - name: Update pubspec.yaml to production version
         run: |
           VERSION='${{ steps.compute-version.outputs.version }}'
           echo "Updating pubspec.yaml to production version: $VERSION"
           sed -i "s/^version: .*/version: $VERSION/" pubspec.yaml
           grep "^version:" pubspec.yaml
       
-      - name: 📝 Update plugin version constants (Android/iOS/Dart)
+      - name: Update plugin version constants (Android/iOS/Dart)
         run: |
           VERSION='${{ steps.compute-version.outputs.version }}'
           echo "Updating PLUGIN_VERSION constants to: $VERSION"
@@ -116,7 +155,7 @@ jobs:
             echo "✅ iOS:" && grep "kAppsFlyerPluginVersion" "$IOS_FILE"
           fi
       
-      - name: 💾 Commit and push version changes
+      - name: Commit and push version changes
         run: |
           VERSION='${{ steps.compute-version.outputs.version }}'
           CURRENT='${{ steps.compute-version.outputs.current_version }}'
@@ -133,7 +172,7 @@ jobs:
             echo "ℹ️ No version changes needed"
           fi
       
-      - name: 📝 Update PR description
+      - name: Update PR description
         uses: actions/github-script@v7
         with:
           script: |
@@ -167,7 +206,7 @@ jobs:
               body: newBody
             });
       
-      - name: 📢 Add comment to PR
+      - name: Add comment to PR
         uses: actions/github-script@v7
         with:
           script: |
@@ -195,22 +234,26 @@ jobs:
             });
 
   # ===========================================================================
-  # Job 2: Notify Team
+  # Job 2: Notify Promote Failure
   # ===========================================================================
-  notify-ready:
-    name: 📢 Notify Ready for Merge
+  # Only fires when prepare-for-production fails. The reviewer-facing PR
+  # comment + PR body update inside prepare-for-production already cover the
+  # success path, so a "ready" Slack would be redundant. Production release
+  # itself posts the success Slack once it publishes.
+  notify-failure:
+    name: 📢 Notify Promote Failure
     needs: prepare-for-production
     runs-on: ubuntu-latest
-    if: always() && needs.prepare-for-production.result == 'success'
-    
+    if: always() && needs.prepare-for-production.result == 'failure'
+
     steps:
-      - name: 📨 Send Slack notification
+      - name: Send Slack failure notification
         uses: slackapi/slack-github-action@v1
         with:
           payload: |
             {
-              "text": "<!here>\n:white_check_mark: *Flutter Plugin Ready for Production*\n\nVersion: ${{ needs.prepare-for-production.outputs.version }}\nPR: ${{ github.event.pull_request.html_url }}\n\n*Action Required:* A maintainer needs to manually merge the PR to trigger the production release."
+              "text": "<!here>\n:warning: *Flutter promote-release blocked*\n\nPR: ${{ github.event.pull_request.html_url }}\nBranch: ${{ github.event.pull_request.head.ref }}\n\nThe promote workflow could not prepare the release branch for production. Common causes:\n• `rc-smoke/pub.dev` is missing or red on the PR head SHA — bump to `rcN+1` and rerun rc-release.\n• The version-strip push was rejected (branch protection or stale ref).\n\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.CI_SLACK_WEBHOOK_URL }}
-        continue-on-error: true  # Will gracefully fail if webhook not configured
+        continue-on-error: true

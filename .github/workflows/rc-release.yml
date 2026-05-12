@@ -49,13 +49,18 @@ on:
         description: 'Android native AppsFlyer SDK version (e.g., 6.17.4)'
         required: true
         type: string
-      deploy_to_qa:
-        description: 'Open PR to master and publish RC to pub.dev'
+      skip_unit:
+        description: 'Skip the unit/lint/format job inside Lint, Test & Build (release builds still run; failure of this leg blocks publish, skipped passes)'
         required: false
         type: boolean
         default: false
-      skip_tests:
-        description: 'Skip reusable CI when running this workflow (PR and production flows still run CI)'
+      skip_builds:
+        description: 'Skip the Android + iOS release builds inside Lint, Test & Build (unit job still runs; failure of this leg blocks publish, skipped passes)'
+        required: false
+        type: boolean
+        default: false
+      skip_e2e:
+        description: 'Skip RC-E2E iOS + Android jobs (BLOCKS publish-rc — used for fast iteration on the rest of the pipeline)'
         required: false
         type: boolean
         default: false
@@ -91,22 +96,50 @@ jobs:
       release_branch: ${{ steps.compute.outputs.release_branch }}
       ios_sdk_version: ${{ steps.compute.outputs.ios_sdk_version }}
       android_sdk_version: ${{ steps.compute.outputs.android_sdk_version }}
-      deploy_to_qa: ${{ steps.compute.outputs.deploy_to_qa }}
-      dry_run: ${{ steps.compute.outputs.dry_run }}
+      # Normalised dry_run. Resolved in its own step so it survives even if
+      # the later `compute` step exits 1 on bad inputs, which means the
+      # notify-team failure Slack always sees a defined value. Mirrors the
+      # same pattern in production-release.yml so the two workflows stay
+      # aligned on naming and resolution semantics.
+      is_dry_run: ${{ steps.dry-run.outputs.value }}
     
     steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
-      
-      - name: 🔍 Validate and compute
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Resolve dry_run across trigger paths
+        id: dry-run
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DISPATCH_DRY: ${{ github.event.inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          # Normalise dry_run into a string 'true'/'false' so downstream
+          # `!= 'true'` checks behave consistently. Today only
+          # workflow_dispatch fires this workflow; the case statement keeps
+          # the door open for future workflow_call additions without
+          # re-introducing the production-release-style bug.
+          case "$EVENT_NAME" in
+            workflow_dispatch)
+              if [[ "$DISPATCH_DRY" == "true" ]]; then
+                echo "value=true" >> "$GITHUB_OUTPUT"
+              else
+                echo "value=false" >> "$GITHUB_OUTPUT"
+              fi
+              ;;
+            *)
+              # Any other trigger: real run, never dry.
+              echo "value=false" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Validate and compute
         id: compute
         env:
           VERSION: ${{ github.event.inputs.flutter_version }}
           IOS_VER: ${{ github.event.inputs.ios_sdk_version }}
           AND_VER: ${{ github.event.inputs.android_sdk_version }}
           BASE_BRANCH_INPUT: ${{ github.event.inputs.base_branch }}
-          DEPLOY_TO_QA: ${{ github.event.inputs.deploy_to_qa }}
-          DRY_RUN_INPUT: ${{ github.event.inputs.dry_run }}
         run: |
           set -euo pipefail
 
@@ -143,20 +176,27 @@ jobs:
           echo "release_branch=$RELEASE_BRANCH" >> $GITHUB_OUTPUT
           echo "ios_sdk_version=$IOS_VER" >> $GITHUB_OUTPUT
           echo "android_sdk_version=$AND_VER" >> $GITHUB_OUTPUT
-          echo "deploy_to_qa=$DEPLOY_TO_QA" >> $GITHUB_OUTPUT
-          echo "dry_run=$DRY_RUN_INPUT" >> $GITHUB_OUTPUT
 
   # ===========================================================================
-  # Job 2: Run CI Pipeline
+  # Job 2: Run Lint, Test & Build (gated via pre-publish-gate)
   # ===========================================================================
-  # Reuses the main CI workflow to run tests and builds
+  # Reuses lint-test-build.yml. Runs in parallel with prepare-branch + E2E
+  # since release-mode build coverage is independent of the version bumps and
+  # E2E covers debug-build coverage. Result feeds into pre-publish-gate:
+  # failure here blocks publish-rc; skipped (skip_unit/skip_builds) passes.
+  # Note: tests run against the dispatched base branch (e.g. development),
+  # not the release branch — by design, since the release branch only adds
+  # version-string bumps that the unit tests do not cover.
   # ===========================================================================
-  
+
   run-ci:
-    name: 🚀 Run CI Pipeline
+    name: 🚀 Lint, Test & Build
     needs: validate-release
-    if: ${{ needs.validate-release.outputs.is_valid == 'true' && github.event.inputs.skip_tests != 'true' }}
-    uses: ./.github/workflows/ci.yml
+    if: ${{ needs.validate-release.outputs.is_valid == 'true' }}
+    uses: ./.github/workflows/lint-test-build.yml
+    with:
+      skip_unit: ${{ github.event.inputs.skip_unit == 'true' }}
+      skip_builds: ${{ github.event.inputs.skip_builds == 'true' }}
     secrets: inherit
 
   # ===========================================================================
@@ -166,24 +206,28 @@ jobs:
   prepare-branch:
     name: 🌿 Create Release Branch & Apply Changes
     runs-on: ubuntu-latest
-    needs: [validate-release, run-ci]
+    # No dependency on run-ci. Lint, Test & Build runs in parallel; its
+    # result feeds into pre-publish-gate, not into prepare-branch. Keeps the
+    # critical path validate -> prepare -> e2e -> publish-rc as short as
+    # possible while still gating publish on Lint/Test/Build via the gate.
+    needs: [validate-release]
     if: always() && needs.validate-release.outputs.is_valid == 'true'
     outputs:
       release_branch: ${{ steps.push.outputs.release_branch }}
     steps:
-      - name: 📥 Checkout base branch
-        uses: actions/checkout@v4
+      - name: Checkout base branch
+        uses: actions/checkout@v5
         with:
           ref: ${{ needs.validate-release.outputs.base_branch }}
           fetch-depth: 0
 
-      - name: 🔧 Setup Flutter SDK
+      - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
-      - name: 🌿 Create release branch
+      - name: Create release branch
         id: branch
         run: |
           set -e
@@ -197,7 +241,7 @@ jobs:
             git checkout -b "$REL_BRANCH"
           fi
 
-      - name: 📝 Update pubspec.yaml version (RC full)
+      - name: Update pubspec.yaml version (RC full)
         run: |
           VERSION='${{ needs.validate-release.outputs.version }}'
           echo "Setting pubspec.yaml version to $VERSION (includes -rcN)"
@@ -205,14 +249,14 @@ jobs:
           rm pubspec.yaml.bak
           grep "^version:" pubspec.yaml
 
-      - name: 📝 Update Android SDK dependency
+      - name: Update Android SDK dependency
         run: |
           AND_VER='${{ needs.validate-release.outputs.android_sdk_version }}'
           sed -i.bak "s/com.appsflyer:af-android-sdk:[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/com.appsflyer:af-android-sdk:${AND_VER}/" android/build.gradle
           rm android/build.gradle.bak
           grep "af-android-sdk:" -n android/build.gradle | head -1
 
-      - name: 📝 Update iOS podspec version and dependencies
+      - name: Update iOS podspec version and dependencies
         run: |
           PODSPEC_VERSION='${{ needs.validate-release.outputs.podspec_version }}'
           IOS_VER='${{ needs.validate-release.outputs.ios_sdk_version }}'
@@ -231,7 +275,7 @@ jobs:
             echo "⚠️ $FILE not found"
           fi
 
-      - name: 📝 Update plugin version constants (Android/iOS/Dart)
+      - name: Update plugin version constants (Android/iOS/Dart)
         run: |
           VERSION='${{ needs.validate-release.outputs.version }}'
           echo "Updating PLUGIN_VERSION constants to: $VERSION"
@@ -260,7 +304,7 @@ jobs:
             echo "✅ iOS:" && grep "kAppsFlyerPluginVersion" "$IOS_FILE"
           fi
 
-      - name: 📝 Update README SDK and Purchase Connector versions
+      - name: Update README SDK and Purchase Connector versions
         run: |
           IOS_VER='${{ needs.validate-release.outputs.ios_sdk_version }}'
           AND_VER='${{ needs.validate-release.outputs.android_sdk_version }}'
@@ -284,7 +328,7 @@ jobs:
           echo "README updated versions:"
           sed -n '/## SDK Versions/,/## ❗/p' README.md | head -12
 
-      - name: 💾 Commit & push changes
+      - name: Commit & push changes
         id: push
         run: |
           set -e
@@ -304,7 +348,120 @@ jobs:
           fi
           echo "release_branch=$REL_BRANCH" >> $GITHUB_OUTPUT
 
-  # (Deprecated) Legacy update-version job removed; handled by prepare-branch
+  # ===========================================================================
+  # Stage RC-E2E: End-to-end validation on plugin source (iOS)
+  # ===========================================================================
+  # Reuses .github/workflows/ios-e2e.yml. Gates publish-rc. Aligns with
+  # appsflyer-mobile-plugin-tooling/contracts/rc-release-contract.md#rc-e2e.
+  # ===========================================================================
+
+  run-e2e-ios:
+    name: 🧪 RC-E2E iOS
+    needs: [validate-release, prepare-branch]
+    # skip_e2e=true short-circuits both platforms. publish-rc requires both
+    # E2E results to be 'success', so a skip naturally blocks publish — that's
+    # by design: skipping E2E is for iterative pipeline work, not for shipping.
+    if: ${{ needs.validate-release.outputs.is_valid == 'true' && github.event.inputs.skip_e2e != 'true' }}
+    uses: ./.github/workflows/ios-e2e.yml
+    # Build E2E from the freshly-cut release branch so the version bumps
+    # applied by prepare-branch (pubspec, podspec, native constants) are in
+    # the APK/IPA under test. Without this, workflow_call inherits the
+    # caller's SHA (development) and the bumps never reach the build.
+    with:
+      ref: ${{ needs.prepare-branch.outputs.release_branch }}
+    secrets: inherit
+
+  # ===========================================================================
+  # Stage RC-E2E: End-to-end validation on plugin source (Android)
+  # ===========================================================================
+  # Reuses .github/workflows/android-e2e.yml.
+
+  run-e2e-android:
+    name: 🧪 RC-E2E Android
+    needs: [validate-release, prepare-branch]
+    if: ${{ needs.validate-release.outputs.is_valid == 'true' && github.event.inputs.skip_e2e != 'true' }}
+    uses: ./.github/workflows/android-e2e.yml
+    with:
+      ref: ${{ needs.prepare-branch.outputs.release_branch }}
+    secrets: inherit
+
+  # ===========================================================================
+  # Pre-publish gate: aggregate run-ci + RC-E2E iOS + RC-E2E Android.
+  # ===========================================================================
+  # Single explicit gate that publish-rc depends on. Pass rules:
+  #   - run-ci         : success OR skipped (skip_unit / skip_builds OK)
+  #   - run-e2e-ios    : success only (skipped blocks publish — by design)
+  #   - run-e2e-android: success only (skipped blocks publish — by design)
+  # Anything else (failure, cancelled) on any of the three fails the gate.
+  # Asymmetry is intentional: skipping Lint/Test/Build is for fast iteration
+  # of the rest of the pipeline; skipping E2E is also iteration-only and must
+  # not ship.
+  # ===========================================================================
+
+  pre-publish-gate:
+    name: 🛡️ Pre-publish Gate
+    runs-on: ubuntu-latest
+    needs: [validate-release, run-ci, run-e2e-ios, run-e2e-android]
+    if: always() && needs.validate-release.outputs.is_valid == 'true'
+    outputs:
+      passed: ${{ steps.aggregate.outputs.passed }}
+      ci_result: ${{ steps.aggregate.outputs.ci_result }}
+      e2e_ios_result: ${{ steps.aggregate.outputs.e2e_ios_result }}
+      e2e_android_result: ${{ steps.aggregate.outputs.e2e_android_result }}
+    steps:
+      - name: Aggregate pre-publish results
+        id: aggregate
+        env:
+          CI_RESULT: ${{ needs.run-ci.result }}
+          E2E_IOS_RESULT: ${{ needs.run-e2e-ios.result }}
+          E2E_ANDROID_RESULT: ${{ needs.run-e2e-android.result }}
+        run: |
+          set -euo pipefail
+          echo "Lint, Test & Build : $CI_RESULT"
+          echo "RC-E2E iOS         : $E2E_IOS_RESULT"
+          echo "RC-E2E Android     : $E2E_ANDROID_RESULT"
+
+          ci_ok=false
+          ios_ok=false
+          android_ok=false
+
+          if [[ "$CI_RESULT" == "success" || "$CI_RESULT" == "skipped" ]]; then
+            ci_ok=true
+          fi
+          if [[ "$E2E_IOS_RESULT" == "success" ]]; then
+            ios_ok=true
+          fi
+          if [[ "$E2E_ANDROID_RESULT" == "success" ]]; then
+            android_ok=true
+          fi
+
+          {
+            echo "ci_result=$CI_RESULT"
+            echo "e2e_ios_result=$E2E_IOS_RESULT"
+            echo "e2e_android_result=$E2E_ANDROID_RESULT"
+          } >> "$GITHUB_OUTPUT"
+
+          if $ci_ok && $ios_ok && $android_ok; then
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+            echo "✅ Pre-publish gate passed"
+            exit 0
+          fi
+
+          echo "passed=false" >> "$GITHUB_OUTPUT"
+          echo "❌ Pre-publish gate failed"
+          $ci_ok      || echo "  - Lint, Test & Build did not pass ($CI_RESULT)"
+          $ios_ok     || echo "  - RC-E2E iOS did not pass ($E2E_IOS_RESULT)"
+          $android_ok || echo "  - RC-E2E Android did not pass ($E2E_ANDROID_RESULT)"
+          exit 1
+
+  # ===========================================================================
+  # Stage RC-PUBLISH: Publish RC to pub.dev (moved earlier to gate side-effects)
+  # ===========================================================================
+  # Runs only after BOTH E2E workflows pass. Honors dry_run (default true).
+  # Aligns with rc-release-contract.md#rc-publish. Side effects downstream
+  # (prerelease tag, PR, Slack, Jira) depend on publish-rc succeeding so they
+  # reflect a real published RC — or a documented dry run.
+  # ===========================================================================
 
   # ===========================================================================
   # Job 4: Create Pre-Release
@@ -315,17 +472,17 @@ jobs:
   create-prerelease:
     name: 🏷️ Create Pre-Release
     runs-on: ubuntu-latest
-    needs: [validate-release, run-ci, prepare-branch]
-    if: always() && needs.validate-release.outputs.is_rc == 'true' && needs.validate-release.outputs.deploy_to_qa == 'true'
+    needs: [validate-release, prepare-branch, publish-rc]
+    if: always() && needs.validate-release.outputs.is_rc == 'true' && needs.publish-rc.result == 'success'
     
     steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           ref: ${{ needs.prepare-branch.outputs.release_branch }}
       
-      - name: 📝 Generate release notes
+      - name: Generate release notes
         id: release-notes
         run: |
           VERSION="${{ needs.validate-release.outputs.version }}"
@@ -372,7 +529,7 @@ jobs:
           
           echo "Release notes generated"
       
-      - name: 🏷️ Create GitHub Pre-Release
+      - name: Create GitHub Pre-Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.validate-release.outputs.version }}
@@ -392,15 +549,15 @@ jobs:
   open-pr:
     name: 🔀 Open PR to master
     runs-on: ubuntu-latest
-    needs: [validate-release, prepare-branch]
-    if: always() && needs.validate-release.outputs.deploy_to_qa == 'true'
+    needs: [validate-release, prepare-branch, publish-rc]
+    if: always() && needs.publish-rc.result == 'success'
     steps:
-      - name: 📥 Checkout
-        uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           ref: ${{ needs.prepare-branch.outputs.release_branch }}
-      - name: 🧠 Create or update PR
+      - name: Create or update PR
         uses: actions/github-script@v7
         with:
           script: |
@@ -422,22 +579,22 @@ jobs:
   publish-rc:
     name: 📦 Publish RC to pub.dev
     runs-on: ubuntu-latest
-    needs: [validate-release, prepare-branch]
-    if: always() && needs.validate-release.outputs.deploy_to_qa == 'true'
+    needs: [validate-release, prepare-branch, pre-publish-gate]
+    if: needs.validate-release.outputs.is_valid == 'true' && needs.pre-publish-gate.outputs.passed == 'true'
     steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           ref: ${{ needs.prepare-branch.outputs.release_branch }}
-      - name: 🔧 Setup Flutter SDK
+      - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
-      - name: 📦 Get dependencies
+      - name: Get dependencies
         run: flutter pub get
-      - name: 📝 Validate package (dry-run)
+      - name: Validate package (dry-run)
         run: |
           # Run dry-run and capture output
           # Exit code 65 = warnings only (acceptable for RC builds since CHANGELOG won't have -rcN suffix)
@@ -457,12 +614,12 @@ jobs:
             echo "❌ Package validation failed with exit code $EXIT_CODE"
             exit $EXIT_CODE
           fi
-      - name: ℹ️ RC dry-run active — skipping publish
-        if: ${{ needs.validate-release.outputs.dry_run == 'true' }}
+      - name: RC dry-run active — skipping publish
+        if: ${{ needs.validate-release.outputs.is_dry_run == 'true' }}
         run: |
           echo "RC dry_run is true — will not publish to pub.dev."
-      - name: 🚀 Publish RC to pub.dev
-        if: ${{ needs.validate-release.outputs.dry_run != 'true' }}
+      - name: Publish RC to pub.dev
+        if: ${{ needs.validate-release.outputs.is_dry_run != 'true' }}
         env:
           PUB_DEV_CREDENTIALS: ${{ secrets.PUB_DEV_CREDENTIALS }}
         run: |
@@ -476,43 +633,133 @@ jobs:
   notify-team:
     name: 📢 Notify Team
     runs-on: ubuntu-latest
-    needs: [validate-release, create-prerelease, prepare-branch]
+    needs:
+      - validate-release
+      - prepare-branch
+      - run-ci
+      - run-e2e-ios
+      - run-e2e-android
+      - pre-publish-gate
+      - publish-rc
+      - create-prerelease
     if: always()
     
     steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+      # Order matters: status + legs are env-only and must run first so the
+      # failure Slack always fires even when checkout / extract-info / Jira
+      # are unhappy (network blip, partial release branch, Jira 5xx). The
+      # checkout + enrichment steps below are gated on the success path,
+      # because the failure payload doesn't need any filesystem state.
+      - name: Determine status and failed stage
+        id: status
+        env:
+          VALIDATE_RESULT: ${{ needs.validate-release.result }}
+          PREPARE_RESULT: ${{ needs.prepare-branch.result }}
+          GATE_RESULT: ${{ needs.pre-publish-gate.result }}
+          PUBLISH_RESULT: ${{ needs.publish-rc.result }}
+          PRERELEASE_RESULT: ${{ needs.create-prerelease.result }}
+        run: |
+          set -euo pipefail
+          # Success means the full happy path completed: validate → prepare →
+          # pre-publish-gate → publish-rc → create-prerelease.
+          if [[ "$VALIDATE_RESULT" == "success" \
+             && "$PREPARE_RESULT"   == "success" \
+             && "$GATE_RESULT"      == "success" \
+             && "$PUBLISH_RESULT"   == "success" \
+             && "$PRERELEASE_RESULT" == "success" ]]; then
+            echo "success=true" >> "$GITHUB_OUTPUT"
+            echo "failed_stage=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "success=false" >> "$GITHUB_OUTPUT"
+          # Stage attribution: top-down, first non-success wins. Treat
+          # 'skipped' on downstream jobs as "didn't run because upstream
+          # failed" — the upstream stage owns the failure.
+          if [[ "$VALIDATE_RESULT" != "success" ]]; then
+            echo "failed_stage=validate-release" >> "$GITHUB_OUTPUT"
+          elif [[ "$PREPARE_RESULT" != "success" ]]; then
+            echo "failed_stage=prepare-branch" >> "$GITHUB_OUTPUT"
+          elif [[ "$GATE_RESULT" != "success" ]]; then
+            echo "failed_stage=pre-publish-gate" >> "$GITHUB_OUTPUT"
+          elif [[ "$PUBLISH_RESULT" != "success" ]]; then
+            echo "failed_stage=publish-rc" >> "$GITHUB_OUTPUT"
+          else
+            echo "failed_stage=create-prerelease" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Format pre-publish leg results
+        id: legs
+        env:
+          CI_RESULT: ${{ needs.run-ci.result }}
+          E2E_IOS_RESULT: ${{ needs.run-e2e-ios.result }}
+          E2E_ANDROID_RESULT: ${{ needs.run-e2e-android.result }}
+        run: |
+          set -euo pipefail
+          # Map a result string to a Slack icon. CI accepts skipped as a pass
+          # (skip_unit / skip_builds); E2E does not (skip_e2e is for fast
+          # iteration only and must not ship).
+          icon_for() {
+            local kind="$1" result="$2"
+            case "$result" in
+              success) echo ":white_check_mark:" ;;
+              skipped)
+                if [[ "$kind" == "ci" ]]; then echo ":fast_forward:"; else echo ":x:"; fi ;;
+              failure)   echo ":x:" ;;
+              cancelled) echo ":no_entry_sign:" ;;
+              *)         echo ":grey_question:" ;;
+            esac
+          }
+          CI_ICON=$(icon_for ci "$CI_RESULT")
+          IOS_ICON=$(icon_for e2e "$E2E_IOS_RESULT")
+          ANDROID_ICON=$(icon_for e2e "$E2E_ANDROID_RESULT")
+          {
+            echo "ci_icon=$CI_ICON"
+            echo "ios_icon=$IOS_ICON"
+            echo "android_icon=$ANDROID_ICON"
+            echo "ci_result=$CI_RESULT"
+            echo "e2e_ios_result=$E2E_IOS_RESULT"
+            echo "e2e_android_result=$E2E_ANDROID_RESULT"
+          } >> "$GITHUB_OUTPUT"
+
+      # Enrichment: only run on the success path. The failure Slack below
+      # references no step outputs from these — only needs.*.result and
+      # validate-release.outputs.version — so a checkout failure here cannot
+      # silence the failure notification.
+      - name: Checkout release branch
+        if: steps.status.outputs.success == 'true'
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           ref: ${{ needs.prepare-branch.outputs.release_branch }}
-      
-      - name: 📝 Extract SDK versions and changelog
+
+      - name: Extract SDK versions and changelog
         id: extract-info
+        if: steps.status.outputs.success == 'true'
         run: |
           VERSION="${{ needs.validate-release.outputs.version }}"
           BASE_VERSION=$(echo "$VERSION" | sed 's/-rc[0-9]*$//')
-          
+
           # Extract Android SDK version
           ANDROID_SDK_VERSION=$(grep "implementation 'com.appsflyer:af-android-sdk:" android/build.gradle | sed -n "s/.*af-android-sdk:\([^']*\).*/\1/p" | head -1)
           echo "android_sdk=$ANDROID_SDK_VERSION" >> $GITHUB_OUTPUT
-          
+
           # Extract iOS SDK version
           IOS_SDK_VERSION=$(grep "s.ios.dependency 'AppsFlyerFramework'" ios/appsflyer_sdk.podspec | sed -n "s/.*AppsFlyerFramework',.*'\([^']*\)'.*/\1/p" | head -1)
           echo "ios_sdk=$IOS_SDK_VERSION" >> $GITHUB_OUTPUT
-          
+
           # Extract Purchase Connector versions from build files
           ANDROID_PC_VERSION=$(grep "implementation 'com.appsflyer:purchase-connector:" android/build.gradle | sed -n "s/.*purchase-connector:\([^']*\).*/\1/p" | head -1)
           if [ -z "$ANDROID_PC_VERSION" ]; then
             ANDROID_PC_VERSION="N/A"
           fi
           echo "android_pc=$ANDROID_PC_VERSION" >> $GITHUB_OUTPUT
-          
+
           IOS_PC_VERSION=$(grep "s.ios.dependency 'PurchaseConnector'" ios/appsflyer_sdk.podspec | sed -n "s/.*PurchaseConnector',.*'\([^']*\)'.*/\1/p" | head -1)
           if [ -z "$IOS_PC_VERSION" ]; then
             IOS_PC_VERSION="N/A"
           fi
           echo "ios_pc=$IOS_PC_VERSION" >> $GITHUB_OUTPUT
-          
+
           # Extract changelog for this version (use base version without -rc suffix)
           if [ -f "CHANGELOG.md" ]; then
             CHANGELOG=$(awk "/## $BASE_VERSION/,/^## [0-9]/" CHANGELOG.md | grep "^-" | sed 's/^- /• /' | head -5)
@@ -522,43 +769,44 @@ jobs:
           else
             CHANGELOG="• Check release notes for details"
           fi
-          
+
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGELOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-      
-      - name: 🎫 Fetch Jira tickets
+
+      - name: Fetch Jira tickets
         id: jira-tickets
+        if: steps.status.outputs.success == 'true'
         continue-on-error: true  # Don't fail CI if Jira fetch fails
         run: |
           set +e  # Don't exit on errors
-          
+
           VERSION="${{ needs.validate-release.outputs.version }}"
           # Remove -rc suffix for Jira lookup (e.g., 99.99.99-rc1 → 99.99.99)
           BASE_VERSION=$(echo "$VERSION" | sed 's/-rc[0-9]*$//')
           # Use base version with 'v' prefix (matches your Jira convention)
           JIRA_FIX_VERSION="Flutter SDK v$BASE_VERSION"
-          
+
           echo "🔍 Looking for Jira tickets with fix version: $JIRA_FIX_VERSION"
-          
+
           # Check if Jira credentials are available
           if [[ -z "${{ secrets.CI_JIRA_EMAIL }}" ]] || [[ -z "${{ secrets.CI_JIRA_TOKEN }}" ]]; then
             echo "⚠️ Jira credentials not configured"
             echo "tickets=No assigned fix version found" >> $GITHUB_OUTPUT
             exit 0
           fi
-          
+
           JIRA_DOMAIN="${{ secrets.CI_JIRA_DOMAIN || 'appsflyer.atlassian.net' }}"
-          
+
           # URL-encode the JQL query properly
           JQL_QUERY="fixVersion=\"${JIRA_FIX_VERSION}\""
           # Use curl's --data-urlencode for proper encoding
           ENCODED_JQL=$(echo "$JQL_QUERY" | jq -sRr @uri)
-          
+
           echo "📡 Querying Jira API..."
           echo "Domain: $JIRA_DOMAIN"
           echo "JQL: $JQL_QUERY"
-          
+
           # Query Jira API with error handling and verbose output
           # Using the new /search/jql endpoint as per Jira API v3
           RESPONSE=$(curl -s -w "\n%{http_code}" \
@@ -566,12 +814,12 @@ jobs:
             -H "Accept: application/json" \
             -H "Content-Type: application/json" \
             "https://${JIRA_DOMAIN}/rest/api/3/search/jql?jql=${ENCODED_JQL}&fields=key,summary&maxResults=20")
-          
+
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
           BODY=$(echo "$RESPONSE" | sed '$d')
-          
+
           echo "HTTP Status: $HTTP_CODE"
-          
+
           if [[ "$HTTP_CODE" != "200" ]]; then
             echo "⚠️ Jira API request failed with status $HTTP_CODE"
             echo "Response body (first 500 chars):"
@@ -579,10 +827,10 @@ jobs:
             echo "tickets=No assigned fix version found" >> $GITHUB_OUTPUT
             exit 0
           fi
-          
+
           # Extract ticket keys and create links with summaries
           TICKETS=$(echo "$BODY" | jq -r '.issues[]? | "• https://'"${JIRA_DOMAIN}"'/browse/\(.key) - \(.fields.summary)"' 2>/dev/null | head -10)
-          
+
           if [ -z "$TICKETS" ]; then
             echo "ℹ️ No linked tickets found for version: $JIRA_FIX_VERSION"
             echo "tickets=No assigned fix version found" >> $GITHUB_OUTPUT
@@ -593,36 +841,29 @@ jobs:
             echo "$TICKETS" >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
           fi
-      
-      - name: 📢 Determine status
-        id: status
-        run: |
-          STATUS="${{ needs.create-prerelease.result }}"
-          
-          if [[ "$STATUS" == "success" ]]; then
-            echo "success=true" >> $GITHUB_OUTPUT
-          else
-            echo "success=false" >> $GITHUB_OUTPUT
-          fi
-      
-      - name: 📨 Send Slack notification (Success)
-        if: steps.status.outputs.success == 'true'
+
+      - name: Send Slack notification (Success)
+        # Skip during dry runs so iterative pipeline testing doesn't spam
+        # the QA channel. Real RCs (is_dry_run=false) still post normally.
+        if: steps.status.outputs.success == 'true' && needs.validate-release.outputs.is_dry_run != 'true'
         uses: slackapi/slack-github-action@v1
         with:
           payload: |
             {
-              "text": "<!here>\n:flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter:\n\n*Flutter Release Candidate:*\nappsflyer_sdk: ${{ needs.validate-release.outputs.version }} is ready for QA testing.\n\n*Testing Instructions:*\nAdd to pubspec.yaml:\n```\ndependencies:\n  appsflyer_sdk:\n    git:\n      url: https://github.com/${{ github.repository }}.git\n      ref: ${{ needs.validate-release.outputs.version }}\n```\n\n*Sources:*\n:github: https://github.com/${{ github.repository }}/tree/${{ github.ref_name }}\n:github: Release: https://github.com/${{ github.repository }}/releases/tag/${{ needs.validate-release.outputs.version }}\n\n*Changes and fixes:*\n${{ steps.extract-info.outputs.changelog }}\n\n*Linked tickets and issues:*\n${{ steps.jira-tickets.outputs.tickets }}\n\n*Native SDK's:*\n:android: ${{ steps.extract-info.outputs.android_sdk }}\n:apple: ${{ steps.extract-info.outputs.ios_sdk }}\n\n*Purchase Connector:*\n:android: ${{ steps.extract-info.outputs.android_pc }}\n:apple: ${{ steps.extract-info.outputs.ios_pc }}\n\n:flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter:"
+              "text": "<!here>\n:flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter:\n\n*Flutter Release Candidate:*\nappsflyer_sdk: ${{ needs.validate-release.outputs.version }} is ready for QA testing.\n\n*Pre-publish checks:*\n${{ steps.legs.outputs.ci_icon }} Lint, Test & Build: ${{ steps.legs.outputs.ci_result }}\n${{ steps.legs.outputs.ios_icon }} RC-E2E iOS: ${{ steps.legs.outputs.e2e_ios_result }}\n${{ steps.legs.outputs.android_icon }} RC-E2E Android: ${{ steps.legs.outputs.e2e_android_result }}\n\n:hourglass_flowing_sand: Smoke (`rc-smoke/pub.dev`) will auto-run once ${{ needs.validate-release.outputs.version }} appears on pub.dev (typically 1-5 min).\n\n*Testing Instructions:*\nAdd to pubspec.yaml:\n```\ndependencies:\n  appsflyer_sdk:\n    git:\n      url: https://github.com/${{ github.repository }}.git\n      ref: ${{ needs.validate-release.outputs.version }}\n```\n\n*Sources:*\n:github: https://github.com/${{ github.repository }}/tree/${{ github.ref_name }}\n:github: Release: https://github.com/${{ github.repository }}/releases/tag/${{ needs.validate-release.outputs.version }}\n:github: Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\n*Changes and fixes:*\n${{ steps.extract-info.outputs.changelog }}\n\n*Linked tickets and issues:*\n${{ steps.jira-tickets.outputs.tickets }}\n\n*Native SDK's:*\n:android: ${{ steps.extract-info.outputs.android_sdk }}\n:apple: ${{ steps.extract-info.outputs.ios_sdk }}\n\n*Purchase Connector:*\n:android: ${{ steps.extract-info.outputs.android_pc }}\n:apple: ${{ steps.extract-info.outputs.ios_pc }}\n\n:flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter::flutter:"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.CI_SLACK_WEBHOOK_URL }}
-      
-      - name: 📨 Send failure notification
-        if: steps.status.outputs.success == 'false'
+
+      - name: Send failure notification
+        # Skip during dry runs so iterative pipeline testing doesn't spam
+        # the QA channel. Real RCs (is_dry_run=false) still post normally.
+        if: steps.status.outputs.success == 'false' && needs.validate-release.outputs.is_dry_run != 'true'
         uses: slackapi/slack-github-action@v1
         with:
           payload: |
             {
-              "text": "<!here>\n:warning: *Flutter RC Creation Failed*\n\nVersion: ${{ needs.validate-release.outputs.version }}\nBranch: ${{ github.ref_name }}\n\nPlease check the workflow logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              "text": "<!here>\n:warning: *Flutter RC failed at `${{ steps.status.outputs.failed_stage }}`*\n\nVersion: ${{ needs.validate-release.outputs.version }}\nBranch: ${{ github.ref_name }}\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\n*Pre-publish checks:*\n${{ steps.legs.outputs.ci_icon }} Lint, Test & Build: ${{ steps.legs.outputs.ci_result }}\n${{ steps.legs.outputs.ios_icon }} RC-E2E iOS: ${{ steps.legs.outputs.e2e_ios_result }}\n${{ steps.legs.outputs.android_icon }} RC-E2E Android: ${{ steps.legs.outputs.e2e_android_result }}\n\n*Downstream stages:*\n• prepare-branch: ${{ needs.prepare-branch.result }}\n• pre-publish-gate: ${{ needs.pre-publish-gate.result }}\n• publish-rc: ${{ needs.publish-rc.result }}\n• create-prerelease: ${{ needs.create-prerelease.result }}"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.CI_SLACK_WEBHOOK_URL }}
@@ -636,34 +877,40 @@ jobs:
   rc-summary:
     name: 📋 RC Summary
     runs-on: ubuntu-latest
-    needs: [validate-release, run-ci, prepare-branch, create-prerelease]
+    needs: [validate-release, run-ci, prepare-branch, run-e2e-ios, run-e2e-android, pre-publish-gate, publish-rc, create-prerelease]
     if: always()
     
     steps:
-      - name: 📊 Display RC Summary
+      - name: Display RC Summary
         run: |
           echo "========================================="
           echo "RC Release Summary"
           echo "========================================="
           echo "Version: ${{ needs.validate-release.outputs.version }}"
-          echo "Is RC: ${{ needs.validate-release.outputs.is_rc }}"
-          echo "Is Valid: ${{ needs.validate-release.outputs.is_valid }}"
+          echo "Dry Run: ${{ needs.validate-release.outputs.is_dry_run }}"
           echo "-----------------------------------------"
-          echo "Validation: ${{ needs.validate-release.result }}"
-          echo "CI Pipeline: ${{ needs.run-ci.result }}"
-          echo "Prepare Branch: ${{ needs.prepare-branch.result }}"
-          echo "Pre-Release: ${{ needs.create-prerelease.result }}"
+          echo "RC-PREP validate:     ${{ needs.validate-release.result }}"
+          echo "Lint, Test & Build:   ${{ needs.run-ci.result }}  (gated via pre-publish-gate; skipped passes)"
+          echo "RC-PREP branch:       ${{ needs.prepare-branch.result }}"
+          echo "RC-E2E iOS:           ${{ needs.run-e2e-ios.result }}"
+          echo "RC-E2E Android:       ${{ needs.run-e2e-android.result }}"
+          echo "Pre-publish gate:     ${{ needs.pre-publish-gate.result }}"
+          echo "RC-PUBLISH:           ${{ needs.publish-rc.result }}"
+          echo "Pre-release tag + PR: ${{ needs.create-prerelease.result }}"
           echo "========================================="
-          
-          # Check if all critical jobs succeeded
+          echo ""
+          echo "Next stage: rc-smoke.yml fires automatically via workflow_run"
+          echo "when publish-rc succeeds with dry_run=false. On success it posts"
+          echo "rc-smoke/pub.dev check-run on the release branch head SHA."
+          echo "See appsflyer-mobile-plugin-tooling/contracts/rc-release-contract.md"
+          echo "for the full stage table."
+          echo ""
+
           if [[ "${{ needs.validate-release.result }}" == "success" ]] && \
+             [[ "${{ needs.pre-publish-gate.result }}" == "success" ]] && \
+             [[ "${{ needs.publish-rc.result }}" == "success" ]] && \
              [[ "${{ needs.create-prerelease.result }}" == "success" ]]; then
             echo "✅ RC Release Process Completed Successfully"
-            echo ""
-            echo "Next Steps:"
-            echo "1. Notify QA team to begin testing"
-            echo "2. Test the RC version thoroughly"
-            echo "3. If approved, proceed with production release"
           else
             echo "❌ RC Release Process Failed"
             echo "Please check the logs above for details"
