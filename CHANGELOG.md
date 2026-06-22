@@ -1,5 +1,9 @@
 # Versions
 
+## Unreleased
+
+- iOS: Add Swift Package Manager (SPM) support for the Core integration alongside CocoaPods. Resolves the "plugin does not support Swift Package Manager" warning under Flutter 3.44+. The optional PurchaseConnector subspec remains CocoaPods-only for now (blocked by flutter/flutter#161182). Relates to #364 / #370.
+
 ## 6.18.0
 
 - Updated Android SDK from 6.17.6 to 6.18.0
