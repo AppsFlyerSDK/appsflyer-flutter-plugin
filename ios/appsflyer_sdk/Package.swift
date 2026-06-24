@@ -13,10 +13,10 @@ import PackageDescription
 let package = Package(
     name: "appsflyer_sdk",
     platforms: [
-        .iOS("12.0")
+        .iOS(.v12)
     ],
     products: [
-        .library(name: "appsflyer-sdk", targets: ["appsflyer_sdk"])
+        .library(name: "appsflyer_sdk", targets: ["appsflyer_sdk"])
     ],
     dependencies: [
         // Static variant matches the podspec's `static_framework = true`.
