@@ -1,5 +1,12 @@
 # Versions
 
+## 6.18.0+1
+
+- Added iOS Swift Package Manager (SPM) support via `ios/appsflyer_sdk/Package.swift`
+- Added SPM ObjC target mirroring `ios/Classes/` sources (ObjC-only, no mixed-language issues)
+- CocoaPods path unchanged — full backward compatibility maintained
+- Updated `.gitignore` with `.build/` and `.swiftpm/` entries
+
 ## 6.18.0
 
 - Updated Android SDK from 6.17.6 to 6.18.0
