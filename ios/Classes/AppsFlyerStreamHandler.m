@@ -7,6 +7,10 @@
 
 #import "AppsFlyerStreamHandler.h"
 
+@interface AppsflyerSdkPlugin (CallbackRouting)
++ (void)invokeCallbackWithId:(NSString*)callbackId arguments:(id)arguments;
+@end
+
 @implementation AppsFlyerStreamHandler {
 
 }
@@ -23,7 +27,7 @@
             @"status": afSuccess
         };
         NSString *JSONString = [self mapToJson:fullResponse withError:error];
-        [AppsflyerSdkPlugin.callbackChannel invokeMethod:@"callListener" arguments:JSONString];
+        [AppsflyerSdkPlugin invokeCallbackWithId:afGCDCallback arguments:JSONString];
         return;
     }else if (error) {
         return;
@@ -45,7 +49,7 @@
             @"status": afSuccess
         };
         NSString *JSONString = [self mapToJson:fullResponse withError:error];
-        [AppsflyerSdkPlugin.callbackChannel invokeMethod:@"callListener" arguments:JSONString];
+        [AppsflyerSdkPlugin invokeCallbackWithId:afGCDCallback arguments:JSONString];
         return;
     }
     
@@ -66,7 +70,7 @@
             @"status": afSuccess
         };
         NSString *JSONString = [self mapToJson:fullResponse withError:error];
-        [AppsflyerSdkPlugin.callbackChannel invokeMethod:@"callListener" arguments:JSONString];
+        [AppsflyerSdkPlugin invokeCallbackWithId:afOAOACallback arguments:JSONString];
         return;
     }
     
@@ -83,7 +87,7 @@
             @"status": afSuccess
         };
         NSString *JSONString = [self mapToJson:fullResponse withError:error];
-        [AppsflyerSdkPlugin.callbackChannel invokeMethod:@"callListener" arguments:JSONString];
+        [AppsflyerSdkPlugin invokeCallbackWithId:afOAOACallback arguments:JSONString];
         return;
     }
     
@@ -108,7 +112,7 @@
                 
             }
             NSString *JSONString = [self mapToJson:fullResponse withError:error];
-            [AppsflyerSdkPlugin.callbackChannel invokeMethod:@"callListener" arguments:JSONString];
+            [AppsflyerSdkPlugin invokeCallbackWithId:afUDPCallback arguments:JSONString];
             return;
         }
         
@@ -136,7 +140,7 @@
         @"status": status
     };
     JSONdata = [self mapToJson:fullResponse withError:error];
-    [AppsflyerSdkPlugin.callbackChannel invokeMethod:@"callListener" arguments:JSONdata];
+    [AppsflyerSdkPlugin invokeCallbackWithId:responseID arguments:JSONdata];
 }
 
 - (NSString*) getStatusAsString:(AFSDKDeepLinkResultStatus)value{
