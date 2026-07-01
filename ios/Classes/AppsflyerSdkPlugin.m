@@ -9,15 +9,21 @@ typedef void (*bypassDidFinishLaunchingWithOption)(id, SEL, NSInteger);
 typedef void (*bypassDisableAdvertisingIdentifier)(id, SEL, BOOL);
 typedef void (*bypassWaitForATTUserAuthorization)(id, SEL, NSTimeInterval);
 
+@interface AppsflyerSdkPlugin ()
+- (void)releaseOwnedCallbackChannels;
+- (void)releaseCallbackId:(NSString*)callbackId;
+@end
+
 
 @implementation AppsflyerSdkPlugin {
     FlutterEventChannel *_eventChannel;
     AppsFlyerStreamHandler *_streamHandler;
-    
+    FlutterMethodChannel *_callbackChannel;
+    FlutterMethodChannel *_methodChannel;
 }
 static NSMutableArray* _callbackById;
-static FlutterMethodChannel* _callbackChannel;
-static FlutterMethodChannel* _methodChannel;
+static NSMutableDictionary<NSString*, FlutterMethodChannel*>* _callbackChannelsById;
+static FlutterMethodChannel* _defaultCallbackChannel;
 static BOOL _gcdCallback = false;
 static BOOL _oaoaCallback = false;
 static BOOL _udpCallback = false;
@@ -25,13 +31,31 @@ static BOOL _isPushNotificationEnabled = false;
 static BOOL _isSandboxEnabled = false;
 static BOOL _isSKADEnabled = false;
 
-
-+ (FlutterMethodChannel*)callbackChannel{
-    return _callbackChannel;
+static BOOL AFUsesDurableCallbackOwner(NSString *callbackId) {
+    return [callbackId isEqualToString:afGCDCallback]
+        || [callbackId isEqualToString:afOAOACallback]
+        || [callbackId isEqualToString:afUDPCallback];
 }
 
-+ (FlutterMethodChannel*)methodChannel{
-    return _methodChannel;
+
++ (FlutterMethodChannel*)callbackChannel{
+    @synchronized (self) {
+        return _defaultCallbackChannel;
+    }
+}
+
++ (FlutterMethodChannel*)callbackChannelForCallbackId:(NSString*)callbackId{
+    if (callbackId == nil) {
+        return nil;
+    }
+    @synchronized (self) {
+        return _callbackChannelsById[callbackId];
+    }
+}
+
++ (void)invokeCallbackWithId:(NSString*)callbackId arguments:(id)arguments{
+    FlutterMethodChannel *channel = [self callbackChannelForCallbackId:callbackId];
+    [channel invokeMethod:@"callListener" arguments:arguments];
 }
 
 + (BOOL)gcdCallback{
@@ -53,8 +77,15 @@ static BOOL _isSKADEnabled = false;
         _callbackChannel = [FlutterMethodChannel methodChannelWithName:afCallbacksMethodChannel binaryMessenger:messenger];
         _eventChannel = [FlutterEventChannel eventChannelWithName:afEventChannel binaryMessenger:messenger];
         _methodChannel = [FlutterMethodChannel methodChannelWithName:afMethodChannel binaryMessenger:messenger];
+        @synchronized ([AppsflyerSdkPlugin class]) {
+            _defaultCallbackChannel = _callbackChannel;
+        }
     }
     return self;
+}
+
+- (void)dealloc {
+    [self releaseOwnedCallbackChannels];
 }
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
@@ -138,6 +169,8 @@ static BOOL _isSKADEnabled = false;
         [self logCrossPromotionAndOpenStore:call result:result];
     }else if([@"startListening" isEqualToString:call.method]){
         [self startListening:call result:result];
+    }else if([@"cancelListening" isEqualToString:call.method]){
+        [self cancelListening:call result:result];
     }else if([@"setOneLinkCustomDomain" isEqualToString:call.method]){
         [self setOneLinkCustomDomain:call result:result];
     }else if([@"setPushNotification" isEqualToString:call.method]){
@@ -180,16 +213,17 @@ static BOOL _isSKADEnabled = false;
 
 -(void)startSDKwithHandler:(FlutterMethodCall*)call result:(FlutterResult)result {
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
-    
+    FlutterMethodChannel *methodChannel = _methodChannel;
+
     [[AppsFlyerLib shared] startWithCompletionHandler:^(NSDictionary<NSString *,id> *dictionary, NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (error) {
-                [_methodChannel invokeMethod:@"onError" arguments:@{@"errorCode": @(error.code), @"errorMessage": error.localizedDescription ?: @"Unknown error"}];
+                [methodChannel invokeMethod:@"onError" arguments:@{@"errorCode": @(error.code), @"errorMessage": error.localizedDescription ?: @"Unknown error"}];
             } else if (dictionary) {
-                [_methodChannel invokeMethod:@"onSuccess" arguments:dictionary];
+                [methodChannel invokeMethod:@"onSuccess" arguments:dictionary];
             } else {
                 NSString *genericErrorMsg = @"SDK started without error or success data";
-                [_methodChannel invokeMethod:@"onError" arguments:@{@"errorCode": @(0), @"errorMessage": genericErrorMsg}];
+                [methodChannel invokeMethod:@"onError" arguments:@{@"errorCode": @(0), @"errorMessage": genericErrorMsg}];
             }
             result(nil);
         });
@@ -455,20 +489,83 @@ static BOOL _isSKADEnabled = false;
 }
 
 - (void)startListening:(FlutterMethodCall*)call result:(FlutterResult)result{
-    // Prepare callback dictionary
-    if (_callbackById == nil) _callbackById = [NSMutableArray array];
-    
     NSString* callbackId = call.arguments;
+    if (callbackId == nil) {
+        result(nil);
+        return;
+    }
+
+    @synchronized ([AppsflyerSdkPlugin class]) {
+        if (_callbackById == nil) _callbackById = [NSMutableArray array];
+        if (_callbackChannelsById == nil) _callbackChannelsById = [NSMutableDictionary dictionary];
+
+        FlutterMethodChannel *existingChannel = _callbackChannelsById[callbackId];
+        if (AFUsesDurableCallbackOwner(callbackId) && existingChannel != nil && existingChannel != _callbackChannel) {
+            result(nil);
+            return;
+        }
+
+        if ([callbackId isEqualToString:afGCDCallback]){
+            _gcdCallback = true;
+        }
+        if ([callbackId isEqualToString:afOAOACallback]){
+            _oaoaCallback = true;
+        }
+        if ([callbackId isEqualToString:afUDPCallback]){
+            _udpCallback = true;
+        }
+        if (![_callbackById containsObject:callbackId]) {
+            [_callbackById addObject:callbackId];
+        }
+        _callbackChannelsById[callbackId] = _callbackChannel;
+    }
+
+    result(nil);
+}
+
+- (void)cancelListening:(FlutterMethodCall*)call result:(FlutterResult)result{
+    NSString* callbackId = call.arguments;
+    if (callbackId == nil) {
+        result(nil);
+        return;
+    }
+
+    @synchronized ([AppsflyerSdkPlugin class]) {
+        if (_callbackChannelsById[callbackId] == _callbackChannel) {
+            [self releaseCallbackId:callbackId];
+        }
+    }
+
+    result(nil);
+}
+
+- (void)releaseOwnedCallbackChannels {
+    @synchronized ([AppsflyerSdkPlugin class]) {
+        NSArray<NSString*> *callbackIds = [_callbackChannelsById allKeys];
+        for (NSString *callbackId in callbackIds) {
+            if (_callbackChannelsById[callbackId] == _callbackChannel) {
+                [self releaseCallbackId:callbackId];
+            }
+        }
+        if (_defaultCallbackChannel == _callbackChannel) {
+            _defaultCallbackChannel = nil;
+        }
+    }
+}
+
+- (void)releaseCallbackId:(NSString*)callbackId {
+    [_callbackChannelsById removeObjectForKey:callbackId];
+    [_callbackById removeObject:callbackId];
+
     if ([callbackId isEqualToString:afGCDCallback]){
-        _gcdCallback = true;
+        _gcdCallback = false;
     }
     if ([callbackId isEqualToString:afOAOACallback]){
-        _oaoaCallback = true;
+        _oaoaCallback = false;
     }
     if ([callbackId isEqualToString:afUDPCallback]){
-        _udpCallback = true;
+        _udpCallback = false;
     }
-    [_callbackById addObject:callbackId];
 }
 
 - (void)generateInviteLink:(FlutterMethodCall*)call result:(FlutterResult)result{
