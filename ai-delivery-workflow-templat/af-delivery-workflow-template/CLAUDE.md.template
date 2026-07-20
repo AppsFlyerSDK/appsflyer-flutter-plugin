@@ -1,0 +1,43 @@
+# {{REPO_NAME}} AI Workflow
+
+## Starting a feature
+
+To start the full feature delivery workflow, use the slash command:
+
+```
+/af-ship <short description>
+```
+
+This invokes Alice, who writes a PRD, coordinates Bob and Erin if needed, and
+manages Dave through tech design, implementation, and feature documentation.
+Nothing else triggers the full workflow — all other requests go directly to the
+relevant skill.
+
+## Direct invocation
+
+For everything outside of feature delivery, invoke skills directly:
+
+| Task | Invoke |
+|------|--------|
+| Code question, architecture, implementation | `dave-{{DOMAIN}}-engineer` |
+| Maintenance task (see list below) | `dave-{{DOMAIN}}-engineer` |
+| Platform API research, version behavior | `bob-{{DOMAIN}}-researcher` |
+| Payload analysis, field mapping, schema review | `erin-{{DOMAIN}}-analyst` |
+
+## Maintenance tasks
+
+The following do not require a PRD or Alice review — invoke Dave directly:
+
+{{MAINTENANCE_TASKS}}
+
+## Output contract
+
+Every `/af-ship` deliverable must include:
+
+- Alice PRD (`docs/prds/`)
+- Bob findings (if invoked)
+- Erin payload impact (if invoked)
+- Dave tech design (`docs/tech-designs/`)
+- Dave implementation + unit tests
+- Dave feature doc (`docs/features/`)
+- Alice sign-off at each phase
