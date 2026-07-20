@@ -23,8 +23,8 @@ Fires whenever iOS launches or resumes the app via a deep link: URI-scheme opens
 ## Call Chain
 ```
 iOS OS-level deep-link delivery (app already running or resuming):
-  application:openURL:options: (iOS 9+)                                    [ios/Classes/AppsflyerSdkPlugin.m]
-    → [[AppsFlyerAttribution shared] handleOpenUrl:url options:options]    [ios/Classes/AppsFlyerAttribution.m]
+  application:openURL:options: (iOS 9+)                                    [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
+    → [[AppsFlyerAttribution shared] handleOpenUrl:url options:options]    [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerAttribution.m]
   application:openURL:sourceApplication:annotation: (iOS 8 and below)
     → [[AppsFlyerAttribution shared] handleOpenUrl:url sourceApplication:annotation:]
   application:continueUserActivity:restorationHandler: (Universal Links)
@@ -37,12 +37,12 @@ iOS UIScene-based delivery (Flutter 3.41+ UIScene migration, iOS 13+, only compi
     → for each userActivity of type NSUserActivityTypeBrowsingWeb → continueUserActivity:restorationHandler:nil
   scene:continueUserActivity: → [[AppsFlyerAttribution shared] continueUserActivity:userActivity restorationHandler:nil]
 
-AppsFlyerAttribution (buffering singleton, isBridgeReady initially NO)                              [ios/Classes/AppsFlyerAttribution.m]
+AppsFlyerAttribution (buffering singleton, isBridgeReady initially NO)                              [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerAttribution.m]
   handleOpenUrl:.../continueUserActivity:...
     → if isBridgeReady == YES: forward immediately to [AppsFlyerLib shared] handleOpenUrl:/continueUserActivity:
     → else: buffer url/options/sourceApplication/annotation/userActivity/restorationHandler on self
 
-AppsflyerSdkPlugin initSdkWithCall:result: (Dart called initSdk → method channel → native init)      [ios/Classes/AppsflyerSdkPlugin.m]
+AppsflyerSdkPlugin initSdkWithCall:result: (Dart called initSdk → method channel → native init)      [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
   → ... [AppsFlyerLib shared] init/start ...
   → [AppsFlyerAttribution shared].isBridgeReady = YES
   → [[NSNotificationCenter defaultCenter] postNotificationName:AF_BRIDGE_SET object:self]
@@ -56,10 +56,10 @@ AppsflyerSdkPlugin initSdkWithCall:result: (Dart called initSdk → method chann
 ## Files
 | File | Role |
 |------|------|
-| `ios/Classes/AppsflyerSdkPlugin.m` | `application:openURL:options:`, `application:openURL:sourceApplication:annotation:`, `application:continueUserActivity:restorationHandler:`, and (behind `FlutterSceneLifeCycle.h` availability) `scene:openURLContexts:`, `scene:willConnectToSession:options:`, `scene:continueUserActivity:` — all OS/Scene entry points, each forwarding into `AppsFlyerAttribution`; `initSdkWithCall:result:` sets `isBridgeReady = YES` and posts `AF_BRIDGE_SET` once Dart's `initSdk` call reaches native code |
-| `ios/Classes/AppsFlyerAttribution.h` | Declares the `AppsFlyerAttribution` singleton interface: buffering properties (`userActivity`, `restorationHandler`, `url`, `options`, `sourceApplication`, `annotation`), `isBridgeReady` flag, and the `AF_BRIDGE_SET` notification name constant |
-| `ios/Classes/AppsFlyerAttribution.m` | Singleton implementation — `handleOpenUrl:...`/`continueUserActivity:...` either forward immediately to `AppsFlyerLib` or buffer until `isBridgeReady`; `receiveBridgeReadyNotification:` flushes exactly one buffered event (checked in priority order: sourceApplication+annotation form, then options form, then userActivity form) when notified |
-| `ios/Classes/AppsflyerSdkPlugin.h` | `AppsflyerSdkPlugin` class declaration; conditionally conforms to `FlutterSceneLifeCycleDelegate` when available |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `application:openURL:options:`, `application:openURL:sourceApplication:annotation:`, `application:continueUserActivity:restorationHandler:`, and (behind `FlutterSceneLifeCycle.h` availability) `scene:openURLContexts:`, `scene:willConnectToSession:options:`, `scene:continueUserActivity:` — all OS/Scene entry points, each forwarding into `AppsFlyerAttribution`; `initSdkWithCall:result:` sets `isBridgeReady = YES` and posts `AF_BRIDGE_SET` once Dart's `initSdk` call reaches native code |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/include/appsflyer_sdk/AppsFlyerAttribution.h` | Declares the `AppsFlyerAttribution` singleton interface: buffering properties (`userActivity`, `restorationHandler`, `url`, `options`, `sourceApplication`, `annotation`), `isBridgeReady` flag, and the `AF_BRIDGE_SET` notification name constant |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerAttribution.m` | Singleton implementation — `handleOpenUrl:...`/`continueUserActivity:...` either forward immediately to `AppsFlyerLib` or buffer until `isBridgeReady`; `receiveBridgeReadyNotification:` flushes exactly one buffered event (checked in priority order: sourceApplication+annotation form, then options form, then userActivity form) when notified |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/include/appsflyer_sdk/AppsflyerSdkPlugin.h` | `AppsflyerSdkPlugin` class declaration; conditionally conforms to `FlutterSceneLifeCycleDelegate` when available |
 
 ---
 

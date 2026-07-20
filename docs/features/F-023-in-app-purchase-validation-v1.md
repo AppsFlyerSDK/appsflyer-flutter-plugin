@@ -33,9 +33,9 @@ AppsflyerSdk.validateAndLogInAppAndroidPurchase(publicKey, signature, purchaseDa
 iOS:
 AppsflyerSdk.validateAndLogInAppIosPurchase(productIdentifier, price, currency, transactionId, additionalParameters)   [lib/src/appsflyer_sdk.dart]
   → _methodChannel.invokeMethod("validateAndLogInAppIosPurchase", {productIdentifier, price, currency, transactionId, additionalParameters})
-    → AppsflyerSdkPlugin.handleMethodCall case "validateAndLogInAppIosPurchase" → validateAndLogInAppPurchase:result:   [ios/Classes/AppsflyerSdkPlugin.m]
+    → AppsflyerSdkPlugin.handleMethodCall case "validateAndLogInAppIosPurchase" → validateAndLogInAppPurchase:result:   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → [AppsFlyerLib shared] validateAndLogInAppPurchase:productIdentifier price:currency:transactionId:additionalParameters:success:failure:
-        → success block → onValidateSuccess: → [_streamHandler sendResponseToFlutter:@"validatePurchase" status:@"success" data:response]   [ios/Classes/AppsFlyerStreamHandler.m]
+        → success block → onValidateSuccess: → [_streamHandler sendResponseToFlutter:@"validatePurchase" status:@"success" data:response]   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerStreamHandler.m]
         → failure block → onValidateFail: → [_streamHandler sendResponseToFlutter:@"validatePurchase" status:@"failure" data:errorObject]
       → result(nil)   // Future resolves immediately, same fire-and-forget pattern as Android
 ```
@@ -47,8 +47,8 @@ AppsflyerSdk.validateAndLogInAppIosPurchase(productIdentifier, price, currency, 
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `validateAndLogInAppAndroidPurchase(...)` and `validateAndLogInAppIosPurchase(...)`, both annotated `@Deprecated` |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `validateAndLogInAppPurchase(MethodCall, Result)` native handler; calls `registerValidatorListener()` and `AppsFlyerLib.getInstance().validateAndLogInAppPurchase(...)` |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `validateAndLogInAppPurchase:result:` native handler; calls `[AppsFlyerLib shared] validateAndLogInAppPurchase:...]` with success/failure blocks routed through `onValidateSuccess:`/`onValidateFail:` |
-| `ios/Classes/AppsFlyerStreamHandler.m` | `sendResponseToFlutter:status:data:` — forwards the async iOS validation result to Dart over the callback `MethodChannel` (`callbacks`) using `invokeMethod("callListener", ...)`, despite the class name suggesting an `EventChannel` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `validateAndLogInAppPurchase:result:` native handler; calls `[AppsFlyerLib shared] validateAndLogInAppPurchase:...]` with success/failure blocks routed through `onValidateSuccess:`/`onValidateFail:` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerStreamHandler.m` | `sendResponseToFlutter:status:data:` — forwards the async iOS validation result to Dart over the callback `MethodChannel` (`callbacks`) using `invokeMethod("callListener", ...)`, despite the class name suggesting an `EventChannel` |
 
 ---
 

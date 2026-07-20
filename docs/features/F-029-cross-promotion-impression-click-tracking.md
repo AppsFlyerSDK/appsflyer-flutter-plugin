@@ -27,14 +27,14 @@ AppsflyerSdk.logCrossPromotionImpression(appId, campaign, data)                 
   → _methodChannel.invokeMethod("logCrossPromotionImpression", {...})
     → Android: AppsflyerSdkPlugin.onMethodCall("logCrossPromotionImpression") → logCrossPromotionImpression(call, result)   [android/.../AppsflyerSdkPlugin.java]
       → CrossPromotionHelper.logCrossPromoteImpression(mContext, appId, campaign, data) → result.success(null)              (native AppsFlyer Android SDK)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("logCrossPromotionImpression") → logCrossPromotionImpression:result:         [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("logCrossPromotionImpression") → logCrossPromotionImpression:result:         [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → [AppsFlyerCrossPromotionHelper logCrossPromoteImpression:appId campaign:campaign parameters:parameters]             (native AppsFlyer iOS SDK)
 
 AppsflyerSdk.logCrossPromotionAndOpenStore(appId, campaign, params)                       [lib/src/appsflyer_sdk.dart]
   → _methodChannel.invokeMethod("logCrossPromotionAndOpenStore", {...})
     → Android: AppsflyerSdkPlugin.onMethodCall("logCrossPromotionAndOpenStore") → logCrossPromotionAndOpenStore(call, result)   [android/.../AppsflyerSdkPlugin.java]
       → CrossPromotionHelper.logAndOpenStore(mContext, appId, campaign, data) → result.success(null)                        (native AppsFlyer Android SDK)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("logCrossPromotionAndOpenStore") → logCrossPromotionAndOpenStore:result:     [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("logCrossPromotionAndOpenStore") → logCrossPromotionAndOpenStore:result:     [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → AppsFlyerShareInviteHelper generateInviteUrlWithLinkGenerator:completionHandler: → [[UIApplication sharedApplication] openURL:...]   (see Known Limitations)
 ```
 
@@ -45,7 +45,7 @@ AppsflyerSdk.logCrossPromotionAndOpenStore(appId, campaign, params)             
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `logCrossPromotionImpression()` and `logCrossPromotionAndOpenStore()` — public API, both `void`/fire-and-forget |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `logCrossPromotionImpression(call, result)` and `logCrossPromotionAndOpenStore(call, result)` — forward to native `CrossPromotionHelper`, guarded by a non-empty `appId` check, always call `result.success(null)` |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `logCrossPromotionImpression:result:` and `logCrossPromotionAndOpenStore:result:` — see Known Limitations for behavioral divergence from Android |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `logCrossPromotionImpression:result:` and `logCrossPromotionAndOpenStore:result:` — see Known Limitations for behavioral divergence from Android |
 
 ---
 
@@ -63,7 +63,7 @@ AppsflyerSdk.logCrossPromotionAndOpenStore(appId, campaign, params)             
 ---
 
 ## Known Limitations
-- **iOS `logCrossPromotionImpression:result:` and `logCrossPromotionAndOpenStore:result:` never call `result(...)`**: unlike every other handler in `ios/Classes/AppsflyerSdkPlugin.m`, these two methods have no `result(nil)` (or any `result` call) at the end. The Dart-side `Future` returned by `_methodChannel.invokeMethod` for these calls is therefore never resolved on iOS — callers awaiting it (if any were added later) would hang indefinitely; today both Dart methods are `void` and don't await, so this is currently silent but latent.
+- **iOS `logCrossPromotionImpression:result:` and `logCrossPromotionAndOpenStore:result:` never call `result(...)`**: unlike every other handler in `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m`, these two methods have no `result(nil)` (or any `result` call) at the end. The Dart-side `Future` returned by `_methodChannel.invokeMethod` for these calls is therefore never resolved on iOS — callers awaiting it (if any were added later) would hang indefinitely; today both Dart methods are `void` and don't await, so this is currently silent but latent.
 - **iOS `logCrossPromotionAndOpenStore:result:` does not use the native cross-promotion "open store" API at all**: instead of calling an equivalent to Android's `CrossPromotionHelper.logAndOpenStore`, it generates a plain invite link via `AppsFlyerShareInviteHelper generateInviteUrlWithLinkGenerator:` (setting only `campaign` and custom params — `appId` is read from `call.arguments` on Android but is **never read** on iOS) and then opens that URL with `UIApplication openURL:options:completionHandler:`. This means the promoted app's ID is not passed to the underlying attribution call on iOS, unlike Android.
 - Android's `logCrossPromotionImpression`/`logCrossPromotionAndOpenStore` silently skip the native call entirely (but still return success) if `appId` is `null` or `""`.
 

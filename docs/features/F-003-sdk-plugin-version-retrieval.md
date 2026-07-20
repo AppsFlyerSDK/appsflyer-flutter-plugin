@@ -26,7 +26,7 @@ AppsflyerSdk.getSDKVersion()                                          [lib/src/a
   → _methodChannel.invokeMethod("getSDKVersion")
     → Android: AppsflyerSdkPlugin.onMethodCall("getSDKVersion") → getSdkVersion(result)   [android/.../AppsflyerSdkPlugin.java]
       → AppsFlyerLib.getInstance().getSdkVersion()
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("getSDKVersion") → getSDKVersion:result:   [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("getSDKVersion") → getSDKVersion:result:   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → [[AppsFlyerLib shared] getSDKVersion]
 
 AppsflyerSdk.getVersionNumber()                                       [lib/src/appsflyer_sdk.dart]
@@ -41,7 +41,7 @@ AppsflyerSdk.getVersionNumber()                                       [lib/src/a
 | `lib/src/appsflyer_sdk.dart` | `getSDKVersion()` (async, native round-trip), `getVersionNumber()` (sync, local constant) |
 | `lib/src/appsflyer_constants.dart` | `PLUGIN_VERSION` constant returned by `getVersionNumber()` |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `getSdkVersion(result)` — proxies `AppsFlyerLib.getInstance().getSdkVersion()` |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `getSDKVersion:result:` — proxies `[AppsFlyerLib shared] getSDKVersion]` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `getSDKVersion:result:` — proxies `[AppsFlyerLib shared] getSDKVersion]` |
 
 ---
 

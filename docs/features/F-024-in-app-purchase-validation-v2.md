@@ -33,7 +33,7 @@ AppsflyerSdk.validateAndLogInAppPurchaseV2(purchaseDetails, {additionalParameter
       → AppsFlyerLib.getInstance().validateAndLogInAppPurchase(purchaseDetails, additionalParameters, AppsFlyerInAppPurchaseValidationCallback)
         → onInAppPurchaseValidationFinished(...) → result.success(flutterResult)
         → onInAppPurchaseValidationError(...)    → result.error("VALIDATION_ERROR", errorMessage, flutterErrorResult)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall case "validateAndLogInAppPurchaseV2" → validateAndLogInAppPurchaseV2:result:   [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall case "validateAndLogInAppPurchaseV2" → validateAndLogInAppPurchaseV2:result:   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → maps purchaseType string to AFSDKPurchaseType, purchaseToken → transactionId
       → new AFSDKPurchaseDetails(productId, transactionId, purchaseType)
       → [AppsFlyerLib shared] validateAndLogInAppPurchase:purchaseAdditionalDetails:completion:
@@ -49,7 +49,7 @@ AppsflyerSdk.validateAndLogInAppPurchaseV2(purchaseDetails, {additionalParameter
 | `lib/src/appsflyer_sdk.dart` | `validateAndLogInAppPurchaseV2(AFPurchaseDetails, {additionalParameters})` |
 | `lib/src/af_purchase_details.dart` | `AFPurchaseDetails` model (`purchaseType`, `purchaseToken`, `productId`) and `AFPurchaseType` enum (`oneTimePurchase`, `subscription`); `toMap()` serializes `purchaseType` to `"one_time_purchase"` / `"subscription"` strings for the channel |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `validateAndLogInAppPurchaseV2(MethodCall, Result)` handler; `mapPurchaseType(String)` translates the Dart string enum to the native `AFPurchaseType` |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `validateAndLogInAppPurchaseV2:result:` handler; inline string comparison maps to `AFSDKPurchaseType` (note: `purchaseToken` from Dart is passed as iOS `transactionId`) |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `validateAndLogInAppPurchaseV2:result:` handler; inline string comparison maps to `AFSDKPurchaseType` (note: `purchaseToken` from Dart is passed as iOS `transactionId`) |
 
 ---
 

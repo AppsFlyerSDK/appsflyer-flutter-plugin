@@ -26,7 +26,7 @@ AppsflyerSdk.setPartnerData(partnerId, partnerData)                      [lib/sr
   → _methodChannel.invokeMethod("setPartnerData", {'partnerId': partnerId, 'partnersData': partnerData})
     → Android: AppsflyerSdkPlugin.onMethodCall("setPartnerData") → setPartnerData(call, result)   [android/.../AppsflyerSdkPlugin.java:358,546]
       → AppsFlyerLib.getInstance().setPartnerData(partnerId, partnerData)   (only if partnerData != null)
-    → iOS: AppsflyerSdkPlugin handleMethodCall: case "setPartnerData" → setPartnerData:result:   [ios/Classes/AppsflyerSdkPlugin.m:161,370]
+    → iOS: AppsflyerSdkPlugin handleMethodCall: case "setPartnerData" → setPartnerData:result:   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m:161,370]
       → [AppsFlyerLib shared] setPartnerDataWithPartnerId:partnerId partnerInfo:partnersData
 ```
 
@@ -37,7 +37,7 @@ AppsflyerSdk.setPartnerData(partnerId, partnerData)                      [lib/sr
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `setPartnerData(String partnerId, Map<String, Object> partnerData)` — platform-agnostic Dart API surface |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `setPartnerData` native handler |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `setPartnerData:result:` native handler |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `setPartnerData:result:` native handler |
 
 ---
 

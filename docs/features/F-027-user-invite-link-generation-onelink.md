@@ -30,9 +30,9 @@ AppsflyerSdk.generateInviteLink(params, success, error)                         
     → Android: AppsflyerSdkPlugin.onMethodCall("generateInviteLink") → generateInviteLink(call, result)   [android/.../AppsflyerSdkPlugin.java]
       → ShareInviteHelper.generateInviteUrl(mContext) → LinkGenerator.generateLink(mContext, listener)     (native AppsFlyer Android SDK)
         → listener.onResponse(url) / onResponseError(error) → runOnUIThread(...) → mCallbackChannel.invokeMethod("callListener", ...)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("generateInviteLink") → generateInviteLink:result:           [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("generateInviteLink") → generateInviteLink:result:           [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → AppsFlyerShareInviteHelper generateInviteUrlWithLinkGenerator:completionHandler:                    (native AppsFlyer iOS SDK)
-        → _streamHandler sendResponseToFlutter:responseID:status:data:                                     [ios/Classes/AppsFlyerStreamHandler.m]
+        → _streamHandler sendResponseToFlutter:responseID:status:data:                                     [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerStreamHandler.m]
   → Dart: callbacks.dart _methodCallHandler("callListener") → _callbacksById["generateInviteLinkSuccess"/"generateInviteLinkFailure"](data)   [lib/src/callbacks.dart]
 ```
 
@@ -45,8 +45,8 @@ AppsflyerSdk.generateInviteLink(params, success, error)                         
 | `lib/src/appsflyer_sdk.dart` | `generateInviteLink()` (public API) and `_translateInviteLinkParamsToMap()` — builds the method-channel payload and registers the two callbacks |
 | `lib/src/callbacks.dart` | `startListening()` registers the success/failure callback IDs; `_methodCallHandler` dispatches `"callListener"` invocations back to the registered Dart callback |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `generateInviteLink(call, result)` — maps arguments onto `LinkGenerator`, invokes the native `ShareInviteHelper`, and forwards the async result via `runOnUIThread` |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `generateInviteLink:result:` — same mapping onto `AppsFlyerLinkGenerator`, using `AppsFlyerShareInviteHelper` |
-| `ios/Classes/AppsFlyerStreamHandler.m` | `sendResponseToFlutter:status:data:` — JSON-encodes the callback payload and invokes `"callListener"` on the callback channel |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `generateInviteLink:result:` — same mapping onto `AppsFlyerLinkGenerator`, using `AppsFlyerShareInviteHelper` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerStreamHandler.m` | `sendResponseToFlutter:status:data:` — JSON-encodes the callback payload and invokes `"callListener"` on the callback channel |
 
 ---
 

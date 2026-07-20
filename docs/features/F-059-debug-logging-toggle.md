@@ -32,7 +32,7 @@ AppsFlyerOptions(showDebug: true)                                       [lib/src
           → if (isDebug) { instance.setLogLevel(AFLogger.LogLevel.DEBUG);
                             instance.setDebugLog(true); }
             else { instance.setDebugLog(false); }                                   (lines 1088-1093)
-        → iOS: AppsflyerSdkPlugin.handleMethodCall("initSdk") → initSdkWithCall:result:  [ios/Classes/AppsflyerSdkPlugin.m]
+        → iOS: AppsflyerSdkPlugin.handleMethodCall("initSdk") → initSdkWithCall:result:  [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
           → isDebugValue = call.arguments[afIsDebug]                                (line 805)
           → [AppsFlyerLib shared].isDebug = isDebug                                 (line 813)
 ```
@@ -47,8 +47,8 @@ AppsFlyerOptions(showDebug: true)                                       [lib/src
 | `lib/src/appsflyer_constants.dart` | `AF_IS_DEBUG = "isDebug"` — shared Dart↔native key |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `initSdk(call, result)` — toggles `AppsFlyerLib.getInstance().setLogLevel(...)` and `.setDebugLog(...)` (lines 1087-1093) |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsFlyerConstants.java` | `AF_IS_DEBUG = "isDebug"` — native Android mirror of the Dart key |
-| `ios/Classes/AppsflyerSdkPlugin.h` | `#define afIsDebug @"isDebug"` |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `initSdkWithCall:result:` — sets `[AppsFlyerLib shared].isDebug` directly (lines 805, 813) |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/include/appsflyer_sdk/AppsflyerSdkPlugin.h` | `#define afIsDebug @"isDebug"` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `initSdkWithCall:result:` — sets `[AppsFlyerLib shared].isDebug` directly (lines 805, 813) |
 | `doc/BasicIntegration.md`, `doc/API.md`, `doc/Testing.md` | Document `showDebug` and warn "do not release to production with this parameter set to `true`" |
 
 ---

@@ -27,7 +27,7 @@ AppsflyerSdk.logEvent(eventName, eventValues)                                   
     → Android: AppsflyerSdkPlugin.onMethodCall("logEvent") → logEvent(call, result)   [android/.../AppsflyerSdkPlugin.java]
       → AppsFlyerLib.getInstance().logEvent(mContext, eventName, eventValues)
       → result.success(true)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("logEvent") → logEventWithCall:result: [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("logEvent") → logEventWithCall:result: [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → [[AppsFlyerLib shared] logEvent:eventName withValues:eventValues]
       → result(@YES)
 ```
@@ -39,7 +39,7 @@ AppsflyerSdk.logEvent(eventName, eventValues)                                   
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `logEvent(String eventName, Map? eventValues)` — Dart public API, returns `Future<bool?>` |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `logEvent(MethodCall, Result)` — reads `AF_EVENT_NAME`/`AF_EVENT_VALUES` args, forwards to `AppsFlyerLib.getInstance().logEvent(mContext, eventName, eventValues)`, always returns `result.success(true)` |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `logEventWithCall:result:` — reads `eventName`/`eventValues` (normalizes `NSNull` to `nil`), forwards to `[[AppsFlyerLib shared] logEvent:withValues:]`, always returns `result(@YES)`; comment `//TODO: Add callback handler` marks that no completion callback is wired |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `logEventWithCall:result:` — reads `eventName`/`eventValues` (normalizes `NSNull` to `nil`), forwards to `[[AppsFlyerLib shared] logEvent:withValues:]`, always returns `result(@YES)`; comment `//TODO: Add callback handler` marks that no completion callback is wired |
 | `doc/InAppEvents.md` | Public integration guide with usage example |
 
 ---

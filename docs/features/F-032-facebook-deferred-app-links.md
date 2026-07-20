@@ -26,7 +26,7 @@ AppsflyerSdk.enableFacebookDeferredApplinks(bool isEnabled)                     
   → _methodChannel.invokeMethod("enableFacebookDeferredApplinks", {'isFacebookDeferredApplinksEnabled': isEnabled})
     → Android: AppsflyerSdkPlugin.onMethodCall("enableFacebookDeferredApplinks") → enableFacebookDeferredApplinks(call, result)   [android/.../AppsflyerSdkPlugin.java]
       → AppsFlyerLib.getInstance().enableFacebookDeferredApplinks(true|false)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("enableFacebookDeferredApplinks") → enableFacebookDeferredApplinks:result:   [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("enableFacebookDeferredApplinks") → enableFacebookDeferredApplinks:result:   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → only if isEnabled == true: [[AppsFlyerLib shared] enableFacebookDeferredApplinksWithClass:NSClassFromString(@"FBSDKAppLinkUtility")]
 ```
 
@@ -37,7 +37,7 @@ AppsflyerSdk.enableFacebookDeferredApplinks(bool isEnabled)                     
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `enableFacebookDeferredApplinks(bool)` — wraps the flag in `{'isFacebookDeferredApplinksEnabled': isEnabled}` |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `enableFacebookDeferredApplinks(call, result)` — explicitly calls the native API with either `true` or `false` |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `enableFacebookDeferredApplinks:result:` — only calls the native enabling API when `isEnabled == true`; a `false` value is a no-op |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `enableFacebookDeferredApplinks:result:` — only calls the native enabling API when `isEnabled == true`; a `false` value is a no-op |
 
 ---
 

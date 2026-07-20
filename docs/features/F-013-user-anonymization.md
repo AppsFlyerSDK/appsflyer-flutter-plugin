@@ -26,7 +26,7 @@ AppsflyerSdk.anonymizeUser(shouldAnonymize)                              [lib/sr
   → _methodChannel.invokeMethod("anonymizeUser", {'shouldAnonymize': shouldAnonymize})
     → Android: AppsflyerSdkPlugin.onMethodCall("anonymizeUser") → anonymizeUser(call, result)   [android/.../AppsflyerSdkPlugin.java]
       → AppsFlyerLib.getInstance().anonymizeUser(shouldAnonymize)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("anonymizeUser") → anonymizeUser:result:          [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("anonymizeUser") → anonymizeUser:result:          [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → [AppsFlyerLib shared].anonymizeUser = shouldAnonymize
 ```
 
@@ -37,7 +37,7 @@ AppsflyerSdk.anonymizeUser(shouldAnonymize)                              [lib/sr
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `anonymizeUser(bool)` |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `anonymizeUser` native handler |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `anonymizeUser:result:` native handler (direct property assignment) |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `anonymizeUser:result:` native handler (direct property assignment) |
 
 ---
 

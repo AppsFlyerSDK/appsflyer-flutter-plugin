@@ -32,7 +32,7 @@ AppsflyerSdk.setAndroidIdData(androidId)                                [lib/src
     → Android: AppsflyerSdkPlugin.onMethodCall("setAndroidIdData") → setAndroidIdData(call, result)   [android/.../AppsflyerSdkPlugin.java]
       → AppsFlyerLib.getInstance().setAndroidIdData(androidId)
 ```
-No iOS branch exists for either method name in `ios/Classes/AppsflyerSdkPlugin.m`'s `handleMethodCall:`.
+No iOS branch exists for either method name in `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m`'s `handleMethodCall:`.
 
 ---
 

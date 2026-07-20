@@ -26,7 +26,7 @@ AppsflyerSdk.setCustomerUserId(id)                                       [lib/sr
   → _methodChannel.invokeMethod("setCustomerUserId", {'id': id})
     → Android: AppsflyerSdkPlugin.onMethodCall("setCustomerUserId") → setCustomerUserId(call, result)   [android/.../AppsflyerSdkPlugin.java]
       → AppsFlyerLib.getInstance().setCustomerUserId(userId)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("setCustomerUserId") → setCustomerUserId:result:         [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("setCustomerUserId") → setCustomerUserId:result:         [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → [[AppsFlyerLib shared] setCustomerUserID:userId]
 ```
 Note: the related (but distinct) Dart API `setCustomerIdAndLogSession(id)` invokes the channel method `"setCustomerIdAndLogSession"`, which Android handles with its own `setCustomerIdAndLogSession(call, result)` (calling `AppsFlyerLib.getInstance().setCustomerIdAndLogSession(userId, mContext)`), while iOS routes `"setCustomerIdAndLogSession"` to the *same* `setCustomerUserId:result:` handler as plain `setCustomerUserId` — iOS has no distinct "and log session" native behavior.
@@ -38,7 +38,7 @@ Note: the related (but distinct) Dart API `setCustomerIdAndLogSession(id)` invok
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `setCustomerUserId(String)` |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `setCustomerUserId` native handler |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `setCustomerUserId:result:` native handler |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `setCustomerUserId:result:` native handler |
 
 ---
 

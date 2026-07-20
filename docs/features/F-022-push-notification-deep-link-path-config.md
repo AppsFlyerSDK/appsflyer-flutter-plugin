@@ -26,7 +26,7 @@ AppsflyerSdk.addPushNotificationDeepLinkPath(List<String> deeplinkPath)         
   → _methodChannel.invokeMethod("addPushNotificationDeepLinkPath", deeplinkPath)
     → Android: AppsflyerSdkPlugin.onMethodCall("addPushNotificationDeepLinkPath") → addPushNotificationDeepLinkPath(call, result)   [android/.../AppsflyerSdkPlugin.java]
       → AppsFlyerLib.getInstance().addPushNotificationDeepLinkPath(String[] path)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("addPushNotificationDeepLinkPath") → addPushNotificationDeepLinkPath:result:   [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("addPushNotificationDeepLinkPath") → addPushNotificationDeepLinkPath:result:   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → [[AppsFlyerLib shared] addPushNotificationDeepLinkPath:deeplinkPath]
 ```
 The configured path is later consulted when a push payload reaches the native SDK (Android: automatically, from the launch/new intent extras; iOS: when `sendPushNotificationData`/`handlePushNotification` is called — see F-031), and any OneLink URL found at that path is resolved and delivered through the UDL `onDeepLinking` callback (F-037).
@@ -38,7 +38,7 @@ The configured path is later consulted when a push payload reaches the native SD
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `addPushNotificationDeepLinkPath(List<String>)` — passes the path array directly as method-channel arguments (no wrapping map) |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `addPushNotificationDeepLinkPath(call, result)` — casts arguments to `ArrayList<String>`, converts to `String[]`, forwards to `AppsFlyerLib.getInstance().addPushNotificationDeepLinkPath` |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `addPushNotificationDeepLinkPath:result:` — forwards the `NSArray` directly to `[AppsFlyerLib shared]` if non-nil |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `addPushNotificationDeepLinkPath:result:` — forwards the `NSArray` directly to `[AppsFlyerLib shared]` if non-nil |
 
 ---
 

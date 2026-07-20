@@ -28,7 +28,7 @@ AppsFlyerOptions(disableCollectASA: true)                              [lib/src/
       → if Platform.isIOS is NOT required here — value is copied unconditionally on both platforms:
         validatedOptions[AppsflyerConstants.DISABLE_COLLECT_ASA] = options.disableCollectASA   (line 63-66 / 125-128)
       → _methodChannel.invokeMethod("initSdk", validatedOptions)
-        → iOS: AppsflyerSdkPlugin.handleMethodCall("initSdk") → initSdkWithCall:result:   [ios/Classes/AppsflyerSdkPlugin.m]
+        → iOS: AppsflyerSdkPlugin.handleMethodCall("initSdk") → initSdkWithCall:result:   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
           → disableCollectASA = call.arguments[afDisableCollectASA] (as NSNumber → BOOL)   (line 836-840)
           → [AppsFlyerLib shared].disableCollectASA = disableCollectASA                    (line 848)
         → Android: AppsflyerSdkPlugin.initSdk(call, result) — value is never read; no `DISABLE_COLLECT_ASA`
@@ -43,8 +43,8 @@ AppsFlyerOptions(disableCollectASA: true)                              [lib/src/
 | `lib/src/appsflyer_options.dart` | `AppsFlyerOptions.disableCollectASA` (`bool?`, optional named constructor param) |
 | `lib/src/appsflyer_sdk.dart` | `_validateAFOptions` / `_validateMapOptions` — copies `disableCollectASA` into the validated options map unconditionally (no `Platform.isIOS` guard on the Dart validation side) if non-null |
 | `lib/src/appsflyer_constants.dart` | `DISABLE_COLLECT_ASA = "disableCollectASA"` — shared Dart↔native key |
-| `ios/Classes/AppsflyerSdkPlugin.h` | `#define afDisableCollectASA @"disableCollectASA"` |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `initSdkWithCall:result:` — parses the flag and sets `[AppsFlyerLib shared].disableCollectASA` (lines 836–848) |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/include/appsflyer_sdk/AppsflyerSdkPlugin.h` | `#define afDisableCollectASA @"disableCollectASA"` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `initSdkWithCall:result:` — parses the flag and sets `[AppsFlyerLib shared].disableCollectASA` (lines 836–848) |
 | `doc/BasicIntegration.md`, `doc/API.md` | Document `disableCollectASA` as "Opt-out of the Apple Search Ads attributions" |
 
 ---

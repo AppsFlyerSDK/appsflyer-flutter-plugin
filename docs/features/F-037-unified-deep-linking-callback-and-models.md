@@ -26,19 +26,19 @@ AppsflyerSdk.initSdk(registerOnDeepLinkingCallback: true, ...)                  
   → validatedOptions[AF_UDL] = registerOnDeepLinkingCallback
   → _methodChannel.invokeMethod("initSdk", validatedOptions)
     → Android: initSdk(call, result) → if (getUdl) instance.subscribeForDeepLink(afDeepLinkListener)                [android/.../AppsflyerSdkPlugin.java]
-    → iOS: initSdkWithCall:result: → if (isUDP) [AppsFlyerLib shared].deepLinkDelegate = _streamHandler              [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: initSdkWithCall:result: → if (isUDP) [AppsFlyerLib shared].deepLinkDelegate = _streamHandler              [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
 
 AppsflyerSdk.onDeepLinking(Function(DeepLinkResult) callback)                                       [lib/src/appsflyer_sdk.dart]
   → startListeningToUDL(callback, "onDeepLinking")                                                  [lib/src/callbacks.dart]
     → _channel(AF_CALLBACK_CHANNEL).invokeMethod("startListening", "onDeepLinking")
       → Android: startListening(...) → udlCallback = true (when callbackName == AF_UDL_CALLBACK == "onDeepLinking")  [android/.../AppsflyerSdkPlugin.java]
-      → iOS: startListening:result: → _udpCallback = true (when callbackId == afUDPCallback == "onDeepLinking")      [ios/Classes/AppsflyerSdkPlugin.m]
+      → iOS: startListening:result: → _udpCallback = true (when callbackId == afUDPCallback == "onDeepLinking")      [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
 
 Native deep link resolved (via F-039 iOS entry points / F-040 Android onNewIntent, or SDK-internal resume/link-resolution):
   Android: afDeepLinkListener.onDeepLinking(DeepLinkResult) [com.appsflyer.deeplink.DeepLinkResult, native SDK type]
     → if (udlCallback) runOnUIThread(deepLinkResult, AF_UDL_CALLBACK, AF_SUCCESS)
       → args {"id", "deepLinkStatus", "deepLinkError"?, "deepLinkObj"? } → mCallbackChannel.invokeMethod("callListener", jsonArgs)
-  iOS: AppsFlyerStreamHandler.didResolveDeepLink: (AppsFlyerDeepLinkDelegate)                        [ios/Classes/AppsFlyerStreamHandler.m]
+  iOS: AppsFlyerStreamHandler.didResolveDeepLink: (AppsFlyerDeepLinkDelegate)                        [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerStreamHandler.m]
     → if ([AppsflyerSdkPlugin udpCallback]) build {"id", "deepLinkStatus", "deepLinkError"?, "deepLinkObj"?} → AppsflyerSdkPlugin.callbackChannel invokeMethod:"callListener"
   Dart: _methodCallHandler(call) [lib/src/callbacks.dart] → callMap["id"] == "onDeepLinking"
     → error = callMap["deepLinkError"]?.errorFromString()
@@ -57,9 +57,9 @@ Native deep link resolved (via F-039 iOS entry points / F-040 Android onNewInten
 | `lib/src/udl/deeplink.dart` | `DeepLink` — typed accessors (`deepLinkValue`, `matchType`, `mediaSource`, `campaign`, `afSub1..5`, `isDeferred`, etc.) over the raw click-event map |
 | `lib/src/udl/deep_link_result.dart` | `DeepLinkResult`, `Status` (`FOUND`/`NOT_FOUND`/`ERROR`/`PARSE_ERROR`), `Error` (`TIMEOUT`/`NETWORK`/`HTTP_STATUS_CODE`/`UNEXPECTED`/`DEVELOPER_ERROR`) enums and string-conversion extensions used to decode the wire payload |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `afDeepLinkListener` (`com.appsflyer.deeplink.DeepLinkListener`) — registered via `AppsFlyerLib.getInstance().subscribeForDeepLink(...)` only when `AF_UDL` is true; `runOnUIThread` serializes `DeepLinkResult` into the `deepLinkStatus`/`deepLinkError`/`deepLinkObj` JSON shape; caches `cachedDeepLinkResult` across activity detach/reattach (`RD-65582`) |
-| `ios/Classes/AppsFlyerStreamHandler.m` | `didResolveDeepLink:` (`AppsFlyerDeepLinkDelegate`) — gated by `[AppsflyerSdkPlugin udpCallback]`; builds the same JSON shape as Android |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `initSdkWithCall:result:` sets `[AppsFlyerLib shared].deepLinkDelegate = _streamHandler` only if the `UDL` flag is true; `startListening:` flips the internal `_udpCallback` flag when `callbackId == afUDPCallback` |
-| `ios/Classes/AppsflyerSdkPlugin.h` | Defines `afUDL` (`"UDL"`), `afUDPCallback` (`"onDeepLinking"`) — note the `udpCallback`/`_udpCallback` naming (likely a "UDL"→"UDP" typo) used throughout the iOS plugin for this feature |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerStreamHandler.m` | `didResolveDeepLink:` (`AppsFlyerDeepLinkDelegate`) — gated by `[AppsflyerSdkPlugin udpCallback]`; builds the same JSON shape as Android |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `initSdkWithCall:result:` sets `[AppsFlyerLib shared].deepLinkDelegate = _streamHandler` only if the `UDL` flag is true; `startListening:` flips the internal `_udpCallback` flag when `callbackId == afUDPCallback` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/include/appsflyer_sdk/AppsflyerSdkPlugin.h` | Defines `afUDL` (`"UDL"`), `afUDPCallback` (`"onDeepLinking"`) — note the `udpCallback`/`_udpCallback` naming (likely a "UDL"→"UDP" typo) used throughout the iOS plugin for this feature |
 
 ---
 

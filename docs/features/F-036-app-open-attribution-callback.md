@@ -26,13 +26,13 @@ AppsflyerSdk.initSdk(registerOnAppOpenAttributionCallback: true, ...)           
   → validatedOptions[AF_GCD] = registerConversionDataCallback || registerOnAppOpenAttributionCallback
   → _methodChannel.invokeMethod("initSdk", validatedOptions)
     → Android: initSdk(call, result) → if (getGCD) gcdListener = afConversionListener; instance.init(afDevKey, gcdListener, mContext)         [android/.../AppsflyerSdkPlugin.java]
-    → iOS: initSdkWithCall:result: → if (isConversionData) [[AppsFlyerLib shared] setDelegate:_streamHandler]                                 [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: initSdkWithCall:result: → if (isConversionData) [[AppsFlyerLib shared] setDelegate:_streamHandler]                                 [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
 
 AppsflyerSdk.onAppOpenAttribution(Function callback)                                                [lib/src/appsflyer_sdk.dart]
   → startListening(callback, "onAppOpenAttribution")                                                [lib/src/callbacks.dart]
     → _channel(AF_CALLBACK_CHANNEL).invokeMethod("startListening", "onAppOpenAttribution")
       → Android: startListening(...) → oaoaCallback = true (when callbackName == AF_OAOA_CALLBACK == "onAppOpenAttribution")                [android/.../AppsflyerSdkPlugin.java]
-      → iOS: startListening:result: → _oaoaCallback = true (when callbackId == afOAOACallback == "onAppOpenAttribution")                     [ios/Classes/AppsflyerSdkPlugin.m]
+      → iOS: startListening:result: → _oaoaCallback = true (when callbackId == afOAOACallback == "onAppOpenAttribution")                     [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
 
 Native SDK app-open attribution arrives:
   Android: afConversionListener.onAppOpenAttribution(map) / onAttributionFailure(errorMessage)
@@ -50,8 +50,8 @@ Native SDK app-open attribution arrives:
 | `lib/src/appsflyer_sdk.dart` | `onAppOpenAttribution(Function)` — registers the Dart callback via `startListening` |
 | `lib/src/callbacks.dart` | `_methodCallHandler` — decodes the `callListener` JSON envelope and dispatches `{"status", "payload"}` to the registered `"onAppOpenAttribution"` callback |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `afConversionListener.onAppOpenAttribution/onAttributionFailure` — native `AppsFlyerConversionListener` methods, gated by `oaoaCallback`; also cached across activity detach/reattach (`cachedOnAppOpenAttribution`/`cachedOnAttributionFailure`, `RD-65582`) |
-| `ios/Classes/AppsFlyerStreamHandler.m` | `onAppOpenAttribution:`/`onAppOpenAttributionFailure:` — `AppsFlyerLibDelegate` methods, gated by `[AppsflyerSdkPlugin oaoaCallback]` |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `initSdkWithCall:result:` — sets `_streamHandler` as the `AppsFlyerLib` delegate only if the `GCD` flag is true (shared with F-035) |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerStreamHandler.m` | `onAppOpenAttribution:`/`onAppOpenAttributionFailure:` — `AppsFlyerLibDelegate` methods, gated by `[AppsflyerSdkPlugin oaoaCallback]` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `initSdkWithCall:result:` — sets `_streamHandler` as the `AppsFlyerLib` delegate only if the `GCD` flag is true (shared with F-035) |
 
 ---
 

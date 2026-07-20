@@ -24,8 +24,8 @@ Called by the host app whenever it needs to explicitly declare (or correct) the 
 ```
 AppsflyerSdk.setCurrentDeviceLanguage(language)                          [lib/src/appsflyer_sdk.dart:597]
   → _methodChannel.invokeMethod("setCurrentDeviceLanguage", language)
-    → iOS: AppsflyerSdkPlugin handleMethodCall: case "setCurrentDeviceLanguage" → setCurrentDeviceLanguage:result:   [ios/Classes/AppsflyerSdkPlugin.m:155]
-      → [AppsFlyerLib shared] setCurrentDeviceLanguage: language                                                     [ios/Classes/AppsflyerSdkPlugin.m:395]
+    → iOS: AppsflyerSdkPlugin handleMethodCall: case "setCurrentDeviceLanguage" → setCurrentDeviceLanguage:result:   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m:155]
+      → [AppsFlyerLib shared] setCurrentDeviceLanguage: language                                                     [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m:395]
 ```
 No `case "setCurrentDeviceLanguage"` exists in `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java`'s method-call switch — on Android the call falls through to the default branch and returns `MethodNotImplemented`.
 
@@ -35,7 +35,7 @@ No `case "setCurrentDeviceLanguage"` exists in `android/src/main/java/com/appsfl
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `setCurrentDeviceLanguage(String)` — platform-agnostic Dart API surface (no `Platform.isIOS` guard) |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `setCurrentDeviceLanguage:result:` native handler, forwards to `AppsFlyerLib.shared` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `setCurrentDeviceLanguage:result:` native handler, forwards to `AppsFlyerLib.shared` |
 
 ---
 

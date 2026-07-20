@@ -39,7 +39,7 @@ AppsflyerSdk.performOnDeepLinking()                                          [li
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `performOnDeepLinking()` — platform-agnostic Dart API, no `Platform.isAndroid` guard |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `performOnDeepLinking(call, result)` — reads `activity.getIntent()` and forwards it to `AppsFlyerLib.getInstance().performOnDeepLinking(intent, mApplication)` |
-| `ios/Classes/AppsflyerSdkPlugin.m` | No corresponding case in `handleMethodCall:` — the method name is entirely absent |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | No corresponding case in `handleMethodCall:` — the method name is entirely absent |
 
 ---
 

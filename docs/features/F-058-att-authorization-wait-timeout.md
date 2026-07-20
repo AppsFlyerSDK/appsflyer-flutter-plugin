@@ -28,7 +28,7 @@ AppsFlyerOptions(timeToWaitForATTUserAuthorization: 50.0)               [lib/src
       → if (Platform.isIOS) { assert(value is double);
           validatedOptions[AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION] = value }   (lines 76-85 / 137-148)
       → _methodChannel.invokeMethod("initSdk", validatedOptions)
-        → iOS: AppsflyerSdkPlugin.handleMethodCall("initSdk") → initSdkWithCall:result:   [ios/Classes/AppsflyerSdkPlugin.m]
+        → iOS: AppsflyerSdkPlugin.handleMethodCall("initSdk") → initSdkWithCall:result:   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
           → timeToWaitForATTUserAuthorization = call.arguments[afTimeToWaitForATTUserAuthorization] doubleValue   (line 796)
           → if (timeToWaitForATTUserAuthorization != 0) {
               [[AppsFlyerLib shared] waitForATTUserAuthorizationWithTimeoutInterval:timeToWaitForATTUserAuthorization]
@@ -45,8 +45,8 @@ AppsFlyerOptions(timeToWaitForATTUserAuthorization: 50.0)               [lib/src
 | `lib/src/appsflyer_options.dart` | `AppsFlyerOptions.timeToWaitForATTUserAuthorization` (`double?`, optional named constructor param) |
 | `lib/src/appsflyer_sdk.dart` | `_validateAFOptions` / `_validateMapOptions` — reads the value **only** when `Platform.isIOS`, asserts it is a `double`, copies into the validated options map |
 | `lib/src/appsflyer_constants.dart` | `AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION = "timeToWaitForATTUserAuthorization"` — shared Dart↔native key |
-| `ios/Classes/AppsflyerSdkPlugin.h` | `#define afTimeToWaitForATTUserAuthorization @"timeToWaitForATTUserAuthorization"` |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `initSdkWithCall:result:` — parses the interval and calls `waitForATTUserAuthorizationWithTimeoutInterval:` before `start` (lines 796, 860-869) |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/include/appsflyer_sdk/AppsflyerSdkPlugin.h` | `#define afTimeToWaitForATTUserAuthorization @"timeToWaitForATTUserAuthorization"` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `initSdkWithCall:result:` — parses the interval and calls `waitForATTUserAuthorizationWithTimeoutInterval:` before `start` (lines 796, 860-869) |
 | `doc/BasicIntegration.md`, `doc/AdvancedAPI.md`, `doc/Guides.md`, `doc/API.md` | Document the option as delaying SDK start "for x seconds until the user either accepts the consent dialog, declines it, or the timer runs out" |
 
 ---

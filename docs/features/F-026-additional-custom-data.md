@@ -27,7 +27,7 @@ AppsflyerSdk.setAdditionalData(customData)                                      
     → Android: AppsflyerSdkPlugin.onMethodCall("setAdditionalData") → setAdditionalData(call, result)  [android/.../AppsflyerSdkPlugin.java]
       → AppsFlyerLib.getInstance().setAdditionalData((HashMap<String, Object>) customData)
       → result.success(null)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("setAdditionalData") → setAdditionalData:result:        [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("setAdditionalData") → setAdditionalData:result:        [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → [[AppsFlyerLib shared] setAdditionalData:data]
       → result(nil)
 ```
@@ -39,7 +39,7 @@ AppsflyerSdk.setAdditionalData(customData)                                      
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `setAdditionalData(Map<String, dynamic>? customData)` — platform-agnostic Dart API, `void` |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `setAdditionalData(MethodCall, Result)` — casts the `customData` argument directly to `HashMap<String, Object>` and forwards to `AppsFlyerLib.getInstance().setAdditionalData(...)` |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `setAdditionalData:result:` — reads `customData` as an `NSDictionary` and forwards to `[[AppsFlyerLib shared] setAdditionalData:]` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `setAdditionalData:result:` — reads `customData` as an `NSDictionary` and forwards to `[[AppsFlyerLib shared] setAdditionalData:]` |
 | `doc/API.md` | Public documentation for `setAdditionalData` |
 
 ---

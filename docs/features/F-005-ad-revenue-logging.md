@@ -29,7 +29,7 @@ AppsflyerSdk.logAdRevenue(AdRevenueData)                                        
       → new AFAdRevenueData(monetizationNetwork, mediationNetwork, currencyIso4217Code, revenue)
       → AppsFlyerLib.getInstance().logAdRevenue(adRevenueData, additionalParameters)
       → result.success(true)  |  result.error(...) on invalid/unexpected input
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("logAdRevenue") → logAdRevenue:result:               [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("logAdRevenue") → logAdRevenue:result:               [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → getEnumValueFromString: maps the Dart enum's string value to AppsFlyerAdRevenueMediationNetworkType
       → [[AFAdRevenueData alloc] initWithMonetizationNetwork:mediationNetwork:currencyIso4217Code:eventRevenue:]
       → [[AppsFlyerLib shared] logAdRevenue:additionalParameters:]
@@ -45,7 +45,7 @@ AppsflyerSdk.logAdRevenue(AdRevenueData)                                        
 | `lib/src/appsflyer_ad_revenue_data.dart` | `AdRevenueData` model: `monetizationNetwork`, `mediationNetwork` (String), `currencyIso4217Code`, `revenue` (double), optional `additionalParameters` |
 | `lib/src/appsflyer_constants.dart` | `AFMediationNetwork` enum with a `.value` getter mapping each case (e.g. `applovinMax`) to the exact lowercase/snake_case string (`"applovin_max"`) both native sides expect |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `logAdRevenue(MethodCall, Result)` — validates required args via `requireNonNullArgument`, converts the mediation-network string to the native `MediationNetwork` enum via `.valueOf(...toUpperCase())`, builds `AFAdRevenueData`, calls `AppsFlyerLib.getInstance().logAdRevenue(...)` |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `logAdRevenue:result:` and `getEnumValueFromString:` — validates required args, maps the mediation-network string to `AppsFlyerAdRevenueMediationNetworkType` via an explicit `NSDictionary` lookup table, builds `AFAdRevenueData`, calls `[[AppsFlyerLib shared] logAdRevenue:additionalParameters:]` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `logAdRevenue:result:` and `getEnumValueFromString:` — validates required args, maps the mediation-network string to `AppsFlyerAdRevenueMediationNetworkType` via an explicit `NSDictionary` lookup table, builds `AFAdRevenueData`, calls `[[AppsFlyerLib shared] logAdRevenue:additionalParameters:]` |
 | `doc/API.md` | `logAdRevenue` / `AdRevenueData` / `AFMediationNetwork` public documentation and usage example |
 
 ---

@@ -29,7 +29,7 @@ AppsFlyerOptions(appInviteOneLink: "...")                                       
     → _methodChannel.invokeMethod("initSdk", validatedOptions)
       → Android: AppsflyerSdkPlugin.onMethodCall("initSdk") → initSdk(call, result)                          [android/.../AppsflyerSdkPlugin.java]
         → call.argument(AppsFlyerConstants.AF_APP_INVITE_ONE_LINK) → AppsFlyerLib.getInstance().setAppInviteOneLink(appInviteOneLink)   (only if non-null)
-      → iOS: AppsflyerSdkPlugin.handleMethodCall("initSdk") → initSdkWithCall:result:                          [ios/Classes/AppsflyerSdkPlugin.m]
+      → iOS: AppsflyerSdkPlugin.handleMethodCall("initSdk") → initSdkWithCall:result:                          [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
         → call.arguments[afInviteOneLink] → [AppsFlyerLib shared].appInviteOneLinkID = appInviteOneLink   (only if non-nil and not NSNull)
 ```
 
@@ -41,7 +41,7 @@ AppsFlyerOptions(appInviteOneLink: "...")                                       
 | `lib/src/appsflyer_options.dart` | `AppsFlyerOptions.appInviteOneLink` — optional `String?` init-time field |
 | `lib/src/appsflyer_sdk.dart` | `_validateAFOptions()` (lines ~56-61) and `_validateMapOptions()` (lines ~111-123) — copy `appInviteOneLink` into `validatedOptions[AppsflyerConstants.APP_INVITE_ONE_LINK]` under the wire key `"appInviteOneLink"`; `initSdk()` sends it as part of the `"initSdk"` method-channel call |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `initSdk(call, result)` (~line 1100) reads `AppsFlyerConstants.AF_APP_INVITE_ONE_LINK` and calls `AppsFlyerLib.getInstance().setAppInviteOneLink(appInviteOneLink)` if non-null, **after** `instance.init(...)` but before `instance.start(activity)` |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `initSdkWithCall:result:` (~line 831) reads `afInviteOneLink` (`"appInviteOneLink"`) and sets `[AppsFlyerLib shared].appInviteOneLinkID` if non-nil and not `NSNull` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `initSdkWithCall:result:` (~line 831) reads `afInviteOneLink` (`"appInviteOneLink"`) and sets `[AppsFlyerLib shared].appInviteOneLinkID` if non-nil and not `NSNull` |
 
 ---
 

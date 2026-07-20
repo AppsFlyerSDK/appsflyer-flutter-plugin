@@ -25,7 +25,7 @@ Called by the host app during setup/configuration (typically before or alongside
 AppsflyerSdk.useReceiptValidationSandbox(bool isSandboxEnabled)          [lib/src/appsflyer_sdk.dart]
   → _methodChannel.invokeMethod("useReceiptValidationSandbox", isSandboxEnabled)
     → AppsflyerSdkPlugin.handleMethodCall case "useReceiptValidationSandbox"
-        → useReceiptValidationSandbox:result:                            [ios/Classes/AppsflyerSdkPlugin.m]
+        → useReceiptValidationSandbox:result:                            [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
             → _isSandboxEnabled = isSandboxEnabled.boolValue
             → [AppsFlyerLib shared].useReceiptValidationSandbox = _isSandboxEnabled
             → result(nil)
@@ -38,7 +38,7 @@ There is no Android implementation: the method channel argument is only handled 
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `useReceiptValidationSandbox(bool isSandboxEnabled)` — sends the raw bool as the method-call argument (not wrapped in a map) |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `useReceiptValidationSandbox:result:` (line ~410) — guards with `isKindOfClass:[NSNumber class]`, stores into static `_isSandboxEnabled`, and forwards to `[AppsFlyerLib shared].useReceiptValidationSandbox` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `useReceiptValidationSandbox:result:` (line ~410) — guards with `isKindOfClass:[NSNumber class]`, stores into static `_isSandboxEnabled`, and forwards to `[AppsFlyerLib shared].useReceiptValidationSandbox` |
 
 ---
 

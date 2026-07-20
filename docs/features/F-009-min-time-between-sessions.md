@@ -27,7 +27,7 @@ AppsflyerSdk.setMinTimeBetweenSessions(seconds)                          [lib/sr
   → _methodChannel.invokeMethod("setMinTimeBetweenSessions", {'seconds': seconds})
     → Android: AppsflyerSdkPlugin.onMethodCall("setMinTimeBetweenSessions") → setMinTimeBetweenSessions(call, result)   [android/.../AppsflyerSdkPlugin.java]
       → AppsFlyerLib.getInstance().setMinTimeBetweenSessions(seconds)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("setMinTimeBetweenSessions") → setMinTimeBetweenSessions:result:         [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("setMinTimeBetweenSessions") → setMinTimeBetweenSessions:result:         [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → [AppsFlyerLib shared].minTimeBetweenSessions = seconds
 ```
 
@@ -38,7 +38,7 @@ AppsflyerSdk.setMinTimeBetweenSessions(seconds)                          [lib/sr
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `setMinTimeBetweenSessions(int)` — asserts non-negative seconds, dispatches to channel |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `setMinTimeBetweenSessions` native handler |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `setMinTimeBetweenSessions:result:` native handler (direct property assignment) |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `setMinTimeBetweenSessions:result:` native handler (direct property assignment) |
 
 ---
 

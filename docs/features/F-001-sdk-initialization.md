@@ -30,7 +30,7 @@ AppsflyerSdk.initSdk({registerConversionDataCallback, registerOnAppOpenAttributi
       → Android: AppsflyerSdkPlugin.onMethodCall("initSdk") → initSdk(call, result)   [android/.../AppsflyerSdkPlugin.java]
         → AppsFlyerLib.getInstance().init(afDevKey, gcdListener, mContext)
         → instance.start(activity)  [only if isManualStartMode == false]
-      → iOS: AppsflyerSdkPlugin.handleMethodCall("initSdk") → initSdkWithCall:result:   [ios/Classes/AppsflyerSdkPlugin.m]
+      → iOS: AppsflyerSdkPlugin.handleMethodCall("initSdk") → initSdkWithCall:result:   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
         → [AppsFlyerLib shared].appsFlyerDevKey / .appleAppID / .isDebug = ...
         → [[AppsFlyerLib shared] start]  [only if manualStart == NO]
 ```
@@ -45,8 +45,8 @@ AppsflyerSdk.initSdk({registerConversionDataCallback, registerOnAppOpenAttributi
 | `lib/src/appsflyer_constants.dart` | String keys shared across Dart/native (`AF_DEV_KEY`, `AF_APP_Id`, `AF_MANUAL_START`, `AF_GCD`, `AF_UDL`, `PLUGIN_VERSION`) |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `initSdk(call, result)` — native Android init, conditional auto-start |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsFlyerConstants.java` | Native Android mirror of the Dart string keys |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `initSdkWithCall:result:` — native iOS init, conditional auto-start |
-| `ios/Classes/AppsflyerSdkPlugin.h` | `#define` string keys (`afDevKey`, `afAppId`, `afManualStart`, …) and `kAppsFlyerPluginVersion` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `initSdkWithCall:result:` — native iOS init, conditional auto-start |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/include/appsflyer_sdk/AppsflyerSdkPlugin.h` | `#define` string keys (`afDevKey`, `afAppId`, `afManualStart`, …) and `kAppsFlyerPluginVersion` |
 
 ---
 

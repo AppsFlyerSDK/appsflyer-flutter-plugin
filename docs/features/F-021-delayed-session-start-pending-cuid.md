@@ -26,14 +26,14 @@ AppsflyerSdk.waitForCustomerUserId(wait)                               [lib/src/
   → _methodChannel.invokeMethod("waitForCustomerUserId", {'wait': wait})
     → Android: AppsflyerSdkPlugin.onMethodCall("waitForCustomerUserId") → waitForCustomerUserId(call, result)   [android/.../AppsflyerSdkPlugin.java]
       → AppsFlyerLib.getInstance().waitForCustomerUserId(wait)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("waitForCustomerUserId") → waitForCustomerId:result:              [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("waitForCustomerUserId") → waitForCustomerId:result:              [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → NO-OP — the method body only calls result(nil); no native AppsFlyerLib API is invoked
 
 AppsflyerSdk.setCustomerIdAndLogSession(id)                            [lib/src/appsflyer_sdk.dart]
   → _methodChannel.invokeMethod("setCustomerIdAndLogSession", {'id': id})
     → Android: AppsflyerSdkPlugin.onMethodCall("setCustomerIdAndLogSession") → setCustomerIdAndLogSession(call, result)   [android/.../AppsflyerSdkPlugin.java]
       → AppsFlyerLib.getInstance().setCustomerIdAndLogSession(id, mContext)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("setCustomerIdAndLogSession") → setCustomerUserId:result:                  [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("setCustomerIdAndLogSession") → setCustomerUserId:result:                  [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → routed to the same handler as plain setCustomerUserId — [AppsFlyerLib shared] setCustomerUserID:id]; no "log session" semantics
 ```
 
@@ -44,7 +44,7 @@ AppsflyerSdk.setCustomerIdAndLogSession(id)                            [lib/src/
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `waitForCustomerIdAndLogSession` split into `waitForCustomerUserId(bool)` and `setCustomerIdAndLogSession(String)` — no `Platform.isAndroid` guard on either |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `waitForCustomerUserId(call, result)` (line 971), `setCustomerIdAndLogSession(call, result)` (line 1009) — both proxy real native APIs |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `waitForCustomerId:result:` (line 757, no-op stub), `setCustomerIdAndLogSession` dispatch aliased to `setCustomerUserId:result:` (line 107/722) |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `waitForCustomerId:result:` (line 757, no-op stub), `setCustomerIdAndLogSession` dispatch aliased to `setCustomerUserId:result:` (line 107/722) |
 | `doc/API.md` | Explicitly documents both APIs as **"Android only!"** (lines 440, 449) |
 
 ---

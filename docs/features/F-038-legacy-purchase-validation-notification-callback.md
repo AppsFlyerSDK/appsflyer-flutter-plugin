@@ -42,7 +42,7 @@ AppsFlyerInAppPurchaseValidatorListener (registered by registerValidatorListener
               → the app's registered callback runs
 
 Delivery (iOS):
-[AppsFlyerLib shared] validateAndLogInAppPurchase:...success:/failure: (F-023's V1 flow)  [ios/Classes/AppsflyerSdkPlugin.m]
+[AppsFlyerLib shared] validateAndLogInAppPurchase:...success:/failure: (F-023's V1 flow)  [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
   → onValidateSuccess:/onValidateFail:
     → [_streamHandler sendResponseToFlutter:afValidatePurchase(@"validatePurchase") status:... data:...]  [AppsFlyerStreamHandler.m]
       → Dart: same _methodCallHandler case 'callListener' → case "validatePurchase" path as Android
@@ -58,9 +58,9 @@ Delivery (iOS):
 | `lib/src/appsflyer_constants.dart` | `AF_VALIDATE_PURCHASE = "validatePurchase"` — the shared event id constant |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `startListening(Object, Result)` sets `validatePurchaseCallback = true`; `registerValidatorListener()` builds the `AppsFlyerInAppPurchaseValidatorListener` whose `onValidateInApp()`/`onValidateInAppFailure(String)` gate on that flag and call `runOnUIThread(...)` to push the event to Dart over the `"callbacks"` (`mCallbackChannel`) `MethodChannel` |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsFlyerConstants.java` | `AF_VALIDATE_PURCHASE = "validatePurchase"` — native-side mirror of the Dart constant |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `onValidateSuccess:`/`onValidateFail:` (fed by F-023's `validateAndLogInAppPurchase:result:`) call `[_streamHandler sendResponseToFlutter:afValidatePurchase ...]` to forward the result |
-| `ios/Classes/AppsflyerSdkPlugin.h` | `#define afValidatePurchase @"validatePurchase"` — iOS-side mirror of the same event id |
-| `ios/Classes/AppsFlyerStreamHandler.m` | `sendResponseToFlutter:status:data:` — forwards the result to Dart via `invokeMethod("callListener", ...)` on the callback channel (same channel/protocol Android uses) |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `onValidateSuccess:`/`onValidateFail:` (fed by F-023's `validateAndLogInAppPurchase:result:`) call `[_streamHandler sendResponseToFlutter:afValidatePurchase ...]` to forward the result |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/include/appsflyer_sdk/AppsflyerSdkPlugin.h` | `#define afValidatePurchase @"validatePurchase"` — iOS-side mirror of the same event id |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerStreamHandler.m` | `sendResponseToFlutter:status:data:` — forwards the result to Dart via `invokeMethod("callListener", ...)` on the callback channel (same channel/protocol Android uses) |
 
 ---
 

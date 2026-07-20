@@ -27,7 +27,7 @@ AppsflyerSdk.disableAppSetId()                                         [lib/src/
     → Android: AppsflyerSdkPlugin.onMethodCall("disableAppSetId") → disableAppSetId(call, result)   [android/.../AppsflyerSdkPlugin.java]
       → AppsFlyerLib.getInstance().disableAppSetId()
 ```
-No iOS branch exists for `"disableAppSetId"` in `ios/Classes/AppsflyerSdkPlugin.m`'s `handleMethodCall:` — the call falls through to `result(FlutterMethodNotImplemented)`. This is expected: AppSet ID is a Google Play Services / Android-only concept.
+No iOS branch exists for `"disableAppSetId"` in `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m`'s `handleMethodCall:` — the call falls through to `result(FlutterMethodNotImplemented)`. This is expected: AppSet ID is a Google Play Services / Android-only concept.
 
 ---
 

@@ -26,7 +26,7 @@ AppsflyerSdk.stop(isStopped)                                           [lib/src/
   → _methodChannel.invokeMethod("stop", {'isStopped': isStopped})
     → Android: AppsflyerSdkPlugin.onMethodCall("stop") → stop(call, result)   [android/.../AppsflyerSdkPlugin.java]
       → AppsFlyerLib.getInstance().stop(isStopped, mContext)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("stop") → stop:result:         [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("stop") → stop:result:         [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → [AppsFlyerLib shared].isStopped = stop
 ```
 
@@ -37,7 +37,7 @@ AppsflyerSdk.stop(isStopped)                                           [lib/src/
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `stop(bool)` — Dart API surface |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `stop(call, result)` native handler, line 1033 |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `stop:result:` native handler (direct property assignment), line 734 |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `stop:result:` native handler (direct property assignment), line 734 |
 
 ---
 

@@ -32,7 +32,7 @@ AppsflyerSdk.setCollectAndroidId(isCollect)                             [lib/src
     → Android: AppsflyerSdkPlugin.onMethodCall("setCollectAndroidId") → setCollectAndroidId(call, result)   [android/.../AppsflyerSdkPlugin.java]
       → AppsFlyerLib.getInstance().setCollectAndroidID(isCollect)
 ```
-No iOS branch exists for either method name in `ios/Classes/AppsflyerSdkPlugin.m`'s `handleMethodCall:` — on iOS these calls fall through to `result(FlutterMethodNotImplemented)`.
+No iOS branch exists for either method name in `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m`'s `handleMethodCall:` — on iOS these calls fall through to `result(FlutterMethodNotImplemented)`.
 
 ---
 

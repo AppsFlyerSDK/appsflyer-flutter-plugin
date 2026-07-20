@@ -27,7 +27,7 @@ AppsflyerSdk.setDisableNetworkData(disable)                            [lib/src/
     → Android: AppsflyerSdkPlugin.onMethodCall("setDisableNetworkData") → setDisableNetworkData(call, result)   [android/.../AppsflyerSdkPlugin.java]
       → AppsFlyerLib.getInstance().setDisableNetworkData(disable)
 ```
-No iOS branch exists for `"setDisableNetworkData"` in `ios/Classes/AppsflyerSdkPlugin.m`'s `handleMethodCall:` — the call falls through to `result(FlutterMethodNotImplemented)`.
+No iOS branch exists for `"setDisableNetworkData"` in `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m`'s `handleMethodCall:` — the call falls through to `result(FlutterMethodNotImplemented)`.
 
 ---
 

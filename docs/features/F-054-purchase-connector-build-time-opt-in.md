@@ -4,8 +4,8 @@ name: "Purchase Connector: Build-Time Opt-in (Android include/exclude variants)"
 type: purchaseValidation
 platform: both
 status: active
-last_verified: 2026-07-15
-depends_on: []
+last_verified: 2026-07-19
+depends_on: [F-060]
 ---
 
 ## Business Purpose
@@ -16,9 +16,10 @@ The Purchase Connector depends on the Google Play Billing Library (Android) and 
 ---
 
 ## Trigger
-Not a runtime trigger — this is a build-time decision made once per app project when it configures its Gradle/CocoaPods build:
+Not a runtime trigger — this is a build-time decision made once per app project when it configures its Gradle/CocoaPods/SPM build:
 - **Android**: `android/build.gradle` reads `project.findProperty('appsflyer.enable_purchase_connector')?.toBoolean() ?: false`. The app sets `appsflyer.enable_purchase_connector=true` in its own `gradle.properties`.
-- **iOS**: `ios/appsflyer_sdk.podspec` checks `if defined?($AppsFlyerPurchaseConnector)`. The app sets `$AppsFlyerPurchaseConnector = true` in its own `Podfile` before running `pod install`.
+- **iOS, CocoaPods**: `ios/appsflyer_sdk.podspec` checks `if defined?($AppsFlyerPurchaseConnector)`. The app sets `$AppsFlyerPurchaseConnector = true` in its own `Podfile` before running `pod install`.
+- **iOS, SPM (as of F-060 — Swift Package Manager Support)**: there is no opt-in mechanism at all. `ios/appsflyer_sdk/Package.swift` only ever declares the Core target; it has no knowledge of `PurchaseConnector` and no equivalent of the podspec's `pod_target_xcconfig` macro injection. An SPM-only integration always behaves as "not opted in" — see Known Limitations.
 
 ---
 
@@ -42,7 +43,7 @@ iOS (CocoaPods, evaluated at `pod install` time):
     else
       s.default_subspecs = 'Core'   (PurchaseConnector subspec/pod not included at all)
 
-  ios/Classes/AppsflyerSdkPlugin.m (compiled per the xcconfig macro above):
+  ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m (compiled per the xcconfig macro above):
     #ifdef ENABLE_PURCHASE_CONNECTOR
       #import "appsflyer_sdk/appsflyer_sdk-Swift.h"
     #endif
@@ -51,6 +52,12 @@ iOS (CocoaPods, evaluated at `pod install` time):
     #ifdef ENABLE_PURCHASE_CONNECTOR
       [PurchaseConnectorPlugin registerWithRegistrar:registrar];
     #endif
+
+iOS (SPM, resolved at `swift build`/`flutter build` time — third gate, added by F-060):
+  ios/appsflyer_sdk/Package.swift
+    targets: [.target(name: "appsflyer_sdk", ...)]   — Core only, no PurchaseConnector target/product exists
+    → ENABLE_PURCHASE_CONNECTOR is never defined for this target (SPM has no equivalent of CocoaPods' pod_target_xcconfig)
+    → the same AppsflyerSdkPlugin.m above compiles with the #ifdef guard resolving false, identically to the CocoaPods not-opted-in path
 ```
 
 ---
@@ -63,7 +70,8 @@ iOS (CocoaPods, evaluated at `pod install` time):
 | `android/src/main/include-connector/com/appsflyer/appsflyersdk/ConnectorWrapper.kt` | Wraps `PurchaseClient` (Play Billing Library) — only compiled in the include-connector variant |
 | `android/src/main/exlude-connector/com/appsflyer/appsflyersdk/AppsFlyerPurchaseConnector.kt` | No-op stub: implements `FlutterPlugin` but registers no `MethodChannel` at all |
 | `ios/appsflyer_sdk.podspec` | Defines the `PurchaseConnector` CocoaPods subspec conditionally on `$AppsFlyerPurchaseConnector`, and sets the `ENABLE_PURCHASE_CONNECTOR=1` preprocessor macro for that subspec only |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `#ifdef ENABLE_PURCHASE_CONNECTOR` guards both the Swift-bridging header import and the `[PurchaseConnectorPlugin registerWithRegistrar:registrar]` call |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `#ifdef ENABLE_PURCHASE_CONNECTOR` guards both the Swift-bridging header import and the `[PurchaseConnectorPlugin registerWithRegistrar:registrar]` call |
+| `ios/appsflyer_sdk/Package.swift` (added by F-060) | Declares only the Core target — has no PurchaseConnector target/product and no mechanism to define `ENABLE_PURCHASE_CONNECTOR`, so this gate is permanently "not opted in" for any SPM-only integration |
 | `doc/PurchaseConnector.md` | App-facing opt-in instructions (`$AppsFlyerPurchaseConnector = true` in Podfile; `appsflyer.enable_purchase_connector=true` in gradle.properties) and an explicit "What Happens if You Use Dart Files Without Opting In?" section |
 
 ---
@@ -86,6 +94,7 @@ No dedicated test found — this is a Gradle/CocoaPods build-configuration conce
 - iOS has the same silent-gap behavior by omission rather than an explicit stub: if `$AppsFlyerPurchaseConnector` is undefined, the `PurchaseConnector` subspec/macro/registration are all compiled out, so `PurchaseConnectorPlugin` never registers a handler for `af-purchase-connector` either — same `MissingPluginException` outcome as Android, but reached via a completely different mechanism (absent Ruby global vs. an explicit empty Kotlin object), which is easy for engineers modifying one platform to forget applies to the other.
 - **F-049 (Purchase Connector: Configuration & Lifecycle) and every other Purchase Connector Dart API are entirely meaningless without this feature being correctly opted into on both platforms** — the Dart-side classes (`PurchaseConnector`, `PurchaseConnectorConfiguration`, etc.) are always compiled into the plugin regardless of opt-in status, so an app can write code against them, pass static analysis, and still get runtime `MissingPluginException`s in production if it forgot the Podfile/gradle.properties step on either platform (`doc/PurchaseConnector.md` calls this out explicitly).
 - The two opt-in mechanisms are asymmetric in strictness: Android checks a boolean value (`.toBoolean() ?: false`), so `appsflyer.enable_purchase_connector=false` or an unset/malformed property both cleanly resolve to "excluded." iOS checks mere *definedness* of `$AppsFlyerPurchaseConnector` (`defined?(...)`), so setting it to `false` in a Podfile still counts as "opted in" (`if defined?($AppsFlyerPurchaseConnector)` is true regardless of the assigned value) — a plausible copy-paste mistake (`$AppsFlyerPurchaseConnector = false` intending to disable it) silently enables the feature.
+- **As of F-060 (Swift Package Manager Support), this gate has a third path with no opt-in mechanism at all**: an app integrated via SPM cannot enable Purchase Connector under any configuration this release — `ios/appsflyer_sdk/Package.swift` never defines `ENABLE_PURCHASE_CONNECTOR`, so the `#ifdef` guard always resolves false. Calling any Purchase Connector Dart API from an SPM-only integration fails with the same generic `MissingPluginException` described above for the CocoaPods not-opted-in case — this is not a new failure mode, but it is a third, permanent path to the same confusing outcome, not a temporary misconfiguration a developer can fix by setting a flag. Apps that need Purchase Connector must stay on CocoaPods until flutter/flutter#161182 (Flutter's own plugin tooling lacking conditional-compilation support) is resolved — see F-060 and `docs/researches/R-001-spm-support.md` for why SPM Package Traits do not currently offer a workaround.
 
 ---
 
@@ -94,6 +103,9 @@ No dedicated test found — this is a Gradle/CocoaPods build-configuration conce
 flowchart LR
     F054["F-054 · Purchase Connector: Build-Time Opt-in"]:::purchaseValidation
     F049["F-049 · Purchase Connector: Configuration & Lifecycle"]:::purchaseValidation
+    F060["F-060 · Swift Package Manager Support"]:::sdkCore
     F054 -->|"gates compilation/registration of"| F049
+    F060 -->|"adds a third, permanently-excluded iOS path to"| F054
     classDef purchaseValidation fill:#F59F00,color:#fff
+    classDef sdkCore fill:#4C6EF5,color:#fff
 ```

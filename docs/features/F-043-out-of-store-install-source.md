@@ -32,7 +32,7 @@ AppsflyerSdk.getOutOfStore()                                             [lib/sr
     → Android: AppsflyerSdkPlugin.onMethodCall("getOutOfStore") → getOutOfStore(result)   [android/.../AppsflyerSdkPlugin.java:352,526]
       → result.success(AppsFlyerLib.getInstance().getOutOfStore(this.mContext))
 ```
-Neither `"setOutOfStore"` nor `"getOutOfStore"` has a case in `ios/Classes/AppsflyerSdkPlugin.m`'s `handleMethodCall:` — on iOS both calls fall through to `result(FlutterMethodNotImplemented)`.
+Neither `"setOutOfStore"` nor `"getOutOfStore"` has a case in `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m`'s `handleMethodCall:` — on iOS both calls fall through to `result(FlutterMethodNotImplemented)`.
 
 ---
 

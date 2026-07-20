@@ -26,7 +26,7 @@ AppsflyerSdk.setOneLinkCustomDomain(brandDomains)                               
   → _methodChannel.invokeMethod("setOneLinkCustomDomain", brandDomains)
     → Android: AppsflyerSdkPlugin.onMethodCall("setOneLinkCustomDomain") → setOneLinkCustomDomain(call, result)   [android/.../AppsflyerSdkPlugin.java]
       → AppsFlyerLib.getInstance().setOneLinkCustomDomain(brandDomainsArray) → result.success(null)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("setOneLinkCustomDomain") → setOneLinkCustomDomain:result:          [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("setOneLinkCustomDomain") → setOneLinkCustomDomain:result:          [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → [[AppsFlyerLib shared] setOneLinkCustomDomains:brandDomains] → result(nil)
 ```
 
@@ -37,7 +37,7 @@ AppsflyerSdk.setOneLinkCustomDomain(brandDomains)                               
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `setOneLinkCustomDomain(List<String>)` — public API, passes the list directly as the method-channel arguments (no wrapping map) |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `setOneLinkCustomDomain(call, result)` — casts `call.arguments` to `ArrayList<String>`, converts to `String[]`, forwards to `AppsFlyerLib.getInstance().setOneLinkCustomDomain(...)` |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `setOneLinkCustomDomain:result:` — forwards `call.arguments` directly to `[AppsFlyerLib shared] setOneLinkCustomDomains:]` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `setOneLinkCustomDomain:result:` — forwards `call.arguments` directly to `[AppsFlyerLib shared] setOneLinkCustomDomains:]` |
 
 ---
 
