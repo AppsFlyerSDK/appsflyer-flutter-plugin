@@ -13,7 +13,7 @@ Thin pointer to the normative contract in the tooling repo. Do not duplicate con
 - Pre-publish E2E scenarios: `../../../../appsflyer-mobile-plugin-tooling/contracts/e2e-test-contract.md`
 - Post-publish smoke scenarios: `../../../../appsflyer-mobile-plugin-tooling/contracts/smoke-test-contract.md`
 - Test-app behavior: `../../../../appsflyer-mobile-plugin-tooling/contracts/test-app-contract.md`
-- Operator manual for humans: [`../../../docs/RELEASE_USER_MANUAL.md`](../../../docs/RELEASE_USER_MANUAL.md)
+- Operator manual for humans: [`appsflyer-mobile-plugin-tooling/examples/flutter/RELEASE_USER_MANUAL.md`](../../../../appsflyer-mobile-plugin-tooling/examples/flutter/RELEASE_USER_MANUAL.md)
 
 Always follow the operator manual for step-by-step actions. This skill tells you which file owns which piece of the pipeline.
 
@@ -37,7 +37,7 @@ Always follow the operator manual for step-by-step actions. This skill tells you
 
 ## How to run an RC
 
-Follow [`docs/RELEASE_USER_MANUAL.md`](../../../docs/RELEASE_USER_MANUAL.md) steps 1-6. In short: dispatch `rc-release.yml` with `dry_run=false`, watch four checks go green on the PR, apply `pass QA ready for deploy`, merge.
+Follow [`appsflyer-mobile-plugin-tooling/examples/flutter/RELEASE_USER_MANUAL.md`](../../../../appsflyer-mobile-plugin-tooling/examples/flutter/RELEASE_USER_MANUAL.md) steps 1-6. In short: dispatch `rc-release.yml` with `dry_run=false`, watch four checks go green on the PR, apply `pass QA ready for deploy`, merge.
 
 ## How to debug a red stage
 
