@@ -53,7 +53,7 @@ let package = Package(
         .library(name: "appsflyer-sdk", targets: ["appsflyer_sdk"])
     ],
     dependencies: [
-        .package(url: "https://github.com/AppsFlyerSDK/AppsFlyerFramework.git", from: "6.18.0")
+        .package(url: "https://github.com/AppsFlyerSDK/AppsFlyerFramework.git", .exact("6.18.0"))
     ],
     targets: [
         .target(
@@ -69,7 +69,9 @@ let package = Package(
 )
 ```
 
-**Correction to draft PR #454**: its PR description names the dependency product `AppsFlyerLib-Static`. I fetched `AppsFlyerFramework`'s actual `Package.swift` at tag `6.18.0` directly via GitHub API — the declared product name is `AppsFlyerLib`, not `AppsFlyerLib-Static` (that string only appears in the *binary artifact's zip filename*, not the SPM product). Using the wrong product name would fail dependency resolution outright. Pin `from: "6.18.0"` to match the podspec's existing `ss.ios.dependency 'AppsFlyerFramework','6.18.0'` — no native SDK version bump required (R-001 confirmed the 6.18.0 tag's own Package.swift resolves and is valid).
+**Correction to draft PR #454**: its PR description names the dependency product `AppsFlyerLib-Static`. I fetched `AppsFlyerFramework`'s actual `Package.swift` at tag `6.18.0` directly via GitHub API — the declared product name is `AppsFlyerLib`, not `AppsFlyerLib-Static` (that string only appears in the *binary artifact's zip filename*, not the SPM product). Using the wrong product name would fail dependency resolution outright. Pin `.exact("6.18.0")` to match the podspec's existing `ss.ios.dependency 'AppsFlyerFramework','6.18.0'` exactly — no native SDK version bump required (R-001 confirmed the 6.18.0 tag's own Package.swift resolves and is valid).
+
+**Correction (post-review)**: the original design used `from: "6.18.0"`, a semver-range requirement (`6.18.0..<7.0.0`) rather than an exact pin. This was caught during PR review — the CI E2E run cited in the PR's test plan actually resolved and ran against `AppsFlyerFramework` **6.18.1**, not 6.18.0, exposing a real asymmetry: CocoaPods consumers get exactly 6.18.0, SPM consumers could silently float onto any untested patch/minor release below 7.0.0. Changed to `.exact("6.18.0")` so both distribution paths pin identically. Re-verified via `swift package describe`: `Requirement: Exact: 6.18.0`.
 
 ### `ios/appsflyer_sdk.podspec` — path updates only, no marker needed
 

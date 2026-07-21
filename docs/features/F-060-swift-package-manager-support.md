@@ -39,7 +39,7 @@ Shared source tree (used by both paths, single copy — no duplication):
 
 SPM path (resolved by `flutter build`/`swift build` at build configuration time):
   ios/appsflyer_sdk/Package.swift
-    → target "appsflyer_sdk" depends on product "AppsFlyerLib" from AppsFlyerFramework, pinned from: "6.18.0"
+    → target "appsflyer_sdk" depends on product "AppsFlyerLib" from AppsFlyerFramework, pinned exactly to 6.18.0
     → compiles the shared Sources/ tree above as a ClangTarget, iOS 12.0 minimum
     → does NOT reference ios/PurchaseConnector/ at all — no PurchaseConnector target/product exists in this manifest
 
@@ -54,7 +54,7 @@ CocoaPods path (resolved by `pod install` at install time, unchanged behavior):
 ## Files
 | File | Role |
 |------|------|
-| `ios/appsflyer_sdk/Package.swift` | New SPM manifest. `swift-tools-version:5.9` (Xcode 15.0+), `platforms: [.iOS("12.0")]` (matches the podspec's existing deployment target). Declares one product/target depending on `AppsFlyerFramework`'s `AppsFlyerLib` product, `from: "6.18.0"`. |
+| `ios/appsflyer_sdk/Package.swift` | New SPM manifest. `swift-tools-version:5.9` (Xcode 15.0+), `platforms: [.iOS("12.0")]` (matches the podspec's existing deployment target). Declares one product/target depending on `AppsFlyerFramework`'s `AppsFlyerLib` product, pinned `.exact("6.18.0")`, matching the podspec's exact CocoaPods pin. |
 | `ios/appsflyer_sdk/Sources/appsflyer_sdk/*.m` | Core implementation files, moved verbatim from `ios/Classes/` via `git mv` (confirmed zero content diff) — now the single shared source tree for both CocoaPods and SPM. |
 | `ios/appsflyer_sdk/Sources/appsflyer_sdk/include/appsflyer_sdk/*.h` | Public headers, moved verbatim from `ios/Classes/` — `AppsflyerSdkPlugin.h` is where `pluginClass: AppsflyerSdkPlugin` (declared in `pubspec.yaml`, unchanged) resolves from in both integration paths. |
 | `ios/appsflyer_sdk.podspec` | `Core` subspec's `source_files`/`public_header_files` repointed to the new shared path; `PurchaseConnector` subspec is untouched. No marker added to declare SPM availability — Flutter's tooling detects it purely by the presence of `Package.swift` at the conventional path. |

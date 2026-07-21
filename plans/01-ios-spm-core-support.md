@@ -16,8 +16,8 @@ Add a `Package.swift` for the plugin's **Core** module so SPM-enabled Flutter ap
 
 | PR | Approach | Verdict |
 |---|---|---|
-| [#454](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/pull/454) (`nurlangarash`) | True `git mv` of `Classes/*` → `ios/appsflyer_sdk/Sources/appsflyer_sdk/` (+headers → `.../include/appsflyer_sdk/`), podspec updated to match, single source of truth. Depends on `AppsFlyerFramework-Static` / product `AppsFlyerLib-Static` (matches `static_framework = true`). Copilot flagged `.iOS("12.0")` (invalid) and product/target name mismatch — **both already fixed** in follow-up commit `98d9938dd2`. PurchaseConnector explicitly untouched. | **Use this as the base.** |
-| [#455](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/pull/455) (`TeddyYeung`) | Duplicates Core sources into a second tree, leaves podspec pointing at old `Classes/` — two copies to maintain forever. Same `.iOS("12.0")` bug, **never fixed**. Adds `.gitignore` entries (`.build/`, `.swiftpm/`) — worth cherry-picking. | Reject the architecture; take only the `.gitignore` hunk. |
+| [#454](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/pull/454) (`nurlangarash`) | True `git mv` of `Classes/*` → `ios/appsflyer_sdk/Sources/appsflyer_sdk/` (+headers → `.../include/appsflyer_sdk/`), podspec updated to match, single source of truth. Depends on `AppsFlyerFramework-Static` / product `AppsFlyerLib-Static` (matches `static_framework = true`) — this product name is wrong, corrected to `AppsFlyerLib` during implementation. Copilot flagged `.iOS("12.0")` as invalid and a product/target name mismatch — the name mismatch was real, but the `.iOS("12.0")` flag was itself wrong (verified valid via `swift package describe`; not something that needed fixing). PurchaseConnector explicitly untouched. | **Use this as the base.** |
+| [#455](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/pull/455) (`TeddyYeung`) | Duplicates Core sources into a second tree, leaves podspec pointing at old `Classes/` — two copies to maintain forever. Uses the same `.iOS("12.0")` syntax, which is valid (see #454's corrected note) and was never actually a bug. Adds `.gitignore` entries (`.build/`, `.swiftpm/`) — worth cherry-picking. | Reject the architecture; take only the `.gitignore` hunk. |
 | [#370](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/pull/370) (`alejandro-all-win-software`, oldest) | Tried to fold PurchaseConnector itself into SPM via an env-var-gated target (`ENABLE_PURCHASE_CONNECTOR=1`) + dependency on `appsflyer-apple-purchase-connector`. Author's own comment: *"blocked by flutter/flutter#161182... if you find another way to opt in to Purchase Connector, I'd be happy to close this PR in favor of that approach."* | **Do not repeat this.** This is exactly the dead end DELIVERY-125462 tells us to route around by staying CocoaPods-only for PurchaseConnector. |
 
 None of the three have maintainer review; all are `REVIEW_REQUIRED`/`BLOCKED` on branch protection only (CI/security scans pass on all three).
@@ -66,7 +66,7 @@ let package = Package(
     ]
 )
 ```
-Anti-pattern guard (from Copilot's actual review on #454): `.iOS("12.0")` is **not** valid SwiftPM API — must be `.iOS(.v12)`. Library name uses hyphens (`appsflyer-sdk`), target/package name keeps underscores (`appsflyer_sdk`) — this is Flutter's documented convention, not a typo.
+~~Anti-pattern guard (from Copilot's actual review on #454): `.iOS("12.0")` is **not** valid SwiftPM API — must be `.iOS(.v12)`.~~ **Corrected during implementation review**: this claim is wrong. `SupportedPlatform.IOSVersion` conforms to `ExpressibleByStringLiteral`, so `.iOS("12.0")` is valid and compiles. Verified directly: the shipped `Package.swift` uses `.iOS("12.0")` and `swift package describe` resolves `Platforms: Name: ios, Version: 12.0` with no error. Both `.iOS("12.0")` and `.iOS(.v12)` work; this repo uses the former. Library name uses hyphens (`appsflyer-sdk`), target/package name keeps underscores (`appsflyer_sdk`) — this is Flutter's documented convention, not a typo.
 
 Podspec `Core` subspec path update (mirrors #454 exactly):
 ```ruby
@@ -121,7 +121,7 @@ SwiftPM added **Package Traits** in Swift 6.1 ([docs.swift.org/swiftpm/.../packa
 
 **What to do:**
 1. Cherry-pick #455's `.gitignore` addition: `.build/`, `.swiftpm/`.
-2. Confirm `Package.swift` matches the corrected form in Phase 0.B exactly (`.iOS(.v12)`, not `.iOS("12.0")`; product `AppsFlyerLib-Static` from `AppsFlyerFramework-Static`, pinned `exact: "6.18.0"` to match the podspec's `AppsFlyerFramework` pin).
+2. Confirm `Package.swift` matches the shipped, verified form: `.iOS("12.0")` (confirmed valid — see Phase 0.B correction); product `AppsFlyerLib` from `AppsFlyerFramework` (not `AppsFlyerLib-Static`/`AppsFlyerFramework-Static` — that naming was wrong, see #454 correction above), pinned `.exact("6.18.0")` to match the podspec's `AppsFlyerFramework` pin exactly.
 3. Confirm `cSettings: [.headerSearchPath("include/appsflyer_sdk")]` is present (required for the `.m` files' `#import` statements to resolve).
 4. Confirm all 4 public headers live under `Sources/appsflyer_sdk/include/appsflyer_sdk/` and the 3 `.m` files live directly under `Sources/appsflyer_sdk/` (not under `include/`).
 
@@ -197,6 +197,6 @@ This is a **plugin-only** change (adds SPM plumbing, does not touch native SDK v
 2. All four build-matrix rows in Phase 5 verified with evidence (CI logs or local build output).
 3. `CHANGELOG.md` and `pubspec.yaml` version bumped per Phase 3.
 4. `doc/Installation.md` and `doc/PurchaseConnector.md` updated per Phase 4, explicitly stating the PurchaseConnector/SPM limitation.
-5. No `.iOS("12.0")`-style invalid SwiftPM API left in `Package.swift` (`grep -n '\.iOS(\"' ios/appsflyer_sdk/Package.swift` should return nothing).
+5. ~~No `.iOS("12.0")`-style invalid SwiftPM API left in `Package.swift`~~ — retracted: `.iOS("12.0")` is valid (verified via `swift package describe`); the shipped `Package.swift` intentionally uses this form.
 6. No duplicate source files between `ios/Classes/` (should no longer exist) and `ios/appsflyer_sdk/Sources/`.
 7. Ready to open a PR against DELIVERY-125462, referencing and closing out #454/#455/#370 in the description (crediting their work, explaining why #454 was chosen as base).

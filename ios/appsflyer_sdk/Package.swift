@@ -8,7 +8,7 @@ let package = Package(
         .library(name: "appsflyer-sdk", targets: ["appsflyer_sdk"])
     ],
     dependencies: [
-        .package(url: "https://github.com/AppsFlyerSDK/AppsFlyerFramework.git", from: "6.18.0")
+        .package(url: "https://github.com/AppsFlyerSDK/AppsFlyerFramework.git", .exact("6.18.0"))
     ],
     targets: [
         .target(
