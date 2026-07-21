@@ -118,3 +118,5 @@ coverage/
 
 .af-e2e/reports/
 .af-smoke/reports/
+
+output.af-quiz-me/
