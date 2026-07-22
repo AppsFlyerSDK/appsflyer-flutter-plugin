@@ -59,6 +59,9 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Disable Swift Package Manager (throwaway verification only)
+        run: flutter config --no-enable-swift-package-manager
+
       - name: Select Xcode version
         run: |
           XCODE=$(ls /Applications | grep -E "^Xcode_[0-9]" | sort -V | tail -1)
