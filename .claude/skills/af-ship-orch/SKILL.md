@@ -59,7 +59,7 @@ Immediately mark "Fetch and validate PRD" as `in_progress`.
 
 - Starts with `http` → Notion URL
 - Ends with `.md` or contains `/` → local file path
-- Otherwise → stop and ask: "Please provide a Notion URL or a path to a local `.md` file (e.g. `https://notion.so/team/my-prd` or `docs/prds/my-feature.md`)."
+- Otherwise → stop and ask: "Please provide a Notion URL or a path to a local `.md` file (e.g. `https://notion.so/team/my-prd` or `internal-docs/prds/my-feature.md`)."
 
 **Step 2 — Fetch or read**
 
@@ -68,9 +68,9 @@ Immediately mark "Fetch and validate PRD" as `in_progress`.
 
 **Step 3 — Save a local copy**
 
-Save to `docs/prds/<slug>.md`.
+Save to `internal-docs/prds/<slug>.md`.
 - Derive `<slug>` from the document title (kebab-case, e.g. `dark-mode-settings`).
-- If the file is already at `docs/prds/`, use it in place.
+- If the file is already at `internal-docs/prds/`, use it in place.
 - If no title is detectable, ask: "What slug should I use for this PRD? (e.g. `dark-mode-settings`)"
 
 Mark "Fetch and validate PRD" as `completed`, "Challenge PRD" as `in_progress`.
@@ -103,7 +103,7 @@ Immediately mark "Fetch and validate tech design" as `in_progress`.
 
 - Starts with `http` → Notion URL
 - Ends with `.md` or contains `/` → local file path
-- Otherwise → stop and ask: "Please provide a Notion URL or a path to a local `.md` file (e.g. `https://notion.so/team/my-design` or `docs/tech-designs/my-feature.md`)."
+- Otherwise → stop and ask: "Please provide a Notion URL or a path to a local `.md` file (e.g. `https://notion.so/team/my-design` or `internal-docs/tech-designs/my-feature.md`)."
 
 **Step 2 — Fetch or read**
 
@@ -112,9 +112,9 @@ Immediately mark "Fetch and validate tech design" as `in_progress`.
 
 **Step 3 — Save a local copy**
 
-Save to `docs/tech-designs/<slug>.md`.
+Save to `internal-docs/tech-designs/<slug>.md`.
 - Derive `<slug>` from the document title (kebab-case).
-- If the file is already at `docs/tech-designs/`, use it in place.
+- If the file is already at `internal-docs/tech-designs/`, use it in place.
 - If no title is detectable, ask: "What slug should I use for this tech design? (e.g. `dark-mode-settings`)"
 
 Mark "Fetch and validate tech design" as `completed`, "Challenge tech design" as `in_progress`.
@@ -143,13 +143,13 @@ BLOCKING REQUIREMENT: Call the `Skill` tool with `af-ship-orch` BEFORE any other
 ```
 /af-ship <description>
   → af-ship-orch creates tasks → calls alice-pm
-  → Alice writes PRD → saves to docs/prds/<slug>.md → asks user to review
+  → Alice writes PRD → saves to internal-docs/prds/<slug>.md → asks user to review
   → User approves PRD
   → Alice invokes Bob and/or Erin if needed
   → Bob/Erin produce findings → Alice challenges (max 2 iterations)
   → Alice updates PRD if scope changed
   → Alice invokes Dave
-  → Dave writes tech design → saves to docs/tech-designs/<slug>.md
+  → Dave writes tech design → saves to internal-docs/tech-designs/<slug>.md
   → Alice challenges tech design (max 2 iterations)
   → Alice: "Satisfied — Dave, this is ready." (on tech design)
   → Dave asks user to review tech design
@@ -157,7 +157,7 @@ BLOCKING REQUIREMENT: Call the `Skill` tool with `af-ship-orch` BEFORE any other
   → Dave implements + writes unit tests
   → Alice challenges implementation (max 2 iterations)
   → Alice: "Satisfied — Dave, this is ready." (on implementation)
-  → Dave writes F-NNN feature doc → saves to docs/features/
+  → Dave writes F-NNN feature doc → saves to internal-docs/features/
   → Alice challenges feature doc (max 2 iterations)
   → Alice: "Satisfied — Dave, this is ready." (on feature doc)
   → If unresolved after 2 iterations → Alice escalates to user

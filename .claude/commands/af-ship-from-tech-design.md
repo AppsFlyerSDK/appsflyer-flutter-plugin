@@ -1,7 +1,7 @@
 If $ARGUMENTS is empty, stop and ask:
 "Please provide a Notion URL or a path to a local .md file for the tech design.
 Example: `/af-ship-from-tech-design https://notion.so/team/my-design`
-Example: `/af-ship-from-tech-design docs/tech-designs/my-feature.md`"
+Example: `/af-ship-from-tech-design internal-docs/tech-designs/my-feature.md`"
 Do not proceed until the user provides a URL or path.
 
 Start the delivery workflow using an existing tech design.

@@ -13,7 +13,7 @@ The PRD source is the value extracted from $ARGUMENTS after `--prd `.
 Extract the URL or path that follows `--tech-design `.
 If nothing follows `--tech-design`, stop and ask:
 "Please provide a Notion URL or local .md path after --tech-design
-(e.g. `/af-ship --tech-design docs/tech-designs/my-feature.md`)."
+(e.g. `/af-ship --tech-design internal-docs/tech-designs/my-feature.md`)."
 Do not proceed until a URL or path is provided.
 Otherwise: invoke the `af-ship-orch` skill in Tech-Design-Given mode.
 The tech design source is the value extracted from $ARGUMENTS after `--tech-design `.

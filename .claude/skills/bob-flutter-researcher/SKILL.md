@@ -17,21 +17,21 @@ Domain researcher for AppsFlyer Flutter Plugin. Knows how platform APIs and exte
 
 1. Check if research already exists:
    ```
-   ls docs/researches/
+   ls internal-docs/researches/
    ```
 2. Find related features:
    ```
-   grep -i "<topic>" docs/features/INDEX.md
+   grep -i "<topic>" internal-docs/features/INDEX.md
    ```
 3. Find related issue cases:
    ```
-   grep -i "<topic>" docs/issue-cases/INDEX.md
+   grep -i "<topic>" internal-docs/issue-cases/INDEX.md
    ```
 4. State what existing docs cover and what gap this research fills.
 
 ### Required output
 
-Every research task produces `docs/researches/R-NNN-slug.md`. After writing:
+Every research task produces `internal-docs/researches/R-NNN-slug.md`. After writing:
 - Flag which feature docs (F-NNN) should be updated based on findings — for Dave to action
 
 ### After completing research
@@ -110,10 +110,10 @@ After Bob presents any research findings, `alice-pm` is invoked automatically. B
 
 ## Reference
 
-- `docs/researches/TEMPLATE.md` — blank template
-- `docs/features/INDEX.md` — feature catalog to cross-reference
-- `docs/issue-cases/INDEX.md` — historical bugs to cross-reference
-- `docs/issue-cases/GUARDRAILS.md` — engineering guardrails Bob's research should inform
+- `internal-docs/researches/TEMPLATE.md` — blank template
+- `internal-docs/features/INDEX.md` — feature catalog to cross-reference
+- `internal-docs/issue-cases/INDEX.md` — historical bugs to cross-reference
+- `internal-docs/issue-cases/GUARDRAILS.md` — engineering guardrails Bob's research should inform
 
 ---
 

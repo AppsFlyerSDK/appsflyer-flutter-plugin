@@ -90,10 +90,10 @@ The following do not require a PRD or Alice review — invoke Dave directly:
 
 Every `/af-ship` deliverable must include:
 
-- Alice PRD (`docs/prds/`)
+- Alice PRD (`internal-docs/prds/`)
 - Bob findings (if invoked)
 - Erin payload impact (if invoked)
-- Dave tech design (`docs/tech-designs/`)
+- Dave tech design (`internal-docs/tech-designs/`)
 - Dave implementation + unit tests
-- Dave feature doc (`docs/features/`)
+- Dave feature doc (`internal-docs/features/`)
 - Alice sign-off at each phase

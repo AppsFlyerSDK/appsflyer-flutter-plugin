@@ -23,16 +23,16 @@ If neither exists, stop and call `Skill('alice-pm')` to produce one.
 
 ### Before writing any code or tech design
 
-0. Load `docs/issue-cases/GUARDRAILS.md`. For tech designs, work through the Tech Design Checklist at the top.
+0. Load `internal-docs/issue-cases/GUARDRAILS.md`. For tech designs, work through the Tech Design Checklist at the top.
 1. Check if the target component is a hot zone:
    ```
-   grep "ComponentName" docs/issue-cases/INDEX.md
+   grep "ComponentName" internal-docs/issue-cases/INDEX.md
    ```
-2. Load only the matching `docs/issue-cases/IC-NNN.md` files.
+2. Load only the matching `internal-docs/issue-cases/IC-NNN.md` files.
 3. State which cases apply and how the new code avoids repeating them.
 4. Find and load relevant feature docs:
    ```
-   grep "ComponentName" docs/features/INDEX.md
+   grep "ComponentName" internal-docs/features/INDEX.md
    ```
 
 ### Before writing — required output
@@ -52,9 +52,9 @@ If no issue cases apply, write "none — component not in hot zones." Never skip
 
 ### Phase 1 — Tech design
 
-Write the tech design to `docs/tech-designs/<feature-slug>.md` where `<feature-slug>` is the same kebab-case slug used for the PRD (e.g. `device-farm-3d-header`).
+Write the tech design to `internal-docs/tech-designs/<feature-slug>.md` where `<feature-slug>` is the same kebab-case slug used for the PRD (e.g. `device-farm-3d-header`).
 
-Do NOT write tech designs in `docs/features/` — that directory is for finished feature catalog docs only.
+Do NOT write tech designs in `internal-docs/features/` — that directory is for finished feature catalog docs only.
 Note the planned F-NNN ID in the design as "F-NNN — doc to be written after development is complete."
 
 After writing the tech design, call `Skill('alice-pm')` immediately for review.
@@ -64,7 +64,7 @@ When Alice writes "Satisfied — Dave, this is ready." on the tech design, write
 ---
 ## ⏸ Waiting for your review
 
-Tech design saved to `docs/tech-designs/<feature-slug>.md`. Alice has signed off.
+Tech design saved to `internal-docs/tech-designs/<feature-slug>.md`. Alice has signed off.
 The workflow is paused. Reply **approved** to start implementation, or share your feedback.
 
 ---
@@ -89,7 +89,7 @@ After Alice writes "Satisfied — Dave, this is ready." on the implementation:
 
 For every file changed during implementation, run:
 ```
-grep "<changed-file>" docs/features/INDEX.md
+grep "<changed-file>" internal-docs/features/INDEX.md
 ```
 Run once per changed file. Then print this table:
 
@@ -101,7 +101,7 @@ For every affected F-NNN doc found: open it and update every section whose behav
 
 **Step 2 — Write the new feature doc**
 
-Write the full F-NNN feature catalog doc to `docs/features/<F-NNN-slug>.md` and add it to `docs/features/INDEX.md`.
+Write the full F-NNN feature catalog doc to `internal-docs/features/<F-NNN-slug>.md` and add it to `internal-docs/features/INDEX.md`.
 
 **Step 3 — Call Alice**
 
@@ -154,11 +154,11 @@ BLOCKING REQUIREMENT: Include a `Skill('dave-flutter-engineer')` tool call in th
 
 ## Reference
 
-- `docs/issue-cases/GUARDRAILS.md` — rules from real bugs; Tech Design Checklist
-- `docs/issue-cases/INDEX.md` — hot zones, bug classes, component→case mapping
-- `docs/issue-cases/IC-NNN.md` — individual cases (load only what you need)
-- `docs/features/INDEX.md` — feature catalog index
-- `docs/features/TEMPLATE.md` — required template for all feature docs
+- `internal-docs/issue-cases/GUARDRAILS.md` — rules from real bugs; Tech Design Checklist
+- `internal-docs/issue-cases/INDEX.md` — hot zones, bug classes, component→case mapping
+- `internal-docs/issue-cases/IC-NNN.md` — individual cases (load only what you need)
+- `internal-docs/features/INDEX.md` — feature catalog index
+- `internal-docs/features/TEMPLATE.md` — required template for all feature docs
 
 ---
 

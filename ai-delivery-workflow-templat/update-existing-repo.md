@@ -52,7 +52,7 @@ Find this entire block:
 Replace with:
   **Step 2 — Save PRD and ask user to review**
 
-  Save the PRD to `docs/prds/<feature-slug>.md` where `<feature-slug>` is a short kebab-case name (e.g. `device-farm-3d-header`).
+  Save the PRD to `internal-docs/prds/<feature-slug>.md` where `<feature-slug>` is a short kebab-case name (e.g. `device-farm-3d-header`).
 
   Then write:
   Then write exactly:
@@ -60,7 +60,7 @@ Replace with:
   ---
   ## ⏸ Waiting for your review
 
-  PRD saved to `docs/prds/<feature-slug>.md`.
+  PRD saved to `internal-docs/prds/<feature-slug>.md`.
   The workflow is paused. Reply **approved** to continue, or share your feedback and I'll update the PRD.
 
   ---
@@ -103,7 +103,7 @@ Find the entire code block inside Loop Mechanics (the ``` block) and replace it 
 
   ```
   User presents feature idea
-    → Alice writes PRD → saves to docs/prds/<slug>.md → asks user to review
+    → Alice writes PRD → saves to internal-docs/prds/<slug>.md → asks user to review
     → User approves PRD
     → Alice invokes Bob and/or Erin if needed
     → Bob/Erin produce findings
@@ -111,7 +111,7 @@ Find the entire code block inside Loop Mechanics (the ``` block) and replace it 
     → Bob/Erin address every open item
     → Alice updates PRD if scope changed
     → Alice invokes Dave
-    → Dave writes tech design → saves to docs/tech-designs/<slug>.md
+    → Dave writes tech design → saves to internal-docs/tech-designs/<slug>.md
     → Alice challenges tech design (Challenger Mode, max 2 iterations)
     → Dave addresses every open item
     → Alice: "Satisfied — Dave, this is ready." (on tech design)
@@ -121,7 +121,7 @@ Find the entire code block inside Loop Mechanics (the ``` block) and replace it 
     → Alice challenges implementation (Challenger Mode, max 2 iterations)
     → Dave addresses every open item
     → Alice: "Satisfied — Dave, this is ready." (on implementation)
-    → Dave writes F-NNN feature doc → saves to docs/features/
+    → Dave writes F-NNN feature doc → saves to internal-docs/features/
     → Alice challenges feature doc (Challenger Mode, max 2 iterations)
     → Alice: "Satisfied — Dave, this is ready." (on feature doc)
     → If unresolved after 2 iterations → Alice escalates to user
@@ -139,13 +139,13 @@ Replace with:
   ### 3. Feature Documentation
 
   **During tech design review:**
-  - Is the tech design saved to `docs/tech-designs/<slug>.md`?
+  - Is the tech design saved to `internal-docs/tech-designs/<slug>.md`?
   - Does the tech design cover all PRD requirements and acceptance criteria?
   - Is the planned F-NNN ID noted in the design?
 
   **During feature doc review (Phase 3 only — do not check during tech design or implementation review):**
-  - Is the F-NNN doc written to `docs/features/` and added to `docs/features/INDEX.md`?
-  - Does it follow `docs/features/TEMPLATE.md`?
+  - Is the F-NNN doc written to `internal-docs/features/` and added to `internal-docs/features/INDEX.md`?
+  - Does it follow `internal-docs/features/TEMPLATE.md`?
   - Are Business Purpose, Call Chain, Files, and Tests sections complete?
 
 ---
@@ -178,7 +178,7 @@ Replace with:
   - [ ] No open challenge items without a response
 
   ### Alice is satisfied with Dave's feature doc when:
-  - [ ] F-NNN doc written to `docs/features/` and added to `docs/features/INDEX.md`
+  - [ ] F-NNN doc written to `internal-docs/features/` and added to `internal-docs/features/INDEX.md`
   - [ ] All template sections complete (Business Purpose, Call Chain, Files, Tests)
   - [ ] No open challenge items without a response
 
@@ -193,7 +193,7 @@ Find:
 Replace with:
   ## Docs Locations
 
-  - PRDs → `docs/prds/<slug>.md` (temporary — user may push to Notion for review)
+  - PRDs → `internal-docs/prds/<slug>.md` (temporary — user may push to Notion for review)
   - Feature catalog docs → `<keep the same path that was here>` (permanent)
 
 ---
@@ -208,26 +208,26 @@ Find this entire block:
 
   > "Where should I write this tech design?
   > 1. **Notion** — tech design board
-  > 2. **Local file** — `docs/tech-designs/<ticket-or-feature-slug>.md`"
+  > 2. **Local file** — `internal-docs/tech-designs/<ticket-or-feature-slug>.md`"
 
-  Do NOT write tech designs in `docs/features/` — that directory is for finished feature catalog docs only.
+  Do NOT write tech designs in `internal-docs/features/` — that directory is for finished feature catalog docs only.
   Note the planned F-NNN ID in the design as "F-NNN — doc to be written after development is complete."
 
   ### After completing a code change
 
   5. Find which feature docs reference each changed file:
      ```
-     grep "ChangedFile" docs/features/INDEX.md
+     grep "ChangedFile" internal-docs/features/INDEX.md
      ```
   6. Update any section whose behavior, public API, configuration, or data flow changed.
-  7. If the change introduces a new feature: write the full F-NNN doc and add it to `docs/features/INDEX.md` **only after Alice has written "Satisfied — Dave, this is ready."** Not before.
+  7. If the change introduces a new feature: write the full F-NNN doc and add it to `internal-docs/features/INDEX.md` **only after Alice has written "Satisfied — Dave, this is ready."** Not before.
 
 Replace with:
   ### Phase 1 — Tech design
 
-  Write the tech design to `docs/tech-designs/<feature-slug>.md` where `<feature-slug>` is the same kebab-case slug used for the PRD (e.g. `device-farm-3d-header`).
+  Write the tech design to `internal-docs/tech-designs/<feature-slug>.md` where `<feature-slug>` is the same kebab-case slug used for the PRD (e.g. `device-farm-3d-header`).
 
-  Do NOT write tech designs in `docs/features/` — that directory is for finished feature catalog docs only.
+  Do NOT write tech designs in `internal-docs/features/` — that directory is for finished feature catalog docs only.
   Note the planned F-NNN ID in the design as "F-NNN — doc to be written after development is complete."
 
   After writing the tech design, call `Skill('<alice-skill-name>')` immediately for review.
@@ -238,7 +238,7 @@ Replace with:
   ---
   ## ⏸ Waiting for your review
 
-  Tech design saved to `docs/tech-designs/<feature-slug>.md`. Alice has signed off.
+  Tech design saved to `internal-docs/tech-designs/<feature-slug>.md`. Alice has signed off.
   The workflow is paused. Reply **approved** to start implementation, or share your feedback.
 
   ---
@@ -263,7 +263,7 @@ Replace with:
 
   For every file changed during implementation, run:
   ```
-  grep "<changed-file>" docs/features/INDEX.md
+  grep "<changed-file>" internal-docs/features/INDEX.md
   ```
   Run once per changed file. Then print this table:
 
@@ -275,7 +275,7 @@ Replace with:
 
   **Step 2 — Write the new feature doc**
 
-  Write the full F-NNN feature catalog doc to `docs/features/<F-NNN-slug>.md` and add it to `docs/features/INDEX.md`.
+  Write the full F-NNN feature catalog doc to `internal-docs/features/<F-NNN-slug>.md` and add it to `internal-docs/features/INDEX.md`.
 
   **Step 3 — Call Alice**
 
@@ -350,15 +350,15 @@ Replace with:
 ### Change 2 — Docs Layer table (full replacement)
 Find:
   | `<feature doc path>` | Feature catalog | Dave (writes F-NNN) | Alice, Bob, Erin (read) |
-  | `docs/issue-cases/` | Scar book | Human / eng team | Alice, Dave, Bob, Erin (read) |
+  | `internal-docs/issue-cases/` | Scar book | Human / eng team | Alice, Dave, Bob, Erin (read) |
   | `<research path>` | Research log | Bob (writes R-NNN) | Alice (via challenge loop) |
   | `docs/payloads/` | Payload map | Erin (writes P-NNN, FIELD_MAP) | Alice, Dave (via challenge loop) |
 
 Replace with:
-  | `docs/prds/` | PRDs (staging) | Alice (writes) | User review; may move to Notion |
-  | `docs/tech-designs/` | Tech designs (staging) | Dave (writes) | User review; may move to Notion |
+  | `internal-docs/prds/` | PRDs (staging) | Alice (writes) | User review; may move to Notion |
+  | `internal-docs/tech-designs/` | Tech designs (staging) | Dave (writes) | User review; may move to Notion |
   | `<keep the same feature doc path>` | Feature catalog | Dave (writes F-NNN) | Alice, Bob, Erin (read) |
-  | `docs/issue-cases/` | Scar book | Human / eng team | Alice, Dave, Bob, Erin (read) |
+  | `internal-docs/issue-cases/` | Scar book | Human / eng team | Alice, Dave, Bob, Erin (read) |
   | `<keep the same research path>` | Research log | Bob (writes R-NNN) | Alice (via challenge loop) |
   | `docs/payloads/` | Payload map | Erin (writes P-NNN, FIELD_MAP) | Alice, Dave (via challenge loop) |
 
@@ -387,7 +387,7 @@ Find the entire code block inside Loop Mechanics (the ``` block) and replace wit
 
   ```
   User runs /af-ship <description>
-    → Alice writes PRD → saves to docs/prds/<slug>.md → asks user to review
+    → Alice writes PRD → saves to internal-docs/prds/<slug>.md → asks user to review
     → User approves PRD
     → Alice invokes Bob and/or Erin if needed
     → Bob/Erin produce findings
@@ -396,7 +396,7 @@ Find the entire code block inside Loop Mechanics (the ``` block) and replace wit
     → Alice invokes Dave
 
   Phase 1 — Tech design
-    → Dave writes tech design → saves to docs/tech-designs/<slug>.md
+    → Dave writes tech design → saves to internal-docs/tech-designs/<slug>.md
     → Alice challenges tech design (max 2 iterations)
     → Alice: "Satisfied — Dave, this is ready." (on tech design)
     → Dave asks user to review tech design
@@ -408,7 +408,7 @@ Find the entire code block inside Loop Mechanics (the ``` block) and replace wit
     → Alice: "Satisfied — Dave, this is ready." (on implementation)
 
   Phase 3 — Feature doc
-    → Dave writes F-NNN feature doc → saves to docs/features/
+    → Dave writes F-NNN feature doc → saves to internal-docs/features/
     → Alice challenges feature doc (max 2 iterations)
     → Alice: "Satisfied — Dave, this is ready." (on feature doc)
   ```
@@ -424,7 +424,7 @@ Create this file at `.claude/commands/af-ship.md` with the following content exa
   $ARGUMENTS
 
   Invoke the `alice-feature-orchestrator` skill now to begin. Alice will write a PRD,
-  save it to docs/prds/, ask for your review, then coordinate research and engineering
+  save it to internal-docs/prds/, ask for your review, then coordinate research and engineering
   through tech design, implementation, and feature documentation.
 
 ---
@@ -470,12 +470,12 @@ Replace the full contents of CLAUDE.md with:
 
   Every `/af-ship` deliverable must include:
 
-  - Alice PRD (`docs/prds/`)
+  - Alice PRD (`internal-docs/prds/`)
   - Bob findings (if invoked)
   - Erin payload impact (if invoked)
-  - Dave tech design (`docs/tech-designs/`)
+  - Dave tech design (`internal-docs/tech-designs/`)
   - Dave implementation + unit tests
-  - Dave feature doc (`docs/features/`)
+  - Dave feature doc (`internal-docs/features/`)
   - Alice sign-off at each phase
 
 Note: preserve the existing maintenance tasks list and skill names (domain-specific).
@@ -518,15 +518,15 @@ Replace with:
 ### Change 6 — Alice satisfaction criteria for feature doc
 Find:
   ### Alice is satisfied with Dave's feature doc when:
-  - [ ] F-NNN doc written to `docs/features/` and added to `docs/features/INDEX.md`
+  - [ ] F-NNN doc written to `internal-docs/features/` and added to `internal-docs/features/INDEX.md`
   - [ ] All template sections complete (Business Purpose, Call Chain, Files, Tests)
   - [ ] No open challenge items without a response
 
 Replace with:
   ### Alice is satisfied with Dave's feature doc when:
-  - [ ] Impact scan table was printed — every changed file checked against `docs/features/INDEX.md`
+  - [ ] Impact scan table was printed — every changed file checked against `internal-docs/features/INDEX.md`
   - [ ] All affected existing F-NNN docs updated, or "none affected" explicitly stated
-  - [ ] F-NNN doc written to `docs/features/` and added to `docs/features/INDEX.md`
+  - [ ] F-NNN doc written to `internal-docs/features/` and added to `internal-docs/features/INDEX.md`
   - [ ] All template sections complete (Business Purpose, Call Chain, Files, Tests)
   - [ ] No open challenge items without a response
 

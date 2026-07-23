@@ -1,6 +1,6 @@
 # Prompt: Create Feature Catalog
 
-Use this prompt to generate a `docs/features/` catalog for this project.
+Use this prompt to generate a `internal-docs/features/` catalog for this project.
 Values below are filled during workflow setup — edit them here if needed.
 
 ---
@@ -20,7 +20,7 @@ JIRA_PROJECT_KEY:  DELIVERY
 ## Prompt
 
 ````
-Create a feature catalog for this project under `docs/features/`.
+Create a feature catalog for this project under `internal-docs/features/`.
 
 Project context: Flutter plugin providing mobile attribution and analytics for iOS and Android, bridging native AppsFlyer SDKs via Dart MethodChannel/EventChannel
 Primary language(s): Dart, Objective-C, Java, Kotlin
@@ -143,7 +143,7 @@ Mark "Propose taxonomy" as completed. Mark "User reviews taxonomy" as `in_progre
 
 ---
 
-## Phase 3 — Create `docs/features/`
+## Phase 3 — Create `internal-docs/features/`
 
 Mark "User reviews taxonomy" as completed. Mark "Write feature catalog" as `in_progress`.
 

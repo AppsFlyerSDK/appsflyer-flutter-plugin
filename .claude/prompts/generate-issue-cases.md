@@ -16,12 +16,12 @@ LANGUAGES:        Dart, Objective-C, Java, Kotlin
 
 ## TASK
 
-Mine this repository's full git history across all branches and generate `docs/issue-cases/` — an engineering issue case bank with a hot zones map and two-axis classification (Component × Bug Class).
+Mine this repository's full git history across all branches and generate `internal-docs/issue-cases/` — an engineering issue case bank with a hot zones map and two-axis classification (Component × Bug Class).
 
 Project context: Flutter plugin providing mobile attribution and analytics for iOS and Android, bridging native AppsFlyer SDKs via Dart MethodChannel/EventChannel
 Primary language(s): Dart, Objective-C, Java, Kotlin
 
-Create `docs/issue-cases/INDEX.md`, `docs/issue-cases/TEMPLATE.md`, `docs/issue-cases/GUARDRAILS.md`, and individual `IC-NNN-*.md` files.
+Create `internal-docs/issue-cases/INDEX.md`, `internal-docs/issue-cases/TEMPLATE.md`, `internal-docs/issue-cases/GUARDRAILS.md`, and individual `IC-NNN-*.md` files.
 
 ---
 
@@ -63,7 +63,7 @@ echo "Mining years: $START_YEAR to $CURRENT_YEAR"
 Create the staging directory:
 
 ```bash
-mkdir -p docs/issue-cases/partial
+mkdir -p internal-docs/issue-cases/partial
 ```
 
 For each year from `$START_YEAR` to `$CURRENT_YEAR`, spawn one Agent in parallel. Pass the prompt below verbatim, substituting:
@@ -109,7 +109,7 @@ For each confirmed bug fix, collect:
 
 ## Output format
 
-Write one file per bug fix to docs/issue-cases/partial/ using this name pattern:
+Write one file per bug fix to internal-docs/issue-cases/partial/ using this name pattern:
   {{YEAR}}-NNN-kebab-short-name.md
 where NNN is a zero-padded counter starting at 001, scoped to this year only.
 
@@ -144,10 +144,10 @@ year: {{YEAR}}
 ### Takeaway
 [The rule that prevents this class of bug. Be specific to this codebase.]
 
-Also write a one-line summary file docs/issue-cases/partial/{{YEAR}}-index.md listing each case you wrote:
+Also write a one-line summary file internal-docs/issue-cases/partial/{{YEAR}}-index.md listing each case you wrote:
   {{YEAR}}-NNN-kebab-name.md — [one-line summary]
 
-If you find zero genuine bug fixes for {{YEAR}}, write docs/issue-cases/partial/{{YEAR}}-index.md with a single line:
+If you find zero genuine bug fixes for {{YEAR}}, write internal-docs/issue-cases/partial/{{YEAR}}-index.md with a single line:
   no cases found
 ```
 
@@ -209,7 +209,7 @@ For each unique DELIVERY-XXXXX number found:
    - Record the ticket's `created` date from the Jira response (use as the **Date** field in the IC case)
    - Find the corresponding fix commit in git (`git log --all --oneline --grep="DELIVERY-XXXXX"`)
    - Inspect the diff (`git show <hash>`)
-   - Write the IC case to `docs/issue-cases/partial/JIRA-NNN-kebab-short-name.md` (where NNN is a zero-padded counter starting at 001, scoped to this step). Use the same file format as the year-agent cases (frontmatter with `commit:` and `year:` fields, then the IC sections). Step 1b.5 will collect and align all partial files together.
+   - Write the IC case to `internal-docs/issue-cases/partial/JIRA-NNN-kebab-short-name.md` (where NNN is a zero-padded counter starting at 001, scoped to this step). Use the same file format as the year-agent cases (frontmatter with `commit:` and `year:` fields, then the IC sections). Step 1b.5 will collect and align all partial files together.
 
 Skip tickets where the diff shows only infrastructure changes (Dockerfile, CI config, `.edn` config files with no behavior change).
 
@@ -219,7 +219,7 @@ Skip tickets where the diff shows only infrastructure changes (Dockerfile, CI co
 
 Mark "Cross-check with Jira" as completed. Mark "Align IC cases" as `in_progress`.
 
-**Collect** all files matching `docs/issue-cases/partial/????-???-*.md`.
+**Collect** all files matching `internal-docs/issue-cases/partial/????-???-*.md`.
 
 **Deduplicate** by commit hash: read the `commit:` frontmatter field from each file. If two files share the same hash, keep the one with more lines (richer description) and discard the other.
 
@@ -228,7 +228,7 @@ Mark "Cross-check with Jira" as completed. Mark "Align IC cases" as `in_progress
 **Renumber** sequentially starting at 1. Assign each file a new ID: `IC-001`, `IC-002`, ..., `IC-NNN`.
 
 **Rename** each file from its temp name to its final name:
-- `docs/issue-cases/partial/2019-003-null-dereference.md` → `docs/issue-cases/IC-007-null-dereference.md`
+- `internal-docs/issue-cases/partial/2019-003-null-dereference.md` → `internal-docs/issue-cases/IC-007-null-dereference.md`
 - Pattern: strip the `YYYY-NNN-` prefix, prepend `IC-NNN-` (using the new sequential number, zero-padded to 3 digits)
 
 **Update** the heading inside each renamed file from `## YYYY-NNN — Name` to `## IC-NNN — Name`.
@@ -240,9 +240,9 @@ Report a summary table of all actions taken:
 | 2019-001-foo | IC-001-foo | abc1234 | 2019-03-12 | renamed |
 | 2020-002-bar | — | def5678 | 2020-07-01 | duplicate, discarded |
 
-**Clean up** the staging directory after confirming all files have been moved to `docs/issue-cases/`:
+**Clean up** the staging directory after confirming all files have been moved to `internal-docs/issue-cases/`:
 ```bash
-rm -rf docs/issue-cases/partial/
+rm -rf internal-docs/issue-cases/partial/
 ```
 
 Mark "Align IC cases" as completed.
@@ -326,7 +326,7 @@ Prepend a **Tech Design Checklist** section:
 - [ ] All initialization paths covered
 - [ ] Any rewrite of a previously-reverted feature must audit the original contract
 
-Write to `docs/issue-cases/GUARDRAILS.md`.
+Write to `internal-docs/issue-cases/GUARDRAILS.md`.
 
 ---
 
@@ -399,7 +399,7 @@ Run immediately after INDEX.md is written. Three checks:
 
 **Check 1 — IC → Feature cross-reference**
 
-If `docs/features/INDEX.md` exists: for each IC case, find the matching F-NNN feature by component name. Add a `feature_ref: [F-NNN]` line to the frontmatter of that IC file. If no match is found, leave the field blank and flag it.
+If `internal-docs/features/INDEX.md` exists: for each IC case, find the matching F-NNN feature by component name. Add a `feature_ref: [F-NNN]` line to the frontmatter of that IC file. If no match is found, leave the field blank and flag it.
 
 **Check 2 — Orphaned IC cases**
 
@@ -428,8 +428,8 @@ Add a "Before Making Code Changes" section using **active language**:
 ```
 ## Before Making Code Changes
 
-Before writing any code that touches a component listed in `docs/issue-cases/INDEX.md`:
-1. Open `docs/issue-cases/INDEX.md` and find the component in the Hot Zones Map
+Before writing any code that touches a component listed in `internal-docs/issue-cases/INDEX.md`:
+1. Open `internal-docs/issue-cases/INDEX.md` and find the component in the Hot Zones Map
 2. Read each linked IC case — pay attention to the **Takeaway** rule
 3. Explicitly state which past issues are relevant and how the new code avoids repeating them
 
@@ -467,7 +467,7 @@ MSG=""
 # Add one block per hot-zone component (replace HotZoneFile and ComponentName
 # with the actual filenames and component names from the Step 2 Hot Zones Map):
 if echo "$FILE_PATH" | grep -qE "HotZoneFile\.(clj|java)"; then
-  MSG="HOT ZONE — ComponentName: read docs/issue-cases/INDEX.md for relevant cases and apply their Takeaway rules before writing code."
+  MSG="HOT ZONE — ComponentName: read internal-docs/issue-cases/INDEX.md for relevant cases and apply their Takeaway rules before writing code."
 fi
 
 if [ -n "$MSG" ]; then
