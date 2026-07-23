@@ -1,7 +1,7 @@
 ---
 ticket: DELIVERY-125462
-prd: docs/prds/spm-support.md
-research: docs/researches/R-001-spm-support.md
+prd: internal-docs/prds/spm-support.md
+research: internal-docs/researches/R-001-spm-support.md
 planned_feature_doc: F-060 — doc to be written after development is complete
 ---
 

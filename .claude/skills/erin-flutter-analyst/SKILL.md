@@ -86,8 +86,8 @@ After Erin presents any analysis findings, `alice-pm` is invoked automatically. 
 - `docs/payloads/template.json` — canonical reference payload (sanitized)
 - `docs/payloads/FIELD_MAP.md` — complete field-to-feature-to-issue-case mapping
 - `docs/payloads/INDEX.md` — index of all payload analyses
-- `docs/features/INDEX.md` — feature catalog
-- `docs/issue-cases/INDEX.md` — bug history
+- `internal-docs/features/INDEX.md` — feature catalog
+- `internal-docs/issue-cases/INDEX.md` — bug history
 
 ---
 

@@ -53,9 +53,9 @@ Determine:
 - The tech stack (languages, frameworks, build tools)
 - How to run the test suite
 - How releases are cut and published
-- Where feature docs live (or suggest docs/features/)
-- Where research docs live (or suggest docs/researches/)
-- Where issue cases live (or suggest docs/issue-cases/)
+- Where feature docs live (or suggest internal-docs/features/)
+- Where research docs live (or suggest internal-docs/researches/)
+- Where issue cases live (or suggest internal-docs/issue-cases/)
 - What counts as a maintenance task (no Alice review needed)
 
 Present your findings and wait for my confirmation before continuing.
@@ -161,7 +161,7 @@ Wait for my instructions before making any further changes.
 
 Open `.claude/prompts/generate-feature-catalog.md`, copy its full contents, and paste into Claude Code.
 
-This builds `docs/features/` — a catalog of every feature in the codebase with:
+This builds `internal-docs/features/` — a catalog of every feature in the codebase with:
 - **Business Purpose** — what the product loses if the feature is removed (enriched from Notion if connected)
 - **Call Chain** — from public entry point to leaf implementation
 - **Dependency Diagrams** — runtime flow, initialization flow, and a full dependency table
@@ -175,7 +175,7 @@ The prompt walks you through each phase with a live progress view and pauses for
 
 Open `.claude/prompts/generate-issue-cases.md`, copy its full contents, and paste into Claude Code.
 
-This builds `docs/issue-cases/` — an engineering scar book mined from the full git history:
+This builds `internal-docs/issue-cases/` — an engineering scar book mined from the full git history:
 - **IC-NNN-*.md** — one file per real bug: what happened, root cause, fix, and takeaway
 - **GUARDRAILS.md** — engineering rules derived from past incidents, with a tech design checklist
 - **Hot Zones Map** — which components carry the most historical risk

@@ -3,22 +3,22 @@ Generate an interactive HTML quiz from a tech design document.
 ## Step 1 — Resolve the document
 
 **If $ARGUMENTS is empty:**
-List all `.md` files in `docs/tech-designs/`.
+List all `.md` files in `internal-docs/tech-designs/`.
 - If files exist, list them and ask:
   "Which tech design should I quiz you on? (Reply with the number or filename)
   Or reply **project** to generate a quiz covering the whole project from the feature catalog."
   Wait for the user's selection before continuing.
 - If the folder does not exist or is empty, ask:
-  "No tech designs found in `docs/tech-designs/`. What would you like to do?
+  "No tech designs found in `internal-docs/tech-designs/`. What would you like to do?
   1. Provide a path or Notion URL (reply with the path/URL)
   2. Generate a project quiz from the feature catalog (reply **project**)"
   Wait for the user's reply before continuing.
 
 **If the user replies `project` (or $ARGUMENTS is `project`):**
-Check whether `docs/features/INDEX.md` exists.
+Check whether `internal-docs/features/INDEX.md` exists.
 - If it does not exist, stop and say:
-  "No feature catalog found. Run `/af-generate-feature-catalog` first to build `docs/features/`, then try again."
-- If it exists, read `docs/features/INDEX.md` to get the full list of features, then read each individual `docs/features/F-*.md` file.
+  "No feature catalog found. Run `/af-generate-feature-catalog` first to build `internal-docs/features/`, then try again."
+- If it exists, read `internal-docs/features/INDEX.md` to get the full list of features, then read each individual `internal-docs/features/F-*.md` file.
   Set `<slug>` to `project` and `<title>` to the project name derived from `INDEX.md` (e.g. `MyProject — Project Quiz`).
   Proceed to Step 3 in **project mode** (random 10 questions across all features).
 

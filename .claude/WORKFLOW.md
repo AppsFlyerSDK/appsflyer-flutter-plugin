@@ -66,11 +66,11 @@ flowchart TD
 
 | Directory | Nickname | Owner | Consumers |
 |-----------|----------|-------|-----------|
-| `docs/prds/` | PRDs (staging) | Alice (writes); af-ship-orch (saves external) | User review; may move to Notion |
-| `docs/tech-designs/` | Tech designs (staging) | Dave (writes); af-ship-orch (saves external) | User review; may move to Notion |
-| `docs/features/` | Feature catalog | Dave (writes F-NNN) | Alice, Bob, Erin (read) |
-| `docs/issue-cases/` | Scar book | Human / eng team | Alice, Dave, Bob, Erin (read) |
-| `docs/researches/` | Research log | Bob (writes R-NNN) | Alice (via challenge loop) |
+| `internal-docs/prds/` | PRDs (staging) | Alice (writes); af-ship-orch (saves external) | User review; may move to Notion |
+| `internal-docs/tech-designs/` | Tech designs (staging) | Dave (writes); af-ship-orch (saves external) | User review; may move to Notion |
+| `internal-docs/features/` | Feature catalog | Dave (writes F-NNN) | Alice, Bob, Erin (read) |
+| `internal-docs/issue-cases/` | Scar book | Human / eng team | Alice, Dave, Bob, Erin (read) |
+| `internal-docs/researches/` | Research log | Bob (writes R-NNN) | Alice (via challenge loop) |
 | `docs/payloads/` | Payload map | Erin (writes P-NNN, FIELD_MAP) | Alice, Dave (via challenge loop) |
 
 ---
@@ -100,7 +100,7 @@ If unsure whether a task is maintenance or a feature → use `/af-ship`.
 ```
 /af-ship <description>
   → af-ship-orch creates task wizard → calls alice-pm
-  → Alice writes PRD → saves to docs/prds/<slug>.md → asks user to review
+  → Alice writes PRD → saves to internal-docs/prds/<slug>.md → asks user to review
   → User approves PRD
   → Alice invokes Bob and/or Erin if needed
   → Bob/Erin produce findings → Alice challenges (max 2 iterations)
@@ -111,7 +111,7 @@ If unsure whether a task is maintenance or a feature → use `/af-ship`.
 **From existing PRD:**
 ```
 /af-ship-from-prd <url-or-path>  (or /af-ship --prd <url-or-path>)
-  → af-ship-orch fetches / reads PRD → saves to docs/prds/<slug>.md → calls alice-pm
+  → af-ship-orch fetches / reads PRD → saves to internal-docs/prds/<slug>.md → calls alice-pm
   → Alice challenges PRD for completeness → resolves gaps with user
   → Alice delegates to Bob/Erin/Dave (no second review pause)
   → [Phase 1 / 2 / 3 below]
@@ -120,7 +120,7 @@ If unsure whether a task is maintenance or a feature → use `/af-ship`.
 **From existing tech design:**
 ```
 /af-ship-from-tech-design <url-or-path>  (or /af-ship --tech-design <url-or-path>)
-  → af-ship-orch fetches / reads tech design → saves to docs/tech-designs/<slug>.md → calls alice-pm
+  → af-ship-orch fetches / reads tech design → saves to internal-docs/tech-designs/<slug>.md → calls alice-pm
   → Alice runs full challenge agenda → Dave addresses issues (max 2 iterations)
   → Alice: "Satisfied — Dave, this is ready."
   → [Phase 2 / 3 below — Phase 1 skipped, PRD gate bypassed]
@@ -128,7 +128,7 @@ If unsure whether a task is maintenance or a feature → use `/af-ship`.
 
 **Phase 1 — Tech design**
 ```
-  → Dave writes tech design → saves to docs/tech-designs/<slug>.md
+  → Dave writes tech design → saves to internal-docs/tech-designs/<slug>.md
   → Alice challenges tech design (max 2 iterations)
   → Alice: "Satisfied — Dave, this is ready."
   → Dave asks user to review tech design
@@ -145,7 +145,7 @@ If unsure whether a task is maintenance or a feature → use `/af-ship`.
 **Phase 3 — Feature doc**
 ```
   → Dave runs impact scan → updates any affected existing F-NNN docs
-  → Dave writes new F-NNN feature doc → saves to docs/features/
+  → Dave writes new F-NNN feature doc → saves to internal-docs/features/
   → Alice challenges feature doc (max 2 iterations)
   → Alice: "Satisfied — Dave, this is ready."
 ```
