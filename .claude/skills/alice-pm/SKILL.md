@@ -26,12 +26,12 @@ When starting a new feature delivery, write the PRD with these sections:
 | **Risks** | Release risk, compliance risk, accuracy risk. |
 | **Open questions** | What is unknown before Dave can start? |
 
-Save the PRD to `docs/prds/<feature-slug>.md`, then write exactly:
+Save the PRD to `internal-docs/prds/<feature-slug>.md`, then write exactly:
 
 ---
 ## ⏸ Waiting for your review
 
-PRD saved to `docs/prds/<feature-slug>.md`.
+PRD saved to `internal-docs/prds/<feature-slug>.md`.
 The workflow is paused. Reply **approved** to continue, or share your feedback and I'll update the PRD.
 
 ---
@@ -80,7 +80,7 @@ Flag: missing sections, vague requirements ("improve performance"), unmeasurable
 If gaps found:
 1. List every gap clearly.
 2. Pause and ask the user to resolve them.
-3. Update `docs/prds/<slug>.md` with resolved content.
+3. Update `internal-docs/prds/<slug>.md` with resolved content.
 4. Repeat until satisfied.
 
 Once satisfied: write the delegation decision block (above) and invoke Bob/Erin/Dave in order. Do NOT output a `⏸ Waiting for your review` pause — the PRD was externally authored and team-reviewed.
@@ -189,7 +189,7 @@ Use `TaskList` to find tasks by subject, then `TaskUpdate` to advance them. Skip
 
 ### 1. GUARDRAILS Coverage
 - Did Dave's context table appear before the code?
-- For every file touched: was the component checked against `docs/issue-cases/INDEX.md`?
+- For every file touched: was the component checked against `internal-docs/issue-cases/INDEX.md`?
 - Name the specific IC-NNN cases that apply and how the implementation avoids repeating them.
 
 ### 2. Migration & Rollout Risk
@@ -201,13 +201,13 @@ Use `TaskList` to find tasks by subject, then `TaskUpdate` to advance them. Skip
 ### 3. Feature Documentation
 
 **During tech design review:**
-- Is the tech design saved to `docs/tech-designs/<slug>.md`?
+- Is the tech design saved to `internal-docs/tech-designs/<slug>.md`?
 - Does the tech design cover all PRD requirements and acceptance criteria?
 - Is the planned F-NNN ID noted in the design?
 
 **During feature doc review (Phase 3 only — do not check during tech design or implementation review):**
-- Is the F-NNN doc written to `docs/features/` and added to `docs/features/INDEX.md`?
-- Does it follow `docs/features/TEMPLATE.md`?
+- Is the F-NNN doc written to `internal-docs/features/` and added to `internal-docs/features/INDEX.md`?
+- Does it follow `internal-docs/features/TEMPLATE.md`?
 - Are Business Purpose, Call Chain, Files, and Tests sections complete?
 
 ### 4. Concurrency & Thread Safety
@@ -250,9 +250,9 @@ Use `TaskList` to find tasks by subject, then `TaskUpdate` to advance them. Skip
 - [ ] No open challenge items without a response
 
 ### Alice is satisfied with Dave's feature doc when:
-- [ ] Impact scan table was printed — every changed file checked against `docs/features/INDEX.md`
+- [ ] Impact scan table was printed — every changed file checked against `internal-docs/features/INDEX.md`
 - [ ] All affected existing F-NNN docs updated, or "none affected" explicitly stated
-- [ ] F-NNN doc written to `docs/features/` and added to `docs/features/INDEX.md`
+- [ ] F-NNN doc written to `internal-docs/features/` and added to `internal-docs/features/INDEX.md`
 - [ ] All template sections complete (Business Purpose, Call Chain, Files, Tests)
 - [ ] No open challenge items without a response
 
@@ -315,8 +315,8 @@ Automated via GitHub Actions: `.github/workflows/rc-release.yml`, `rc-smoke.yml`
 
 ## Docs Locations
 
-- PRDs → `docs/prds/<slug>.md` (temporary — user may push to Notion for review)
-- Feature catalog docs → `docs/features/` (permanent)
+- PRDs → `internal-docs/prds/<slug>.md` (temporary — user may push to Notion for review)
+- Feature catalog docs → `internal-docs/features/` (permanent)
 
 ---
 
