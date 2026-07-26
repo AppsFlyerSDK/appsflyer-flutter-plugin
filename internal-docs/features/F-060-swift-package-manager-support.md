@@ -73,11 +73,15 @@ CocoaPods path (resolved by `pod install` at install time, unchanged behavior):
 
 ## Tests
 No dedicated automated test — this is a build-configuration/distribution-mechanism concern with no Dart or native runtime logic change, the same category as F-054 (Purchase Connector: Build-Time Opt-in), which sets the precedent that this class of change is verified via full builds rather than unit tests. Verification performed for this change:
-- `swift package describe` — genuine dependency resolution against the live `AppsFlyerFramework` GitHub repository, confirming the manifest resolves product `AppsFlyerLib` at range `6.18.0..<7.0.0` and picks up all 3 Core `.m` sources correctly.
+- `swift package describe` — genuine dependency resolution against the live `AppsFlyerFramework` GitHub repository, confirming the manifest resolves product `AppsFlyerLib` at `Exact: 6.18.0` (corrected from an earlier `from:` range pin during review — see Known Limitations) and picks up all 3 Core `.m` sources correctly.
 - `pod spec lint --quick --allow-warnings` — passed, confirming the podspec's repointed `source_files`/`public_header_files` globs resolve correctly against the moved tree.
 - `flutter test test` — all 38 existing Dart tests pass unaffected (this change touches only iOS native file locations and build manifests, not Dart code).
+- **Real-device iOS E2E, dispatched via GitHub Actions with real credentials, 3 of the tech design's 4 combinations — all 6 scenario phases PASS in each:**
+  - SPM, Core only, `.exact("6.18.0")` pin — [run 30191649705](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/actions/runs/30191649705). `getSDKVersion` confirmed resolving `6.18.0`, not a drifted patch release (an earlier run against the pre-fix `from:` pin had resolved `6.18.1` — see Known Limitations).
+  - Hybrid: SPM Core + CocoaPods PurchaseConnector simultaneously (realistic config for an app that wants both) — [run 29848672331](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/actions/runs/29848672331).
+  - Pure CocoaPods, Core + PurchaseConnector, SPM explicitly disabled — [run 29901950273](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/actions/runs/29901950273).
 
-> **Outstanding pre-release gate**: the tech design's mandatory 4-path real-device build verification (SPM Core-only / CocoaPods Core-only / CocoaPods Core+PurchaseConnector / confirming SPM+PurchaseConnector is inert, all on real devices, not `--no-codesign` alone) has **not yet been run** — it requires a full macOS/Xcode/iOS-device environment that was unavailable during implementation. This must be completed before this ships (before promoting through the RC pipeline). See `docs/tech-designs/spm-support.md` for the exact verification steps.
+> **Remaining gap**: the 4th combination — actively calling a Purchase Connector API from an SPM-only integration and confirming it raises `MissingPluginException` rather than crashing or hanging — has not been exercised by a real test, only reasoned through statically (see the tech design's corrected failure-mode analysis). This is a low-risk, non-blocking gap: the mechanism (`ENABLE_PURCHASE_CONNECTOR` never defined under SPM) is the same one already exercised today by the CocoaPods not-opted-in path, just reached a third way.
 
 ---
 
