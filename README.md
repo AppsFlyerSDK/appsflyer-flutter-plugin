@@ -11,8 +11,8 @@ To do so, please follow [this article](https://support.appsflyer.com/hc/en-us/ar
 
 ## SDK Versions
 
-- Android AppsFlyer SDK **v6.18.0**
-- iOS AppsFlyer SDK **v6.18.0**
+- Android AppsFlyer SDK **v6.18.1**
+- iOS AppsFlyer SDK **v6.18.1**
 
 ### Purchase Connector versions
 
