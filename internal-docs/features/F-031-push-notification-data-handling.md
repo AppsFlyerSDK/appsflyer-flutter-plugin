@@ -28,7 +28,7 @@ AppsflyerSdk.sendPushNotificationData(Map? userInfo)                            
       → jsonToBundle(pushPayload) → Bundle
       → activity.getIntent().putExtras(bundle); activity.setIntent(intent)
       → AppsFlyerLib.getInstance().sendPushNotificationData(activity)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("sendPushNotificationData") → sendPushNotificationData:result:   [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("sendPushNotificationData") → sendPushNotificationData:result:   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → [[AppsFlyerLib shared] handlePushNotification:userInfo]
 
 AppsflyerSdk.setPushNotification(bool isEnabled)   [DEPRECATED, use sendPushNotificationData instead]
@@ -44,7 +44,7 @@ AppsflyerSdk.setPushNotification(bool isEnabled)   [DEPRECATED, use sendPushNoti
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `sendPushNotificationData(Map?)` (active) and `setPushNotification(bool)` (`@Deprecated`) |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `sendPushNotificationData` — converts the JSON payload to a `Bundle` via `jsonToBundle`, stuffs it into the current activity's intent extras, then calls `AppsFlyerLib.getInstance().sendPushNotificationData(activity)`; `setPushNotification` — ignores its boolean argument and just re-invokes `sendPushNotificationData(activity)` with whatever extras are already on the intent |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `sendPushNotificationData:result:` — passes `userInfo` straight to `[AppsFlyerLib shared] handlePushNotification:]`; `setPushNotification:result:` — stores an unused static flag |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `sendPushNotificationData:result:` — passes `userInfo` straight to `[AppsFlyerLib shared] handlePushNotification:]`; `setPushNotification:result:` — stores an unused static flag |
 
 ---
 

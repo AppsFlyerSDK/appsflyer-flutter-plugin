@@ -26,7 +26,7 @@ AppsflyerSdk.setIsUpdate(isUpdate)                                       [lib/sr
   → _methodChannel.invokeMethod("setIsUpdate", {'isUpdate': isUpdate})
     → Android: AppsflyerSdkPlugin.onMethodCall("setIsUpdate") → setIsUpdate(call, result)   [android/.../AppsflyerSdkPlugin.java]
       → AppsFlyerLib.getInstance().setIsUpdate(isUpdate)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("setIsUpdate") → (no-op)                      [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("setIsUpdate") → (no-op)                      [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
 ```
 
 ---
@@ -36,7 +36,7 @@ AppsflyerSdk.setIsUpdate(isUpdate)                                       [lib/sr
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `setIsUpdate(bool)` — platform-agnostic Dart API (no `Platform.isAndroid` guard) |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `setIsUpdate` native handler — forwards to `AppsFlyerLib.getInstance().setIsUpdate(isUpdate)` |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `handleMethodCall:` contains an empty `else if([@"setIsUpdate" isEqualToString:call.method]){ }` branch — matched but intentionally does nothing |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `handleMethodCall:` contains an empty `else if([@"setIsUpdate" isEqualToString:call.method]){ }` branch — matched but intentionally does nothing |
 
 ---
 
@@ -54,7 +54,7 @@ AppsflyerSdk.setIsUpdate(isUpdate)                                       [lib/sr
 ---
 
 ## Known Limitations
-- **iOS is a documented no-op**: in `ios/Classes/AppsflyerSdkPlugin.m`'s `handleMethodCall:`, the `"setIsUpdate"` branch is matched (`if([@"setIsUpdate" isEqualToString:call.method]){ }`) but its body is empty — no native AppsFlyer API is called, and critically, `result(...)` is never invoked either. Since this branch matches inside an `if/else if` chain, control does not fall through to the trailing `result(FlutterMethodNotImplemented)` — the platform channel's pending reply for `setIsUpdate` on iOS is simply never resolved. Dart's `setIsUpdate()` is `void` and does not await the result, so this is silent to the caller today, but the update-vs-install distinction this API is meant to convey has **no effect whatsoever on iOS** — only Android attribution logic actually receives it.
+- **iOS is a documented no-op**: in `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m`'s `handleMethodCall:`, the `"setIsUpdate"` branch is matched (`if([@"setIsUpdate" isEqualToString:call.method]){ }`) but its body is empty — no native AppsFlyer API is called, and critically, `result(...)` is never invoked either. Since this branch matches inside an `if/else if` chain, control does not fall through to the trailing `result(FlutterMethodNotImplemented)` — the platform channel's pending reply for `setIsUpdate` on iOS is simply never resolved. Dart's `setIsUpdate()` is `void` and does not await the result, so this is silent to the caller today, but the update-vs-install distinction this API is meant to convey has **no effect whatsoever on iOS** — only Android attribution logic actually receives it.
 - The Dart API has no platform guard and gives no compile-time or runtime signal that calling `setIsUpdate` on iOS is a no-op; an integrator relying on it cross-platform would reasonably but incorrectly assume parity with Android.
 - No enforced ordering relative to `initSdk()` — the native SDK's own documentation-level expectation (call before init so the flag is available for the very first session) is not validated by either native handler.
 

@@ -1,6 +1,6 @@
 # AppsFlyer Flutter Plugin — Feature Catalog Index
 
-59 features across 6 categories. See `DIAGRAM.md` for runtime/init dependency diagrams and the full dependency table.
+60 features across 6 categories. See `DIAGRAM.md` for runtime/init dependency diagrams and the full dependency table.
 
 ---
 
@@ -34,6 +34,7 @@ SDK lifecycle, identity, privacy/consent, and low-level configuration.
 | F-057 | ASA (Apple Search Ads) Collection Opt-out | active | ios |
 | F-058 | ATT Authorization Wait Timeout (iOS) | active | ios |
 | F-059 | Debug Logging Toggle | active | both |
+| F-060 | Swift Package Manager (SPM) Support (Core, iOS) | active | ios |
 
 ## eventsAndRevenue
 

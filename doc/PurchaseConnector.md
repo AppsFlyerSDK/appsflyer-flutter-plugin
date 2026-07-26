@@ -81,6 +81,8 @@ appsflyer.enable_purchase_connector=true
 ```
 Once you set these properties, the Purchase Validation feature will be integrated into your project and you can utilize its functionality in your app.
 
+> ⚠️ **iOS + Swift Package Manager**: Purchase Connector requires **CocoaPods** — there is no Swift Package Manager opt-in path for it. This is a temporary limitation pending an upstream Flutter fix ([flutter/flutter#161182](https://github.com/flutter/flutter/issues/161182)). If your app has adopted SPM for the Core integration (see [Installation.md](Installation.md#ios-swift-package-manager-spm-support)), keep your `Podfile` in place and set `$AppsFlyerPurchaseConnector = true` there as above — Flutter's tooling will use SPM for Core and CocoaPods for Purchase Connector at the same time. If you skip the Podfile entirely (SPM-only), calling any Purchase Connector API will silently fail with a `MissingPluginException` — see the next section.
+
 ### What Happens if You Use Dart Files Without Opting In?
 
 The Dart files for the Purchase Validation feature are always included in the plugin. If you try to use these Dart APIs without opting into the feature, the APIs will not have effect because the corresponding native code necessary for them to function will not be included in your project.

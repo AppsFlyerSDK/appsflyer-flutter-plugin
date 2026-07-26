@@ -26,7 +26,7 @@ AppsflyerSdk.getAppsFlyerUID()                                        [lib/src/a
   → _methodChannel.invokeMethod("getAppsFlyerUID")
     → Android: AppsflyerSdkPlugin.onMethodCall("getAppsFlyerUID") → getAppsFlyerUID(result)   [android/.../AppsflyerSdkPlugin.java]
       → result.success(AppsFlyerLib.getInstance().getAppsFlyerUID(mContext))
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("getAppsFlyerUID") → getAppsFlyerUID:result:   [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("getAppsFlyerUID") → getAppsFlyerUID:result:   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → result([[AppsFlyerLib shared] getAppsFlyerUID])
 ```
 
@@ -37,7 +37,7 @@ AppsflyerSdk.getAppsFlyerUID()                                        [lib/src/a
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `getAppsFlyerUID()` — `Future<String?>` async round-trip |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `getAppsFlyerUID(result)`, line 797 |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `getAppsFlyerUID:result:`, line 602 |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `getAppsFlyerUID:result:`, line 602 |
 
 ---
 

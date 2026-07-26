@@ -27,7 +27,7 @@ AppsflyerSdk.setAppInviteOneLinkID(oneLinkID, callback)                         
   → _methodChannel.invokeMethod("setAppInviteOneLinkID", {'oneLinkID': oneLinkID})
     → Android: AppsflyerSdkPlugin.onMethodCall("setAppInviteOneLinkID") → setAppInivteOneLinkID(call, result)   [android/.../AppsflyerSdkPlugin.java]
       → AppsFlyerLib.getInstance().setAppInviteOneLink(oneLinkId) → runOnUIThread(..., "setAppInviteOneLinkIDCallback", AF_SUCCESS)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("setAppInviteOneLinkID") → setAppInviteOneLinkID:result:          [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("setAppInviteOneLinkID") → setAppInviteOneLinkID:result:          [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → [AppsFlyerLib shared].appInviteOneLinkID = oneLinkID → _streamHandler sendResponseToFlutter:...
   → Dart: callbacks.dart _methodCallHandler("callListener") → _callbacksById["setAppInviteOneLinkIDCallback"](data)   [lib/src/callbacks.dart]
 ```
@@ -40,7 +40,7 @@ AppsflyerSdk.setAppInviteOneLinkID(oneLinkID, callback)                         
 | `lib/src/appsflyer_sdk.dart` | `setAppInviteOneLinkID(String, Function)` — public API; registers the callback and invokes the method channel |
 | `lib/src/callbacks.dart` | `startListening()` / `_methodCallHandler` — generic callback-channel plumbing shared with other async APIs |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `setAppInivteOneLinkID(call, result)` (note the native method's typo — "Inivte") — forwards to `AppsFlyerLib.getInstance().setAppInviteOneLink(oneLinkId)` |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `setAppInviteOneLinkID:result:` — sets `[AppsFlyerLib shared].appInviteOneLinkID` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `setAppInviteOneLinkID:result:` — sets `[AppsFlyerLib shared].appInviteOneLinkID` |
 
 ---
 

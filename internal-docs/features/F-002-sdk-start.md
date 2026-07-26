@@ -30,7 +30,7 @@ AppsflyerSdk.startSDK({onSuccess, onError})                                  [li
         → Android: AppsflyerSdkPlugin.startSDKwithHandler(call, result)      [android/.../AppsflyerSdkPlugin.java]
           → AppsFlyerLib.getInstance().start(activity, null, AppsFlyerRequestListener)
             → onSuccess()/onError() → mMethodChannel.invokeMethod("onSuccess"|"onError")
-        → iOS: AppsflyerSdkPlugin.startSDKwithHandler:result:                [ios/Classes/AppsflyerSdkPlugin.m]
+        → iOS: AppsflyerSdkPlugin.startSDKwithHandler:result:                [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
           → [[AppsFlyerLib shared] startWithCompletionHandler:^(...)]
             → [_methodChannel invokeMethod:@"onSuccess"|@"onError" ...]
   → else:
@@ -46,7 +46,7 @@ AppsflyerSdk.startSDK({onSuccess, onError})                                  [li
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `startSDK()` — guards double-start via `_isSdkStarted`, chooses handler vs. plain path |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `startSDK`, `startSDKwithHandler` — native start, posts `onSuccess`/`onError` back on the UI thread |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `startSDK:result:`, `startSDKwithHandler:result:` — native start, dispatches completion handler results on main queue |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `startSDK:result:`, `startSDKwithHandler:result:` — native start, dispatches completion handler results on main queue |
 
 ---
 

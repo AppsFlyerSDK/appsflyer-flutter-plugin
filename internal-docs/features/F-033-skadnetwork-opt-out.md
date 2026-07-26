@@ -24,8 +24,8 @@ Called by the host app during startup configuration, before `AppsFlyerLib` start
 ```
 AppsflyerSdk.disableSKAdNetwork(isEnabled)                               [lib/src/appsflyer_sdk.dart:566]
   → _methodChannel.invokeMethod("disableSKAdNetwork", isEnabled)
-    → iOS: AppsflyerSdkPlugin handleMethodCall: case "disableSKAdNetwork" → disableSKAdNetwork:result:   [ios/Classes/AppsflyerSdkPlugin.m:153]
-      → [AppsFlyerLib shared].disableSKAdNetwork = _isSKADEnabled                                        [ios/Classes/AppsflyerSdkPlugin.m:401]
+    → iOS: AppsflyerSdkPlugin handleMethodCall: case "disableSKAdNetwork" → disableSKAdNetwork:result:   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m:153]
+      → [AppsFlyerLib shared].disableSKAdNetwork = _isSKADEnabled                                        [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m:401]
 ```
 No `case "disableSKAdNetwork"` exists in `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java`'s method-call switch — on Android the call falls through to the default branch and returns `MethodNotImplemented`.
 
@@ -35,7 +35,7 @@ No `case "disableSKAdNetwork"` exists in `android/src/main/java/com/appsflyer/ap
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `disableSKAdNetwork(bool)` — platform-agnostic Dart API surface (no `Platform.isIOS` guard) |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `disableSKAdNetwork:result:` native handler, sets `[AppsFlyerLib shared].disableSKAdNetwork` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `disableSKAdNetwork:result:` native handler, sets `[AppsFlyerLib shared].disableSKAdNetwork` |
 
 ---
 

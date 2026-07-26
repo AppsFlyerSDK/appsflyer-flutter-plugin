@@ -28,7 +28,7 @@ AppsflyerSdk.setUserEmails(emails, cryptType)                          [lib/src/
     → Android: AppsflyerSdkPlugin.onMethodCall("setUserEmails") → setUserEmails(call, result)   [android/.../AppsflyerSdkPlugin.java]
       → maps cryptTypeInt (0/1) to AppsFlyerProperties.EmailsCryptType.NONE / SHA256 (throws InvalidParameterException on any other value)
       → AppsFlyerLib.getInstance().setUserEmails(cryptType, emails.toArray(new String[0]))
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("setUserEmails") → setUserEmails:result:          [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("setUserEmails") → setUserEmails:result:          [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → maps cryptTypeInt to native EmailCryptType (EmailCryptTypeNone / EmailCryptTypeSHA256)
       → [AppsFlyerLib shared] setUserEmails:cryptType:]
 ```
@@ -41,7 +41,7 @@ AppsflyerSdk.setUserEmails(emails, cryptType)                          [lib/src/
 | `lib/src/appsflyer_sdk.dart` | `setUserEmails(List<String>, [EmailCryptType?])` — converts the enum to its integer index before sending |
 | `lib/src/appsflyer_constants.dart` | `enum EmailCryptType { EmailCryptTypeNone, EmailCryptTypeSHA256 }` — index 0/1 is the wire format sent to native |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `setUserEmails(call, result)`, line 983 — maps int to `AppsFlyerProperties.EmailsCryptType`, throws on unrecognized value |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `setUserEmails:result:`, line 761 — maps int to native `EmailCryptType` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `setUserEmails:result:`, line 761 — maps int to native `EmailCryptType` |
 
 ---
 

@@ -27,7 +27,7 @@ AppsflyerSdk.setConsentData(AppsFlyerConsent consentData)   [DEPRECATED]        
     → Android: AppsflyerSdkPlugin.onMethodCall("setConsentData") → setConsentData(call, result)   [android/.../AppsflyerSdkPlugin.java]
       → new AppsFlyerConsent.forGDPRUser(...) | AppsFlyerConsent.forNonGDPRUser()
       → AppsFlyerLib.getInstance().setConsentData(consentData)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("setConsentData") → setConsentData:result:          [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("setConsentData") → setConsentData:result:          [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → [[AppsFlyerConsent alloc] initForGDPRUserWith...] | initWithNonGDPRUser
       → [[AppsFlyerLib shared] setConsentData:consentData]
 
@@ -36,7 +36,7 @@ AppsflyerSdk.setConsentDataV2({isUserSubjectToGDPR, consentForDataUsage, consent
     → Android: AppsflyerSdkPlugin.onMethodCall("setConsentDataV2") → setConsentDataV2(call, result) → getAppsFlyerConsentFromCall(call)   [android/.../AppsflyerSdkPlugin.java]
       → new AppsFlyerConsent(isUserSubjectToGDPR, consentForDataUsage, consentForAdsPersonalization, hasConsentForAdStorage)
       → AppsFlyerLib.getInstance().setConsentData(consent)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("setConsentDataV2") → setConsentDataV2:result:       [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("setConsentDataV2") → setConsentDataV2:result:       [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → [[AppsFlyerConsent alloc] initWithIsUserSubjectToGDPR:...hasConsentForAdStorage:...]
       → [[AppsFlyerLib shared] setConsentData:consentData]
 ```
@@ -49,7 +49,7 @@ AppsflyerSdk.setConsentDataV2({isUserSubjectToGDPR, consentForDataUsage, consent
 | `lib/src/appsflyer_consent.dart` | `AppsFlyerConsent` model — `forGDPRUser`/`nonGDPRUser` factories, `toMap()` (used by deprecated V1 API only) |
 | `lib/src/appsflyer_sdk.dart` | `setConsentData` (`@Deprecated`), `setConsentDataV2` |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `setConsentData` (deprecated), `setConsentDataV2`, `getAppsFlyerConsentFromCall` |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `setConsentData:result:` (deprecated), `setConsentDataV2:result:` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `setConsentData:result:` (deprecated), `setConsentDataV2:result:` |
 | `doc/DMA.md` | Full integration guide for both the CMP-automatic (F-011) and manual (this feature) consent paths |
 
 ---

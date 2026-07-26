@@ -28,7 +28,7 @@ AppsflyerSdk._validateAFOptions / _validateMapOptions                 [lib/src/a
   → _methodChannel.invokeMethod("initSdk", validatedOptions)
     → Android: AppsflyerSdkPlugin.initSdk(call, result)               [android/.../AppsflyerSdkPlugin.java]
       → if (advertiserIdDisabled) instance.setDisableAdvertisingIdentifiers(true)   [only applies `true`; never explicitly re-enables]
-    → iOS: AppsflyerSdkPlugin.initSdkWithCall:result:                 [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.initSdkWithCall:result:                 [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → resolves selector `setDisableAdvertisingIdentifier:` via objc_msgSend runtime dispatch, only if disableAdvertisingIdentifier == true
 
 # Runtime path
@@ -36,7 +36,7 @@ AppsflyerSdk.setDisableAdvertisingIdentifiers(isEnabled)               [lib/src/
   → _methodChannel.invokeMethod("setDisableAdvertisingIdentifiers", isEnabled)
     → Android: AppsflyerSdkPlugin.onMethodCall("setDisableAdvertisingIdentifiers") → setDisableAdvertisingIdentifiers(call, result)   [android/.../AppsflyerSdkPlugin.java]
       → AppsFlyerLib.getInstance().setDisableAdvertisingIdentifiers(isEnabled)   [handles both true and false explicitly]
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("setDisableAdvertisingIdentifiers") → setDisableAdvertisingIdentifiers:result:            [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("setDisableAdvertisingIdentifiers") → setDisableAdvertisingIdentifiers:result:            [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → [AppsFlyerLib shared] setDisableAdvertisingIdentifier:_isAdvertiserIdEnabled]
 ```
 
@@ -49,7 +49,7 @@ AppsflyerSdk.setDisableAdvertisingIdentifiers(isEnabled)               [lib/src/
 | `lib/src/appsflyer_options.dart` | `disableAdvertisingIdentifier` field on `AppsFlyerOptions` |
 | `lib/src/appsflyer_constants.dart` | `DISABLE_ADVERTISING_IDENTIFIER` string key |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `initSdk` (init-time, line 1072), `setDisableAdvertisingIdentifiers(call, result)` (runtime, line 564) |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `initSdkWithCall:result:` (init-time, uses `objc_msgSend` runtime dispatch to `setDisableAdvertisingIdentifier:`, line ~841-855), `setDisableAdvertisingIdentifiers:result:` (runtime, line 380) |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `initSdkWithCall:result:` (init-time, uses `objc_msgSend` runtime dispatch to `setDisableAdvertisingIdentifier:`, line ~841-855), `setDisableAdvertisingIdentifiers:result:` (runtime, line 380) |
 | `doc/BasicIntegration.md` | Documents the field as "Opt-out of the collection of Advertising Identifiers, which include OAID, AAID, GAID and IDFA." |
 
 ---

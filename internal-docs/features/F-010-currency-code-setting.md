@@ -27,7 +27,7 @@ AppsflyerSdk.setCurrencyCode(currencyCode)                                      
     → Android: AppsflyerSdkPlugin.onMethodCall("setCurrencyCode") → setCurrencyCode(call, result)  [android/.../AppsflyerSdkPlugin.java]
       → AppsFlyerLib.getInstance().setCurrencyCode(currencyCode)
       → result.success(null)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("setCurrencyCode") → setCurrencyCode:result:        [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("setCurrencyCode") → setCurrencyCode:result:        [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → [[AppsFlyerLib shared] setCurrencyCode:currencyCode]
       → result(nil)
 ```
@@ -39,7 +39,7 @@ AppsflyerSdk.setCurrencyCode(currencyCode)                                      
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `setCurrencyCode(String currencyCode)` — platform-agnostic Dart API, `void` |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `setCurrencyCode(MethodCall, Result)` — forwards to `AppsFlyerLib.getInstance().setCurrencyCode(currencyCode)` |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `setCurrencyCode:result:` — forwards to `[[AppsFlyerLib shared] setCurrencyCode:]` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `setCurrencyCode:result:` — forwards to `[[AppsFlyerLib shared] setCurrencyCode:]` |
 | `doc/API.md` | Public documentation for `setCurrencyCode` |
 
 ---

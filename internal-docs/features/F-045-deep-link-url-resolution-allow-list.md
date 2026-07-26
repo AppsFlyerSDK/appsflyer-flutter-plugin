@@ -28,7 +28,7 @@ AppsflyerSdk.setResolveDeepLinkURLs(List<String> urls)                          
       → urls = (ArrayList<String>) call.arguments → urlsArr = urls.toArray(new String[0])
       → AppsFlyerLib.getInstance().setResolveDeepLinkURLs(urlsArr)
       → result.success(null)
-    → iOS: handleMethodCall: → case "setResolveDeepLinkURLs" → setResolveDeepLinkURLs:call result:              [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: handleMethodCall: → case "setResolveDeepLinkURLs" → setResolveDeepLinkURLs:call result:              [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → urlsArr = call.arguments (NSArray) → if urlsArr != nil: [[AppsFlyerLib shared] setResolveDeepLinkURLs:urlsArr]
       → result(nil)
 ```
@@ -40,7 +40,7 @@ AppsflyerSdk.setResolveDeepLinkURLs(List<String> urls)                          
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `setResolveDeepLinkURLs(List<String> urls)` — thin passthrough invoking the `setResolveDeepLinkURLs` method channel call with the raw URL list |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `onMethodCall` dispatch `case "setResolveDeepLinkURLs"`; `setResolveDeepLinkURLs(MethodCall, Result)` — casts arguments to `ArrayList<String>`, converts to `String[]`, calls `AppsFlyerLib.getInstance().setResolveDeepLinkURLs(urlsArr)` |
-| `ios/Classes/AppsflyerSdkPlugin.m` | Method-channel dispatch `case @"setResolveDeepLinkURLs"`; `setResolveDeepLinkURLs:result:` — passes `call.arguments` (an `NSArray`) directly to `[AppsFlyerLib shared] setResolveDeepLinkURLs:]`, guarded only by a nil check |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | Method-channel dispatch `case @"setResolveDeepLinkURLs"`; `setResolveDeepLinkURLs:result:` — passes `call.arguments` (an `NSArray`) directly to `[AppsFlyerLib shared] setResolveDeepLinkURLs:]`, guarded only by a nil check |
 | `doc/API.md` | Documents the API (`setResolveDeepLinkURLs`) with the wrapped-OneLink rationale and a usage example; does not restrict it to a single platform |
 
 ---

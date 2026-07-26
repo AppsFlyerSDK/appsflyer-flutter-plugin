@@ -26,7 +26,7 @@ AppsflyerSdk.setSharingFilterForPartners(partners)                       [lib/sr
   → _methodChannel.invokeMethod("setSharingFilterForPartners", partners)
     → Android: AppsflyerSdkPlugin.onMethodCall("setSharingFilterForPartners") → setSharingFilterForPartners(call, result)   [android/.../AppsflyerSdkPlugin.java:349,555]
       → AppsFlyerLib.getInstance().setSharingFilterForPartners(partners)   (only if call.arguments != null)
-    → iOS: AppsflyerSdkPlugin handleMethodCall: case "setSharingFilterForPartners" → setSharingFilterForPartners:result:   [ios/Classes/AppsflyerSdkPlugin.m:157,389]
+    → iOS: AppsflyerSdkPlugin handleMethodCall: case "setSharingFilterForPartners" → setSharingFilterForPartners:result:   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m:157,389]
       → [AppsFlyerLib shared] setSharingFilterForPartners: partners
 
 AppsflyerSdk.setSharingFilter(partners)  [DEPRECATED]                     [lib/src/appsflyer_sdk.dart:603]
@@ -43,7 +43,7 @@ AppsflyerSdk.setSharingFilterForAllPartners()  [DEPRECATED]               [lib/s
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `setSharingFilterForPartners(List<String>)` (active); `setSharingFilter(List<String>)` and `setSharingFilterForAllPartners()` (`@Deprecated`, both re-route to `setSharingFilterForPartners`) |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `setSharingFilterForPartners` (active, dispatched via channel), plus dead `setSharingFilter`/`setSharingFilterForAllPartners` channel handlers no longer reachable from the current Dart API |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `setSharingFilterForPartners:result:` (active, dispatched via channel), plus dead `setSharingFilter:result:`/`setSharingFilterForAllPartners:` channel handlers no longer reachable from the current Dart API |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `setSharingFilterForPartners:result:` (active, dispatched via channel), plus dead `setSharingFilter:result:`/`setSharingFilterForAllPartners:` channel handlers no longer reachable from the current Dart API |
 
 ---
 

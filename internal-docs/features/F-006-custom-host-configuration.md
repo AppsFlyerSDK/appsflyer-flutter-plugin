@@ -26,7 +26,7 @@ AppsflyerSdk.setHost(hostPrefix, hostName)                              [lib/src
   → _methodChannel.invokeMethod("setHost", {hostPrefix, hostName})
     → Android: AppsflyerSdkPlugin.onMethodCall("setHost") → setHost(call, result)   [android/.../AppsflyerSdkPlugin.java]
       → AppsFlyerLib.getInstance().setHost(hostPrefix, hostName)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("setHost") → setHost:result:         [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("setHost") → setHost:result:         [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → [[AppsFlyerLib shared] setHost:hostName withHostPrefix:hostPrefix]
 
 AppsflyerSdk.getHostName() / getHostPrefix()
@@ -43,7 +43,7 @@ AppsflyerSdk.getHostName() / getHostPrefix()
 | `lib/src/appsflyer_sdk.dart` | `setHost`, `getHostName`, `getHostPrefix` |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `setHost`, `getHostName`, `getHostPrefix` native handlers |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsFlyerConstants.java` | `AF_HOST_PREFIX`, `AF_HOST_NAME` argument key constants |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `setHost:result:`, `getHostName:result:`, `getHostPrefix:result:` native handlers |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `setHost:result:`, `getHostName:result:`, `getHostPrefix:result:` native handlers |
 
 ---
 

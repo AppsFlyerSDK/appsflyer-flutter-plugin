@@ -28,7 +28,7 @@ AppsflyerSdk.initSdk(...)                                              [lib/src/
       → new PluginInfo(Plugin.FLUTTER, AppsFlyerConstants.PLUGIN_VERSION)           (line 1095)
         → AppsFlyerLib.getInstance().setPluginInfo(pluginInfo)                     (line 1096)
       → AppsFlyerLib.getInstance().init(afDevKey, gcdListener, mContext)            (called right after)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("initSdk") → initSdkWithCall:result: [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("initSdk") → initSdkWithCall:result: [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → [[AppsFlyerLib shared] setPluginInfoWith:AFSDKPluginFlutter
                                     pluginVersion:kAppsFlyerPluginVersion
                                 additionalParams:nil]                              (line 857)
@@ -42,8 +42,8 @@ AppsflyerSdk.initSdk(...)                                              [lib/src/
 |------|------|
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `initSdk(call, result)` — builds `PluginInfo(Plugin.FLUTTER, AppsFlyerConstants.PLUGIN_VERSION)` and calls `setPluginInfo` (lines 1095–1096), immediately before `instance.init(...)` |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsFlyerConstants.java` | `PLUGIN_VERSION = "6.18.0"` — the version string reported to the native SDK |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `initSdkWithCall:result:` — calls `setPluginInfoWith:AFSDKPluginFlutter pluginVersion:kAppsFlyerPluginVersion additionalParams:nil` (line 857) |
-| `ios/Classes/AppsflyerSdkPlugin.h` | `#define kAppsFlyerPluginVersion @"6.18.0"` — the version string reported on iOS |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `initSdkWithCall:result:` — calls `setPluginInfoWith:AFSDKPluginFlutter pluginVersion:kAppsFlyerPluginVersion additionalParams:nil` (line 857) |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/include/appsflyer_sdk/AppsflyerSdkPlugin.h` | `#define kAppsFlyerPluginVersion @"6.18.0"` — the version string reported on iOS |
 
 `Plugin`, `PluginInfo` (Android, package `com.appsflyer.internal.platform_extension`) and `AFSDKPluginFlutter` (iOS, an enum/constant defined inside the native `AppsFlyerLib` framework) are external types supplied by the native AppsFlyer SDK dependency, not defined in this repo.
 

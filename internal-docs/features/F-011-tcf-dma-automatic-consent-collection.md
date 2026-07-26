@@ -26,7 +26,7 @@ AppsflyerSdk.enableTCFDataCollection(shouldCollect)                      [lib/sr
   → _methodChannel.invokeListMethod("enableTCFDataCollection", {'shouldCollect': shouldCollect})
     → Android: AppsflyerSdkPlugin.onMethodCall("enableTCFDataCollection") → enableTCFDataCollection(call, result)   [android/.../AppsflyerSdkPlugin.java]
       → AppsFlyerLib.getInstance().enableTCFDataCollection(shouldCollect)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("enableTCFDataCollection") → enableTCFDataCollection:result:         [ios/Classes/AppsflyerSdkPlugin.m]
+    → iOS: AppsflyerSdkPlugin.handleMethodCall("enableTCFDataCollection") → enableTCFDataCollection:result:         [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
       → [[AppsFlyerLib shared] enableTCFDataCollection:shouldCollect]
 ```
 
@@ -37,7 +37,7 @@ AppsflyerSdk.enableTCFDataCollection(shouldCollect)                      [lib/sr
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `enableTCFDataCollection(bool)` |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `enableTCFDataCollection` native handler |
-| `ios/Classes/AppsflyerSdkPlugin.m` | `enableTCFDataCollection:result:` native handler |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `enableTCFDataCollection:result:` native handler |
 | `doc/DMA.md` | Integration guide documenting the required manual-start + CMP sequencing |
 
 ---
