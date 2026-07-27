@@ -10,6 +10,7 @@
 - Updated iOS SDK from 6.17.9 to 6.18.0
 - Updated iOS Purchase Connector from 6.17.9 to 6.18.0
 - Fixed Android warm-app deep link consumption race so `DeepLinkListener` fires reliably when the app is resumed from a `VIEW` intent (forward new intents to `AppsFlyerLib` from the plugin's `onNewIntentListener` before the SDK's `onResume` auto-handler marks them `af_consumed`)
+- Added Swift Package Manager (SPM) support for the Core iOS integration (`ios/appsflyer_sdk/Package.swift`), alongside continued full CocoaPods support — no behavior change for existing CocoaPods consumers. Purchase Connector remains CocoaPods-only for now, pending resolution of an upstream Flutter limitation ([flutter/flutter#161182](https://github.com/flutter/flutter/issues/161182)) that blocks conditionally-compiled plugin features under SPM.
 
 ## 6.17.9
 
