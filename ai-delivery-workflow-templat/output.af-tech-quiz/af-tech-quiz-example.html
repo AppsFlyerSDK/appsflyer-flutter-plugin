@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tech Quiz · SharedPreferences Encryption</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.card {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  max-width: 680px;
+  width: 100%;
+  padding: 40px;
+  animation: fadeIn 0.35s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.quiz-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #7c3aed;
+  margin-bottom: 16px;
+}
+.progress-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.progress-text { font-size: 13px; color: #94a3b8; font-weight: 600; }
+.score-live { font-size: 13px; color: #94a3b8; font-weight: 600; }
+.progress-bar { display: flex; gap: 5px; margin-bottom: 32px; }
+.seg {
+  flex: 1; height: 7px; border-radius: 4px;
+  background: #e2e8f0; transition: background 0.3s ease;
+}
+.seg.filled { background: #7c3aed; }
+.seg.current { background: #c4b5fd; }
+.question { font-size: 19px; font-weight: 700; color: #1e293b; line-height: 1.55; margin-bottom: 26px; }
+.options { display: flex; flex-direction: column; gap: 10px; }
+.opt {
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 15px 18px; border: 2px solid #e2e8f0; border-radius: 12px;
+  background: white; cursor: pointer; text-align: left;
+  font-size: 15px; color: #334155; line-height: 1.5;
+  transition: border-color 0.15s, background 0.15s;
+}
+.opt:hover:not(:disabled) { border-color: #c4b5fd; background: #faf5ff; }
+.badge {
+  min-width: 28px; height: 28px; border-radius: 7px;
+  background: #f1f5f9; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; color: #64748b; flex-shrink: 0; margin-top: 1px;
+  transition: background 0.15s, color 0.15s;
+}
+.opt.correct { border-color: #22c55e; background: #f0fdf4; }
+.opt.correct .badge { background: #22c55e; color: white; }
+.opt.wrong { border-color: #ef4444; background: #fef2f2; }
+.opt.wrong .badge { background: #ef4444; color: white; }
+.opt:disabled { cursor: default; }
+.explanation {
+  margin-top: 18px; padding: 14px 18px;
+  background: #faf5ff; border-left: 4px solid #7c3aed; border-radius: 0 10px 10px 0;
+  font-size: 14px; color: #475569; line-height: 1.6; animation: fadeIn 0.25s ease;
+}
+.next-btn {
+  display: block; width: 100%; margin-top: 16px; padding: 15px;
+  background: #7c3aed; color: white; border: none; border-radius: 12px;
+  font-size: 15px; font-weight: 700; cursor: pointer; transition: background 0.15s;
+  animation: fadeIn 0.25s ease;
+}
+.next-btn:hover { background: #6d28d9; }
+.final { text-align: center; }
+.score-ring {
+  width: 130px; height: 130px; border-radius: 50%; border: 6px solid;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  margin: 0 auto 20px;
+}
+.score-num { font-size: 36px; font-weight: 900; line-height: 1; }
+.score-denom { font-size: 13px; opacity: 0.6; font-weight: 600; }
+.grade { font-size: 60px; font-weight: 900; line-height: 1; margin-bottom: 12px; display: block; }
+.verdict {
+  font-size: 16px; color: #475569; margin-bottom: 28px; line-height: 1.6;
+  max-width: 420px; margin-left: auto; margin-right: auto;
+}
+.stats { display: flex; justify-content: center; gap: 32px; margin-bottom: 28px; }
+.stat-n { font-size: 24px; font-weight: 800; color: #1e293b; }
+.stat-l { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 700; margin-top: 2px; }
+.retake {
+  padding: 14px 36px; background: white; color: #7c3aed;
+  border: 2.5px solid #7c3aed; border-radius: 12px;
+  font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.15s;
+}
+.retake:hover { background: #7c3aed; color: white; }
+.ga { color: #16a34a; border-color: #16a34a; }
+.gb { color: #2563eb; border-color: #2563eb; }
+.gc { color: #d97706; border-color: #d97706; }
+.gf { color: #dc2626; border-color: #dc2626; }
+</style>
+</head>
+<body>
+<div class="card" id="card"></div>
+<script>
+const QUIZ_TITLE = "SharedPreferences Encryption";
+const qs = [
+  {
+    "q": "What gap in the AppsFlyer Android SDK does this feature address?",
+    "opts": [
+      "Attribution data sent over the network was not encrypted in transit",
+      "Sensitive attribution data stored on-device in SharedPreferences was readable in plaintext",
+      "The SDK did not support devices running Android 12 and above",
+      "SDK initialization was too slow on low-end devices"
+    ],
+    "ans": 1,
+    "exp": "The SDK stores attribution state (install source, campaign, deeplink data) in a SharedPreferences file. Before this feature, those values were plaintext on disk, readable by any process with storage access to the device."
+  },
+  {
+    "q": "Why is this feature designed as opt-in rather than always-on?",
+    "opts": [
+      "Encryption has a measurable performance cost that would affect all SDK users",
+      "The Android OS already encrypts SharedPreferences by default on modern devices",
+      "Enabling it triggers a one-way migration — disabling it afterward causes permanent attribution state loss",
+      "It requires a special entitlement from Google that not all apps can obtain"
+    ],
+    "ans": 2,
+    "exp": "Once enabled and start() runs, all stored values are migrated to encrypted form. There is no safe automated rollback — disabling encryption in a later version makes those values unreadable, resetting the SDK to fresh-install state for existing users."
+  },
+  {
+    "q": "A product manager asks: what does 'one-way migration' mean for our users when we ship this feature?",
+    "opts": [
+      "Users will be prompted to re-accept the privacy policy on next launch",
+      "The migration runs once per install and cannot be repeated",
+      "Once shipped to production, disabling encryption in a future release would cause returning users to lose their attribution history",
+      "Users on older Android versions will be automatically migrated to a newer OS version"
+    ],
+    "ans": 2,
+    "exp": "One-way means there is no reverse path. If a consumer later ships a version without encryption, the SDK reads ciphertext as if it were plaintext, fails to parse it, and treats those users as brand-new installs — losing install source, campaign, and re-engagement attribution."
+  },
+  {
+    "q": "Your app currently targets Android API 21+. You enable encryption and ship. What experience do users on Android 5.x (API 21-22) get?",
+    "opts": [
+      "Their data is encrypted using a software-backed key stored in the app's private directory",
+      "The SDK crashes at startup and requires the user to clear app data",
+      "Encryption is silently skipped; their data stays in plaintext with a warning logged",
+      "They are prompted to upgrade Android before the app will run"
+    ],
+    "ans": 2,
+    "exp": "Android Keystore symmetric key support requires API 23+. On API 21-22, the SDK logs a warning and falls back to plaintext storage. The SDK remains fully functional; only the encryption is skipped for those devices."
+  },
+  {
+    "q": "Why did the design add 'synchronized' to the getAppsflyerPreferences() method in SdkServiceLocator?",
+    "opts": [
+      "To prevent the preferences file from being read while it is being written by another thread",
+      "To match a new thread-safety requirement introduced in Android API 26",
+      "Because migration is non-idempotent — without synchronization, two concurrent callers could both run migration, corrupting the prefs file",
+      "To ensure the Keystore key is generated on the main thread"
+    ],
+    "ans": 2,
+    "exp": "Migration overwrites plaintext values with encrypted ones — running it twice would encrypt already-encrypted data, making values unreadable. Without synchronization, two concurrent callers could both pass the null check and both run migration. Adding synchronized matches the pattern of every other lazy getter in the file."
+  },
+  {
+    "q": "A user performs a factory reset. What happens to their attribution state on the next app launch?",
+    "opts": [
+      "The SDK restores attribution state from the AppsFlyer server on the next event",
+      "The SDK detects the invalidated Keystore key, clears the unreadable encrypted prefs, generates a new key, and starts fresh",
+      "The SDK enters a degraded mode and logs an error until the developer releases a fix",
+      "The encrypted prefs file is preserved in the cloud backup and restored automatically"
+    ],
+    "ans": 1,
+    "exp": "A factory reset permanently invalidates the Android Keystore key. The SDK handles this gracefully: it catches KeyPermanentlyInvalidatedException, deletes the now-unreadable prefs, generates a fresh key, and proceeds exactly as it would for a new install."
+  },
+  {
+    "q": "Why are the two ExceptionManager preference keys explicitly excluded from the encryption scope?",
+    "opts": [
+      "They contain non-sensitive data that poses no privacy risk",
+      "The ExceptionManager reads them as native numeric types directly; encrypting them would store Base64 strings where numbers are expected, causing parsing failures",
+      "They are written by a third-party library that the decorator cannot intercept",
+      "They are stored in a separate SharedPreferences file that the decorator does not wrap"
+    ],
+    "ans": 1,
+    "exp": "ExceptionManagerImpl writes and reads those keys as Long and Int via the raw SharedPreferences API. The encryption decorator stores all values as Base64 strings. If those keys were migrated, ExceptionManager would receive Base64 strings where it expects numbers, causing ClassCastException or silent zero-value fallbacks."
+  },
+  {
+    "q": "The migration overwrites each plaintext value in-place rather than copying to a new file. What is the key security benefit of this design choice?",
+    "opts": [
+      "It makes the migration reversible, since the original file is still present",
+      "It is faster and uses less disk I/O than a copy-based approach",
+      "There is never a window where both a readable plaintext copy and an encrypted copy of sensitive data exist simultaneously on disk",
+      "It avoids the need to acquire an exclusive file lock during migration"
+    ],
+    "ans": 2,
+    "exp": "A copy-based migration would leave the plaintext file readable until it was explicitly deleted — creating a window where sensitive data exists in both forms. Writing encrypted values directly over the plaintext entries eliminates that window entirely."
+  },
+  {
+    "q": "An SDK consumer accidentally ships encryption to 10 million users and now needs to roll it back. What is the correct path?",
+    "opts": [
+      "Ship a patch that calls setEncryptedSharedPreferences(false) — the SDK will auto-decrypt on the next launch",
+      "Use the AppsFlyer dashboard to remotely trigger a device-side decryption for affected users",
+      "App data clear is the only documented recovery path, which resets those users to fresh-install state",
+      "Ship a patch that calls the built-in rollback migration API introduced alongside this feature"
+    ],
+    "ans": 2,
+    "exp": "There is no automated rollback. Distinguishing encrypted Base64 from a legitimate Base64 string value is not reliably possible without the Keystore key (which may not be available after reinstall or data clear). The documented recovery path is app data clear, accepting the loss of cached attribution state for affected users."
+  },
+  {
+    "q": "Before recommending this feature to an SDK integrator, which warning is most important to communicate?",
+    "opts": [
+      "Encryption adds approximately 200ms to SDK startup time on older devices",
+      "The feature requires a minimum targetSdkVersion of 30 to function correctly",
+      "Once enabled and shipped to production, it must not be disabled in a future release — treat it as a permanent, one-way commitment",
+      "The feature is incompatible with apps that use Android App Bundles"
+    ],
+    "ans": 2,
+    "exp": "The Javadoc and tech design both emphasize this as the most critical adoption risk. Disabling encryption after it has reached production users causes their attribution state to be lost permanently, with no automated recovery. Integrators must plan their adoption carefully before shipping."
+  }
+];
+
+let cur = 0, score = 0, picked = false;
+
+function render() {
+  picked = false;
+  const q = qs[cur];
+  const segs = Array.from({length:10},(_,i)=>
+    `<div class="seg${i<cur?' filled':i===cur?' current':''}"></div>`).join('');
+  const opts = q.opts.map((o,i)=>`
+    <button class="opt" onclick="pick(${i})" id="o${i}">
+      <span class="badge">${'ABCD'[i]}</span>
+      <span>${o}</span>
+    </button>`).join('');
+  document.getElementById('card').innerHTML = `
+    <div class="quiz-label">Tech Quiz · ${QUIZ_TITLE}</div>
+    <div class="progress-row">
+      <span class="progress-text">Question ${cur+1} of ${qs.length}</span>
+      <span class="score-live">${score} pts</span>
+    </div>
+    <div class="progress-bar">${segs}</div>
+    <div class="question">${q.q}</div>
+    <div class="options">${opts}</div>
+    <div id="fb"></div>`;
+}
+
+function pick(i) {
+  if (picked) return;
+  picked = true;
+  const q = qs[cur];
+  document.querySelectorAll('.opt').forEach(b => b.disabled = true);
+  if (i === q.ans) {
+    score += 10;
+    document.getElementById('o'+i).classList.add('correct');
+  } else {
+    document.getElementById('o'+i).classList.add('wrong');
+    document.getElementById('o'+q.ans).classList.add('correct');
+  }
+  const last = cur === qs.length - 1;
+  document.getElementById('fb').innerHTML = `
+    <div class="explanation">${q.exp}</div>
+    <button class="next-btn" onclick="${last?'finish()':'next()'}">${last?'See Results →':'Next →'}</button>`;
+}
+
+function next() { cur++; render(); }
+
+function finish() {
+  let gc, gl, vd;
+  if (score >= 90)      { gc='ga'; gl='A'; vd="Deep understanding of the feature area. You're ready to own this."; }
+  else if (score >= 75) { gc='gb'; gl='B'; vd="Solid grasp with a few gaps. Worth revisiting the weaker sections."; }
+  else if (score >= 60) { gc='gc'; gl='C'; vd="Partial understanding — a closer read of the tech design is recommended before approving."; }
+  else                  { gc='gf'; gl='F'; vd="Needs a thorough review before approving this feature."; }
+  const c = score / 10;
+  document.getElementById('card').innerHTML = `
+    <div class="final">
+      <div class="quiz-label">Quiz Complete · ${QUIZ_TITLE}</div>
+      <div class="score-ring ${gc}">
+        <div class="score-num ${gc}">${score}</div>
+        <div class="score-denom">/ 100</div>
+      </div>
+      <span class="grade ${gc}">${gl}</span>
+      <div class="verdict">${vd}</div>
+      <div class="stats">
+        <div><div class="stat-n">${c}</div><div class="stat-l">Correct</div></div>
+        <div><div class="stat-n">${10-c}</div><div class="stat-l">Wrong</div></div>
+        <div><div class="stat-n">${score}</div><div class="stat-l">Points</div></div>
+      </div>
+      <button class="retake" onclick="restart()">↺ Retake Quiz</button>
+    </div>`;
+}
+
+function restart() { cur = 0; score = 0; render(); }
+render();
+</script>
+</body>
+</html>
