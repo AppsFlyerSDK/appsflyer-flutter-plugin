@@ -19,7 +19,7 @@ Pod::Spec.new do |s|
 
   s.subspec 'Core' do |ss|
     ss.source_files = 'appsflyer_sdk/Sources/appsflyer_sdk/**/*.{h,m}'
-    ss.public_header_files = 'appsflyer_sdk/Sources/appsflyer_sdk/include/appsflyer_sdk/*.h'
+    ss.public_header_files = 'appsflyer_sdk/Sources/appsflyer_sdk/include/**/*.h'
     ss.dependency 'Flutter'
     ss.ios.dependency 'AppsFlyerFramework','6.18.1'
   end
