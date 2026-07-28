@@ -49,6 +49,16 @@ on:
         description: 'Android native AppsFlyer SDK version (e.g., 6.17.4)'
         required: true
         type: string
+      ios_pc_version:
+        description: 'iOS Purchase Connector version (defaults to ios_sdk_version). Use when PC version differs from iOS SDK version.'
+        required: false
+        default: ''
+        type: string
+      android_pc_version:
+        description: 'Android Purchase Connector version (defaults to unchanged — the current android/build.gradle pin is left as-is). Pass to update it.'
+        required: false
+        default: ''
+        type: string
       skip_unit:
         description: 'Skip the unit/lint/format job inside Lint, Test & Build (release builds still run; failure of this leg blocks publish, skipped passes)'
         required: false
@@ -96,6 +106,8 @@ jobs:
       release_branch: ${{ steps.compute.outputs.release_branch }}
       ios_sdk_version: ${{ steps.compute.outputs.ios_sdk_version }}
       android_sdk_version: ${{ steps.compute.outputs.android_sdk_version }}
+      ios_pc_version: ${{ steps.compute.outputs.ios_pc_version }}
+      android_pc_version: ${{ steps.compute.outputs.android_pc_version }}
       # Normalised dry_run. Resolved in its own step so it survives even if
       # the later `compute` step exits 1 on bad inputs, which means the
       # notify-team failure Slack always sees a defined value. Mirrors the
@@ -139,6 +151,8 @@ jobs:
           VERSION: ${{ github.event.inputs.flutter_version }}
           IOS_VER: ${{ github.event.inputs.ios_sdk_version }}
           AND_VER: ${{ github.event.inputs.android_sdk_version }}
+          IOS_PC_VER_INPUT: ${{ github.event.inputs.ios_pc_version }}
+          AND_PC_VER_INPUT: ${{ github.event.inputs.android_pc_version }}
           BASE_BRANCH_INPUT: ${{ github.event.inputs.base_branch }}
         run: |
           set -euo pipefail
@@ -157,6 +171,17 @@ jobs:
           if [[ ! $AND_VER =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "❌ android_sdk_version must be X.Y.Z"; exit 1
           fi
+          if [[ -n "$IOS_PC_VER_INPUT" && ! $IOS_PC_VER_INPUT =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ ios_pc_version must be X.Y.Z when provided"; exit 1
+          fi
+          if [[ -n "$AND_PC_VER_INPUT" && ! $AND_PC_VER_INPUT =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ android_pc_version must be X.Y.Z when provided"; exit 1
+          fi
+
+          # iOS PC defaults to the iOS SDK version, same semantics as Unity's
+          # rc-release.yml. Android PC has no default — an empty output means
+          # "leave android/build.gradle's current pin untouched".
+          IOS_PC_VER="${IOS_PC_VER_INPUT:-$IOS_VER}"
 
           # Compute base version (remove -rcN), keep +build if present
           BASE_VERSION=$(echo "$VERSION" | sed 's/-rc[0-9]*$//')
@@ -176,6 +201,8 @@ jobs:
           echo "release_branch=$RELEASE_BRANCH" >> $GITHUB_OUTPUT
           echo "ios_sdk_version=$IOS_VER" >> $GITHUB_OUTPUT
           echo "android_sdk_version=$AND_VER" >> $GITHUB_OUTPUT
+          echo "ios_pc_version=$IOS_PC_VER" >> $GITHUB_OUTPUT
+          echo "android_pc_version=$AND_PC_VER_INPUT" >> $GITHUB_OUTPUT
 
   # ===========================================================================
   # Job 2: Run Lint, Test & Build (gated via pre-publish-gate)
@@ -252,21 +279,32 @@ jobs:
       - name: Update Android SDK dependency
         run: |
           AND_VER='${{ needs.validate-release.outputs.android_sdk_version }}'
+          AND_PC_VER='${{ needs.validate-release.outputs.android_pc_version }}'
           sed -i.bak "s/com.appsflyer:af-android-sdk:[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/com.appsflyer:af-android-sdk:${AND_VER}/" android/build.gradle
           rm android/build.gradle.bak
           grep "af-android-sdk:" -n android/build.gradle | head -1
+          if [[ -n "$AND_PC_VER" ]]; then
+            sed -i.bak "s/com.appsflyer:purchase-connector:[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/com.appsflyer:purchase-connector:${AND_PC_VER}/" android/build.gradle
+            rm android/build.gradle.bak
+            grep "purchase-connector:" -n android/build.gradle | head -1
+          else
+            echo "android_pc_version not provided — leaving android/build.gradle's purchase-connector pin unchanged"
+          fi
 
       - name: Update iOS podspec version and dependencies
         run: |
           PODSPEC_VERSION='${{ needs.validate-release.outputs.podspec_version }}'
           IOS_VER='${{ needs.validate-release.outputs.ios_sdk_version }}'
+          IOS_PC_VER='${{ needs.validate-release.outputs.ios_pc_version }}'
           FILE='ios/appsflyer_sdk.podspec'
           if [ -f "$FILE" ]; then
             sed -i.bak "s/s\.version\s*=\s*'.*'/s.version          = '${PODSPEC_VERSION}'/" "$FILE"
             sed -i.bak "s/ss\.ios\.dependency 'AppsFlyerFramework','[^']*'/ss.ios.dependency 'AppsFlyerFramework','${IOS_VER}'/" "$FILE"
-            # PurchaseConnector line may or may not exist
+            # PurchaseConnector line may or may not exist. Defaults to IOS_VER
+            # (same as ios_sdk_version) unless ios_pc_version was passed —
+            # same semantics as Unity's rc-release.yml.
             if grep -q "PurchaseConnector', '" "$FILE"; then
-              sed -i.bak "s/ss\.ios\.dependency 'PurchaseConnector', '[^']*'/ss.ios.dependency 'PurchaseConnector', '${IOS_VER}'/" "$FILE" || true
+              sed -i.bak "s/ss\.ios\.dependency 'PurchaseConnector', '[^']*'/ss.ios.dependency 'PurchaseConnector', '${IOS_PC_VER}'/" "$FILE" || true
             fi
             rm ${FILE}.bak || true
             echo "Updated podspec lines:"
@@ -337,7 +375,7 @@ jobs:
           git config user.name "github-actions[bot]"
           if [[ -n $(git status -s) ]]; then
             git add pubspec.yaml android/ ios/ README.md || true
-            git commit -m "chore: prepare RC ${VERSION} (iOS ${{ needs.validate-release.outputs.ios_sdk_version }}, Android ${{ needs.validate-release.outputs.android_sdk_version }})"
+            git commit -m "chore: prepare RC ${VERSION} (iOS ${{ needs.validate-release.outputs.ios_sdk_version }} / PC ${{ needs.validate-release.outputs.ios_pc_version }}, Android ${{ needs.validate-release.outputs.android_sdk_version }})"
             git push --set-upstream origin "$REL_BRANCH"
           else
             echo "No changes to commit"

@@ -21,7 +21,7 @@ if purchaseConnectorEnabled {
     dependencies.append(
         .package(
             url: "https://github.com/AppsFlyerSDK/appsflyer-apple-purchase-connector",
-            exact: "6.18.0"
+            exact: "6.18.2"
         )
     )
 

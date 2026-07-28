@@ -1,6 +1,6 @@
 ---
 description: RC release pipeline - thin pointer to the tooling contract. Activated when editing any release workflow or the operator manual.
-globs: .github/workflows/rc-release.yml,.github/workflows/rc-smoke.yml,.github/workflows/promote-release.yml,.github/workflows/production-release.yml,.github/workflows/ios-e2e.yml,.github/workflows/android-e2e.yml,.github/workflows/lint-test-build.yml,docs/RELEASE_USER_MANUAL.md,.af-e2e/**,.af-smoke/rc-test-plan.json,scripts/af-scenario-runner.sh,scripts/simulate-rc-pipeline.sh,example_rc_smoke/**
+globs: .github/workflows/rc-release.yml,.github/workflows/rc-smoke.yml,.github/workflows/promote-release.yml,.github/workflows/production-release.yml,.github/workflows/ios-e2e.yml,.github/workflows/android-e2e.yml,.github/workflows/lint-test-build.yml,.af-e2e/**,.af-smoke/rc-test-plan.json,scripts/af-scenario-runner.sh,scripts/simulate-rc-pipeline.sh,example_rc_smoke/**
 alwaysApply: false
 ---
 
@@ -14,7 +14,7 @@ Thin pointer. Contract text lives only in the tooling repo. Do not duplicate it 
 - **E2E scenarios**: [`../../../appsflyer-mobile-plugin-tooling/contracts/e2e-test-contract.md`](../../../appsflyer-mobile-plugin-tooling/contracts/e2e-test-contract.md) (current required set: `E2E-001` … `E2E-006`; planned: `E2E-007`, `E2E-008`)
 - **Smoke scenarios**: [`../../../appsflyer-mobile-plugin-tooling/contracts/smoke-test-contract.md`](../../../appsflyer-mobile-plugin-tooling/contracts/smoke-test-contract.md) (`SMOKE-001`, `SMOKE-002`, `SMOKE-003`)
 - **Test-app behavior**: [`../../../appsflyer-mobile-plugin-tooling/contracts/test-app-contract.md`](../../../appsflyer-mobile-plugin-tooling/contracts/test-app-contract.md)
-- **Operator manual (for humans)**: [`docs/RELEASE_USER_MANUAL.md`](../../docs/RELEASE_USER_MANUAL.md)
+- **Operator manual (for humans)**: [`appsflyer-mobile-plugin-tooling/examples/flutter/RELEASE_USER_MANUAL.md`](../../../appsflyer-mobile-plugin-tooling/examples/flutter/RELEASE_USER_MANUAL.md)
 
 ## Stage → workflow map
 

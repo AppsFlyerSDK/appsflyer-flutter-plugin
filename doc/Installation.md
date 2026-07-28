@@ -11,6 +11,13 @@ flutter pub add appsflyer_sdk
 This will download the AppsFlyer flutter plugin to your project, you may observe the changes in your `pubspec.yaml` file.
 
 ---
+## iOS: Swift Package Manager (SPM) support
+
+Starting with v6.18.0, the plugin's **Core** integration supports Swift Package Manager on iOS, alongside continued full CocoaPods support. If your app has SPM enabled (the default on Flutter 3.44+, or via `flutter config --enable-swift-package-manager` on Flutter 3.24+), no extra setup is needed — Flutter's tooling picks up the plugin's `Package.swift` automatically.
+
+**If you use Purchase Connector, do not enable SPM for this plugin.** [Purchase Connector](PurchaseConnector.md) requires CocoaPods for the entire plugin (Core included) — it cannot currently be combined with SPM, pending resolution of an upstream Flutter limitation ([flutter/flutter#161182](https://github.com/flutter/flutter/issues/161182)). SPM is recommended only for apps that don't use Purchase Connector at all; if you don't, keep CocoaPods and the `$AppsFlyerPurchaseConnector` Podfile flag as documented in [PurchaseConnector.md](PurchaseConnector.md).
+
+---
 ## Huawei Referrer
 Huawei Referrer is supported in SDK v6.14.0 and above.
 Due to changes in the Huawei AppGallery store, previous versions of the AppsFlyer SDK are not able to fetch the referrer from the store. [Learn more](https://dev.appsflyer.com/hc/docs/install-android-sdk#huawei-install-referrer).
