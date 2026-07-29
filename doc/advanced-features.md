@@ -1,10 +1,18 @@
-# 📑 Advanced APIs
+# 📑 Advanced features
+
+Optional features you add on top of the [core setup](getting-started.md). Adopt only the
+ones your app needs.
+
+> **Audience:** teams adding uninstall measurement, user invites, purchase validation, or
+> out-of-store attribution. For the full method list see the [API reference](api-reference.md).
 
 - [Measure App Uninstalls](#uninstall)
 - [User invite](#user-invite)
 - [In-app purchase validation](#iae)
 - [Android Out of Store](#out-of-store)
-- [Set plugin for IOS 14](#ios14)
+
+> **iOS 14 / ATT setup moved.** App Tracking Transparency configuration now lives in
+> [Getting started → iOS 14 & App Tracking Transparency](getting-started.md#ios-14--app-tracking-transparency).
 
 ---
 
@@ -88,7 +96,7 @@ A complete list of supported parameters is available [here](https://support.apps
 
 1. First define the Onelink ID either in the AppsFlyerOptions, or in the setAppInviteOneLinkID API (find it in the AppsFlyer dashboard in the onelink section):
 
-  **`Future<void> setAppInviteOneLinkID(String oneLinkID, Function callback)`**
+  **`Future<void> setAppInviteOneLinkID(String oneLinkID, [Function? callback])`**  (the `callback` is optional; it only signals a static `"success"`)
 
 2. Utilize the AppsFlyerInviteLinkParams class to set the query params in the user invite link:
 
@@ -207,120 +215,50 @@ try {
 
 ---
 
-**Deprecated Platform-Specific APIs:**
+**iOS sandbox mode:**
 
-> ⚠️ **Deprecated**: The following platform-specific APIs are deprecated and will be removed in a future version. Please migrate to `validateAndLogInAppPurchaseV2` for cross-platform support.
-
-**Android (Deprecated):**
-```dart
-@Deprecated('Use validateAndLogInAppPurchaseV2 instead')
-Future<dynamic> validateAndLogInAppAndroidPurchase( 
-      String publicKey,
-      String signature,
-      String purchaseData,
-      String price,
-      String currency,
-      Map<String, String>? additionalParameters)
-```
-Example:
-```dart
-// Deprecated - migrate to validateAndLogInAppPurchaseV2
-appsFlyerSdk.validateAndLogInAppAndroidPurchase(
-           "publicKey",
-           "signature",
-           "purchaseData",
-           "price",
-           "currency",
-           {"fs": "fs"});
-```
-
-**iOS (Deprecated):**
-
-❗Important❗ for iOS - set SandBox to ```true```<br>
-```appsFlyer.useReceiptValidationSandbox(true);```
+For testing iOS purchase validation against the App Store sandbox, enable sandbox mode before validating:
 
 ```dart
-@Deprecated('Use validateAndLogInAppPurchaseV2 instead')
-Future<dynamic> validateAndLogInAppIosPurchase( 
-      String productIdentifier,
-      String price,
-      String currency,
-      String transactionId,
-      Map<String, String> additionalParameters)
+appsFlyerSdk.useReceiptValidationSandbox(true);
 ```
 
-Example:
-```dart
-// Deprecated - migrate to validateAndLogInAppPurchaseV2
-appsFlyerSdk.validateAndLogInAppIosPurchase(
-           "productIdentifier",
-           "price",
-           "currency",
-           "transactionId",
-           {"fs": "fs"});
-```
-
-**Purchase validation callback:**
-
-`void onPurchaseValidation(Function callback)`
-
-Example:
-```dart
-appsflyerSdk.onPurchaseValidation((res){
-  print("res: " + res.toString());
-});
-```
+For the uninstall-measurement flow, `useUninstallSandbox(true)` is the sandbox companion.
 
 ---
 
 ## <a id="out-of-store"> Android Out of Store
-Please make sure to go over [this guide](https://support.appsflyer.com/hc/en-us/articles/207447023-Attributing-out-of-store-Android-markets-guide) to get a general understanding of how out of store attribution is set up in AppsFlyer, and how to implement it.
 
----
+Use out-of-store attribution when you distribute the Android app through a store other
+than Google Play. First read AppsFlyer's
+[out-of-store attribution guide](https://support.appsflyer.com/hc/en-us/articles/207447023-Attributing-out-of-store-Android-markets-guide).
 
-## <a id="ios14"> Set plugin for IOS 14
-	
-1. Adding the conset dialog:
-	
-There are 2 ways to add it to your app:
-	
-	a. Utilize the following Library: https://pub.dev/packages/app_tracking_transparency
+If your store supports install-referrer matching, register the install-referrer receiver
+in your app's `AndroidManifest.xml`:
 
-Or 
-	
-	b. Add native implementation:
-
-	
-- Add `#import <AppTrackingTransparency/AppTrackingTransparency.h>` in your `AppDelegate.m` 
-
-- Add the ATT pop-up for IDFA collection so your `AppDelegate.m` will look like this:
-	
+```xml
+<application>
+  ...
+  <receiver android:name="com.appsflyer.SingleInstallBroadcastReceiver" android:exported="true">
+    <intent-filter>
+      <action android:name="com.android.vending.INSTALL_REFERRER" />
+    </intent-filter>
+  </receiver>
+</application>
 ```
-- (void)applicationDidBecomeActive:(nonnull UIApplication *)application {
-    if (@available(iOS 14, *)) {
-        [ATTrackingManager requestTrackingAuthorizationWithCompletionHandler:^(ATTrackingManagerAuthorizationStatus status) {
-            // native code here
-        }];
-    }
+
+Set the alternative store at runtime with `setOutOfStore` (Android only) — see the
+[API reference](api-reference.md#setOutOfStore):
+
+```dart
+if (Platform.isAndroid) {
+  appsflyerSdk.setOutOfStore("facebook_int");
 }
 ```
 
-2. Add Privacy - Tracking Usage Description inside your `.plist` file in Xcode.
-	
-```
-<key>NSUserTrackingUsageDescription</key>
-<string>This identifier will be used to deliver personalized ads to you.</string>
-```
-	
-3. Optional: Set the `timeToWaitForATTUserAuthorization` property in the `AppsFlyerOptions` to delay the sdk initazliation for a number of `x seconds` until the user accept the consent dialog:
-	
-```dart
-AppsFlyerOptions options = AppsFlyerOptions(
-    afDevKey: DotEnv().env["DEV_KEY"],
-    appId: DotEnv().env["APP_ID"],
-    showDebug: true,
-    timeToWaitForATTUserAuthorization: 30
-    ); 
-```
+---
 
-For more info visit our [Full Support guide for iOS 14](https://support.appsflyer.com/hc/en-us/articles/207032066#integration-33-configuring-app-tracking-transparency-att-support).
+## iOS 14 & App Tracking Transparency
+
+App Tracking Transparency (ATT) setup has moved to
+[Getting started → iOS 14 & App Tracking Transparency](getting-started.md#ios-14--app-tracking-transparency).

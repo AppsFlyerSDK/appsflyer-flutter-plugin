@@ -1,65 +1,65 @@
 ---
 id: F-014
-name: Manual Deep-Link Re-trigger (performOnDeepLinking)
+name: Manual Deep-Link Re-trigger (performDeepLinking)
 type: deepLinking
-platform: android
+platform: both
 status: active
-last_verified: 2026-07-15
+last_verified: 2026-07-29
 depends_on: ["F-037"]
 ---
 
 ## Business Purpose
-Apps that delay `startSDK()` (manual-start mode) can miss deep-link resolution for the launch intent, because AppsFlyer normally inspects the intent during its own lifecycle hooks around SDK start. `performOnDeepLinking()` lets the host app force the native SDK to re-process the activity's current intent on demand — typically right before a delayed `startSDK()` call — so a OneLink click that launched the app is still resolved even though initialization was deferred. Without this API, manual-start integrators on Android would silently lose deep-link data for the launch that started the app.
-
-> TODO: enrich from product specs — provide a Notion database URL and re-run Phase 4 to fill this automatically.
+Apps that defer `startSDK()` (SDK 7 session model) can miss deep-link resolution for a link that arrived from a non-standard source, or when the launch URL was captured before the SDK was ready. `performDeepLinking(url, ...)` lets the host app hand a specific URL (a full URL, a OneLink, or an intent-data string) to the native SDK on demand and route the resolved result through the `onDeepLinking` (UDL) callback. It works for both intent and non-intent sources (e.g. a URL pulled from Firebase Messaging), so a OneLink that the SDK's own lifecycle hooks did not resolve is still delivered to the app.
 
 ---
 
 ## Trigger
-Called explicitly by the host app, typically in a manual-start (`manualStart: true`) flow, immediately before invoking `startSDK()`/`startSDKwithHandler()` — e.g. after the app has finished its own startup gating (consent, config fetch, etc.) but still needs the original launch intent resolved for deep linking.
+Called explicitly by the host app whenever it holds a URL it wants the SDK to resolve as a deep link — for example after extracting a link from a push payload handled outside the AppsFlyer flow, or when re-processing a launch URL after gating `startSDK()` on consent/config.
 
 ---
 
 ## Call Chain
+Since the SDK 7 / RPC migration this is a generic RPC call (no per-method channel handler). The Dart method name is `performDeepLinking` and it routes to a **different native RPC per platform**: Android uses `performDeepLinking`; iOS uses `performOnAppAttributionWithURL`. `shouldTriggerSession` is Android-only and ignored on iOS.
 ```
-AppsflyerSdk.performOnDeepLinking()                                          [lib/src/appsflyer_sdk.dart]
-  → _methodChannel.invokeMethod("performOnDeepLinking")
-    → Android: AppsflyerSdkPlugin.onMethodCall("performOnDeepLinking") → performOnDeepLinking(call, result)   [android/.../AppsflyerSdkPlugin.java]
-      → intent = activity.getIntent()
-      → AppsFlyerLib.getInstance().performOnDeepLinking(intent, mApplication)
-        → afDeepLinkListener.onDeepLinking(DeepLinkResult) [if UDL subscribed]
-          → runOnUIThread(..., AF_UDL_CALLBACK, AF_SUCCESS) → callbackChannel "callListener" → Dart onDeepLinking callback   (see F-037)
-    → iOS: no "performOnDeepLinking" case in AppsflyerSdkPlugin.m's handleMethodCall: → FlutterMethodNotImplemented
+AppsflyerSdk.performDeepLinking(String url, {bool shouldTriggerSession = false})       [lib/src/appsflyer_sdk.dart]
+  → Android: _executeRpc('performDeepLinking', {'url': url, 'shouldTriggerSession': shouldTriggerSession})   // MethodChannel af-api → executeRpc
+      → AppsflyerSdkPlugin.executeRpc → dispatchRpc('performDeepLinking', ...)          [android/.../AppsflyerSdkPlugin.java]
+        → AppsFlyerRpcHandler.execute(json)                                             [plugin_bridge]
+          → AppsFlyerLib.getInstance().performOnDeepLinking(...) → onDeepLinking (F-037)
+  → iOS: _executeRpc('performOnAppAttributionWithURL', {'url': url})                    // shouldTriggerSession ignored
+      → AppsflyerSdkPlugin executeRpc → dispatchRpc('performOnAppAttributionWithURL')   [ios/.../AppsflyerSdkPlugin.m]
+        → AppsFlyerRPCBridge → [AppsFlyerLib shared] performOnAppAttributionWithURL: → onDeepLinking (F-037)
 ```
+The resolved deep link surfaces asynchronously over the `af-events` EventChannel as the `onDeepLinking` envelope (see F-037); this method returns nothing to Dart.
 
 ---
 
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `performOnDeepLinking()` — platform-agnostic Dart API, no `Platform.isAndroid` guard |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `performOnDeepLinking(call, result)` — reads `activity.getIntent()` and forwards it to `AppsFlyerLib.getInstance().performOnDeepLinking(intent, mApplication)` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | No corresponding case in `handleMethodCall:` — the method name is entirely absent |
+| `lib/src/appsflyer_sdk.dart` | `performDeepLinking(String url, {bool shouldTriggerSession = false})` — platform-branching wrapper: Android sends the `performDeepLinking` RPC with `{url, shouldTriggerSession}`; iOS sends `performOnAppAttributionWithURL` with `{url}`. Fire-and-forget (`void`). |
+| `android/.../AppsflyerSdkPlugin.java` / `ios/.../AppsflyerSdkPlugin.m` | No per-method handler — the generic `executeRpc` dispatch forwards the JSON envelope to the native RPC bridge. |
+| `android/.../plugin_bridge` / `AppsFlyerRPC` framework (native SDKs, not the Flutter plugin) | Parse the request and call the SDK (`performOnDeepLinking` on Android, `performOnAppAttributionWithURL:` on iOS). |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | None (no arguments passed from Dart) |
-| **Output** | Android: `void`; internally errors `"NO_INTENT"` if `activity.getIntent()` is null, or `"NO_ACTIVITY"` if the activity is null (Dart call is fire-and-forget and does not await/inspect these). No direct return value — the actual payload, if any, arrives asynchronously via the `onDeepLinking` callback (F-037). iOS: `MissingPluginException` / `FlutterMethodNotImplemented` since the method is unhandled. |
+| **Input** | `url` (`String`, required) — full URL, OneLink, or intent-data string. `shouldTriggerSession` (`bool`, default `false`) — when `true`, Android also enqueues a Launch for re-engagement; ignored on iOS. |
+| **Output** | `void` — fire-and-forget; the Dart wrapper discards the RPC Future. Any resolved deep link is delivered asynchronously via the `onDeepLinking` (UDL) callback (F-037). |
 
 ---
 
 ## Tests
-No dedicated test found. `test/appsflyer_sdk_test.dart` does not exercise `performOnDeepLinking`.
+No dedicated test found. `test/appsflyer_sdk_test.dart` does not exercise `performDeepLinking`.
 
 ---
 
 ## Known Limitations
-- **iOS has no implementation at all** — unlike most other Dart APIs in this plugin, `performOnDeepLinking` is not merely a no-op stub on iOS (compare `setIsUpdate` in F-016); the method name doesn't appear in `AppsflyerSdkPlugin.m`'s `handleMethodCall:` chain, so the platform channel call falls through to `FlutterMethodNotImplemented`. Since the Dart method doesn't await or handle the channel result, this failure is silent to the caller.
-- Documented as "Android Only!" in `doc/API.md`, confirming this is a deliberate platform restriction rather than an oversight — but the Dart API surface gives no compile-time signal of this, so cross-platform code calling it unconditionally will throw on iOS at the channel layer.
-- Depends on `activity` and `activity.getIntent()` being non-null at call time; if the Flutter engine is detached from its activity (e.g. during a configuration change), the call errors out natively but this is invisible to the fire-and-forget Dart caller.
+- **`shouldTriggerSession` is Android-only**: the default is `false`, so a bare `performDeepLinking(url)` does not trigger a session. On iOS the parameter is silently ignored (the iOS route, `performOnAppAttributionWithURL`, has no session-trigger option).
+- **Different native API per platform**: Android resolves via `performOnDeepLinking`; iOS via `performOnAppAttributionWithURL`. The Dart surface hides this, but the two native paths can differ in edge-case behavior.
+- Fire-and-forget: the Dart wrapper discards the `_executeRpc` Future, so a native rejection (e.g. malformed URL) surfaces only as a swallowed unhandled async error, not to the caller.
 
 ---
 

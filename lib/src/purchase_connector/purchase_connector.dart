@@ -77,10 +77,6 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
       AppsflyerConstants.STORE_KIT_VERSION_KEY: config.storeKitVersion.value,
     };
 
-    print("[AppsFlyer_PC_Debug] Sending config to native: $configMap");
-    print(
-        "[AppsFlyer_PC_Debug] Keys being sent: ${AppsflyerConstants.LOG_SUBS_KEY}, ${AppsflyerConstants.LOG_IN_APP_KEY}, ${AppsflyerConstants.SANDBOX_KEY}");
-
     _methodChannel.invokeMethod(AppsflyerConstants.CONFIGURE_KEY, configMap);
   }
 
@@ -155,7 +151,9 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
 
   /// Method call handler for different operations. Called by the _methodChannel.
   Future<void> _methodCallHandler(MethodCall call) async {
-    dynamic callMap = jsonDecode(call.arguments);
+    // Native may send either a JSON string or an already-decoded Map; handle both.
+    final dynamic rawArgs = call.arguments;
+    final dynamic callMap = rawArgs is String ? jsonDecode(rawArgs) : rawArgs;
 
     switch (call.method) {
       case AppsflyerConstants
@@ -176,7 +174,9 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
         _handleDidReceivePurchaseRevenueValidationInfo(callMap);
         break;
       default:
-        throw ArgumentError("Method not found: ${call.method}");
+        // Unknown callback name — log instead of throwing inside a platform
+        // message handler (an uncaught throw here becomes an unhandled async error).
+        debugPrint("PurchaseConnector: unknown method ${call.method}");
     }
   }
 
@@ -243,7 +243,7 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
     Map<String, T>? res = converter(callbackData);
     if (onResponse != null) {
       onResponse(res);
-    } else {}
+    }
   }
 
   /// Handles failure for a validation result listener.

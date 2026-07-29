@@ -4,14 +4,12 @@ name: "Purchase Connector: StoreKit Version Selection (iOS)"
 type: purchaseValidation
 platform: ios
 status: active
-last_verified: 2026-07-15
+last_verified: 2026-07-29
 depends_on: ["F-049"]
 ---
 
 ## Business Purpose
 StoreKit 2 (iOS 15+) gives Apple's transaction-observation APIs better reliability and richer transaction data than the legacy StoreKit 1 API, but StoreKit 1 remains the only option on pre-iOS-15 devices. `storeKitVersion` on `PurchaseConnectorConfiguration` lets the app pick which StoreKit generation the native `PurchaseConnector` iOS SDK uses to auto-detect and validate purchases (feeding F-049's `startObservingTransactions`). Without this switch, the app would be stuck on whatever single default the native SDK picks, unable to opt into StoreKit 2's improvements on supported OS versions or to deliberately stay on StoreKit 1 for compatibility/testing reasons.
-
-> TODO: enrich from product specs — provide a Notion database URL and re-run Phase 4 to fill this automatically.
 
 ---
 

@@ -4,30 +4,29 @@ name: User Anonymization (Opt-out logging)
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-07-15
+last_verified: 2026-07-29
 depends_on: []
 ---
 
 ## Business Purpose
-When a specific user opts out of tracking (e.g. via an in-app privacy setting, or in response to a "do not track" regulatory requirement), the app needs a way to tell AppsFlyer to stop logging identifiable data for that user without tearing down the whole SDK. `anonymizeUser` flips this per-user opt-out flag on the native SDK. Without it, the only way to honor such a request would be the much blunter `stop()` API, which disables the SDK entirely rather than scoping the opt-out to one user.
-
-> TODO: enrich from product specs — provide a Notion database URL and re-run Phase 4 to fill this automatically.
+When a specific user opts out of tracking (via an in-app privacy setting or a "do not track" requirement), the app needs to tell AppsFlyer to stop logging identifiable data for that user without tearing down the whole SDK. `anonymizeUser` flips this opt-out flag on the native SDK. Without it, the only alternative would be the much blunter `stop()` (F-017), which disables the SDK entirely.
 
 ---
 
 ## Trigger
-Called by the host app whenever the current user's tracking-opt-out preference changes (e.g. a settings toggle, or an automated privacy-compliance check at login).
+Called by the host app whenever the current user's tracking-opt-out preference changes (e.g. a settings toggle, or a privacy-compliance check at login).
 
 ---
 
 ## Call Chain
+Generic RPC on both platforms.
+
 ```
-AppsflyerSdk.anonymizeUser(shouldAnonymize)                              [lib/src/appsflyer_sdk.dart]
-  → _methodChannel.invokeMethod("anonymizeUser", {'shouldAnonymize': shouldAnonymize})
-    → Android: AppsflyerSdkPlugin.onMethodCall("anonymizeUser") → anonymizeUser(call, result)   [android/.../AppsflyerSdkPlugin.java]
-      → AppsFlyerLib.getInstance().anonymizeUser(shouldAnonymize)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("anonymizeUser") → anonymizeUser:result:          [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
-      → [AppsFlyerLib shared].anonymizeUser = shouldAnonymize
+AppsflyerSdk.anonymizeUser(shouldAnonymize)                           [lib/src/appsflyer_sdk.dart]
+  → _executeRpc('anonymizeUser', {shouldAnonymize})
+    → af-api "executeRpc" {method:'anonymizeUser', params}
+      → Android: dispatchRpc → AppsFlyerRpcHandler → AppsFlyerLib.anonymizeUser(shouldAnonymize)  [android/.../AppsflyerSdkPlugin.java]
+      → iOS: dispatchRpc → AppsFlyerRPCBridge → [AppsFlyerLib shared] ...                          [ios/.../AppsflyerSdkPlugin.m]
 ```
 
 ---
@@ -35,29 +34,28 @@ AppsflyerSdk.anonymizeUser(shouldAnonymize)                              [lib/sr
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `anonymizeUser(bool)` |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `anonymizeUser` native handler |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `anonymizeUser:result:` native handler (direct property assignment) |
+| `lib/src/appsflyer_sdk.dart` | `anonymizeUser(bool)` — dispatches the RPC |
+| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | generic `anonymizeUser` dispatch over `AppsFlyerRpcHandler` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | generic `anonymizeUser` dispatch over `AppsFlyerRPCBridge` |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `shouldAnonymize` (bool) — `true` enables anonymized logging for the current user, `false` restores normal logging. |
+| **Input** | `shouldAnonymize` (bool) — `true` anonymizes logging for the current user, `false` restores normal logging. RPC param key `shouldAnonymize`. |
 | **Output** | `void` — fire-and-forget; no confirmation returned to Dart. |
 
 ---
 
 ## Tests
-No dedicated test found. `test/appsflyer_sdk_test.dart` does not mock or call `anonymizeUser` anywhere, despite it being fully wired on both platforms.
+`test/appsflyer_sdk_test.dart` verifies that `anonymizeUser` dispatches the `anonymizeUser` RPC with the `shouldAnonymize` param.
 
 ---
 
 ## Known Limitations
-- No test coverage at all, unlike most other setters in this file — a regression in argument key naming (`shouldAnonymize`) on either platform would go undetected by CI.
-- The flag is process/instance-scoped (it toggles a property on the shared `AppsFlyerLib`/native singleton), not tied to a specific customer user ID — if the app switches logged-in users without also resetting this flag, the anonymization state can leak across user sessions.
-- No way to read back the current anonymization state from Dart (no `getAnonymizeUser()` counterpart) — the app must track the last value it set itself.
+- The flag is instance-scoped (a property on the shared native SDK), not tied to a specific customer user ID — if the app switches logged-in users without resetting it, the anonymization state can leak across user sessions.
+- No way to read back the current anonymization state from Dart.
 
 ---
 

@@ -20,8 +20,8 @@ def includeConnector = project.findProperty('appsflyer.enable_purchase_connector
 
 android {
     defaultConfig {
-        minSdkVersion 19
-        compileSdk 35
+        minSdkVersion 21
+        compileSdk 36
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         multiDexEnabled true
@@ -52,10 +52,14 @@ android {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'androidx.appcompat:appcompat:1.0.0'
-    implementation 'com.appsflyer:af-android-sdk:6.18.1'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+
+    implementation platform("com.appsflyer:af-android-sdk-bom:7.0.1")
+    implementation "com.appsflyer:af-android-sdk"
+    implementation "com.appsflyer:af-android-sdk-base"
+    implementation "com.appsflyer:af-android-plugin-bridge"
+
     implementation 'com.android.installreferrer:installreferrer:2.2'
-//    implementation 'androidx.core:core-ktx:1.13.1'
     if (includeConnector) {
         implementation 'com.appsflyer:purchase-connector:2.2.0'
     }

@@ -9,13 +9,15 @@ class AppsFlyerOptions {
   final String? appInviteOneLink;
   final bool? disableAdvertisingIdentifier;
   final bool? disableCollectASA;
-  final bool? manualStart;
 
   /// Creates an [AppsFlyerOptions] instance.
   /// Requires [afDevKey] and [appId] as mandatory Named parameters.
   /// All other parameters are optional, it's allows greater flexibility
   /// when invoking the constructor.
-  /// When [manualStart] is true the startSDK method must be called
+  ///
+  /// In AppsFlyer SDK 7 the first session is always sent explicitly: call
+  /// [AppsflyerSdk.initSdk] to initialize, then [AppsflyerSdk.startSDK] when
+  /// the app is ready (e.g. after consent / setting the Customer User ID).
   AppsFlyerOptions({
     required this.afDevKey,
     this.showDebug = false,
@@ -24,6 +26,5 @@ class AppsFlyerOptions {
     this.appInviteOneLink,
     this.disableAdvertisingIdentifier,
     this.disableCollectASA,
-    this.manualStart = false,
   });
 }

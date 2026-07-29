@@ -4,14 +4,12 @@ name: SDK/Plugin Version Retrieval
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-07-15
+last_verified: 2026-07-29
 depends_on: []
 ---
 
 ## Business Purpose
-Support and QA need a reliable way to answer "which native AppsFlyer SDK build, and which Flutter plugin build, is actually running in this app?" `getSDKVersion()` surfaces the native SDK's own version string (useful for diagnosing SDK-side bugs against AppsFlyer's release notes), while `getVersionNumber()` surfaces the Flutter plugin wrapper's own version. Without these, bug reports and support tickets would rely on the app's `pubspec.yaml`/podspec pin, which does not confirm what was actually compiled into the running binary.
-
-> TODO: enrich from product specs — provide a Notion database URL and re-run Phase 4 to fill this automatically.
+Support and QA need a reliable way to answer "which native AppsFlyer SDK build, and which Flutter plugin build, is actually running in this app?" `getSDKVersion()` surfaces the native SDK's own version string (for diagnosing SDK-side bugs against AppsFlyer's release notes); `getVersionNumber()` surfaces the Flutter plugin wrapper's version. Without these, bug reports would rely on the app's `pubspec.yaml`/podspec pin, which does not confirm what was actually compiled into the running binary.
 
 ---
 
@@ -21,16 +19,18 @@ Called on demand by host app code — typically diagnostic/support tooling, debu
 ---
 
 ## Call Chain
+`getSDKVersion()` is a generic RPC (`getSdkVersion`); `getVersionNumber()` is pure Dart with no channel call.
+
 ```
 AppsflyerSdk.getSDKVersion()                                          [lib/src/appsflyer_sdk.dart]
-  → _methodChannel.invokeMethod("getSDKVersion")
-    → Android: AppsflyerSdkPlugin.onMethodCall("getSDKVersion") → getSdkVersion(result)   [android/.../AppsflyerSdkPlugin.java]
-      → AppsFlyerLib.getInstance().getSdkVersion()
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("getSDKVersion") → getSDKVersion:result:   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
-      → [[AppsFlyerLib shared] getSDKVersion]
+  → _executeRpc<String>('getSdkVersion')
+    → af-api MethodChannel "executeRpc" {method:'getSdkVersion'}
+      → Android: dispatchRpc → AppsFlyerRpcHandler → AppsFlyerLib.getSdkVersion()   [android/.../AppsflyerSdkPlugin.java]
+      → iOS: dispatchRpc → AppsFlyerRPCBridge → [AppsFlyerLib shared] ...           [ios/.../AppsflyerSdkPlugin.m]
+        (iOS unwraps the version from the nested {data:{version}} result)
 
 AppsflyerSdk.getVersionNumber()                                       [lib/src/appsflyer_sdk.dart]
-  → returns AppsflyerConstants.PLUGIN_VERSION (pure Dart constant, no channel call)   [lib/src/appsflyer_constants.dart]
+  → returns AppsflyerConstants.PLUGIN_VERSION (pure Dart constant, no channel call)  [lib/src/appsflyer_constants.dart]
 ```
 
 ---
@@ -38,10 +38,10 @@ AppsflyerSdk.getVersionNumber()                                       [lib/src/a
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `getSDKVersion()` (async, native round-trip), `getVersionNumber()` (sync, local constant) |
-| `lib/src/appsflyer_constants.dart` | `PLUGIN_VERSION` constant returned by `getVersionNumber()` |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `getSdkVersion(result)` — proxies `AppsFlyerLib.getInstance().getSdkVersion()` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `getSDKVersion:result:` — proxies `[AppsFlyerLib shared] getSDKVersion]` |
+| `lib/src/appsflyer_sdk.dart` | `getSDKVersion()` (async RPC round-trip), `getVersionNumber()` (sync, local constant) |
+| `lib/src/appsflyer_constants.dart` | `PLUGIN_VERSION = "7.0.0"` constant returned by `getVersionNumber()` |
+| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | generic `getSdkVersion` dispatch over `AppsFlyerRpcHandler` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | generic `getSdkVersion` dispatch; `unwrapValueForMethod` extracts `data.version` |
 
 ---
 
@@ -49,18 +49,18 @@ AppsflyerSdk.getVersionNumber()                                       [lib/src/a
 | | |
 |--|--|
 | **Input** | None |
-| **Output** | `getSDKVersion()` → `Future<String?>` — the native AppsFlyer SDK's own version string. `getVersionNumber()` → `String` — the Flutter plugin's hardcoded version constant (synchronous, no native call). |
+| **Output** | `getSDKVersion()` → `Future<String?>` — the native AppsFlyer SDK's version string. `getVersionNumber()` → `String` — the Flutter plugin's version constant (`7.0.0`, synchronous). |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` — `check getSDKVersion call` (line 192) asserts the mocked channel receives `getSDKVersion`. No test exists for `getVersionNumber()` (trivial, but untested).
+`test/appsflyer_sdk_test.dart` verifies that `getSDKVersion()` dispatches the `getSdkVersion` RPC and returns the unwrapped version string from the mocked native reply. `getVersionNumber()` is not tested (trivial constant).
 
 ---
 
 ## Known Limitations
-- `AppsflyerConstants.PLUGIN_VERSION` in Dart (`lib/src/appsflyer_constants.dart`) is hardcoded to `"6.17.9"`, while `pubspec.yaml`'s package version, Android's `AppsFlyerConstants.PLUGIN_VERSION`, and iOS's `kAppsFlyerPluginVersion` are all `"6.18.0"`. `getVersionNumber()` therefore returns a stale value one release behind the actual plugin version and the value the native layer reports upstream to AppsFlyer via `setPluginInfo`/`setPluginInfoWith:` (see F-001). This is a manual-bump constant with no single source of truth or CI check tying it to `pubspec.yaml`.
-- `getVersionNumber()` reports the *plugin's* version, not the native SDK's version — the naming similarity to `getSDKVersion()` is a common source of confusion for integrators.
+- `AppsflyerConstants.PLUGIN_VERSION` is a manually maintained constant with no CI check tying it to `pubspec.yaml`; keep both at `7.0.0`.
+- `getVersionNumber()` reports the *plugin's* version, not the native SDK's — the naming similarity to `getSDKVersion()` is a common source of confusion.
 
 ---
 

@@ -1,71 +1,58 @@
 ---
 id: F-008
-name: Manual IMEI/Android ID Override
+name: Manual IMEI/Android ID Override (removed in SDK 7)
 type: sdkCore
 platform: android
-status: active
-last_verified: 2026-07-15
+status: removed
+last_verified: 2026-07-29
 depends_on: []
 ---
 
 ## Business Purpose
-Some apps already collect IMEI/Android ID themselves (e.g. via a legacy device-management SDK) and want AppsFlyer to reuse those values rather than re-reading them independently, or need to supply a value in contexts where the SDK's own read would fail (e.g. restricted permission states). `setImeiData`/`setAndroidIdData` let the host app hand these identifiers to the SDK directly instead of relying on its automatic collection (F-007 governs whether that automatic collection happens at all).
+In SDK 6 the plugin exposed `setImeiData(String)` and `setAndroidIdData(String)` so apps that already held IMEI/Android ID values could hand them to the SDK instead of relying on its automatic collection.
 
-> TODO: enrich from product specs — provide a Notion database URL and re-run Phase 4 to fill this automatically.
+> **Removed in SDK 7.** Both `setImeiData` and `setAndroidIdData` no longer exist in the Flutter plugin. These APIs are **not exposed by the SDK 7 RPC bridges** (`AppsFlyerRpcHandler` / `AppsFlyerRPCBridge`), so the plugin cannot reach them. Per the API Removal Rule, they were removed rather than shipped as silent no-ops. There is no RPC-reachable replacement. See [`doc/migration-guide.md`](/doc/migration-guide.md).
 
 ---
 
 ## Trigger
-Called by the host app during startup configuration when it already holds IMEI/Android ID values it wants to feed to AppsFlyer, in place of the SDK's own device-level collection.
+N/A — the APIs have been removed. There is no Dart method, no RPC method, and no native handler.
 
 ---
 
 ## Call Chain
-```
-AppsflyerSdk.setImeiData(imei)                                          [lib/src/appsflyer_sdk.dart]
-  → _methodChannel.invokeMethod("setImeiData", {'imei': imei})
-    → Android: AppsflyerSdkPlugin.onMethodCall("setImeiData") → setImeiData(call, result)   [android/.../AppsflyerSdkPlugin.java]
-      → AppsFlyerLib.getInstance().setImeiData(imei)
-
-AppsflyerSdk.setAndroidIdData(androidId)                                [lib/src/appsflyer_sdk.dart]
-  → _methodChannel.invokeMethod("setAndroidIdData", {'androidId': androidId})
-    → Android: AppsflyerSdkPlugin.onMethodCall("setAndroidIdData") → setAndroidIdData(call, result)   [android/.../AppsflyerSdkPlugin.java]
-      → AppsFlyerLib.getInstance().setAndroidIdData(androidId)
-```
-No iOS branch exists for either method name in `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m`'s `handleMethodCall:`.
+N/A — removed. No `setImeiData` / `setAndroidIdData` method exists in `lib/src/appsflyer_sdk.dart`, and neither name is handled by the `executeRpc` dispatch on Android or iOS.
 
 ---
 
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `setImeiData(String)`, `setAndroidIdData(String)` |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `setImeiData`, `setAndroidIdData` native handlers |
+| — | No implementation remains. Removal is documented in [`doc/migration-guide.md`](/doc/migration-guide.md) and `CHANGELOG.md`. |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `setImeiData`: `imei` (String). `setAndroidIdData`: `androidId` (String). |
-| **Output** | `void` — fire-and-forget; no confirmation returned to Dart. |
+| **Input** | N/A (removed) |
+| **Output** | N/A (removed) |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` — `check setImeiData call` (line 272) and `check setAndroidIdData call` (line 278) assert the mocked channel receives the respective method names. No assertion on the argument values actually reaching native code (only channel dispatch is exercised, per the test's mock architecture).
+No tests — the APIs no longer exist. `test/appsflyer_sdk_test.dart` contains no references to `setImeiData` / `setAndroidIdData`.
 
 ---
 
 ## Known Limitations
-- **Android-only**: no iOS implementation (IMEI/Android ID are not applicable identifiers on iOS). Same `MissingPluginException`/`FlutterMethodNotImplemented` risk as F-007 if called on iOS, since the Dart API is not platform-guarded.
-- No format/length validation of the `imei`/`androidId` strings before they are handed to the native SDK — a malformed value would only surface as a data-quality problem downstream in AppsFlyer's reporting, not as a client-side error.
+- No RPC-reachable replacement exists in SDK 7. Apps that previously fed device identifiers manually must rely on the SDK's own (policy-compliant) collection; the Android-ID opt-out is covered by F-007.
 
 ---
 
 ## Dependencies
 ```mermaid
 flowchart LR
-    F008["F-008 · Manual IMEI/Android ID Override"]:::sdkCore
+    F008["F-008 · Manual IMEI/Android ID Override (removed)"]:::sdkCore
     classDef sdkCore fill:#4C6EF5,color:#fff
 ```

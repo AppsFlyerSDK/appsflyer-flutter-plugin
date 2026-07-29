@@ -11,7 +11,6 @@ flowchart TD
         F002["F-002<br/>SDK Start"]:::sdkCore
         F011["F-011<br/>TCF/DMA Auto Consent"]:::sdkCore
         F015["F-015<br/>Customer User ID"]:::sdkCore
-        F021["F-021<br/>Delayed Session Start"]:::sdkCore
         F034["F-034<br/>Ad ID Collection Disable"]:::sdkCore
         F048["F-048<br/>Plugin Metadata Reporting"]:::sdkCore
         F057["F-057<br/>ASA Opt-out"]:::sdkCore
@@ -20,10 +19,8 @@ flowchart TD
     end
 
     subgraph purchaseValidation ["purchaseValidation"]
-        F023["F-023<br/>IAP Validation V1"]:::purchaseValidation
         F024["F-024<br/>IAP Validation V2"]:::purchaseValidation
         F025["F-025<br/>Receipt Sandbox Toggle"]:::purchaseValidation
-        F038["F-038<br/>Legacy Validation Callback"]:::purchaseValidation
         F049["F-049<br/>Purchase Connector Config"]:::purchaseValidation
         F050["F-050<br/>StoreKit Version Selection"]:::purchaseValidation
         F051["F-051<br/>Android Validation Listeners"]:::purchaseValidation
@@ -38,7 +35,6 @@ flowchart TD
         F022["F-022<br/>Push Deep-Link Path Config"]:::deepLinking
         F031["F-031<br/>Push Notification Data Handling"]:::deepLinking
         F035["F-035<br/>Conversion Data Callback"]:::deepLinking
-        F036["F-036<br/>App-Open Attribution Callback"]:::deepLinking
         F037["F-037<br/>UDL Callback & Models"]:::deepLinking
         F039["F-039<br/>Native iOS Deep-Link Entry Points"]:::deepLinking
         F040["F-040<br/>Android New-Intent Forwarding"]:::deepLinking
@@ -54,17 +50,13 @@ flowchart TD
     F002 --> F001
     F011 --> F001
     F011 --> F002
-    F021 --> F015
     F035 --> F001
-    F036 --> F001
     F037 --> F001
     F048 --> F001
     F057 --> F001
     F058 --> F001
     F059 --> F001
 
-    F023 --> F025
-    F023 --> F038
     F024 --> F025
     F049 --> F051
     F049 --> F052
@@ -113,7 +105,7 @@ flowchart LR
     F059["F-059 · Debug Logging Toggle"]:::sdkCore
     F011["F-011 · TCF/DMA Auto Consent"]:::sdkCore
 
-    F001 -->|"gates start until manual-start configured"| F002
+    F001 -->|"init validates options; app calls startSDK() per foreground cycle"| F002
     F001 -->|"applies init-time disable flag"| F034
     F001 -->|"sets UDL registration flag"| F037
     F001 -->|"reports plugin type/version inline"| F048
@@ -121,7 +113,7 @@ flowchart LR
     F001 -->|"applies init-time ASA opt-out"| F057
     F001 -->|"applies init-time ATT wait timeout"| F058
     F001 -->|"applies init-time debug flag"| F059
-    F002 -->|"deferred start once CMP consent confirmed"| F011
+    F002 -->|"app defers startSDK() until CMP consent confirmed"| F011
 
     classDef sdkCore fill:#4C6EF5,color:#fff
     classDef deepLinking fill:#E64980,color:#fff
@@ -135,13 +127,10 @@ flowchart LR
 | Feature | Depends On | Note |
 |---------|-----------|------|
 | F-002 | F-001 | SDK session start only makes sense after init/options have been validated and passed to native |
-| F-011 | F-001 | TCF auto-consent collection requires manual-start init configuration |
-| F-011 | F-002 | TCF auto-consent defers the actual `startSDK()` call until CMP consent is confirmed |
+| F-011 | F-001 | TCF auto-consent collection is configured as an init-time option |
+| F-011 | F-002 | TCF auto-consent defers the app's `startSDK()` call until CMP consent is confirmed |
 | F-014 | F-037 | Manual deep-link re-trigger forces the native SDK to re-run the same UDL resolution path |
-| F-021 | F-015 | iOS routes `setCustomerIdAndLogSession` to the identical native handler as plain `setCustomerUserId` |
 | F-022 | F-037 | Push-notification deep-link path config only matters once a payload reaches UDL resolution |
-| F-023 | F-025 | iOS validates against the sandbox/production endpoint set by the receipt-validation toggle |
-| F-023 | F-038 | V1 validation delivers its async result through the legacy purchase-validation callback |
 | F-024 | F-025 | iOS validates against the sandbox/production endpoint set by the receipt-validation toggle |
 | F-027 | F-028 | Invite-link generation needs a base OneLink ID configured at runtime |
 | F-027 | F-056 | Invite-link generation needs a base OneLink ID configured at init time (whichever wrote last wins) |
@@ -149,7 +138,6 @@ flowchart LR
 | F-029 | F-027 | iOS cross-promotion reuses the same invite-URL generator helper as invite-link generation |
 | F-031 | F-022 | Push notification data handling resolves deep links using the registered JSON key-path |
 | F-035 | F-001 | Conversion data delivery is gated by SDK init/start having registered the listener |
-| F-036 | F-001 | App-open attribution delivery is gated by SDK init/start having registered the listener |
 | F-037 | F-001 | UDL listener/delegate registration is gated by the UDL flag set during init |
 | F-037 | F-039 | UDL resolution on iOS is fed by the native URL-scheme/Universal-Link/Scene entry points |
 | F-037 | F-040 | UDL resolution on Android is fed by the new-intent forwarding entry point |

@@ -4,73 +4,63 @@ name: In-App Purchase Validation V2 (cross-platform)
 type: purchaseValidation
 platform: both
 status: active
-last_verified: 2026-07-15
+last_verified: 2026-07-29
 depends_on: ["F-025"]
 ---
 
 ## Business Purpose
-`validateAndLogInAppPurchaseV2` replaces the deprecated, platform-specific V1 APIs (F-023) with a single cross-platform entry point built around the `AFPurchaseDetails` model, so app developers write one call site instead of branching on `Platform.isAndroid`/`Platform.isIOS`. It lets AppsFlyer verify purchase/subscription revenue against the store (Google Play or App Store) and, unlike V1, returns the actual validation result (or a structured error) directly on the `Future`, so the app can react to a failed validation (e.g. refuse to unlock content) at the call site instead of wiring a separate global listener. Without this feature, apps would have to fall back to the deprecated, harder-to-use, fire-and-forget V1 APIs to get server-side purchase validation at all.
-
-> TODO: enrich from product specs — provide a Notion database URL and re-run Phase 4 to fill this automatically.
+`validateAndLogInAppPurchaseV2` is the single cross-platform entry point for server-side purchase validation, built around the `AFPurchaseDetails` model, so app developers write one call site instead of branching on `Platform.isAndroid`/`Platform.isIOS`. It lets AppsFlyer verify purchase/subscription revenue against the store (Google Play or App Store) and returns the actual validation result (or throws a structured error) directly on the `Future`, so the app can react to a failed validation (e.g. refuse to unlock content) at the call site. It replaces the removed V1 APIs (F-023).
 
 ---
 
 ## Trigger
-Called by the host app after it detects a completed purchase or subscription renewal from the platform store, whenever it wants a synchronous (awaited) validation result back from AppsFlyer.
+Called by the host app after it detects a completed purchase or subscription renewal from the platform store, whenever it wants an awaited validation result back from AppsFlyer.
 
 ---
 
 ## Call Chain
+Routed through the generic RPC with `awaitResponse` so the native reply carries the validation result. The Dart layer shapes the params differently per platform, but both dispatch the same RPC method name, `validateAndLogInAppPurchase`.
 ```
-AppsflyerSdk.validateAndLogInAppPurchaseV2(purchaseDetails, {additionalParameters})        [lib/src/appsflyer_sdk.dart]
-  → _methodChannel.invokeMethod("validateAndLogInAppPurchaseV2", {
-        'purchaseDetails': purchaseDetails.toMap(),      // {purchaseType, purchaseToken, productId}  [lib/src/af_purchase_details.dart]
-        'additionalParameters': additionalParameters,
-    })
-    → Android: AppsflyerSdkPlugin.onMethodCall case "validateAndLogInAppPurchaseV2" → validateAndLogInAppPurchaseV2(call, result)   [android/.../AppsflyerSdkPlugin.java]
-      → mapPurchaseType(purchaseTypeString)  // "subscription" → AFPurchaseType.SUBSCRIPTION, "one_time_purchase" → AFPurchaseType.ONE_TIME_PURCHASE
-      → new AFPurchaseDetails(purchaseType, purchaseToken, productId)
-      → AppsFlyerLib.getInstance().validateAndLogInAppPurchase(purchaseDetails, additionalParameters, AppsFlyerInAppPurchaseValidationCallback)
-        → onInAppPurchaseValidationFinished(...) → result.success(flutterResult)
-        → onInAppPurchaseValidationError(...)    → result.error("VALIDATION_ERROR", errorMessage, flutterErrorResult)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall case "validateAndLogInAppPurchaseV2" → validateAndLogInAppPurchaseV2:result:   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
-      → maps purchaseType string to AFSDKPurchaseType, purchaseToken → transactionId
-      → new AFSDKPurchaseDetails(productId, transactionId, purchaseType)
-      → [AppsFlyerLib shared] validateAndLogInAppPurchase:purchaseAdditionalDetails:completion:
-        → completion(response, nil)   → result(response)
-        → completion(nil, error)      → result([FlutterError code:"VALIDATION_ERROR" ...])
+AppsflyerSdk.validateAndLogInAppPurchaseV2(purchaseDetails, {additionalParameters})   [lib/src/appsflyer_sdk.dart]
+  → iOS params:   {product:{productId}, transaction:{transactionId, purchaseType}, additionalParameters}
+  → Android params: {...purchaseDetails.toMap(), additionalParameters, awaitResponse:true}
+  → _executeRpc('validateAndLogInAppPurchase', params)                                 // MethodChannel af-api → executeRpc
+    → Android: AppsflyerSdkPlugin.executeRpc → dispatchRpc('validateAndLogInAppPurchase', ...)  [android/.../AppsflyerSdkPlugin.java]
+      → AppsFlyerRpcHandler.execute(json) → AppsFlyerLib.validateAndLogInAppPurchase(...)       [plugin_bridge module]
+    → iOS: AppsflyerSdkPlugin.executeRpc → dispatchRpc:method:@"validateAndLogInAppPurchase"    [ios/.../AppsflyerSdkPlugin.m]
+      → [AppsFlyerRPCBridge shared] executeJson:completion: → AFRPCRequestHandler → SDK
+      → unwrapValueForMethod: returns the `data` map (or {}) for this method
 ```
+On success the native reply resolves the `Future` with the validation-result map; on failure the reply throws a `PlatformException`.
 
 ---
 
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `validateAndLogInAppPurchaseV2(AFPurchaseDetails, {additionalParameters})` |
-| `lib/src/af_purchase_details.dart` | `AFPurchaseDetails` model (`purchaseType`, `purchaseToken`, `productId`) and `AFPurchaseType` enum (`oneTimePurchase`, `subscription`); `toMap()` serializes `purchaseType` to `"one_time_purchase"` / `"subscription"` strings for the channel |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `validateAndLogInAppPurchaseV2(MethodCall, Result)` handler; `mapPurchaseType(String)` translates the Dart string enum to the native `AFPurchaseType` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `validateAndLogInAppPurchaseV2:result:` handler; inline string comparison maps to `AFSDKPurchaseType` (note: `purchaseToken` from Dart is passed as iOS `transactionId`) |
+| `lib/src/appsflyer_sdk.dart` | `validateAndLogInAppPurchaseV2(AFPurchaseDetails, {Map<String,String>? additionalParameters})` → `Future<Map<String,dynamic>>`; builds platform-specific params and awaits the `validateAndLogInAppPurchase` RPC |
+| `lib/src/af_purchase_details.dart` | `AFPurchaseDetails` model (`purchaseType`, `purchaseToken`, `productId`) and `AFPurchaseType` enum (`oneTimePurchase`, `subscription`); `toMap()` serializes `purchaseType` to `"one_time_purchase"` / `"subscription"` |
+| `android/.../AppsflyerSdkPlugin.java` | No per-method handler — generic `executeRpc` → `dispatchRpc('validateAndLogInAppPurchase', ...)` |
+| `ios/.../AppsflyerSdkPlugin.m` | No per-method handler; generic dispatch, with `unwrapValueForMethod:` returning the `data` map for `validateAndLogInAppPurchase` |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `purchaseDetails` (`AFPurchaseDetails` → map with `purchaseType` string, `purchaseToken`, `productId`), `additionalParameters` (`Map<String, String>?`, optional). |
-| **Output** | `Future<Map<String, dynamic>>` — resolves with the native SDK's validation-finished result map on success; on failure the platform channel throws (Android: `PlatformException` with code `"VALIDATION_ERROR"` or `"INVALID_ARGUMENTS"`/`"INVALID_PURCHASE_TYPE"`; iOS: `PlatformException` with code `"VALIDATION_ERROR"` or `"INVALID_ARGUMENTS"`, details include `error_code`/`error_domain`). Unlike V1 (F-023), the result is delivered synchronously on the same `Future` — no separate listener is needed. |
+| **Input** | `purchaseDetails` (`AFPurchaseDetails` — `purchaseType`, `purchaseToken`, `productId`); `additionalParameters` (`Map<String, String>?`, optional). On iOS, `purchaseToken` is sent as the transaction id and only one-time vs. subscription is distinguished |
+| **Output** | `Future<Map<String, dynamic>>` — resolves with the native SDK's validation-result map on success (empty map if the native reply carries no data); on failure the platform channel throws a `PlatformException` |
 
 ---
 
 ## Tests
-No dedicated test found. `test/appsflyer_sdk_test.dart` does not register a mock handler for `"validateAndLogInAppPurchaseV2"` or call `validateAndLogInAppPurchaseV2` anywhere; the only purchase-validation test present covers the deprecated `validateAndLogInAppAndroidPurchase` (F-023). The `example/` app does exercise this method (`example/lib/main_page.dart`, `validatePurchase()` helper), but that is a manual/demo path, not an automated test.
+`test/appsflyer_sdk_test.dart` — `validateAndLogInAppPurchaseV2 returns the result map` registers a mock reply for the `validateAndLogInAppPurchase` RPC and asserts the awaited result map is returned.
 
 ---
 
 ## Known Limitations
-- No automated test coverage — a regression in the `purchaseType` string values (`"one_time_purchase"` / `"subscription"`), which must match exactly across `af_purchase_details.dart`, `AppsflyerSdkPlugin.java`'s `mapPurchaseType`, and the iOS string comparison, would not be caught by CI.
-- The field name is inconsistent across platforms: Dart/Android call it `purchaseToken`, but the iOS handler maps that same value onto `transactionId` (`NSString* transactionId = purchaseDetailsMap[@"purchaseToken"];`) — functionally correct today, but a naming trap for anyone reading only one side of the bridge.
-- Invalid `purchaseType` strings are handled inconsistently in shape: Android returns a distinct `"INVALID_PURCHASE_TYPE"` error code, while iOS silently defaults any non-`"subscription"` string to `AFSDKPurchaseTypeOneTimePurchase` instead of validating and erroring — a typo'd purchase type on iOS would silently validate as the wrong purchase type rather than fail loudly.
-
+- iOS silently defaults any non-`"subscription"` purchase type to a one-time purchase rather than validating and erroring, so a typo'd purchase type on iOS validates as the wrong type instead of failing loudly.
+- The Dart field is named `purchaseToken` but is mapped onto the iOS transaction id — functionally correct, but a naming trap for anyone reading only one side of the bridge.
 ---
 
 ## Dependencies

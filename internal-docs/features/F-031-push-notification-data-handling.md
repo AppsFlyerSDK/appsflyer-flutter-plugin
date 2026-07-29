@@ -4,68 +4,64 @@ name: Push Notification Data Handling
 type: deepLinking
 platform: both
 status: active
-last_verified: 2026-07-15
+last_verified: 2026-07-29
 depends_on: ["F-022"]
 ---
 
 ## Business Purpose
-Push-notification re-engagement campaigns need to be measured (so their ROI shows up in AppsFlyer reporting) and, when the payload carries a OneLink URL, routed as a deep link into the right in-app screen. `sendPushNotificationData` hands the raw push payload to the native SDK so it can attribute the re-engagement and, if a deep-link path was configured (F-022), extract and resolve the embedded OneLink URL. Without this, push campaigns cannot be measured for re-engagement and push-embedded deep links never reach the SDK for resolution. The older `setPushNotification(bool)` toggle is deprecated in favor of this data-carrying API.
+Push-notification re-engagement campaigns need to be measured (so their ROI shows up in AppsFlyer reporting) and, when the payload carries a OneLink URL, routed as a deep link into the right in-app screen. `sendPushNotificationData` hands the push payload to the native SDK so it can attribute the re-engagement and, if a deep-link path was configured (F-022), extract and resolve the embedded OneLink URL. Without this, push campaigns cannot be measured for re-engagement and push-embedded deep links never reach the SDK for resolution.
 
-> TODO: enrich from product specs — provide a Notion database URL and re-run Phase 4 to fill this automatically.
+> The legacy `setPushNotification(bool)` toggle was **removed in SDK 7**; `sendPushNotificationData(Map)` is the only push API. See [migration guide](/doc/migration-guide.md).
 
 ---
 
 ## Trigger
-Called by the host app whenever a push notification is received or tapped (foreground, background, or — via a persisted "pending push" pattern documented in `doc/API.md` — after a cold launch from a terminated state), passing the notification's data payload.
+Called by the host app whenever a push notification is received or tapped (foreground, background, or after a cold launch from a terminated state via a persisted "pending push" pattern), passing the notification's data payload.
 
 ---
 
 ## Call Chain
+Since the SDK 7 / RPC migration this is a generic RPC call (no per-method channel handler). The Dart wrapper **branches by platform**: Android reshapes the map into the structured `AFPushData` fields the bridge expects and sends `sendPushNotificationData`; iOS forwards the raw APNs payload under `handlePushNotification`.
 ```
-AppsflyerSdk.sendPushNotificationData(Map? userInfo)                                 [lib/src/appsflyer_sdk.dart]
-  → _methodChannel.invokeMethod("sendPushNotificationData", userInfo)
-    → Android: AppsflyerSdkPlugin.onMethodCall("sendPushNotificationData") → sendPushNotificationData(call, result)   [android/.../AppsflyerSdkPlugin.java]
-      → jsonToBundle(pushPayload) → Bundle
-      → activity.getIntent().putExtras(bundle); activity.setIntent(intent)
-      → AppsFlyerLib.getInstance().sendPushNotificationData(activity)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("sendPushNotificationData") → sendPushNotificationData:result:   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
-      → [[AppsFlyerLib shared] handlePushNotification:userInfo]
-
-AppsflyerSdk.setPushNotification(bool isEnabled)   [DEPRECATED, use sendPushNotificationData instead]
-  → _methodChannel.invokeMethod("setPushNotification", isEnabled)
-    → Android: setPushNotification(call, result) → AppsFlyerLib.getInstance().sendPushNotificationData(activity)   [the isEnabled arg itself is never read]
-    → iOS: setPushNotification:result: → stores `_isPushNotificationEnabled` static BOOL   [never read anywhere else in the file]
+AppsflyerSdk.sendPushNotificationData(Map? userInfo)                                   [lib/src/appsflyer_sdk.dart]
+  → Android: _executeRpc('sendPushNotificationData',
+        {'campaign', 'pid', 'isRetargeting', 'additionalParameters'})   // MethodChannel af-api → executeRpc
+      → AppsflyerSdkPlugin.executeRpc → dispatchRpc('sendPushNotificationData', ...)   [android/.../AppsflyerSdkPlugin.java]
+        → AppsFlyerRpcHandler.execute(json) → AppsFlyerLib.getInstance().sendPushNotificationData(...)   [plugin_bridge]
+  → iOS: _executeRpc('handlePushNotification', {'pushPayload': userInfo})              // raw APNs userInfo
+      → AppsflyerSdkPlugin executeRpc → dispatchRpc('handlePushNotification')          [ios/.../AppsflyerSdkPlugin.m]
+        → AppsFlyerRPCBridge → [AppsFlyerLib shared] handlePushNotification: → onDeepLinking (F-037)
 ```
+Any OneLink URL found at the configured path (F-022) is resolved and delivered asynchronously over the `af-events` EventChannel as the `onDeepLinking` envelope (F-037).
 
 ---
 
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `sendPushNotificationData(Map?)` (active) and `setPushNotification(bool)` (`@Deprecated`) |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `sendPushNotificationData` — converts the JSON payload to a `Bundle` via `jsonToBundle`, stuffs it into the current activity's intent extras, then calls `AppsFlyerLib.getInstance().sendPushNotificationData(activity)`; `setPushNotification` — ignores its boolean argument and just re-invokes `sendPushNotificationData(activity)` with whatever extras are already on the intent |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `sendPushNotificationData:result:` — passes `userInfo` straight to `[AppsFlyerLib shared] handlePushNotification:]`; `setPushNotification:result:` — stores an unused static flag |
+| `lib/src/appsflyer_sdk.dart` | `sendPushNotificationData(Map? userInfo)` — Android maps the payload into structured `{campaign, pid, isRetargeting, additionalParameters}` fields (reading those keys off `userInfo`); iOS forwards the raw payload under `{pushPayload}` to the `handlePushNotification` RPC. Fire-and-forget (`void`). |
+| `android/.../AppsflyerSdkPlugin.java` / `ios/.../AppsflyerSdkPlugin.m` | No per-method handler — the generic `executeRpc` dispatch forwards the JSON envelope to the native RPC bridge. |
+| `android/.../plugin_bridge` / `AppsFlyerRPC` framework (native SDKs, not the Flutter plugin) | Parse the request and call `sendPushNotificationData` (Android) / `handlePushNotification:` (iOS). |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `userInfo` / `pushPayload` (`Map?`) — the push notification's data payload (e.g. FCM/APNs message data) |
-| **Output** | `void`. Android: if `pushPayload` is null, the handler logs and returns **without ever calling `result.success`/`result.error`**; if `activity`/`activity.getIntent()` is null, it logs an error message but, again, never calls `result(...)`. iOS: always calls `result(nil)`. Neither platform returns parsed deep-link data directly — any resolved OneLink URL is delivered asynchronously via the UDL `onDeepLinking` callback (F-037), gated by the path configured in F-022. |
+| **Input** | `userInfo` (`Map?`). **Platform-specific shape**: on Android, the wrapper expects a structured map with `campaign` and `pid` plus optional `isRetargeting`/`additionalParameters` (the AFPushData shape); on iOS, the raw APNs `userInfo` dictionary. |
+| **Output** | `void` — fire-and-forget; the Dart wrapper discards the RPC Future. Any resolved OneLink URL is delivered asynchronously via the `onDeepLinking` callback (F-037), gated by the path configured in F-022. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` — `check sendPushNotificationData call` (around line 335) asserts the mocked channel receives `sendPushNotificationData` with the payload map; this exercises only the Dart-to-channel dispatch, not native bundle conversion, intent mutation, or deep-link extraction. No test covers the deprecated `setPushNotification`.
+`test/appsflyer_sdk_test.dart` — `check sendPushNotificationData call` asserts the mocked `af-api` channel receives the `executeRpc` dispatch with the payload; it exercises only the Dart-to-channel dispatch, not native attribution or deep-link extraction.
 
 ---
 
 ## Known Limitations
-- **Significant Android/iOS asymmetry**: Android re-derives the push payload by mutating the *current activity's intent* (`putExtras` + `setIntent`) and re-running `sendPushNotificationData(activity)`, which only works if an `activity` and its `intent` are currently available; iOS passes the raw `NSDictionary` payload directly to `handlePushNotification:`, with no intent/activity dependency. The two platforms' failure modes for a "no activity" state are therefore completely different.
-- **Silent failure path on Android**: when `pushPayload` is null, or when `activity`/`intent` is null, the native handler returns without ever calling `result.success(null)` or `result.error(...)`. Since the Dart `sendPushNotificationData` is `void` and not awaited, this is invisible to the caller — pending method-channel replies are simply never sent, though because Dart doesn't await them this manifests only as silently dropped data rather than a hang.
-- **Deprecated `setPushNotification` behaves differently per platform**: on Android it *actively* re-sends whatever is already in the intent extras to the native SDK regardless of the `isEnabled` value passed in (the argument is read from the channel but never inspected); on iOS it only stores an internal flag (`_isPushNotificationEnabled`) that is never read anywhere else in `AppsflyerSdkPlugin.m` — so on iOS, calling the deprecated API has no observable effect on the native SDK at all.
-- The iOS "MUST also call `sendPushNotificationData`" requirement for OneLink-URL-in-push deep linking (per `doc/API.md`) is not enforced anywhere in code — an integrator who configures `addPushNotificationDeepLinkPath` (F-022) but skips this call on iOS gets no deep-link resolution and no error signal.
+- **Platform-specific payload shape**: Android needs the structured `AFPushData` fields (`campaign`, `pid`, …); passing the raw APNs dictionary on Android yields empty `campaign`/`pid`. iOS expects the raw APNs `userInfo`. Callers must supply the correct shape per platform.
+- **iOS requires this call for push deep links** (per `doc/deep-linking.md`): configuring `addPushNotificationDeepLinkPath` (F-022) on iOS does nothing until the payload is forwarded here; nothing in code enforces it.
+- Fire-and-forget: a native rejection (e.g. empty iOS payload) surfaces only as a swallowed unhandled async error, not to the caller.
 
 ---
 

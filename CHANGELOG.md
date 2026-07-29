@@ -1,5 +1,78 @@
 # Versions
 
+## 7.0.0
+
+Migration to **AppsFlyer SDK 7** with a full RPC architecture. This is a major release with breaking changes — see the [v6 → v7 migration guide](/doc/migration-guide.md) and the notes below.
+
+> **API Removal Rule — _Preserve SDK 7 behavior, not SDK 6 APIs._** Any public API removed from the native AppsFlyer SDK 7 is also removed from this plugin; obsolete SDK 6 APIs are not kept for backward compatibility.
+
+- Updated Android SDK to **7.0.1** (`com.appsflyer:af-android-sdk-bom:7.0.1`, now including `af-android-plugin-bridge`)
+- Updated iOS SDK to **7.0.1** (`AppsFlyerRPC 7.0.12`, which pins `AppsFlyerFramework 7.0.1`)
+- Updated iOS Purchase Connector to **7.0.1**
+- iOS minimum deployment target raised to **13.0**
+- Documentation reorganized under `doc/` (see [documentation index](/doc/README.md)); update bookmarks from legacy names such as `API.md` / `DeepLink.md` to the new guides listed there.
+
+**Architecture**
+
+- Every call now routes through the native RPC bridges — Android `AppsFlyerRpcHandler` and iOS `AFRPCRequestHandler` — instead of calling the SDK directly. The Flutter layer is a thin bridge; business logic stays in the native SDKs.
+
+**BREAKING**
+
+- Removed `manualStart` from `AppsFlyerOptions`. In SDK 7 `initSdk()` only initializes the SDK; a session (Launch) is sent only when you call `startSDK()`.
+- `startSDK()` must be called **once per foreground cycle** — the native SDK resets its "started" state on every background. Call it from inside `registerSessionReadyListener`, which fires once per foreground cycle (after any launch deep link resolves):
+
+```dart
+appsflyer.registerSessionReadyListener((_) => appsflyer.startSDK());
+```
+
+- Removed `onAppOpenAttribution` (OAOA) and the `registerOnAppOpenAttributionCallback` flag on `initSdk`. Use `onDeepLinking` / `registerOnDeepLinkingCallback` (Unified Deep Linking) instead.
+- Setter values (`setCustomerUserId`, `setCurrencyCode`, `setAdditionalData`, `setConsentData`, `anonymizeUser`, …) are now **runtime-only on both platforms** — Android no longer persists them across process restarts. Re-apply your configuration setters on every cold start, before `startSDK()`.
+- Removed `setUserEmails` — superseded by the hashed `setUserEmail` setter (the multi-email crypt path is not exposed by the SDK 7 RPC bridges).
+- Replaced `performOnDeepLinking()` with `performDeepLinking(url, {shouldTriggerSession})`.
+- **Removed APIs that no longer exist in the native SDK 7** (see the [migration guide](/doc/migration-guide.md)):
+  - `validateAndLogInAppIosPurchase` / `validateAndLogInAppAndroidPurchase` (V1) → use `validateAndLogInAppPurchaseV2`
+  - `setPushNotification` → use `sendPushNotificationData`
+  - `enableUninstallTracking` → use `updateServerUninstallToken`
+  - `setCollectIMEI`, `waitForCustomerUserId`, and `setCustomerIdAndLogSession` (removed natively — for the CUID flow, call `setCustomerUserId()` before `startSDK()`)
+- Removed `setImeiData` and `setAndroidIdData` — they still exist in the native SDK 7 but are not reachable through the SDK 7 RPC bridges.
+- Removed the `EmailCryptType` enum (only used by the removed `setUserEmails`).
+- Renamed the Unified Deep Linking result enum `Error` → `DeepLinkError` (it shadowed `dart:core Error`). `DeepLinkResult.error` still exists; its type is now `DeepLinkError?`. Update any code that referenced the `Error` enum by name.
+- `logEvent` no longer returns `Future<bool?>`. It is now `void logEvent(eventName, eventValues, {RequestSuccessListener? onSuccess, RequestErrorListener? onError})`, mirroring `startSDK` (both share the native `AppsFlyerRequestListener` bridge). Pass `onSuccess`/`onError` to observe the server request result; omit them for fire-and-forget. Replace `await appsflyer.logEvent(name, values)` with `appsflyer.logEvent(name, values)`, and `logEvent(name, values, awaitResponse: true)` with the `onSuccess`/`onError` callback form.
+- `setAdditionalData` now takes a **non-null** `Map<String, dynamic>` (was nullable). Pass an empty map `{}` to clear (the iOS RPC rejects a missing map). `setHost` now requires both `hostPrefix` and `hostName` to be non-empty (the iOS RPC rejects an empty prefix) — it is a no-op on both platforms when either is empty.
+- `setConsentDataV2` now **requires** `isUserSubjectToGDPR` (was an optional `bool?`), and throws an `ArgumentError` when `isUserSubjectToGDPR` is `true` but `consentForDataUsage` or `consentForAdsPersonalization` is omitted. This mirrors the native iOS contract (which previously rejected such calls and silently swallowed the error, while Android silently coerced the values), making the behavior consistent and surfacing the mistake. Always pass `isUserSubjectToGDPR`; for GDPR users also pass the two consent flags.
+- Removed `onPurchaseValidation` — it observed a `"validatePurchase"` event that the SDK 7 plugin no longer emits (the legacy V1 receipt-validation flow it served was removed in this release). Read the validation result from the `Future` returned by `validateAndLogInAppPurchaseV2` instead.
+
+**Added**
+
+- Session Ready lifecycle APIs: `registerSessionReadyListener`, `unregisterSessionReadyListener`, and `isSessionReady`.
+- Hashed-PII setters (SHA-256, hashed on-device by the SDK): `setUserEmail`, `setUserPhone`, `setUserFirstName`, `setUserLastName`, and `clearUserPii`.
+- `setUserFbLoginId(String fbLoginId)` — sets the Facebook App-Scoped ID. Unlike the other `setUser*` fields it is **not hashed** (sent as a number); pass a numeric string (non-numeric input is ignored), and `"0"` clears it. The plugin normalizes to a 64-bit integer and sends the same value on both platforms.
+- `performDeepLinking(url, {shouldTriggerSession})` for manual deep link resolution and `setDeepLinkTimeout(timeoutMs)`.
+- `appendParametersToDeepLinkingURL(contains, parameters)` for appending custom parameters to deep-link URLs matching a substring (parity with native SDK 7 on both platforms).
+- `setFacebookDeferredAppLink(url)` (**iOS only**) to manually set/clear the Facebook deferred app-link URL (`null` clears; no-op on Android — no native equivalent).
+- `unregisterConversionDataListener()` to drop the `onInstallConversionData` Dart observer (observer-only, same semantics as `unregisterSessionReadyListener`; parity with the Cordova plugin).
+- `getAttributionId()` (**Android only**) to read the Facebook (Katana) attribution ID (returns `null` on iOS — no native equivalent). Parity with the native Android SDK/RPC.
+- `logEvent(eventName, eventValues, {onSuccess, onError})` — optional `onSuccess`/`onError` to observe the SDK request result (HTTP 200 → `onSuccess()`; failure, e.g. codes 41/42 → `onError(code, message)`), sharing the same `AppsFlyerRequestListener` bridge as `startSDK`. Omit the callbacks for fire-and-forget (the previous default behavior).
+- `logLocation(latitude, longitude)` for manual device-location logging (Android + iOS; parity with the native SDK/RPC and the Cordova plugin).
+- `logSession()` (**Android only**) for manual session logging in background utility apps (no-op on iOS, which reports sessions via the SDK 7 session model / `startSDK`). Parity with the native Android SDK/RPC.
+- `setInstallId(installId)` to set a unique install id for the app installation (parity with the native SDK 7 RPC on both platforms and the Cordova plugin). Call it before `startSDK()`.
+- `setPreinstallAttribution(mediaSource, campaign, siteId)` (**Android only**) to attribute an OEM/manufacturer device preinstall (no-op on iOS — preinstall attribution relies on the Android install-referrer mechanism). Parity with the native Android SDK/RPC and the Cordova plugin. Call it before `startSDK()`.
+- `setAppId(appId)` (**Android only**) to override the app ID reported to AppsFlyer (no-op on iOS, where the app ID is provided at init via `appleAppID`; the iOS RPC has no `setAppId`). An empty value is ignored. Parity with the native Android SDK/RPC and the Cordova plugin. Call it before `startSDK()`.
+- `isStopped()` (**Android only**) getter returning whether the SDK is currently stopped (returns `null` on iOS — the iOS RPC has no `isStopped` getter). Parity with the native Android SDK/RPC and the Cordova plugin.
+- `isPreInstalledApp()` (**Android only**) getter returning whether the install was a device preinstall (OEM/manufacturer); returns `null` on iOS (no native equivalent — preinstall relies on the Android install-referrer). Parity with the native Android SDK/RPC and the Cordova plugin.
+- `disableIDFVCollection(disable)` (**iOS only**) to stop the SDK from collecting the IDFV (no-op on Android — IDFV is Apple-only). Set it before `startSDK()`.
+- `setShouldCollectDeviceName(collect)` (**iOS only**) to opt in to collecting the device name (off by default; device name is PII). No-op on Android. Set it before `startSDK()`.
+- `disableAppleAdsAttribution(disable)` (**iOS only**) to disable Apple Search Ads attribution via the AdServices framework (`AAAttribution.attributionToken`, iOS 14.3+). Companion of the `disableCollectASA` init option — the iOS SDK needs both to fully suppress ASA attribution. No-op on Android.
+- `setAppInviteOneLinkID(oneLinkID, [callback])` — the `callback` is now **optional** (`setAppInviteOneLink` is a plain setter, so it only signals a static `"success"`). Existing calls that pass a callback keep working.
+- `useUninstallSandbox(isSandboxEnabled)` (**iOS only**) to enable sandbox mode for uninstall-measurement validation (companion of `useReceiptValidationSandbox`; no-op on Android).
+- `logInvite(channel, [eventParameters])` to log the `af_invite` in-app event for the User Invite feature — the companion to `generateInviteLink` (parity with the native SDK 7 RPC on both platforms and the Cordova plugin).
+
+**Fixed**
+
+- `logAdRevenue` with `AFMediationNetwork.customMediation` or `AFMediationNetwork.directMonetizationNetwork` was silently dropped on iOS (their identifiers are rejected by the iOS SDK, and the call is fire-and-forget). The plugin now remaps just those two to the iOS `custom` / `directmonetization` identifiers, so every `AFMediationNetwork` value works on both platforms.
+- Purchase Connector: removed stray `[AppsFlyer_PC_Debug]` `print` logging that shipped in release builds; the callback handler now accepts both JSON-string and already-decoded `Map` payloads and logs (instead of throwing) on an unrecognized callback name.
+- Purchase Connector (**Android**): subscription and in-app validation-result listeners (`setSubscriptionValidationResultListener` / `setInAppValidationResultListener`) never fired — the Dart callback-name constants used a `#` separator while the native side invokes the channel with `:`, so the handler's `switch` never matched. Aligned the Dart constants to `:`, so these result listeners now deliver.
+
 ## 6.18.0
 
 - Updated Android SDK from 6.17.6 to 6.18.0

@@ -4,14 +4,12 @@ name: Custom/Branded OneLink Domains
 type: oneLinkAndGrowth
 platform: both
 status: active
-last_verified: 2026-07-15
+last_verified: 2026-07-29
 depends_on: []
 ---
 
 ## Business Purpose
 Apps that use a custom/branded domain for their OneLinks (instead of the default `*.onelink.me` domain) need the native SDK to recognize those domains as valid AppsFlyer deep-link/OneLink hosts — otherwise links on the branded domain would not be resolved/attributed correctly by the SDK when the app is opened via one of them. `setOneLinkCustomDomain` registers the list of branded domains with the native AppsFlyer SDK so it can correctly parse and attribute links served from them.
-
-> TODO: enrich from product specs — provide a Notion database URL and re-run Phase 4 to fill this automatically.
 
 ---
 
@@ -21,13 +19,18 @@ Called by the host app during setup/configuration, before relying on branded-dom
 ---
 
 ## Call Chain
+Since the SDK 7 / RPC migration this is a generic RPC call (no per-method channel handler): the Dart wrapper sends `{method:'setOneLinkCustomDomain', params:{domains:[...]}}` through the single `executeRpc` entry point (note the list is **wrapped in a `domains` map key**, not passed as the raw argument), and each platform's native RPC bridge parses it into a typed request and forwards it to the SDK.
 ```
-AppsflyerSdk.setOneLinkCustomDomain(brandDomains)                                 [lib/src/appsflyer_sdk.dart]
-  → _methodChannel.invokeMethod("setOneLinkCustomDomain", brandDomains)
-    → Android: AppsflyerSdkPlugin.onMethodCall("setOneLinkCustomDomain") → setOneLinkCustomDomain(call, result)   [android/.../AppsflyerSdkPlugin.java]
-      → AppsFlyerLib.getInstance().setOneLinkCustomDomain(brandDomainsArray) → result.success(null)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("setOneLinkCustomDomain") → setOneLinkCustomDomain:result:          [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
-      → [[AppsFlyerLib shared] setOneLinkCustomDomains:brandDomains] → result(nil)
+AppsflyerSdk.setOneLinkCustomDomain(List<String> brandDomains)                    [lib/src/appsflyer_sdk.dart]
+  → _executeRpc('setOneLinkCustomDomain', {'domains': brandDomains})   // MethodChannel af-api → executeRpc
+    → Android: AppsFlyerRpcHandler.execute(json)                                          [plugin_bridge/.../AppsFlyerRpcHandler.kt]
+      → JsonRpcRequestParser → SetOneLinkCustomDomainRequest(domains)  // init: require(domains.isNotEmpty())
+      → AppsFlyerLib.getInstance().setOneLinkCustomDomain(*domains.toTypedArray())
+      → RpcResponse.Success
+    → iOS: AppsFlyerRPCBridge / AFRPCRequestHandler                                        [AppsFlyerRPC framework]
+      → AFRPCParser → AFRPCSetOneLinkCustomDomainsRequest(domains)  // guard: !domains.isEmpty else validationError
+      → AFRPCComplexConfigHandler → sdk.oneLinkCustomDomains = domains  ([AppsFlyerLib shared])
+      → SDKSuccess("oneLinkCustomDomains set with N domain(s)")
 ```
 
 ---
@@ -35,29 +38,30 @@ AppsflyerSdk.setOneLinkCustomDomain(brandDomains)                               
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `setOneLinkCustomDomain(List<String>)` — public API, passes the list directly as the method-channel arguments (no wrapping map) |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `setOneLinkCustomDomain(call, result)` — casts `call.arguments` to `ArrayList<String>`, converts to `String[]`, forwards to `AppsFlyerLib.getInstance().setOneLinkCustomDomain(...)` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `setOneLinkCustomDomain:result:` — forwards `call.arguments` directly to `[AppsFlyerLib shared] setOneLinkCustomDomains:]` |
+| `lib/src/appsflyer_sdk.dart` | `setOneLinkCustomDomain(List<String> brandDomains)` — thin passthrough that sends the generic RPC `setOneLinkCustomDomain` with `{domains}`. Fire-and-forget (`void`); does not validate the list (see CR-036). |
+| `android/.../plugin_bridge` (native SDK, not the Flutter plugin) | `SetOneLinkCustomDomainRequest(domains)` — `init { require(domains.isNotEmpty()) }`; handler → `AppsFlyerLib.getInstance().setOneLinkCustomDomain(*domains.toTypedArray())` |
+| `AppsFlyerRPC` framework (native iOS SDK, not the Flutter plugin) | `AFRPCSetOneLinkCustomDomainsRequest(domains)` — guards `!domains.isEmpty` else `validationError`; `AFRPCComplexConfigHandler` → `sdk.oneLinkCustomDomains = domains` |
+| `android/.../AppsflyerSdkPlugin.java` / `ios/.../AppsflyerSdkPlugin.m` | No per-method handler — the generic `executeRpc` dispatch forwards the JSON envelope to the native RPC bridge above. |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `brandDomains` (`List<String>`) — sent as the raw method-channel argument, not wrapped in a map |
-| **Output** | `void` on both platforms; both native handlers call `result` with `null` unconditionally after forwarding to the native SDK, regardless of whether the domain list was valid |
+| **Input** | `brandDomains` (`List<String>`) — sent wrapped in the RPC params map under the `domains` key (`{'domains': brandDomains}`) |
+| **Output** | `void` — the Dart wrapper discards the `_executeRpc` Future (fire-and-forget). Native returns an RPC success/error, but Dart does not surface it (see CR-036). |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` — `check setOneLinkCustomDomain call` (line 157) asserts `setOneLinkCustomDomain(["brandDomains"])` dispatches the `"setOneLinkCustomDomain"` method with a `List` argument containing `"brandDomains"`. Native behavior on either platform is not exercised.
+`test/appsflyer_sdk_test.dart` → `'setOneLinkCustomDomain maps to domains'` verifies the Dart wrapper dispatches the `setOneLinkCustomDomain` RPC with the `domains` param. Native contract (empty-list rejection, SDK forwarding) is covered by the native SDK's own bridge tests (`RpcRequestValidationTest` / `AppsFlyerRPCParseNewMethodsTests`).
 
 ---
 
 ## Known Limitations
-- Android's cast `(ArrayList<String>) call.arguments` will throw a `ClassCastException` if the platform channel deserializes the Dart `List<String>` as a different concrete `List` implementation; this is untested and relies on Flutter's standard codec producing an `ArrayList`.
-- Neither platform validates the domain strings (e.g. well-formed host names) before forwarding them to the native SDK — malformed entries are the native SDK's responsibility to reject.
-- No callback/confirmation path exists — the call is fire-and-forget on both platforms with no way to detect misconfiguration from Dart.
+- **Empty list is rejected, but the Dart wrapper swallows it (CR-036)**: both native bridges reject an empty `domains` list (Android `require(domains.isNotEmpty())`, iOS `validationError`). The Dart method is fire-and-forget `void` (discards the `_executeRpc` Future — CR-007 class), so `setOneLinkCustomDomain([])` surfaces only as a swallowed unhandled async error with no caller feedback, and nothing is set. Dart does not pre-validate the list.
+- Neither the plugin nor the bridge validates the domain strings for well-formedness (e.g. valid host names) — malformed entries are the native SDK's responsibility to reject.
+- No success/confirmation is surfaced to Dart — the call is fire-and-forget, so a Dart caller cannot detect misconfiguration.
 
 ---
 

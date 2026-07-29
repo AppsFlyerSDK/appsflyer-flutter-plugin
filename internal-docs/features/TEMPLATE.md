@@ -3,7 +3,7 @@ id: F-NNN
 name: Feature Name
 type: [category]
 platform: [platform]
-status: active / planned / deprecated
+status: active / planned / deprecated / removed
 last_verified: YYYY-MM-DD
 depends_on: []
 ---

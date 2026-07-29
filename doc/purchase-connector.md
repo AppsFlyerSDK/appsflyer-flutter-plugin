@@ -1,5 +1,8 @@
 
-# Flutter Purchase Connector
+# Purchase Connector
+
+> **Audience:** apps measuring in-app purchase / subscription revenue. Requires the [core setup](getting-started.md). **iOS: CocoaPods only — not compatible with Swift Package Manager.**
+
 **At a glance:** Automatically validate and measure revenue from in-app purchases and auto-renewable subscriptions to get the full picture of your customers' life cycles and accurate ROAS measurements.
 For more information please check the following pages:
 *  [ROI360 in-app purchase (IAP) and subscription revenue measurement](https://support.appsflyer.com/hc/en-us/articles/7459048170769-ROI360-in-app-purchase-IAP-and-subscription-revenue-measurement?query=purchase)
@@ -81,7 +84,7 @@ appsflyer.enable_purchase_connector=true
 ```
 Once you set these properties, the Purchase Validation feature will be integrated into your project and you can utilize its functionality in your app.
 
-> ⚠️ **iOS + Swift Package Manager**: Purchase Connector requires **CocoaPods for the entire plugin** — there is no Swift Package Manager path for it, and it cannot currently be combined with Swift Package Manager for the Core integration either. This is a temporary limitation pending an upstream Flutter fix ([flutter/flutter#161182](https://github.com/flutter/flutter/issues/161182)). **If your app uses Purchase Connector, do not enable Swift Package Manager for this plugin — keep your `Podfile` and use CocoaPods for both Core and Purchase Connector.** If you enable SPM anyway, calling any Purchase Connector API will silently fail with a `MissingPluginException` — see the next section. SPM is only recommended for apps that don't use Purchase Connector at all (see [Installation.md](Installation.md#ios-swift-package-manager-spm-support)).
+> ⚠️ **iOS + Swift Package Manager**: Purchase Connector requires **CocoaPods for the entire plugin** — there is no Swift Package Manager path for it, and it cannot currently be combined with Swift Package Manager for the Core integration either. This is a temporary limitation pending an upstream Flutter fix ([flutter/flutter#161182](https://github.com/flutter/flutter/issues/161182)). **If your app uses Purchase Connector, do not enable Swift Package Manager for this plugin — keep your `Podfile` and use CocoaPods for both Core and Purchase Connector.** If you enable SPM anyway, calling any Purchase Connector API will silently fail with a `MissingPluginException` — see the next section. SPM is only recommended for apps that don't use Purchase Connector at all (see [installation-guide.md](installation-guide.md#ios-swift-package-manager-spm-support)).
 
 ### What Happens if You Use Dart Files Without Opting In?
 
@@ -156,7 +159,7 @@ Remember to set `sandbox` to `false` before releasing your app to production. If
 Start the SDK instance to observe transactions. </br>
 
 **⚠️ Please Note**
-> This should be called right after calling the `AppsflyerSdk` [start](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/blob/master/doc/BasicIntegration.md#startsdk).
+> This should be called right after calling the `AppsflyerSdk` [start](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/blob/master/doc/getting-started.md#startsdk).
 >  Calling `startObservingTransactions` activates a listener that automatically observes new billing transactions. This includes new and existing subscriptions and new in app purchases.
 >  The best practice is to activate the listener as early as possible.
 ```dart

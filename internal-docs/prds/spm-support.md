@@ -6,6 +6,8 @@ target: v6.18.0, end of July 2026
 
 # PRD: Swift Package Manager (SPM) Support
 
+> **⚠️ Superseded — historical planning record (do not treat as current).** This PRD targeted SPM support for the SDK **6.18.0** line (DELIVERY-125462, "target: v6.18.0"). The plugin has since migrated to **SDK 7 / RPC**: iOS now vendors the **AppsFlyerRPC 7.0.12** static xcframework as a `binaryTarget` (→ AppsFlyerFramework 7.0.1) and targets **iOS 13.0**. Current SPM state lives in `ios/appsflyer_sdk/Package.swift`, `internal-docs/features/F-060-swift-package-manager-support.md`, and `internal-docs/ARCHITECTURE.md`. Kept for context only.
+
 ## Problem
 
 The plugin's iOS integration ships only via CocoaPods (`ios/appsflyer_sdk.podspec`). Two industry shifts make this untenable on the current timeline:

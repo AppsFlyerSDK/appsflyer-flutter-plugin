@@ -4,58 +4,55 @@ name: SKAdNetwork Opt-out (iOS)
 type: platformIntegration
 platform: ios
 status: active
-last_verified: 2026-07-15
+last_verified: 2026-07-29
 depends_on: []
 ---
 
 ## Business Purpose
-Apple's SKAdNetwork is the privacy-preserving attribution framework AppsFlyer's iOS SDK uses automatically post-iOS 14. Some advertisers run their own SKAdNetwork conversion-value scheme, use a different measurement partner for it, or need to suppress AppsFlyer's SKAdNetwork registration/postback handling entirely for compliance or contractual reasons. `disableSKAdNetwork` lets the host app flip that behavior off (the SDK still sends the SKAdNetwork registration request, but AppsFlyer stops returning/acting on conversion-value rules) without disabling the rest of AppsFlyer attribution. Without it, an app that needs to hand SKAdNetwork off to another party would have no supported way to do so short of not integrating the AppsFlyer SDK's SKAdNetwork handling path at all.
-
-> TODO: enrich from product specs — provide a Notion database URL and re-run Phase 4 to fill this automatically.
+Apple's SKAdNetwork is the privacy-preserving attribution framework AppsFlyer's iOS SDK uses automatically post-iOS 14. Some advertisers run their own SKAdNetwork conversion-value scheme, use a different measurement partner for it, or need to suppress AppsFlyer's SKAdNetwork registration/postback handling entirely for compliance or contractual reasons. `disableSKAdNetwork` lets the host app flip that behavior off without disabling the rest of AppsFlyer attribution. Without it, an app that needs to hand SKAdNetwork off to another party would have no supported way to do so short of not integrating the AppsFlyer SDK's SKAdNetwork handling path at all.
 
 ---
 
 ## Trigger
-Called by the host app during startup configuration, before `AppsFlyerLib` starts, whenever the app wants to opt out of AppsFlyer's automatic SKAdNetwork conversion-value handling on iOS.
+Called by the host app during startup configuration, before the first session (`startSDK`), whenever the app wants to opt out of AppsFlyer's automatic SKAdNetwork conversion-value handling on iOS.
 
 ---
 
 ## Call Chain
+Generic RPC call over the single `executeRpc` entry point. The Dart method is iOS-guarded (`Platform.isIOS`), so on Android it is a no-op (no RPC is sent).
 ```
-AppsflyerSdk.disableSKAdNetwork(isEnabled)                               [lib/src/appsflyer_sdk.dart:566]
-  → _methodChannel.invokeMethod("disableSKAdNetwork", isEnabled)
-    → iOS: AppsflyerSdkPlugin handleMethodCall: case "disableSKAdNetwork" → disableSKAdNetwork:result:   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m:153]
-      → [AppsFlyerLib shared].disableSKAdNetwork = _isSKADEnabled                                        [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m:401]
+AppsflyerSdk.disableSKAdNetwork(disable)                                 [lib/src/appsflyer_sdk.dart]
+  → if (Platform.isIOS) _executeRpc('setDisableSKAdNetwork', {'disable': disable})   // af-api → executeRpc
+    → iOS: dispatchRpc → AppsFlyerRPCBridge executeJson("setDisableSKAdNetwork") → SDK disableSKAdNetwork
 ```
-No `case "disableSKAdNetwork"` exists in `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java`'s method-call switch — on Android the call falls through to the default branch and returns `MethodNotImplemented`.
 
 ---
 
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `disableSKAdNetwork(bool)` — platform-agnostic Dart API surface (no `Platform.isIOS` guard) |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `disableSKAdNetwork:result:` native handler, sets `[AppsFlyerLib shared].disableSKAdNetwork` |
+| `lib/src/appsflyer_sdk.dart` | `disableSKAdNetwork(bool disable)` — iOS-guarded; sends the `setDisableSKAdNetwork` RPC with `{disable}` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | No per-method handler — the generic `executeRpc` → `dispatchRpc` forwards the JSON envelope to the `AppsFlyerRPC` bridge, which applies it to the SDK |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `isEnabled` (bool) — `true` disables AppsFlyer's SKAdNetwork handling; native only applies the change if the argument is an `NSNumber` (boolean), otherwise silently no-ops. |
-| **Output** | `void` — fire-and-forget; native always calls `result(nil)` regardless of whether the value was applied. |
+| **Input** | `disable` (bool) — `true` disables AppsFlyer's SKAdNetwork handling. Sent under the `disable` param key. |
+| **Output** | `void` — fire-and-forget; the `_executeRpc` Future is discarded. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` — `check disableSKAdNetwork call` (around line 349) asserts the mocked channel receives the method name `disableSKAdNetwork` with the boolean argument. The Dart test harness cannot verify the native iOS assignment to `AppsFlyerLib.shared.disableSKAdNetwork` actually takes effect.
+`test/appsflyer_sdk_test.dart` — `check disableSKAdNetwork call` asserts the mocked `af-api` channel receives the `executeRpc` call with `method: "setDisableSKAdNetwork"` and the `disable` param. The Dart harness cannot verify the native SDK assignment takes effect.
 
 ---
 
 ## Known Limitations
-- **iOS-only**: no Android implementation exists (concept doesn't apply — SKAdNetwork is an Apple/iOS-specific framework). The Dart API has no `Platform.isIOS` guard, so calling it on Android silently fails with `MissingPluginException`/`FlutterMethodNotImplemented` at the native layer rather than a documented no-op.
-- Native code silently ignores non-boolean arguments (`isKindOfClass:[NSNumber class]` check) instead of surfacing an error to the caller, which can mask integration mistakes.
-- Disabling SKAdNetwork handling here does not stop iOS from sending the registration call itself (`registerAppForAdNetworkAttribution`/`updateConversionValue` are OS-level, not AppsFlyer-level) — it only stops AppsFlyer's SDK-side processing of it.
+- **iOS-only**: no Android implementation exists (SKAdNetwork is Apple/iOS-specific). The Dart API is guarded by `Platform.isIOS`, so calling it on Android is a silent no-op (no RPC is dispatched).
+- Disabling SKAdNetwork handling here does not stop iOS from sending the registration call itself (`registerAppForAdNetworkAttribution`/`updateConversionValue` are OS-level) — it only stops AppsFlyer's SDK-side processing.
+- Fire-and-forget: no success/error is surfaced to Dart.
 
 ---
 

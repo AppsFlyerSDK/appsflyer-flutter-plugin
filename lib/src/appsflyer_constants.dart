@@ -1,28 +1,18 @@
 part of appsflyer_sdk;
 
-enum EmailCryptType { EmailCryptTypeNone, EmailCryptTypeSHA256 }
-
 class AppsflyerConstants {
-  static const String PLUGIN_VERSION = "6.17.9";
+  static const String PLUGIN_VERSION = "7.0.0";
   static const String AF_DEV_KEY = "afDevKey";
   static const String AF_APP_Id = "afAppId";
   static const String AF_IS_DEBUG = "isDebug";
-  static const String AF_MANUAL_START = "manualStart";
   static const String AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION =
       "timeToWaitForATTUserAuthorization";
   static const String AF_GCD = "GCD";
   static const String AF_UDL = "UDL";
-  static const String AF_SUCCESS = "success";
-  static const String AF_FAILURE = "failure";
-  static const String AF_GET_CONVERSION_DATA = "onInstallConversionDataLoaded";
-  static const String AF_ON_APP_OPEN_ATTRIBUTION = "onAppOpenAttribution";
-  static const String AF_ON_DEEP_LINK = "onDeepLinking";
 
   static const String AF_EVENTS_CHANNEL = "af-events";
   static const String AF_METHOD_CHANNEL = "af-api";
-  static const String AF_CALLBACK_CHANNEL = "callbacks";
 
-  static const String AF_VALIDATE_PURCHASE = "validatePurchase";
   static const String APP_INVITE_ONE_LINK = "appInviteOneLink";
 
   static const String DISABLE_COLLECT_ASA = "disableCollectASA";
@@ -40,16 +30,19 @@ class AppsflyerConstants {
   static const String RESULT = "result";
   static const String STORE_KIT_VERSION_KEY = "storeKitVersion";
   // Purchase Connector listeners
+  // NOTE: these must match the exact method names the native Android side sends
+  // over the PC MethodChannel (`:` separator — see AppsFlyerPurchaseConnector.kt /
+  // AppsFlyerConstants.java). A prior `#` separator here silently broke delivery.
   static const String
       SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_RESPONSE =
-      "SubscriptionPurchaseValidationResultListener#onResponse";
+      "SubscriptionPurchaseValidationResultListener:onResponse";
   static const String
       SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_FAILURE =
-      "SubscriptionPurchaseValidationResultListener#onFailure";
+      "SubscriptionPurchaseValidationResultListener:onFailure";
   static const String IN_APP_VALIDATION_RESULT_LISTENER_ON_RESPONSE =
-      "InAppValidationResultListener#onResponse";
+      "InAppValidationResultListener:onResponse";
   static const String IN_APP_VALIDATION_RESULT_LISTENER_ON_FAILURE =
-      "InAppValidationResultListener#onFailure";
+      "InAppValidationResultListener:onFailure";
   static const String DID_RECEIVE_PURCHASE_REVENUE_VALIDATION_INFO =
       "didReceivePurchaseRevenueValidationInfo";
 

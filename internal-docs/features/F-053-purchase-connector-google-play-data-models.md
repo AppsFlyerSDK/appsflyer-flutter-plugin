@@ -4,14 +4,12 @@ name: "Purchase Connector: Google Play Purchase/Subscription Data Models"
 type: purchaseValidation
 platform: android
 status: active
-last_verified: 2026-07-15
+last_verified: 2026-07-29
 depends_on: ["F-049", "F-051"]
 ---
 
 ## Business Purpose
 Google's Play Developer API represents subscriptions and one-time in-app purchases as deep, nested JSON objects (cancellation reasons, price-change details, prepaid-plan windows, Subscribe-with-Google identity info, etc.). `SubscriptionPurchase`/`ProductPurchase` and their nested classes are the typed Dart mirror of that shape, generated with `json_annotation`/`json_serializable`, so app code consuming F-051's validation-result listeners gets strongly-typed fields instead of having to parse raw maps by hand. Without these models, `SubscriptionValidationResult`/`InAppPurchaseValidationResult` (F-051) would have to expose validation payloads as untyped `Map<String, dynamic>`, pushing all of Google's nested-schema knowledge onto every app developer.
-
-> TODO: enrich from product specs — provide a Notion database URL and re-run Phase 4 to fill this automatically.
 
 ---
 
@@ -63,10 +61,10 @@ No dedicated test found. Grepping `test/` for `SubscriptionPurchase`, `ProductPu
 ---
 
 ## Known Limitations
-- These models only exist to be functional because of F-051's listener plumbing — and F-051's Android delivery path currently doesn't work (see F-051's documented method-name mismatch between the `#`-separated Dart constants and the `:`-separated strings Kotlin actually sends). Until that is fixed, these models are effectively dead code at runtime even though they compile and are fully wired.
+- These models are populated only through F-051's Android listener plumbing. F-051's delivery path is working: the Dart method-name constants and the strings Kotlin sends both use the `:` separator (a prior `#`-vs-`:` mismatch that broke delivery was fixed under CR-075). If that separator contract is ever broken again on one side, these models would go dead at runtime even though they still compile and are fully wired.
 - No custom `@JsonKey` mapping or manual value coercion exists anywhere in this model set — every field relies on an exact, case-sensitive key match between Kotlin's `toJsonMap()` and the Dart class; a rename on either side without updating the other would fail silently (`json['x'] as String` throws only if the key is present with the wrong type, but a missing/renamed key with a non-nullable field throws a `TypeError` deep inside `fromJson` with no context tying it back to Play Billing).
 - Several fields (`purchaseTimeMillis`, `startTime`, `expiryTime`, `cancelTime`, etc.) are modeled as `String` even though they represent epoch milliseconds — no `DateTime` parsing is applied on either side, so callers must convert these themselves.
-- `SubscriptionPurchase`/`ProductPurchase` mirror the Google Play Developer API schema at a point in time; if the native `purchase-connector:2.2.0` dependency (see `doc/PurchaseConnector.md`'s Billing Library 8.x note) adds or changes fields, these Dart models must be manually kept in sync — there is no schema-validation step in the build.
+- `SubscriptionPurchase`/`ProductPurchase` mirror the Google Play Developer API schema at a point in time; if the native `purchase-connector:2.2.0` dependency (see `doc/purchase-connector.md`'s Billing Library note) adds or changes fields, these Dart models must be manually kept in sync — there is no schema-validation step in the build.
 - This is Android/Google-Play-specific; there is no iOS equivalent typed model (F-052's `validationInfo` stays an untyped map).
 
 ---

@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'appsflyer_sdk'
-  s.version          = '6.18.1'
+  s.version          = '7.0.0'
   s.summary          = 'AppsFlyer Integration for Flutter'
   s.description      = 'AppsFlyer is the market leader in mobile advertising attribution & analytics, helping marketers to pinpoint their targeting, optimize their ad spend and boost their ROI.'
   s.homepage         = 'https://github.com/AppsFlyerSDK/flutter_appsflyer_sdk'
@@ -8,7 +8,8 @@ Pod::Spec.new do |s|
   s.author           = { "Appsflyer" => "build@appsflyer.com" }
   s.source           = { :git => "https://github.com/AppsFlyerSDK/flutter_appsflyer_sdk.git", :tag => s.version.to_s }
   
-  s.ios.deployment_target = '12.0'
+  # SDK 7 requires iOS 13+ (AppsFlyerFramework 7.0.1 and the AppsFlyerRPC bridge both target iOS 13.0).
+  s.ios.deployment_target = '13.0'
   s.requires_arc = true
   s.static_framework = true
   if defined?($AppsFlyerPurchaseConnector)
@@ -21,12 +22,12 @@ Pod::Spec.new do |s|
     ss.source_files = 'appsflyer_sdk/Sources/appsflyer_sdk/**/*.{h,m}'
     ss.public_header_files = 'appsflyer_sdk/Sources/appsflyer_sdk/include/appsflyer_sdk/*.h'
     ss.dependency 'Flutter'
-    ss.ios.dependency 'AppsFlyerFramework','6.18.1'
+    ss.ios.dependency 'AppsFlyerRPC', '7.0.12'
   end
 
   s.subspec 'PurchaseConnector' do |ss|
     ss.dependency 'Flutter'
-    ss.ios.dependency 'PurchaseConnector', '6.18.2'
+    ss.ios.dependency 'PurchaseConnector', '7.0.1'
     ss.source_files = 'PurchaseConnector/**/*'
     ss.public_header_files = 'PurchaseConnector/**/*.h'
   

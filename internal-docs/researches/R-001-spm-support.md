@@ -8,6 +8,8 @@ affects-features: [F-054]
 related-issue-cases: []
 ---
 
+> **⚠️ Superseded — historical research record (do not treat as current).** This research supported SPM support on the SDK **6.18.0** line (DELIVERY-125462). The plugin has since migrated to **SDK 7 / RPC**: iOS vendors the **AppsFlyerRPC 7.0.12** static xcframework as a `binaryTarget` (→ AppsFlyerFramework 7.0.1), targets **iOS 13.0**, and the upstream `appsflyer-apple-rpc` SwiftPM manifest is unusable at every tag (stale checksum), which is why the RPC framework is vendored directly. Current state: `ios/appsflyer_sdk/Package.swift`, `internal-docs/features/F-060-swift-package-manager-support.md`, `internal-docs/ARCHITECTURE.md`. Kept for context only.
+
 ## Summary
 
 Researched for DELIVERY-125462 / PRD `docs/prds/spm-support.md`. No prior research or issue-case docs existed on this topic (`docs/researches/` and `docs/issue-cases/` are both empty in this repo). Checked GitHub directly (issues/PRs on this plugin's repo, flutter/flutter, and AppsFlyerSDK/AppsFlyerFramework) rather than relying on secondhand summaries.

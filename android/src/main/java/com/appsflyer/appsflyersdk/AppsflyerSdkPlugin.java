@@ -1,44 +1,25 @@
 package com.appsflyer.appsflyersdk;
 
 import android.app.Activity;
-import android.app.Application;
 import android.content.Context;
-import android.content.Intent;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
-import com.appsflyer.AFAdRevenueData;
-import com.appsflyer.AFLogger;
-import com.appsflyer.AFPurchaseDetails;
-import com.appsflyer.AFPurchaseType;
-import com.appsflyer.AppsFlyerConsent;
-import com.appsflyer.AppsFlyerConversionListener;
-import com.appsflyer.AppsFlyerInAppPurchaseValidatorListener;
-import com.appsflyer.AppsFlyerInAppPurchaseValidationCallback;
 import com.appsflyer.AppsFlyerLib;
-import com.appsflyer.AppsFlyerProperties;
-import com.appsflyer.MediationNetwork;
-import com.appsflyer.deeplink.DeepLinkListener;
-import com.appsflyer.deeplink.DeepLinkResult;
-import com.appsflyer.share.CrossPromotionHelper;
-import com.appsflyer.share.LinkGenerator;
-import com.appsflyer.share.ShareInviteHelper;
-import com.appsflyer.internal.platform_extension.Plugin;
-import com.appsflyer.internal.platform_extension.PluginInfo;
-import com.appsflyer.attribution.AppsFlyerRequestListener;
+import com.appsflyer.pluginbridge.handler.AppsFlyerRpcHandler;
+import com.appsflyer.pluginbridge.model.RpcErrorCodes;
+import com.appsflyer.pluginbridge.model.RpcResponse;
+import com.appsflyer.pluginbridge.parser.JsonRpcRequestParser;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.security.InvalidParameterException;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.embedding.engine.plugins.activity.ActivityAware;
@@ -51,1185 +32,88 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.PluginRegistry;
 
-import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_EVENTS_CHANNEL;
+import kotlin.Unit;
+import kotlin.jvm.functions.Function1;
+
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_FAILURE;
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_PLUGIN_TAG;
 import static com.appsflyer.appsflyersdk.AppsFlyerConstants.AF_SUCCESS;
 
-import androidx.annotation.NonNull;
-
 /**
- * AppsflyerSdkPlugin
+ * AppsflyerSdkPlugin (Android)
+ *
+ * Full-RPC transport: the Dart layer sends a single {@code executeRpc} method call carrying
+ * {@code {method, params}}, which is dispatched to {@link AppsFlyerRpcHandler} (from the
+ * {@code com.appsflyer.pluginbridge} module). This mirrors the Cordova plugin's {@code executeRpc}
+ * entry point.
+ *
+ * {@code init}, {@code start} and the invite-link methods are handled specially because the Flutter
+ * public API bundles orchestration (SDK 7 session model, listener registration) that Cordova pushes
+ * to app code. Every other method is forwarded generically to the bridge.
+ *
+ * SDK callbacks flow back through the bridge event notifier and are forwarded to the Dart
+ * {@code callbacks} channel (Flutter's MethodChannel results cannot stream like Cordova's keepCallback).
  */
 public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
-    // RD-65582
-    private static boolean saveCallbacks;
-    private static Map<String, Object> cachedOnConversionDataSuccess;
-    private static Map<String, String> cachedOnAppOpenAttribution;
-    private static String cachedOnAttributionFailure;
-    private static String cachedOnConversionDataFail;
-    private static DeepLinkResult cachedDeepLinkResult;
 
-    final Handler uiThreadHandler = new Handler(Looper.getMainLooper());
-    private EventChannel mEventChannel;
-    /**
-     * Plugin registration.
-     */
-    //private FlutterView mFlutterView;
+    private static final String METHOD_EXECUTE_RPC = "executeRpc";
+
+    private final Handler uiThreadHandler = new Handler(Looper.getMainLooper());
+    private ExecutorService rpcExecutor;
+
     private Context mContext;
-    private Application mApplication;
-    private MethodChannel mMethodChannel;
-    private MethodChannel mCallbackChannel;
     private Activity activity;
-    private Boolean gcdCallback = false;
-    private Boolean oaoaCallback = false;
-    private Boolean udlCallback = false;
-    private Boolean validatePurchaseCallback = false;
-    private Boolean isFacebookDeferredApplinksEnabled = false;
-    private Boolean isSetDisableAdvertisingIdentifiersEnable = false;
-    private Map<String, Map<String, Object>> mCallbacks = new HashMap<>();
 
-    PluginRegistry.NewIntentListener onNewIntentListener = new PluginRegistry.NewIntentListener() {
+    private MethodChannel mMethodChannel;
+    private EventChannel mEventChannel;
+
+    private AppsFlyerRpcHandler rpcHandler;
+
+    // af-events EventChannel sink. All SDK events are forwarded here; the Dart side routes each event
+    // to the app callback that registered for it, so no native per-callback forwarding gates are needed.
+    private EventChannel.EventSink eventSink;
+
+    // RD-65582: buffer events that arrive before Dart subscribes (onListen), then replay on attach, so
+    // an install-conversion event emitted before the stream is attached is not lost. Touched only on
+    // the main thread (processBridgeEvent is posted there by createRpcEventNotifier; StreamHandler
+    // callbacks also run on the main thread).
+    private final List<String> pendingEvents = new ArrayList<>();
+
+    private final PluginRegistry.NewIntentListener onNewIntentListener = intent -> {
+        if (activity != null) {
+            activity.setIntent(intent);
+        }
+        // SDK 7 subscribes to the activity lifecycle from init(), so warm-start VIEW intents are
+        // resolved automatically once subscribeForDeepLink has been called. No explicit call needed.
+        return false;
+    };
+
+    private final EventChannel.StreamHandler eventStreamHandler = new EventChannel.StreamHandler() {
         @Override
-        public boolean onNewIntent(Intent intent) {
-            if (activity != null) {
-                activity.setIntent(intent);
-            }
-            // Forward the intent to the SDK before its own onResume auto-handler
-            // runs and stamps the URI with af_consumed=true. Without this, warm-app
-            // VIEW intents get silently consumed and the registered DeepLinkListener
-            // never fires for the Dart side.
-            if (mApplication != null) {
-                AppsFlyerLib.getInstance().performOnDeepLinking(intent, mApplication);
-            }
-            return false;
+        public void onListen(Object arguments, EventChannel.EventSink events) {
+            eventSink = events;
+            flushPendingEvents();
+        }
+
+        @Override
+        public void onCancel(Object arguments) {
+            eventSink = null;
         }
     };
 
-    private final AppsFlyerConversionListener afConversionListener = new AppsFlyerConversionListener() {
-        @Override
-        public void onConversionDataSuccess(Map<String, Object> map) {
-            if (saveCallbacks) {
-                cachedOnConversionDataSuccess = map;
-                return;
-            }
-            if (gcdCallback) {
-                JSONObject dataObj = new JSONObject(replaceNullValues(map));
-                runOnUIThread(dataObj, AppsFlyerConstants.AF_GCD_CALLBACK, AF_SUCCESS);
-            }
-        }
-
-        @Override
-        public void onConversionDataFail(String s) {
-            if (saveCallbacks) {
-                cachedOnConversionDataFail = s;
-                return;
-            }
-            if (gcdCallback) {
-                JSONObject obj = buildJsonResponse(s, AF_FAILURE);
-                runOnUIThread(obj, AppsFlyerConstants.AF_GCD_CALLBACK, AF_FAILURE);
-            }
-        }
-
-        @Override
-        public void onAppOpenAttribution(Map<String, String> map) {
-            if (saveCallbacks) {
-                cachedOnAppOpenAttribution = map;
-                return;
-            }
-            Map<String, Object> objMap = (Map) map;
-            if (oaoaCallback) {
-                JSONObject obj = new JSONObject(replaceNullValues(objMap));
-                runOnUIThread(obj, AppsFlyerConstants.AF_OAOA_CALLBACK, AF_SUCCESS);
-            }
-        }
-
-        @Override
-        public void onAttributionFailure(String errorMessage) {
-            if (saveCallbacks) {
-                cachedOnAttributionFailure = errorMessage;
-                return;
-            }
-            if (oaoaCallback) {
-                JSONObject obj = buildJsonResponse(errorMessage, AF_FAILURE);
-                runOnUIThread(obj, AppsFlyerConstants.AF_OAOA_CALLBACK, AF_FAILURE);
-            }
-        }
-    };
-    private final DeepLinkListener afDeepLinkListener = new DeepLinkListener() {
-
-        @Override
-        public void onDeepLinking(DeepLinkResult deepLinkResult) {
-            if (saveCallbacks) {
-                cachedDeepLinkResult = deepLinkResult;
-                return;
-            }
-            if (udlCallback) {
-                runOnUIThread(deepLinkResult, AppsFlyerConstants.AF_UDL_CALLBACK, AF_SUCCESS);
-            }
-        }
-    };
-
-    private final MethodCallHandler callbacksHandler = new MethodCallHandler() {
-        @Override
-        public void onMethodCall(MethodCall call, Result result) {
-            final String method = call.method;
-            if ("startListening".equals(method)) {
-                startListening(call.arguments, result);
-            } else {
-                result.notImplemented();
-            }
-        }
-    };
+    // ============================================================================
+    // Plugin / channel lifecycle
+    // ============================================================================
 
     private void onAttachedToEngine(Context applicationContext, BinaryMessenger messenger) {
         this.mContext = applicationContext;
-        this.mEventChannel = new EventChannel(messenger, AF_EVENTS_CHANNEL);
+        this.rpcExecutor = Executors.newSingleThreadExecutor();
+
         mMethodChannel = new MethodChannel(messenger, AppsFlyerConstants.AF_METHOD_CHANNEL);
         mMethodChannel.setMethodCallHandler(this);
-        mCallbackChannel = new MethodChannel(messenger, AppsFlyerConstants.AF_CALLBACK_CHANNEL);
-        mCallbackChannel.setMethodCallHandler(callbacksHandler);
-    }
 
-
-    private void startListening(Object arguments, Result rawResult) {
-        // Get callback id
-        String callbackName = (String) arguments;
-        if (callbackName.equals(AppsFlyerConstants.AF_GCD_CALLBACK)) {
-            gcdCallback = true;
-        }
-        if (callbackName.equals(AppsFlyerConstants.AF_OAOA_CALLBACK)) {
-            oaoaCallback = true;
-        }
-        if (callbackName.equals(AppsFlyerConstants.AF_UDL_CALLBACK)) {
-            udlCallback = true;
-        }
-        if (callbackName.equals(AppsFlyerConstants.AF_VALIDATE_PURCHASE)) {
-            validatePurchaseCallback = true;
-        }
-        Map<String, Object> args = new HashMap<>();
-        args.put("id", callbackName);
-        mCallbacks.put(callbackName, args);
-
-        rawResult.success(null);
-    }
-
-    @Override
-    public void onMethodCall(MethodCall call, Result result) {
-        if (activity == null) {
-            Log.d(AF_PLUGIN_TAG, LogMessages.ACTIVITY_NOT_ATTACHED_TO_ENGINE);
-            result.error("NO_ACTIVITY", "The current activity is null", null);
-            return;
-        }
-        final String method = call.method;
-        switch (method) {
-            case "initSdk":
-                initSdk(call, result);
-                break;
-            case "startSDK":
-                startSDK(call, result);
-                break;
-            case "startSDKwithHandler":
-                startSDKwithHandler(call, result);
-                break;
-            case "logEvent":
-                logEvent(call, result);
-                break;
-            case "setHost":
-                setHost(call, result);
-                break;
-            case "setCurrencyCode":
-                setCurrencyCode(call, result);
-                break;
-            case "enableTCFDataCollection":
-                enableTCFDataCollection(call, result);
-                break;
-            case "setConsentData":
-                setConsentData(call, result);
-                break;
-            case "setConsentDataV2":
-                setConsentDataV2(call, result);
-                break;        
-            case "setIsUpdate":
-                setIsUpdate(call, result);
-                break;
-            case "stop":
-                stop(call, result);
-                break;
-            case "updateServerUninstallToken":
-                updateServerUninstallToken(call, result);
-                break;
-            case "setImeiData":
-                setImeiData(call, result);
-                break;
-            case "setAndroidIdData":
-                setAndroidIdData(call, result);
-                break;
-            case "setCustomerUserId":
-                setCustomerUserId(call, result);
-                break;
-            case "setCustomerIdAndLogSession":
-                setCustomerIdAndLogSession(call, result);
-                break;
-            case "waitForCustomerUserId":
-                waitForCustomerUserId(call, result);
-                break;
-            case "setAdditionalData":
-                setAdditionalData(call, result);
-                break;
-            case "setUserEmails":
-                setUserEmails(call, result);
-                break;
-            case "setCollectAndroidId":
-                setCollectAndroidId(call, result);
-                break;
-            case "setCollectIMEI":
-                setCollectIMEI(call, result);
-                break;
-            case "getHostName":
-                getHostName(result);
-                break;
-            case "getHostPrefix":
-                getHostPrefix(result);
-                break;
-            case "setMinTimeBetweenSessions":
-                setMinTimeBetweenSessions(call, result);
-                break;
-            case "validateAndLogInAppAndroidPurchase":
-                validateAndLogInAppPurchase(call, result);
-                break;
-            case "validateAndLogInAppPurchaseV2":
-                validateAndLogInAppPurchaseV2(call, result);
-                break;
-            case "getAppsFlyerUID":
-                getAppsFlyerUID(result);
-                break;
-            case "getSDKVersion":
-                getSdkVersion(result);
-                break;
-            case "setSharingFilter":
-                setSharingFilter(call, result);
-                break;
-            case "setSharingFilterForAllPartners":
-                setSharingFilterForAllPartners(result);
-                break;
-            case "generateInviteLink":
-                generateInviteLink(call, result);
-                break;
-            case "setAppInviteOneLinkID":
-                setAppInivteOneLinkID(call, result);
-                break;
-            case "logCrossPromotionImpression":
-                logCrossPromotionImpression(call, result);
-                break;
-            case "logCrossPromotionAndOpenStore":
-                logCrossPromotionAndOpenStore(call, result);
-                break;
-            case "setOneLinkCustomDomain":
-                setOneLinkCustomDomain(call, result);
-                break;
-            case "setPushNotification":
-                setPushNotification(call, result);
-                break;
-            case "sendPushNotificationData":
-                sendPushNotificationData(call, result);
-                break;
-            case "enableFacebookDeferredApplinks":
-                enableFacebookDeferredApplinks(call, result);
-                break;
-            case "anonymizeUser":
-                anonymizeUser(call, result);
-                break;
-            case "performOnDeepLinking":
-                performOnDeepLinking(call, result);
-                break;
-            case "setDisableAdvertisingIdentifiers":
-                setDisableAdvertisingIdentifiers(call, result);
-                break;
-            case "setSharingFilterForPartners":
-                setSharingFilterForPartners(call, result);
-                break;
-            case "getOutOfStore":
-                getOutOfStore(result);
-                break;
-            case "setOutOfStore":
-                setOutOfStore(call, result);
-                break;
-            case "setPartnerData":
-                setPartnerData(call, result);
-                break;
-            case "setResolveDeepLinkURLs":
-                setResolveDeepLinkURLs(call, result);
-                break;
-            case "setDisableNetworkData":
-                setDisableNetworkData(call, result);
-                break;
-            case "addPushNotificationDeepLinkPath":
-                addPushNotificationDeepLinkPath(call, result);
-                break;
-            case "logAdRevenue":
-                logAdRevenue(call, result);
-                break;
-            case "disableAppSetId":
-                disableAppSetId(call, result);
-                break;
-            default:
-                result.notImplemented();
-                break;
-        }
-    }
-
-    private void performOnDeepLinking(MethodCall call, Result result) {
-        if (activity != null) {
-            Intent intent = activity.getIntent();
-            if (intent != null) {
-                AppsFlyerLib.getInstance().performOnDeepLinking(intent, mApplication);
-                result.success(null);
-            } else {
-                Log.d(AF_PLUGIN_TAG, "performOnDeepLinking: intent is null!");
-                result.error("NO_INTENT", "The intent is null", null);
-            }
-        } else {
-            Log.d(AF_PLUGIN_TAG, "performOnDeepLinking: activity is null!");
-            result.error("NO_ACTIVITY", "The current activity is null", null);
-        }
-    }
-
-    private void anonymizeUser(MethodCall call, Result result) {
-        boolean shouldAnonymize = (boolean) call.argument("shouldAnonymize");
-        AppsFlyerLib.getInstance().anonymizeUser(shouldAnonymize);
-        result.success(null); // indicate that the method invocation is complete
-    }
-
-    private void startSDKwithHandler(MethodCall call, final Result result) {
-        try {
-            final AppsFlyerLib appsFlyerLib = AppsFlyerLib.getInstance();
-
-            appsFlyerLib.start(activity, null, new AppsFlyerRequestListener() {
-                @Override
-                public void onSuccess() {
-                    uiThreadHandler.post(() -> {
-                        if (mMethodChannel != null) {
-                            mMethodChannel.invokeMethod("onSuccess", null);
-                        } else {
-                            Log.e(AF_PLUGIN_TAG, LogMessages.METHOD_CHANNEL_IS_NULL + " - SDK started successfully but callback `onSuccess` failed");
-                        }
-                    });
-                }
-
-                @Override
-                public void onError(final int errorCode, final String errorMessage) {
-                    uiThreadHandler.post(() -> {
-                        if (mMethodChannel != null) {
-                            HashMap<String, Object> errorDetails = new HashMap<>();
-                            errorDetails.put("errorCode", errorCode);
-                            errorDetails.put("errorMessage", errorMessage);
-                            mMethodChannel.invokeMethod("onError", errorDetails);
-                        } else {
-                            Log.e(AF_PLUGIN_TAG, LogMessages.METHOD_CHANNEL_IS_NULL + " - SDK failed to start: " + errorMessage);
-                        }
-                    });
-                }
-            });
-            result.success(null);
-        } catch (Throwable t) {
-            result.error("UNEXPECTED_ERROR", t.getMessage(), null);
-        }
-    }
-
-    /**
-     * Initiates the AppsFlyer SDK. The AtomicBoolean isResultSubmitted ensures the result is
-     * only submitted once, preventing the "Reply already submitted" exception in Flutter.
-     */
-    private void startSDK(MethodCall call, final Result result) {
-        final AppsFlyerLib instance = AppsFlyerLib.getInstance();
-        instance.start(activity);
-        result.success(null);
-    }
-
-    /**
-     * Sets the user consent data for tracking.
-     * @deprecated Use {@link #setConsentDataV2(MethodCall, Result)} instead!
-     */
-    @Deprecated
-    public void setConsentData(MethodCall call, Result result) {
-        Map<String, Object> arguments = (Map<String, Object>) call.arguments;
-        Map<String, Object> consentDict = (Map<String, Object>) arguments.get("consentData");
-
-        boolean isUserSubjectToGDPR = (boolean) consentDict.get("isUserSubjectToGDPR");
-        Boolean hasConsentForDataUsage = (Boolean) consentDict.get("hasConsentForDataUsage");
-        Boolean hasConsentForAdsPersonalization = (Boolean) consentDict.get("hasConsentForAdsPersonalization");
-
-        AppsFlyerConsent consentData;
-        if (isUserSubjectToGDPR && hasConsentForDataUsage != null && hasConsentForAdsPersonalization != null) {
-            consentData = AppsFlyerConsent.forGDPRUser(hasConsentForDataUsage, hasConsentForAdsPersonalization);
-        } else {
-            consentData = AppsFlyerConsent.forNonGDPRUser();
-        }
-
-        AppsFlyerLib.getInstance().setConsentData(consentData);
-
-
-        result.success(null);
-    }
-
-    /**
-     * Sets the user consent data for tracking with flexible parameters.
-     */
-    public void setConsentDataV2(MethodCall call, Result result) {
-        try {
-            AppsFlyerConsent consent = getAppsFlyerConsentFromCall(call);
-            AppsFlyerLib.getInstance().setConsentData(consent);
-            result.success(null);
-        } catch (Exception e) {
-            Log.e(AF_PLUGIN_TAG, LogMessages.ERROR_WHILE_SETTING_CONSENT + e.getMessage(), e);
-            result.error("CONSENT_ERROR", LogMessages.ERROR_WHILE_SETTING_CONSENT + e.getMessage(), null);
-        }
-    }
-
-    @NonNull
-    @SuppressWarnings("unchecked")
-    private AppsFlyerConsent getAppsFlyerConsentFromCall(MethodCall call) {
-        Map<String, Object> args = (Map<String, Object>) call.arguments;
-
-        // Extract nullable Boolean arguments
-        Boolean isUserSubjectToGDPR = (Boolean) args.get("isUserSubjectToGDPR");
-        Boolean consentForDataUsage = (Boolean) args.get("consentForDataUsage");
-        Boolean consentForAdsPersonalization = (Boolean) args.get("consentForAdsPersonalization");
-        Boolean hasConsentForAdStorage = (Boolean) args.get("hasConsentForAdStorage");
-
-        // Create and return AppsFlyerConsent object with the given parameters
-        return new AppsFlyerConsent(isUserSubjectToGDPR, consentForDataUsage, consentForAdsPersonalization, hasConsentForAdStorage);
-    }
-
-    private void enableTCFDataCollection(MethodCall call, Result result) {
-        boolean shouldCollect = (boolean) call.argument("shouldCollect");
-        AppsFlyerLib.getInstance().enableTCFDataCollection(shouldCollect);
-        result.success(null);
-    }
-
-    private void addPushNotificationDeepLinkPath(MethodCall call, Result result) {
-        if (call.arguments != null) {
-            ArrayList<String> depplinkPath = (ArrayList<String>) call.arguments;
-            String[] depplinkPathArr = depplinkPath.toArray(new String[depplinkPath.size()]);
-            AppsFlyerLib.getInstance().addPushNotificationDeepLinkPath(depplinkPathArr);
-        }
-        result.success(null);
-    }
-
-    private void setDisableNetworkData(MethodCall call, Result result) {
-        boolean disableNetworkData = (boolean) call.arguments;
-        AppsFlyerLib.getInstance().setDisableNetworkData(disableNetworkData);
-        result.success(null);
-    }
-
-    private void getOutOfStore(Result result) {
-        result.success(AppsFlyerLib.getInstance().getOutOfStore(this.mContext));
-    }
-
-    private void setOutOfStore(MethodCall call, Result result) {
-        String sourceName = (String) call.arguments;
-        if (sourceName != null) {
-            AppsFlyerLib.getInstance().setOutOfStore(sourceName);
-        }
-        result.success(null);
-    }
-
-    private void setResolveDeepLinkURLs(MethodCall call, Result result) {
-        ArrayList<String> urls = (ArrayList<String>) call.arguments;
-        String[] urlsArr = urls.toArray(new String[0]);
-        AppsFlyerLib.getInstance().setResolveDeepLinkURLs(urlsArr);
-
-        result.success(null);
-    }
-
-    private void setPartnerData(MethodCall call, Result result) {
-        String partnerId = (String) call.argument("partnerId");
-        HashMap<String, Object> partnerData = (HashMap<String, Object>) call.argument("partnersData");
-        if (partnerData != null) {
-            AppsFlyerLib.getInstance().setPartnerData(partnerId, partnerData);
-        }
-        result.success(null);
-    }
-
-    private void setSharingFilterForPartners(MethodCall call, Result result) {
-        if (call.arguments != null) {
-            ArrayList<String> partnersInput = (ArrayList<String>) call.arguments;
-            String[] partners = partnersInput.toArray(new String[partnersInput.size()]);
-            AppsFlyerLib.getInstance().setSharingFilterForPartners(partners);
-        }
-        result.success(null);
-    }
-
-    private void setDisableAdvertisingIdentifiers(MethodCall call, Result result) {
-        isSetDisableAdvertisingIdentifiersEnable = (boolean) call.arguments;
-        if (isSetDisableAdvertisingIdentifiersEnable) {
-            AppsFlyerLib.getInstance().setDisableAdvertisingIdentifiers(true);
-        } else {
-            AppsFlyerLib.getInstance().setDisableAdvertisingIdentifiers(false);
-        }
-        result.success(null);
-    }
-
-    private void enableFacebookDeferredApplinks(MethodCall call, Result result) {
-        isFacebookDeferredApplinksEnabled = (boolean) call.argument("isFacebookDeferredApplinksEnabled");
-
-        if (isFacebookDeferredApplinksEnabled) {
-            AppsFlyerLib.getInstance().enableFacebookDeferredApplinks(true);
-        } else {
-            AppsFlyerLib.getInstance().enableFacebookDeferredApplinks(false);
-        }
-        result.success(null);
-    }
-
-    private void setPushNotification(MethodCall call, Result result) {
-        AppsFlyerLib.getInstance().sendPushNotificationData(activity);
-        result.success(null);
-    }
-
-    private void sendPushNotificationData(MethodCall call, Result result) {
-        final Map<String, Object> pushPayload = (Map<String, Object>) call.arguments;
-        String errorMsg = null;
-        Bundle bundle;
-
-        if (pushPayload == null) {
-            Log.d(AF_PLUGIN_TAG, "Push payload is null");
-            return;
-        }
-
-        try {
-            bundle = this.jsonToBundle(new JSONObject(pushPayload));
-        } catch (JSONException e) {
-            Log.d(AF_PLUGIN_TAG, "Can't parse pushPayload to bundle");
-            return;
-        }
-
-        if (activity != null) {
-            Intent intent = activity.getIntent();
-            if (intent != null) {
-                intent.putExtras(bundle);
-                activity.setIntent(intent);
-                AppsFlyerLib.getInstance().sendPushNotificationData(activity);
-            } else {
-                errorMsg = "The intent is null. Push payload has not been sent!";
-            }
-        } else {
-            errorMsg = "The activity is null. Push payload has not been sent!";
-        }
-
-        if (errorMsg != null) {
-            Log.d(AF_PLUGIN_TAG, errorMsg);
-            return;
-        }
-
-        result.success(null);
-    }
-
-    private static Bundle jsonToBundle(JSONObject jsonObject) throws JSONException {
-        Bundle bundle = new Bundle();
-        Iterator iter = jsonObject.keys();
-        while (iter.hasNext()) {
-            String key = (String) iter.next();
-            String value = jsonObject.getString(key);
-            bundle.putString(key, value);
-        }
-        return bundle;
-    }
-
-    private void setOneLinkCustomDomain(MethodCall call, Result result) {
-        ArrayList<String> brandDomains = (ArrayList<String>) call.arguments;
-        String[] brandDomainsArray = brandDomains.toArray(new String[brandDomains.size()]);
-        AppsFlyerLib.getInstance().setOneLinkCustomDomain(brandDomainsArray);
-        result.success(null);
-    }
-
-    private void logCrossPromotionAndOpenStore(MethodCall call, Result result) {
-        String appId = (String) call.argument("appId");
-        String campaign = (String) call.argument("campaign");
-        Map data = (Map) call.argument("params");
-
-        if (appId != null && !appId.equals("")) {
-            CrossPromotionHelper.logAndOpenStore(mContext, appId, campaign, data);
-        }
-        result.success(null);
-    }
-
-    private void logCrossPromotionImpression(MethodCall call, Result result) {
-        String appId = (String) call.argument("appId");
-        String campaign = (String) call.argument("campaign");
-        Map data = (Map) call.argument("data");
-
-        if (appId != null && !appId.equals("")) {
-            CrossPromotionHelper.logCrossPromoteImpression(mContext, appId, campaign, data);
-        }
-        result.success(null);
-    }
-
-    private void setAppInivteOneLinkID(MethodCall call, Result result) {
-        String oneLinkId = (String) call.argument("oneLinkID");
-        if (oneLinkId == null || oneLinkId.length() == 0) {
-            result.success(null);
-        } else {
-            AppsFlyerLib.getInstance().setAppInviteOneLink(oneLinkId);
-            if (mCallbacks.containsKey("setAppInviteOneLinkIDCallback")) {
-                JSONObject obj = buildJsonResponse("success", AF_SUCCESS);
-                runOnUIThread(obj, "setAppInviteOneLinkIDCallback", AF_SUCCESS);
-            }
-        }
-    }
-
-    private void generateInviteLink(MethodCall call, Result rawResult) {
-        String channel = (String) call.argument("channel");
-        String customerID = (String) call.argument("customerID");
-        String campaign = (String) call.argument("campaign");
-        String referrerName = (String) call.argument("referrerName");
-        String referrerImageUrl = (String) call.argument("referrerImageUrl");
-        String baseDeepLink = (String) call.argument("baseDeeplink");
-        String brandDomain = (String) call.argument("brandDomain");
-        Map<String, String> customParams = (Map<String, String>) call.argument("customParams");
-
-        LinkGenerator linkGenerator = ShareInviteHelper.generateInviteUrl(mContext);
-
-        if (channel != null && !channel.equals("")) {
-            linkGenerator.setChannel(channel);
-        }
-        if (campaign != null && !campaign.equals("")) {
-            linkGenerator.setCampaign(campaign);
-        }
-        if (referrerName != null && !referrerName.equals("")) {
-            linkGenerator.setReferrerName(referrerName);
-        }
-        if (referrerImageUrl != null && !referrerImageUrl.equals("")) {
-            linkGenerator.setReferrerImageURL(referrerImageUrl);
-        }
-        if (customerID != null && !customerID.equals("")) {
-            linkGenerator.setReferrerCustomerId(customerID);
-        }
-        if (baseDeepLink != null && !baseDeepLink.equals("")) {
-            linkGenerator.setBaseDeeplink(baseDeepLink);
-        }
-        if (brandDomain != null && !brandDomain.equals("")) {
-            linkGenerator.setBrandDomain(brandDomain);
-        }
-        if (customParams != null && !customParams.equals("")) {
-            linkGenerator.addParameters(customParams);
-        }
-        LinkGenerator.ResponseListener listener = new LinkGenerator.ResponseListener() {
-            final JSONObject obj = new JSONObject();
-
-            @Override
-            public void onResponse(final String oneLinkUrl) {
-                if (mCallbacks.containsKey("generateInviteLinkSuccess")) {
-                    try {
-                        obj.put("userInviteURL", oneLinkUrl);
-                        runOnUIThread(obj, "generateInviteLinkSuccess", AF_SUCCESS);
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-
-            @Override
-            public void onResponseError(final String error) {
-                if (mCallbacks.containsKey("generateInviteLinkFailure")) {
-                    try {
-                        obj.put("error", error);
-                        runOnUIThread(error, "generateInviteLinkFailure", AF_FAILURE);
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        };
-
-        linkGenerator.generateLink(mContext, listener);
-
-        rawResult.success(null);
-    }
-
-    private void runOnUIThread(final Object data, final String callbackName, final String status) {
-        uiThreadHandler.post(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        if (mCallbackChannel != null) {
-                            Log.d(AF_PLUGIN_TAG, "Calling invokeMethod with: " + data);
-                            JSONObject args = new JSONObject();
-                            try {
-                                args.put("id", callbackName);
-                                //return data for UDL
-                                if (callbackName.equals(AppsFlyerConstants.AF_UDL_CALLBACK)) {
-                                    DeepLinkResult dp = (DeepLinkResult) data;
-                                    args.put("deepLinkStatus", dp.getStatus().toString());
-                                    if (dp.getError() != null) {
-                                        args.put("deepLinkError", dp.getError().toString());
-                                    }
-                                    if (dp.getStatus() == DeepLinkResult.Status.FOUND) {
-                                        args.put("deepLinkObj", dp.getDeepLink().getClickEvent());
-                                    }
-                                } else { // return data for conversionData and OAOA
-                                    JSONObject dataJSON = (JSONObject) data;
-                                    args.put("status", status);
-                                    args.put("data", data.toString());
-                                }
-                            } catch (JSONException e) {
-                                e.printStackTrace();
-                            }
-                            mCallbackChannel.invokeMethod("callListener", args.toString());
-                        } else {
-                            Log.e(AF_PLUGIN_TAG, "CallbackChannel is null, cannot invoke method: " + callbackName);
-                        }
-                    }
-                }
-        );
-    }
-
-    private void setSharingFilterForAllPartners(Result result) {
-        AppsFlyerLib.getInstance().setSharingFilterForAllPartners();
-        result.success(null);
-    }
-
-    private void setSharingFilter(MethodCall call, Result result) {
-        AppsFlyerLib.getInstance().setSharingFilter();
-        result.success(null);
-    }
-
-    private void getAppsFlyerUID(Result result) {
-        result.success(AppsFlyerLib.getInstance().getAppsFlyerUID(this.mContext));
-    }
-
-    private void validateAndLogInAppPurchase(MethodCall call, Result result) {
-        registerValidatorListener();
-        String publicKey = (String) call.argument("publicKey");
-        String signature = (String) call.argument("signature");
-        String purchaseData = (String) call.argument("purchaseData");
-        String price = (String) call.argument("price");
-        String currency = (String) call.argument("currency");
-        Map<String, String> additionalParameters = (Map<String, String>) call.argument("additionalParameters");
-        AppsFlyerLib.getInstance().validateAndLogInAppPurchase(mContext, publicKey, signature, purchaseData, price,
-                currency, additionalParameters);
-        result.success(null);
-    }
-
-    private void validateAndLogInAppPurchaseV2(MethodCall call, Result result) {
-        try {
-            // Get the complete purchase details map
-            Map<String, Object> purchaseDetailsMap = (Map<String, Object>) call.argument("purchaseDetails");
-            Map<String, String> additionalParameters = (Map<String, String>) call.argument("additionalParameters");
-
-            if (purchaseDetailsMap == null) {
-                result.error("INVALID_ARGUMENTS", "Purchase details cannot be null", null);
-                return;
-            }
-
-            if (additionalParameters == null) {
-                additionalParameters = new HashMap<>();
-            }
-
-            // Extract fields from purchase details map
-            String purchaseTypeString = (String) purchaseDetailsMap.get("purchaseType");
-            String purchaseToken = (String) purchaseDetailsMap.get("purchaseToken");
-            String productId = (String) purchaseDetailsMap.get("productId");
-
-            // Validate required fields
-            if (purchaseTypeString == null || purchaseToken == null || productId == null) {
-                result.error("INVALID_ARGUMENTS", "Purchase details must contain purchaseType, purchaseToken, and productId", null);
-                return;
-            }
-
-            // Map Dart enum values to Android AFPurchaseType enum
-            AFPurchaseType purchaseType = mapPurchaseType(purchaseTypeString);
-            if (purchaseType == null) {
-                result.error("INVALID_PURCHASE_TYPE", "Invalid purchase type: " + purchaseTypeString + ". Expected: 'subscription' or 'one_time_purchase'", null);
-                return;
-            }
-
-            // Create AFPurchaseDetails object
-            AFPurchaseDetails purchaseDetails = new AFPurchaseDetails(
-                purchaseType,
-                purchaseToken,
-                productId
-            );
-
-            Log.d(AF_PLUGIN_TAG, "validateAndLogInAppPurchaseV2 called with " + purchaseDetailsMap);
-            
-            AppsFlyerLib.getInstance().validateAndLogInAppPurchase(
-                purchaseDetails,
-                additionalParameters,
-                new AppsFlyerInAppPurchaseValidationCallback() {
-                    @Override
-                    public void onInAppPurchaseValidationFinished(@NonNull Map<String, ?> validationFinishedResult) {
-                        Log.d(AF_PLUGIN_TAG, "Purchase validation V2 response arrived");
-                        
-                        // Convert the result to a format Flutter can understand
-                        Map<String, Object> flutterResult = new HashMap<>();
-                        for (Map.Entry<String, ?> entry : validationFinishedResult.entrySet()) {
-                            flutterResult.put(entry.getKey(), entry.getValue());
-                        }
-                        
-                        result.success(flutterResult);
-                    }
-
-                    @Override
-                    public void onInAppPurchaseValidationError(@NonNull Map<String, ?> validationErrorResult) {
-                        Log.d(AF_PLUGIN_TAG, "Purchase validation V2 returned error");
-                        
-                        String errorMessage = "Purchase validation failed";
-                        if (validationErrorResult.containsKey("error_message")) {
-                            errorMessage = (String) validationErrorResult.get("error_message");
-                        }
-                        
-                        // Convert error result to Flutter format
-                        Map<String, Object> flutterErrorResult = new HashMap<>();
-                        for (Map.Entry<String, ?> entry : validationErrorResult.entrySet()) {
-                            flutterErrorResult.put(entry.getKey(), entry.getValue());
-                        }
-                        
-                        result.error("VALIDATION_ERROR", errorMessage, flutterErrorResult);
-                    }
-                }
-            );
-            
-        } catch (Exception e) {
-            Log.e(AF_PLUGIN_TAG, "Error in validateAndLogInAppPurchaseV2: " + e.getMessage(), e);
-            result.error("VALIDATION_ERROR", "Purchase validation failed: " + e.getMessage(), null);
-        }
-    }
-
-    /**
-     * Maps Dart enum string to Android AFPurchaseType enum.
-     * @param purchaseTypeString The string representation from Dart
-     * @return AFPurchaseType enum or null if invalid
-     */
-    private AFPurchaseType mapPurchaseType(String purchaseTypeString) {
-        switch (purchaseTypeString) {
-            case "subscription":
-                return AFPurchaseType.SUBSCRIPTION;
-            case "one_time_purchase":
-                return AFPurchaseType.ONE_TIME_PURCHASE;
-            default:
-                return null;
-        }
-    }
-
-    private void registerValidatorListener() {
-        AppsFlyerInAppPurchaseValidatorListener validatorListener = new AppsFlyerInAppPurchaseValidatorListener() {
-            @Override
-            public void onValidateInApp() {
-                if (validatePurchaseCallback) {
-                    runOnUIThread(new JSONObject(), AppsFlyerConstants.AF_VALIDATE_PURCHASE, AF_SUCCESS);
-                }
-            }
-
-
-            @Override
-            public void onValidateInAppFailure(String s) {
-                try {
-                    JSONObject obj = new JSONObject();
-                    obj.put("error", s);
-                    if (validatePurchaseCallback) {
-                        runOnUIThread(obj, AppsFlyerConstants.AF_VALIDATE_PURCHASE, AF_FAILURE);
-                    }
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-            }
-        };
-        AppsFlyerLib.getInstance().registerValidatorListener(mContext, validatorListener);
-    }
-
-    private void setMinTimeBetweenSessions(MethodCall call, Result result) {
-        int seconds = (int) call.argument("seconds");
-        AppsFlyerLib.getInstance().setMinTimeBetweenSessions(seconds);
-        result.success(null);
-    }
-
-    private void getHostPrefix(Result result) {
-        result.success(AppsFlyerLib.getInstance().getHostPrefix());
-    }
-
-    private void getSdkVersion(Result result) {
-        result.success(AppsFlyerLib.getInstance().getSdkVersion());
-    }
-
-    private void getHostName(Result result) {
-        result.success(AppsFlyerLib.getInstance().getHostName());
-    }
-
-    private void setCollectIMEI(MethodCall call, Result result) {
-        boolean isCollect = (boolean) call.argument("isCollect");
-        AppsFlyerLib.getInstance().setCollectIMEI(isCollect);
-        result.success(null);
-    }
-
-    private void setCollectAndroidId(MethodCall call, Result result) {
-        boolean isCollect = (boolean) call.argument("isCollect");
-        AppsFlyerLib.getInstance().setCollectAndroidID(isCollect);
-        result.success(null);
-    }
-
-    private void waitForCustomerUserId(MethodCall call, Result result) {
-        boolean wait = (boolean) call.argument("wait");
-        AppsFlyerLib.getInstance().waitForCustomerUserId(wait);
-        result.success(null);
-    }
-
-    private void setAdditionalData(MethodCall call, Result result) {
-        HashMap<String, Object> customData = (HashMap<String, Object>) call.argument("customData");
-        AppsFlyerLib.getInstance().setAdditionalData(customData);
-        result.success(null);
-    }
-
-    private void setUserEmails(MethodCall call, Result result) {
-        List<String> emails = call.argument("emails");
-        int cryptTypeInt = call.argument("cryptType");
-
-        AppsFlyerProperties.EmailsCryptType cryptType = null;
-        if (cryptTypeInt == 0) {
-            cryptType = AppsFlyerProperties.EmailsCryptType.NONE;
-        } else if (cryptTypeInt == 1) {
-            cryptType = AppsFlyerProperties.EmailsCryptType.SHA256;
-        } else {
-            throw new InvalidParameterException("You can use only NONE or SHA256 for EmailsCryptType on android");
-        }
-
-        if (emails != null) {
-            AppsFlyerLib.getInstance().setUserEmails(cryptType, emails.toArray(new String[0]));
-        }
-
-        result.success(null);
-    }
-
-    private void setCustomerUserId(MethodCall call, Result result) {
-        String userId = (String) call.argument("id");
-        AppsFlyerLib.getInstance().setCustomerUserId(userId);
-        result.success(null);
-    }
-
-    private void setCustomerIdAndLogSession(MethodCall call, Result result) {
-        String userId = (String) call.argument("id");
-        AppsFlyerLib.getInstance().setCustomerIdAndLogSession(userId, mContext);
-        result.success(null);
-    }
-
-    private void setAndroidIdData(MethodCall call, Result result) {
-        String androidId = (String) call.argument("androidId");
-        AppsFlyerLib.getInstance().setAndroidIdData(androidId);
-        result.success(null);
-    }
-
-    private void setImeiData(MethodCall call, Result result) {
-        String imei = (String) call.argument("imei");
-        AppsFlyerLib.getInstance().setImeiData(imei);
-        result.success(null);
-    }
-
-    private void updateServerUninstallToken(MethodCall call, Result result) {
-        String token = (String) call.argument("token");
-        AppsFlyerLib.getInstance().updateServerUninstallToken(mContext, token);
-        result.success(null);
-    }
-
-    private void stop(MethodCall call, Result result) {
-        boolean isStopped = (boolean) call.argument("isStopped");
-        AppsFlyerLib.getInstance().stop(isStopped, mContext);
-        result.success(null);
-    }
-
-    private void setIsUpdate(MethodCall call, Result result) {
-        boolean isUpdate = (boolean) call.argument("isUpdate");
-        AppsFlyerLib.getInstance().setIsUpdate(isUpdate);
-        result.success(null);
-    }
-
-    private void setCurrencyCode(MethodCall call, Result result) {
-        String currencyCode = (String) call.argument("currencyCode");
-        AppsFlyerLib.getInstance().setCurrencyCode(currencyCode);
-        result.success(null);
-    }
-
-    private void setHost(MethodCall call, MethodChannel.Result result) {
-        String hostPrefix = call.argument(AppsFlyerConstants.AF_HOST_PREFIX);
-        String hostName = call.argument(AppsFlyerConstants.AF_HOST_NAME);
-
-        AppsFlyerLib.getInstance().setHost(hostPrefix, hostName);
-    }
-
-    private void initSdk(MethodCall call, final MethodChannel.Result result) {
-        AppsFlyerConversionListener gcdListener = null;
-        DeepLinkListener udlListener = null;
-        AppsFlyerLib instance = AppsFlyerLib.getInstance();
-
-        boolean isManualStartMode = (boolean) call.argument(AppsFlyerConstants.AF_MANUAL_START);
-
-        String afDevKey = (String) call.argument(AppsFlyerConstants.AF_DEV_KEY);
-        if (afDevKey == null || afDevKey.equals("")) {
-            Log.e(AF_PLUGIN_TAG, LogMessages.AF_DEV_KEY_IS_EMPTY);
-            result.error("INIT_ERROR", LogMessages.AF_DEV_KEY_IS_EMPTY, null);
-            return;
-        }
-
-        boolean advertiserIdDisabled = (boolean) call.argument(AppsFlyerConstants.DISABLE_ADVERTISING_IDENTIFIER);
-        if (advertiserIdDisabled) {
-            instance.setDisableAdvertisingIdentifiers(true);
-        }
-
-        boolean getGCD = (boolean) call.argument(AppsFlyerConstants.AF_GCD);
-        if (getGCD) {
-            gcdListener = afConversionListener;
-        }
-        // added Unified deeplink
-        boolean getUdl = (boolean) call.argument(AppsFlyerConstants.AF_UDL);
-        if (getUdl) {
-            instance.subscribeForDeepLink(afDeepLinkListener);
-        }
-
-        boolean isDebug = (boolean) call.argument(AppsFlyerConstants.AF_IS_DEBUG);
-        if (isDebug) {
-            instance.setLogLevel(AFLogger.LogLevel.DEBUG);
-            instance.setDebugLog(true);
-        } else {
-            instance.setDebugLog(false);
-        }
-
-        PluginInfo pluginInfo = new PluginInfo(Plugin.FLUTTER, AppsFlyerConstants.PLUGIN_VERSION);
-        instance.setPluginInfo(pluginInfo);
-
-        instance.init(afDevKey, gcdListener, mContext);
-
-        String appInviteOneLink = (String) call.argument(AppsFlyerConstants.AF_APP_INVITE_ONE_LINK);
-        if (appInviteOneLink != null) {
-            instance.setAppInviteOneLink(appInviteOneLink);
-        }
-
-        if (!isManualStartMode) {
-            instance.start(activity);
-        }
-
-        if (saveCallbacks) {
-            saveCallbacks = false;
-            sendCachedCallbacksToDart();
-        }
-
-        result.success("success");
-    }
-
-    private void logEvent(MethodCall call, MethodChannel.Result result) {
-
-        AppsFlyerLib instance = AppsFlyerLib.getInstance();
-
-        final String eventName = call.argument(AppsFlyerConstants.AF_EVENT_NAME);
-        final Map<String, Object> eventValues = call.argument(AppsFlyerConstants.AF_EVENT_VALUES);
-
-        // Send event data through appsflyer sdk
-        instance.logEvent(mContext, eventName, eventValues);
-
-        result.success(true);
-    }
-
-    private void logAdRevenue(MethodCall call, Result result) {
-        try {
-            String monetizationNetwork = requireNonNullArgument(call, "monetizationNetwork");
-            String currencyIso4217Code = requireNonNullArgument(call, "currencyIso4217Code");
-            double revenue = requireNonNullArgument(call, "revenue");
-            String mediationNetworkString = requireNonNullArgument(call, "mediationNetwork");
-
-            MediationNetwork mediationNetwork = MediationNetwork.valueOf(mediationNetworkString.toUpperCase(Locale.ENGLISH));
-
-            // No null check for additionalParameters since it's acceptable for it to be null (optional data)
-            Map<String, Object> additionalParameters = call.argument("additionalParameters");
-
-            AFAdRevenueData adRevenueData = new AFAdRevenueData(
-                    monetizationNetwork,
-                    mediationNetwork,
-                    currencyIso4217Code,
-                    revenue
-            );
-
-            AppsFlyerLib.getInstance().logAdRevenue(adRevenueData, additionalParameters);
-            result.success(true);
-
-        } catch (IllegalArgumentException e) {
-            // The IllegalArgumentException could come from either requireNonNullArgument or valueOf methods.
-            result.error("INVALID_ARGUMENT_PROVIDED", e.getMessage(), null);
-        } catch (Throwable t) {
-            result.error("UNEXPECTED_ERROR", "[logAdRevenue]: An unexpected error occurred: " + t.getMessage(), null);
-            Log.e(AF_PLUGIN_TAG, "Unexpected exception occurred: [logAdRevenue]", t);
-        }
-    }
-
-    /**
-     * Utility method to ensure that an argument with the specified name is not null.
-     * If the argument is null, this method will throw an IllegalArgumentException.
-     * The calling method can then terminate immediately without further processing.
-     *
-     * @param call         The MethodCall from Flutter, containing all the arguments.
-     * @param argumentName The name of the argument expected in the MethodCall.
-     * @param <T>          The type of the argument being checked for nullity.
-     * @return The argument value if it is not null; throw IllegalArgumentException otherwise.
-     */
-    private <T> T requireNonNullArgument(MethodCall call, String argumentName) throws IllegalArgumentException {
-        T argument = call.argument(argumentName);
-        if (argument == null) {
-            Log.e(AF_PLUGIN_TAG, "Exception occurred when trying to: " + call.method + "->" + argumentName + " must not be null");
-            throw new IllegalArgumentException("[" + call.method + "]: " + argumentName + " must not be null");
-        }
-        return argument;
-    }
-
-    //RD-65582
-    private void sendCachedCallbacksToDart() {
-        if (cachedDeepLinkResult != null) {
-            afDeepLinkListener.onDeepLinking(cachedDeepLinkResult);
-            cachedDeepLinkResult = null;
-        }
-        if (cachedOnConversionDataSuccess != null) {
-            afConversionListener.onConversionDataSuccess(cachedOnConversionDataSuccess);
-            cachedOnConversionDataSuccess = null;
-        }
-        if (cachedOnAppOpenAttribution != null) {
-            afConversionListener.onAppOpenAttribution(cachedOnAppOpenAttribution);
-            cachedOnAppOpenAttribution = null;
-        }
-        if (cachedOnAttributionFailure != null) {
-            afConversionListener.onAttributionFailure(cachedOnAttributionFailure);
-            cachedOnAttributionFailure = null;
-        }
-        if (cachedOnConversionDataFail != null) {
-            afConversionListener.onConversionDataFail(cachedOnConversionDataFail);
-            cachedOnConversionDataFail = null;
-        }
-    }
-
-
-    private JSONObject buildJsonResponse(Object data, String status) {
-        JSONObject obj = new JSONObject();
-        try {
-            obj.put("status", status);
-            obj.put("data", data.toString());
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-        return obj;
-    }
-
-    private Map<String, Object> replaceNullValues(Map<String, Object> map) {
-        // cant use stream because of older versions of java
-        Map<String, Object> newMap = new HashMap<
-                >();
-        Iterator it = map.entrySet().iterator();
-        while (it.hasNext()) {
-            Map.Entry<String, Object> pair = (Map.Entry) it.next();
-            newMap.put(pair.getKey(), pair.getValue() == null ? JSONObject.NULL : pair.getValue());
-            it.remove(); // avoids a ConcurrentModificationException
-        }
-
-        return newMap;
-    }
-
-    private void disableAppSetId(MethodCall call, Result result) {
-        AppsFlyerLib.getInstance().disableAppSetId();
-        result.success(null);
+        mEventChannel = new EventChannel(messenger, AppsFlyerConstants.AF_EVENTS_CHANNEL);
+        mEventChannel.setStreamHandler(eventStreamHandler);
     }
 
     @Override
@@ -1240,19 +124,28 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onDetachedFromEngine(FlutterPluginBinding binding) {
-        mMethodChannel.setMethodCallHandler(null);
-        mMethodChannel = null;
-        mEventChannel.setStreamHandler(null);
-        mEventChannel = null;
+        if (mMethodChannel != null) {
+            mMethodChannel.setMethodCallHandler(null);
+            mMethodChannel = null;
+        }
+        if (mEventChannel != null) {
+            mEventChannel.setStreamHandler(null);
+            mEventChannel = null;
+        }
+        eventSink = null;
+        pendingEvents.clear();
         AppsFlyerPurchaseConnector.INSTANCE.onDetachedFromEngine(binding);
+        if (rpcExecutor != null) {
+            rpcExecutor.shutdown();
+            rpcExecutor = null;
+        }
+        rpcHandler = null;
         mContext = null;
-        mApplication = null;
     }
 
     @Override
     public void onAttachedToActivity(ActivityPluginBinding binding) {
         activity = binding.getActivity();
-        mApplication = binding.getActivity().getApplication();
         binding.addOnNewIntentListener(onNewIntentListener);
     }
 
@@ -1263,16 +156,393 @@ public class AppsflyerSdkPlugin implements MethodCallHandler, FlutterPlugin, Act
 
     @Override
     public void onReattachedToActivityForConfigChanges(ActivityPluginBinding binding) {
-        sendCachedCallbacksToDart();
-        binding.addOnNewIntentListener(onNewIntentListener);
         activity = binding.getActivity();
+        binding.addOnNewIntentListener(onNewIntentListener);
+        // No cache replay needed: the FlutterEngine and the Dart af-events subscription survive
+        // activity config changes, so the EventSink stays attached and events keep flowing.
     }
 
     @Override
     public void onDetachedFromActivity() {
+        // SDK 7: the GCD/conversion listener is owned by the engine-scoped RPC handler and
+        // registered only during init(); it is intentionally not unregistered on Activity detach
+        // (there is no re-arm on re-attach, and iOS has no equivalent). Cleanup happens with the
+        // engine in onDetachedFromEngine and at process teardown.
         activity = null;
-        saveCallbacks = true;
-        AppsFlyerLib.getInstance().unregisterConversionListener();
     }
 
+    // ============================================================================
+    // MethodChannel entry point (af-api)
+    // ============================================================================
+
+    @Override
+    public void onMethodCall(MethodCall call, Result result) {
+        if (mContext == null) {
+            Log.d(AF_PLUGIN_TAG, LogMessages.ACTIVITY_NOT_ATTACHED_TO_ENGINE);
+            result.error("NOT_ATTACHED", "The plugin is not attached to a Flutter engine", null);
+            return;
+        }
+        if (METHOD_EXECUTE_RPC.equals(call.method)) {
+            executeRpc(call, result);
+        } else {
+            result.notImplemented();
+        }
+    }
+
+    /**
+     * Single RPC entry point. Unwraps {@code {method, params}} and routes it: {@code init}/{@code start}
+     * and the invite-link methods run the plugin-side orchestration; everything else is forwarded to
+     * the bridge as-is.
+     */
+    @SuppressWarnings("unchecked")
+    private void executeRpc(MethodCall call, Result result) {
+        Object arguments = call.arguments;
+        if (!(arguments instanceof Map)) {
+            result.error("INVALID_PARAMETERS", "executeRpc requires a {method, params} map", null);
+            return;
+        }
+        Map<String, Object> map = (Map<String, Object>) arguments;
+        String method = (String) map.get("method");
+        if (method == null || method.isEmpty()) {
+            result.error("INVALID_PARAMETERS", "executeRpc requires a 'method'", null);
+            return;
+        }
+
+        JSONObject params = new JSONObject();
+        Object rawParams = map.get("params");
+        if (rawParams instanceof Map) {
+            params = new JSONObject((Map<String, Object>) rawParams);
+        }
+
+        try {
+            switch (method) {
+                case AppsFlyerConstants.RPC_METHOD_INIT:
+                    initFromRpc(params, result);
+                    break;
+                case AppsFlyerConstants.RPC_METHOD_START:
+                    // SDK 7: call start() directly (mirrors the Cordova bridge). The SDK handles
+                    // session readiness internally; deferring start() until an onSessionReady signal
+                    // deadlocks, because that signal only fires once start() has run. The result is
+                    // returned on the per-call reply (same path as logEvent), driven by the
+                    // params.awaitResponse flag the Dart layer sets when onSuccess/onError is passed.
+                    dispatchRpc(AppsFlyerConstants.RPC_METHOD_START, params, result, null);
+                    break;
+                case AppsFlyerConstants.RPC_METHOD_GENERATE_INVITE_LINK:
+                    generateInviteLinkFromRpc(params, result);
+                    break;
+                case AppsFlyerConstants.RPC_METHOD_SET_APP_INVITE_ONE_LINK:
+                    setAppInviteOneLinkFromRpc(params, result);
+                    break;
+                default:
+                    dispatchRpc(method, params, result, null);
+                    break;
+            }
+        } catch (Throwable t) {
+            Log.e(AF_PLUGIN_TAG, "executeRpc error for '" + method + "': " + t.getMessage(), t);
+            result.error("UNEXPECTED_ERROR", t.getMessage(), null);
+        }
+    }
+
+    // ============================================================================
+    // RPC handler + notifier
+    // ============================================================================
+
+    private synchronized AppsFlyerRpcHandler getOrCreateRpcHandler() {
+        if (rpcHandler == null) {
+            // SDK 7 delivers Unified Deep Linking via its ActivityLifecycleCallbacks, registered
+            // during init(). On a cold start the launcher Activity is already resumed by the time a
+            // plugin calls init() from Dart, so the SDK only replays that first onResume (and thus
+            // resolves the launch intent -> onDeepLinking) when init() receives an *Activity* context
+            // (see AndroidLifecycleManagerImpl.registerLifecycleListener). Passing the Application
+            // context skips that catch-up and cold-start deep links never fire. Prefer the Activity
+            // (matching the Cordova bridge); fall back to the app context only if none is attached.
+            Context rpcContext = (activity != null) ? activity : mContext;
+            rpcHandler = new AppsFlyerRpcHandler(
+                    rpcContext,
+                    createRpcEventNotifier(),
+                    AppsFlyerLib.getInstance(),
+                    new JsonRpcRequestParser()
+            );
+        }
+        return rpcHandler;
+    }
+
+    /**
+     * Bridge notifier. Events fire on the SDK's callback thread, so we hop to the main thread before
+     * touching the Flutter channels.
+     */
+    private Function1<String, Unit> createRpcEventNotifier() {
+        return eventJson -> {
+            uiThreadHandler.post(() -> processBridgeEvent(eventJson));
+            return Unit.INSTANCE;
+        };
+    }
+
+    private void processBridgeEvent(String eventJson) {
+        try {
+            JSONObject event = new JSONObject(eventJson);
+            String name = event.optString("event", "");
+
+            // All events are forwarded to the af-events stream; the Dart side routes each event by
+            // its "id" to the app callback that registered for it (session-ready is observer-only:
+            // start() is called directly, so readiness does not gate it).
+            if (AppsFlyerConstants.RPC_EVENT_SESSION_READY.equals(name)) {
+                deliverEvent(buildCallListenerArgs(AppsFlyerConstants.AF_SESSION_READY_CALLBACK,
+                        AF_SUCCESS, dataAsJsonString(event)));
+            } else if (AppsFlyerConstants.RPC_EVENT_CONVERSION_SUCCESS.equals(name)) {
+                deliverEvent(buildCallListenerArgs(AppsFlyerConstants.AF_GCD_CALLBACK, AF_SUCCESS, dataAsJsonString(event)));
+            } else if (AppsFlyerConstants.RPC_EVENT_CONVERSION_FAIL.equals(name)) {
+                deliverEvent(buildCallListenerArgs(AppsFlyerConstants.AF_GCD_CALLBACK, AF_FAILURE, dataAsJsonString(event)));
+            } else if (AppsFlyerConstants.RPC_EVENT_DEEP_LINK.equals(name)) {
+                deliverEvent(buildDeepLinkArgs(event.optJSONObject("data")));
+            }
+        } catch (JSONException e) {
+            Log.e(AF_PLUGIN_TAG, "Failed to process bridge event: " + e.getMessage(), e);
+        }
+    }
+
+    private String dataAsJsonString(JSONObject event) {
+        JSONObject data = event.optJSONObject("data");
+        return data != null ? data.toString() : "{}";
+    }
+
+    /** GCD / OAOA shape expected by callbacks.dart: {id, status, data(json string)}. */
+    private String buildCallListenerArgs(String id, String status, String dataJsonString) throws JSONException {
+        JSONObject args = new JSONObject();
+        args.put("id", id);
+        args.put("status", status);
+        args.put("data", dataJsonString);
+        return args.toString();
+    }
+
+    /** onDeepLinking shape expected by callbacks.dart: {id, deepLinkStatus, deepLinkError?, deepLinkObj?}. */
+    private String buildDeepLinkArgs(JSONObject data) throws JSONException {
+        JSONObject args = new JSONObject();
+        args.put("id", AppsFlyerConstants.AF_UDL_CALLBACK);
+        if (data != null) {
+            args.put("deepLinkStatus", data.optString("status"));
+            if (data.has("error")) {
+                args.put("deepLinkError", data.optString("error"));
+            }
+            if (data.has("deepLink")) {
+                // The bridge serializes the click event as a JSON string; parse it back to an object.
+                try {
+                    args.put("deepLinkObj", new JSONObject(data.optString("deepLink")));
+                } catch (JSONException ignore) {
+                    // Non-JSON deep link payloads are dropped from deepLinkObj; status/error still flow.
+                }
+            }
+        }
+        return args.toString();
+    }
+
+    // Delivers an event to the af-events stream, or buffers it until Dart subscribes (onListen).
+    // Runs on the main thread (processBridgeEvent is posted there by createRpcEventNotifier).
+    private void deliverEvent(String callListenerArgs) {
+        if (eventSink != null) {
+            eventSink.success(callListenerArgs);
+        } else {
+            pendingEvents.add(callListenerArgs);
+        }
+    }
+
+    private void flushPendingEvents() {
+        if (pendingEvents.isEmpty() || eventSink == null) {
+            return;
+        }
+        List<String> pending = new ArrayList<>(pendingEvents);
+        pendingEvents.clear();
+        for (String args : pending) {
+            eventSink.success(args);
+        }
+    }
+
+    // ============================================================================
+    // init + start (SDK 7 session model)
+    // ============================================================================
+
+    private void initFromRpc(JSONObject params, final Result result) {
+        final String afDevKey = params.optString(AppsFlyerConstants.AF_DEV_KEY, "");
+        if (afDevKey.isEmpty()) {
+            Log.e(AF_PLUGIN_TAG, LogMessages.AF_DEV_KEY_IS_EMPTY);
+            result.error("INIT_ERROR", LogMessages.AF_DEV_KEY_IS_EMPTY, null);
+            return;
+        }
+
+        final boolean advertiserIdDisabled = params.optBoolean(AppsFlyerConstants.DISABLE_ADVERTISING_IDENTIFIER, false);
+        final boolean getGCD = params.optBoolean(AppsFlyerConstants.AF_GCD, false);
+        final boolean getUdl = params.optBoolean(AppsFlyerConstants.AF_UDL, false);
+        final boolean isDebug = params.optBoolean(AppsFlyerConstants.AF_IS_DEBUG, false);
+        final String appInviteOneLink = params.optString(AppsFlyerConstants.AF_APP_INVITE_ONE_LINK, "");
+
+        rpcExecutor.execute(() -> {
+            try {
+                // setPluginInfo and the config setters must be applied before init(): these config
+                // values are consumed during init().
+                executeRpcSync(AppsFlyerConstants.RPC_METHOD_SET_PLUGIN_INFO, jsonOf(
+                        "plugin", AppsFlyerConstants.AF_PLUGIN_NAME,
+                        "pluginVersion", AppsFlyerConstants.PLUGIN_VERSION));
+
+                if (advertiserIdDisabled) {
+                    executeRpcSync(AppsFlyerConstants.RPC_METHOD_SET_DISABLE_ADVERTISING_IDENTIFIERS,
+                            jsonOf("isDisable", true));
+                }
+                if (isDebug) {
+                    executeRpcSync(AppsFlyerConstants.RPC_METHOD_SET_LOG_LEVEL, jsonOf("logLevel", "DEBUG"));
+                }
+                executeRpcSync(AppsFlyerConstants.RPC_METHOD_SET_DEBUG_LOG, jsonOf("isDebug", isDebug));
+
+                // init() must run before listeners are registered: registering earlier makes the SDK
+                // log "SDK is not initialized" and silently drop the registration. Fail fast if init
+                // itself errors.
+                RpcResponse initResponse = executeRpcSync(AppsFlyerConstants.RPC_METHOD_INIT, jsonOf("devKey", afDevKey));
+                if (initResponse instanceof RpcResponse.Error) {
+                    RpcResponse.Error err = (RpcResponse.Error) initResponse;
+                    uiThreadHandler.post(() -> result.error(String.valueOf(err.getCode()), err.getMessage(), null));
+                    return;
+                }
+
+                if (getGCD) {
+                    executeRpcSync(AppsFlyerConstants.RPC_METHOD_REGISTER_CONVERSION_LISTENER, new JSONObject());
+                }
+                if (getUdl) {
+                    executeRpcSync(AppsFlyerConstants.RPC_METHOD_SUBSCRIBE_FOR_DEEP_LINK, new JSONObject());
+                }
+                // Register the session-ready listener so the app can OBSERVE readiness via the
+                // Dart registerSessionReadyListener() callback. It does not gate start() -- the app
+                // calls startSDK() itself (from that callback), matching the Cordova bridge.
+                executeRpcSync(AppsFlyerConstants.RPC_METHOD_REGISTER_SESSION_READY_LISTENER, new JSONObject());
+
+                // Runtime-only setter: re-applied after init(), before start().
+                if (!appInviteOneLink.isEmpty()) {
+                    executeRpcSync(AppsFlyerConstants.RPC_METHOD_SET_APP_INVITE_ONE_LINK,
+                            jsonOf("oneLinkId", appInviteOneLink));
+                }
+
+                // SDK 7: init() never sends the first session. The app sends it explicitly by
+                // calling startSDK() from Dart (dispatched to the "start" RPC -> dispatchRpc()).
+
+                uiThreadHandler.post(() -> result.success("success"));
+            } catch (Throwable t) {
+                Log.e(AF_PLUGIN_TAG, "init failed: " + t.getMessage(), t);
+                uiThreadHandler.post(() -> result.error("INIT_ERROR", t.getMessage(), null));
+            }
+        });
+    }
+
+    // ============================================================================
+    // Invite links (results delivered on the af-events stream to match the Dart API)
+    // ============================================================================
+
+    private void generateInviteLinkFromRpc(JSONObject params, Result result) {
+        putQuietly(params, "awaitResponse", true);
+        rpcExecutor.execute(() -> {
+            RpcResponse resp = executeRpcSync(AppsFlyerConstants.RPC_METHOD_GENERATE_INVITE_LINK, params);
+            try {
+                final String args;
+                if (resp instanceof RpcResponse.Success) {
+                    Object link = ((RpcResponse.Success<?>) resp).getResult();
+                    JSONObject data = new JSONObject();
+                    data.put("userInviteURL", link != null ? link.toString() : "");
+                    args = buildCallListenerArgs("generateInviteLinkSuccess", AF_SUCCESS, data.toString());
+                } else if (resp instanceof RpcResponse.Error) {
+                    args = buildCallListenerArgs("generateInviteLinkFailure", AF_FAILURE,
+                            ((RpcResponse.Error) resp).getMessage());
+                } else {
+                    args = null;
+                }
+                if (args != null) {
+                    uiThreadHandler.post(() -> deliverEvent(args));
+                }
+            } catch (JSONException e) {
+                Log.e(AF_PLUGIN_TAG, "generateInviteLink callback failed: " + e.getMessage(), e);
+            }
+        });
+        result.success(null);
+    }
+
+    private void setAppInviteOneLinkFromRpc(JSONObject params, Result result) {
+        rpcExecutor.execute(() -> {
+            RpcResponse resp = executeRpcSync(AppsFlyerConstants.RPC_METHOD_SET_APP_INVITE_ONE_LINK, params);
+            if (!(resp instanceof RpcResponse.Error)) {
+                try {
+                    final String args = buildCallListenerArgs("setAppInviteOneLinkIDCallback", AF_SUCCESS, "success");
+                    uiThreadHandler.post(() -> deliverEvent(args));
+                } catch (JSONException e) {
+                    Log.e(AF_PLUGIN_TAG, "setAppInviteOneLinkID callback failed: " + e.getMessage(), e);
+                }
+            }
+        });
+        result.success(null);
+    }
+
+    // ============================================================================
+    // Generic RPC dispatch
+    // ============================================================================
+
+    private void dispatchRpc(String method, JSONObject params, Result result, Object voidValue) {
+        rpcExecutor.execute(() -> {
+            RpcResponse resp = executeRpcSync(method, params);
+            uiThreadHandler.post(() -> deliverRpcResult(resp, result, voidValue));
+        });
+    }
+
+    private RpcResponse executeRpcSync(String method, JSONObject params) {
+        try {
+            JSONObject request = new JSONObject();
+            request.put("method", method);
+            request.put("params", params != null ? params : new JSONObject());
+            return getOrCreateRpcHandler().execute(request.toString());
+        } catch (JSONException e) {
+            return new RpcResponse.Error(RpcErrorCodes.INTERNAL_ERROR, e.getMessage() != null ? e.getMessage() : "JSON error");
+        }
+    }
+
+    private void deliverRpcResult(RpcResponse resp, Result result, Object voidValue) {
+        if (resp instanceof RpcResponse.Success) {
+            result.success(((RpcResponse.Success<?>) resp).getResult());
+        } else if (resp instanceof RpcResponse.VoidSuccess) {
+            result.success(voidValue);
+        } else if (resp instanceof RpcResponse.Error) {
+            RpcResponse.Error err = (RpcResponse.Error) resp;
+            result.error(String.valueOf(err.getCode()), err.getMessage(), null);
+        } else {
+            result.success(voidValue);
+        }
+    }
+
+    // ============================================================================
+    // JSON helpers
+    // ============================================================================
+
+    /** Builds a JSONObject from alternating key/value pairs; null values are omitted. */
+    private JSONObject jsonOf(Object... keyValues) {
+        JSONObject json = new JSONObject();
+        for (int i = 0; i + 1 < keyValues.length; i += 2) {
+            putQuietly(json, (String) keyValues[i], toJsonValue(keyValues[i + 1]));
+        }
+        return json;
+    }
+
+    private void putQuietly(JSONObject json, String key, Object value) {
+        if (value == null) {
+            return;
+        }
+        try {
+            json.put(key, value);
+        } catch (JSONException e) {
+            Log.e(AF_PLUGIN_TAG, "Failed to put '" + key + "' into RPC params: " + e.getMessage());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object toJsonValue(Object value) {
+        if (value instanceof Map) {
+            return new JSONObject((Map<String, Object>) value);
+        }
+        if (value instanceof List) {
+            return new org.json.JSONArray((List<Object>) value);
+        }
+        return value;
+    }
 }

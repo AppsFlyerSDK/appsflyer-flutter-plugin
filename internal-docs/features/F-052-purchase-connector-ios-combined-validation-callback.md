@@ -4,14 +4,12 @@ name: "Purchase Connector: iOS Combined Validation Callback"
 type: purchaseValidation
 platform: ios
 status: active
-last_verified: 2026-07-15
+last_verified: 2026-07-29
 depends_on: ["F-049"]
 ---
 
 ## Business Purpose
 On iOS, once F-049's `startObservingTransactions()` is active, the native `PurchaseConnector` SDK automatically sends every StoreKit transaction (subscription or in-app purchase) to AppsFlyer's server for revenue validation. `setDidReceivePurchaseRevenueValidationInfo` is the app's only window into that outcome on iOS — a single combined callback carrying the raw validation info and/or an error. Without it, revenue would still be attributed automatically, but the app would have no way to confirm a given purchase was validated (e.g. to gate premium content unlock, or to log/alert on validation failures).
-
-> TODO: enrich from product specs — provide a Notion database URL and re-run Phase 4 to fill this automatically.
 
 ---
 

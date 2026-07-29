@@ -67,7 +67,7 @@
 
 - (void) receiveBridgeReadyNotification:(NSNotification *) notification
 {
-    NSLog (@"AppsFlyer Debug: handle deep link");
+    // Bridge is ready: replay whichever launch URL / user activity was captured before init.
     if(self.url && self.sourceApplication && self.annotation){
         [[AppsFlyerLib shared] handleOpenURL:self.url sourceApplication:self.sourceApplication withAnnotation:self.annotation];
         self.url = nil;

@@ -1,5 +1,7 @@
 # Deep linking
 
+> **Audience:** apps routing users to in-app content via OneLink. Requires the [core setup](getting-started.md); for the deep-link APIs see the [API reference](api-reference.md#onDeepLinking). For push-notification deep links, see [`addPushNotificationDeepLinkPath`](api-reference.md#addPushNotificationDeepLinkPath) and [`sendPushNotificationData`](api-reference.md#sendPushNotificationData).
+
 > ⚠️ **IMPORTANT: Flutter 3.27+ Breaking Change**
 >
 > Starting from Flutter 3.27, the default value for Flutter's deep linking option has changed from `false` to `true`. This means Flutter's built-in deep linking is now enabled by default, which can conflict with third-party deep linking plugins like AppsFlyer.
@@ -32,14 +34,13 @@ If the app is installed on the user's device - the deep link routes them to the 
 ![alt text](https://massets.appsflyer.com/wp-content/uploads/2018/03/21101417/app-installed-Recovered.png "")
 
 
-#### <a id="Deep-Linking"> The 3 Deep Linking Types:
-Since users may or may not have the mobile app installed, there are 2 types of deep linking (Deferred + Direct DeepLinking Legacy APIs or Unified Deep Linking):
+#### <a id="Deep-Linking"> Deep Linking Types:
+There are two ways users reach in-app content:
 
-1. Deferred Deep Linking - Legacy API, serving personalized content to new or former users, directly after the installation. 
-2. Direct Deep Linking - Legacy API, directly serving personalized content to existing users, which already have the mobile app installed.
-3. Unified Deep Linking - Starting from v6.1.3, the new Unified Deep Linking API is available to handle deeplinking logic.
+1. Deferred Deep Linking (Get Conversion Data) - serving personalized content to new or former users, directly after the installation.
+2. Unified Deep Linking (UDL) - sends new and existing users to a specific in-app activity as soon as the app is opened. This is the recommended deep-linking method.
 
-In general, you should utilize either **both** of the legacy methods for deep linking, or only the Unified Deep Linking.
+> The legacy Direct Deep Linking API (`onAppOpenAttribution`) was removed in AppsFlyer SDK 7 — use Unified Deep Linking (`onDeepLinking`) instead.
 
 For more info please check out the [OneLink™ Deep Linking Guide](https://support.appsflyer.com/hc/en-us/articles/208874366-OneLink-Deep-Linking-Guide#Intro).
 
@@ -59,21 +60,13 @@ appsflyerSdk.onInstallConversionData((res){
 
 **Note:** The code implementation for `onInstallConversionData` must be made **prior to the initialization** code of the SDK.
 
+> **Both calls are required.** Registering `onInstallConversionData` is not enough on its own — you must **also** pass `registerConversionDataCallback: true` to `initSdk(...)`. The flag enables the native conversion-data event; the callback receives it. One without the other means no data is delivered.
+
 ---
 
-###  <a id="handle-deeplinking"> 2. Direct Deeplinking
-    
-When a deeplink is clicked on the device the AppsFlyer SDK will return the resolved link in the [onAppOpenAttribution](https://support.appsflyer.com/hc/en-us/articles/208874366-OneLink-Deep-Linking-Guide#deep-linking-data-the-onappopenattribution-method-) method.
+###  <a id="handle-deeplinking"> 2. Direct Deeplinking (removed in SDK 7)
 
-Code sample to handle `OnAppOpenAttribution`:
-
-```dart
-appsflyerSdk.onAppOpenAttribution((res){
-    print("res: " + res.toString());
-});
-```
-
-**Note:** The code implementation for `onAppOpenAttribution` must be made **prior to the initialization** code of the SDK.
+`onAppOpenAttribution` (OAOA / Direct Deep Linking) and the `registerOnAppOpenAttributionCallback` flag were removed in AppsFlyer SDK 7. Use [Unified Deep Linking](#unified-deeplinking) (`onDeepLinking`) for all deep-link handling.
 
 ---
 
@@ -100,6 +93,8 @@ Considerations:
 * `onAppOpenAttribution` will not be called. All code should migrate to `onDeepLinking`.
 
 **Note:** The code implementation for `onDeepLinking` must be made **prior to the initialization** code of the SDK.
+
+> **Both calls are required.** Registering `onDeepLinking` is not enough on its own — you must **also** pass `registerOnDeepLinkingCallback: true` to `initSdk(...)`. The flag enables the native UDL event; the callback receives it. One without the other means deep links are not delivered.
 
 Code sample to handle `onDeepLinking`:
 

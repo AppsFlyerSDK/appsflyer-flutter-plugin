@@ -4,64 +4,66 @@ name: In-App Event Logging
 type: eventsAndRevenue
 platform: both
 status: active
-last_verified: 2026-07-15
+last_verified: 2026-07-29
 depends_on: []
 ---
 
 ## Business Purpose
 AppsFlyer's attribution model can only compute ROI (Return on Investment) and LTV (Lifetime Value) for media sources if the app reports what users actually *do* after install — purchases, tutorial completions, level-ups, subscriptions, etc. `logEvent` is the single funnel through which every custom in-app event (a name plus an arbitrary value map) reaches AppsFlyer's backend and is joined to the installing campaign/media-source. Without it, install attribution would exist in isolation with no downstream engagement or monetization signal, making campaign performance comparison and LTV/ROI reporting impossible.
 
-> TODO: enrich from product specs — provide a Notion database URL and re-run Phase 4 to fill this automatically.
-
 ---
 
 ## Trigger
-Called by the host app at any point after the SDK is initialized, whenever a business-significant in-app action occurs (e.g. purchase, level completion, tutorial finish, subscription).
+Called by the host app at any point after the SDK is initialized (`initSdk`) and started (`startSDK`), whenever a business-significant in-app action occurs (e.g. purchase, level completion, tutorial finish, subscription).
 
 ---
 
 ## Call Chain
+Since the SDK 7 / RPC migration this is a generic RPC call routed through the per-call reply mechanism (same as `startSDK`). When `onSuccess`/`onError` is passed, `_executeRequest` sets `awaitResponse: true` so the native call blocks and the result is returned on the MethodChannel reply; otherwise it is fire-and-forget.
 ```
-AppsflyerSdk.logEvent(eventName, eventValues)                                        [lib/src/appsflyer_sdk.dart]
-  → _methodChannel.invokeMethod("logEvent", {'eventName': ..., 'eventValues': ...})
-    → Android: AppsflyerSdkPlugin.onMethodCall("logEvent") → logEvent(call, result)   [android/.../AppsflyerSdkPlugin.java]
-      → AppsFlyerLib.getInstance().logEvent(mContext, eventName, eventValues)
-      → result.success(true)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("logEvent") → logEventWithCall:result: [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
-      → [[AppsFlyerLib shared] logEvent:eventName withValues:eventValues]
-      → result(@YES)
+AppsflyerSdk.logEvent(eventName, eventValues, {onSuccess, onError})            [lib/src/appsflyer_sdk.dart]
+  → _executeRequest('logEvent', {eventName, eventValues}, ...)                  // sets awaitResponse when a listener is passed
+    → _executeRpc('logEvent', {eventName, eventValues, awaitResponse})         // MethodChannel af-api → executeRpc
+      → Android: AppsflyerSdkPlugin.executeRpc → dispatchRpc('logEvent', ...)  [android/.../AppsflyerSdkPlugin.java]
+        → AppsFlyerRpcHandler.execute(json) → AppsFlyerLib.logEvent(...)       [plugin_bridge module]
+      → iOS: AppsflyerSdkPlugin.executeRpc → dispatchRpc:method:@"logEvent"    [ios/.../AppsflyerSdkPlugin.m]
+        → [AppsFlyerRPCBridge shared] executeJson:completion: → AFRPCRequestHandler → SDK
 ```
+On success `onSuccess()` is invoked; on failure the reply throws a `PlatformException` whose `code`/`message` are surfaced as `onError(errorCode, errorMessage)` (e.g. codes 41/42 when logged before init/start).
 
 ---
 
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `logEvent(String eventName, Map? eventValues)` — Dart public API, returns `Future<bool?>` |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `logEvent(MethodCall, Result)` — reads `AF_EVENT_NAME`/`AF_EVENT_VALUES` args, forwards to `AppsFlyerLib.getInstance().logEvent(mContext, eventName, eventValues)`, always returns `result.success(true)` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `logEventWithCall:result:` — reads `eventName`/`eventValues` (normalizes `NSNull` to `nil`), forwards to `[[AppsFlyerLib shared] logEvent:withValues:]`, always returns `result(@YES)`; comment `//TODO: Add callback handler` marks that no completion callback is wired |
-| `doc/InAppEvents.md` | Public integration guide with usage example |
+| `lib/src/appsflyer_sdk.dart` | `logEvent(String eventName, Map? eventValues, {RequestSuccessListener? onSuccess, RequestErrorListener? onError})` — Dart public API, returns `void`; delegates to `_executeRequest` |
+| `lib/src/callbacks.dart` | `RequestSuccessListener` / `RequestErrorListener` typedefs |
+| `android/.../AppsflyerSdkPlugin.java` | No per-method handler — generic `executeRpc` → `dispatchRpc('logEvent', ...)` forwards the envelope to `AppsFlyerRpcHandler` |
+| `ios/.../AppsflyerSdkPlugin.m` | No per-method handler — generic `executeRpc` → `dispatchRpc` forwards the envelope to `AppsFlyerRPCBridge` |
+| `doc/in-app-events.md` | Public integration guide with usage example |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `eventName` (String, required — AppsFlyer docs recommend ≤45 chars or the event is dropped from the dashboard but still visible in raw data); `eventValues` (Map, nullable — arbitrary event parameters, e.g. `af_revenue`, `af_content_id`) |
-| **Output** | `Future<bool?>` — on both platforms this resolves to `true` unconditionally once the native SDK call is *dispatched*; it does not reflect whether the event was actually delivered to/accepted by AppsFlyer's backend (no listener/callback is wired on either platform) |
+| **Input** | `eventName` (String, required — AppsFlyer docs recommend ≤45 chars or the event is dropped from the dashboard but still visible in raw data); `eventValues` (Map, nullable — arbitrary event parameters, e.g. `af_revenue`, `af_content_id`); optional `onSuccess` / `onError` listeners |
+| **Output** | `void`. Without a listener the call is fire-and-forget. With `onSuccess`/`onError`, the native call blocks (up to ~10s) and reports the SDK request result: `onSuccess()` on success, or `onError(errorCode, errorMessage)` on failure |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` — `check logEvent call` (line 115) awaits `logEvent("eventName", {"key": "val"})` against a mocked channel and asserts the channel receives the `logEvent` invocation; it only exercises the Dart-to-channel dispatch, not native behavior or the actual return value semantics.
+`test/appsflyer_sdk_test.dart`:
+- `logEvent (fire and forget)` — asserts the `logEvent` RPC is dispatched with the event name/values.
+- `logEvent forwards awaitResponse and invokes onSuccess on a 200 OK` — verifies `awaitResponse: true` is sent and `onSuccess` fires on a successful reply.
+- `logEvent invokes onError with the SDK code/message on failure` — verifies a `PlatformException` reply is surfaced as `onError(code, message)`.
 
 ---
 
 ## Known Limitations
-- **No delivery confirmation on either platform**: both native handlers call the fire-and-forget overload of the AppsFlyer SDK's `logEvent` (no `AppsFlyerRequestListener`/completion block) and immediately return `true`/`@YES`. A caller awaiting `logEvent()` gets no signal about whether the event actually reached AppsFlyer — the returned boolean only reflects "the method call was processed," not "the event was sent successfully."
-- iOS explicitly documents this gap in-code: `//TODO: Add callback handler` in `logEventWithCall:result:`.
-- No client-side validation of the 45-character event-name limit; events with longer names still get accepted by the plugin and are silently excluded from the AppsFlyer dashboard (only visible via raw data/Pull/Push APIs), per `doc/InAppEvents.md`.
-- `eventValues` accepts an untyped `Map`, so type mismatches (e.g. non-JSON-serializable values) are only caught when the native SDK attempts to serialize the payload, not at the Dart call site.
+- No client-side validation of the 45-character event-name limit; events with longer names are still accepted by the plugin and silently excluded from the AppsFlyer dashboard (visible only via raw data / Pull-Push APIs).
+- `eventValues` accepts an untyped `Map`, so type mismatches (e.g. non-JSON-serializable values) are only caught when the native SDK serializes the payload, not at the Dart call site.
+- The blocking behavior (native call waits ~10s) only applies when `onSuccess`/`onError` is supplied; fire-and-forget calls return no delivery signal at all.
 
 ---
 

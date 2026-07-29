@@ -1,6 +1,6 @@
 # AppsFlyer Flutter Plugin — Feature Catalog Index
 
-60 features across 6 categories. See `DIAGRAM.md` for runtime/init dependency diagrams and the full dependency table.
+60 catalogued features across 6 categories. Five are `removed` in SDK 7 (F-008, F-021, F-023, F-036, F-038) — kept as tombstone entries pointing to `doc/migration-guide.md`. See `DIAGRAM.md` for runtime/init dependency diagrams and the full dependency table.
 
 ---
 
@@ -11,11 +11,11 @@ SDK lifecycle, identity, privacy/consent, and low-level configuration.
 | ID | Name | Status | Platform |
 |----|------|--------|----------|
 | F-001 | SDK Initialization & Options Validation | active | both |
-| F-002 | SDK Start (auto/manual + result handler) | active | both |
+| F-002 | SDK Start (session launch + result handler) | active | both |
 | F-003 | SDK/Plugin Version Retrieval | active | both |
 | F-006 | Custom Host Configuration | active | both |
-| F-007 | Device ID Collection Opt-out (IMEI/Android ID) | active | android |
-| F-008 | Manual IMEI/Android ID Override | active | android |
+| F-007 | Android ID Collection Opt-out | active | android |
+| F-008 | Manual IMEI/Android ID Override | removed | android |
 | F-009 | Minimum Time Between Sessions | active | both |
 | F-011 | TCF/DMA Automatic Consent Collection | active | both |
 | F-012 | Manual GDPR/DMA Consent API (V1 + V2) | active | both |
@@ -24,9 +24,9 @@ SDK lifecycle, identity, privacy/consent, and low-level configuration.
 | F-016 | Update vs. Fresh-Install Flag | active | android |
 | F-017 | SDK Kill Switch (stop) | active | both |
 | F-018 | Uninstall Measurement | active | both |
-| F-019 | User Email Collection (with encryption) | active | both |
+| F-019 | User Email Collection (hashed) | active | both |
 | F-020 | AppsFlyer UID Retrieval | active | both |
-| F-021 | Delayed Session Start Pending CUID | active | android |
+| F-021 | Delayed Session Start Pending CUID | removed | android |
 | F-034 | Advertising Identifier Collection Disable | active | both |
 | F-046 | Disable Network Data Transfer | active | android |
 | F-047 | AppSet ID Collection Opt-out (Android) | active | android |
@@ -53,10 +53,10 @@ Server-side validation of purchases/subscriptions — legacy API and the Purchas
 
 | ID | Name | Status | Platform |
 |----|------|--------|----------|
-| F-023 | In-App Purchase Validation V1 (Android/iOS separate APIs) | deprecated | both |
+| F-023 | In-App Purchase Validation V1 (Android/iOS separate APIs) | removed | both |
 | F-024 | In-App Purchase Validation V2 (cross-platform) | active | both |
 | F-025 | iOS Receipt Validation Sandbox Toggle | active | ios |
-| F-038 | Legacy Purchase-Validation Notification Callback | active | both |
+| F-038 | Legacy Purchase-Validation Notification Callback | removed | both |
 | F-049 | Purchase Connector: Configuration & Lifecycle | active | both |
 | F-050 | Purchase Connector: StoreKit Version Selection (iOS) | active | ios |
 | F-051 | Purchase Connector: Android Validation Result Listeners | active | android |
@@ -71,12 +71,12 @@ Resolving, forwarding, and delivering deep-link/attribution results across platf
 
 | ID | Name | Status | Platform |
 |----|------|--------|----------|
-| F-014 | Manual Deep-Link Re-trigger (performOnDeepLinking) | active | android |
+| F-014 | Manual Deep-Link Re-trigger (performDeepLinking) | active | both |
 | F-022 | Push Notification Deep-Link Path Config | active | both |
 | F-031 | Push Notification Data Handling | active | both |
 | F-032 | Facebook Deferred App Links | active | both |
 | F-035 | Conversion Data Callback (GCD) | active | both |
-| F-036 | App-Open Attribution Callback (OAOA) | active | both |
+| F-036 | App-Open Attribution Callback (OAOA) | removed | both |
 | F-037 | Unified Deep Linking (UDL) Callback & Models | active | both |
 | F-039 | Native iOS Deep-Link Entry Points (URL scheme / Universal Links / Scenes) | active | ios |
 | F-040 | Android New-Intent Deep-Link Forwarding | active | android |
