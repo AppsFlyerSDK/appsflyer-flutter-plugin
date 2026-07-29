@@ -152,5 +152,30 @@ New parity APIs exposed in the plugin (already present in the native SDK 7):
 
 ---
 
+## Android: remove legacy install-referrer receivers
+
+SDK 7 removed `SingleInstallBroadcastReceiver` and `MultipleInstallBroadcastReceiver`.
+Remove any matching `<receiver>` entries from `android/app/src/main/AndroidManifest.xml`
+(together with their `com.android.vending.INSTALL_REFERRER` intent filters). Leaving them
+breaks manifest merge at **build time**.
+
+Add Google Play Install Referrer to `android/app/build.gradle`:
+
+```gradle
+dependencies {
+    implementation 'com.android.installreferrer:installreferrer:2.2'
+}
+```
+
+Native reference: [Migrate Android SDK to V7 — §8](https://dev.appsflyer.com/hc/docs/migrate-android-sdk-to-v7#8-remove-legacy-broadcast-receivers).
+For Samsung / Xiaomi / Huawei store referrers, see §11 of the same guide.
+
+> Plugin v6 docs recommended adding `SingleInstallBroadcastReceiver` for some out-of-store
+> markets. That guidance is **obsolete** for SDK 7 — use the Install Referrer library,
+> optional store-referrer artifacts, and `setOutOfStore`. See
+> [Advanced features — Android Out of Store](advanced-features.md#out-of-store).
+
+---
+
 See the full, version-by-version history in the [CHANGELOG](/CHANGELOG.md) and the complete
 method reference in [API reference](/doc/api-reference.md).

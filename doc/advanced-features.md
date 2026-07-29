@@ -230,24 +230,43 @@ For the uninstall-measurement flow, `useUninstallSandbox(true)` is the sandbox c
 ## <a id="out-of-store"> Android Out of Store
 
 Use out-of-store attribution when you distribute the Android app through a store other
-than Google Play. First read AppsFlyer's
+than Google Play. Read AppsFlyer's
 [out-of-store attribution guide](https://support.appsflyer.com/hc/en-us/articles/207447023-Attributing-out-of-store-Android-markets-guide).
 
-If your store supports install-referrer matching, register the install-referrer receiver
-in your app's `AndroidManifest.xml`:
+### SDK 7: install referrer (Google Play and most stores)
 
-```xml
-<application>
-  ...
-  <receiver android:name="com.appsflyer.SingleInstallBroadcastReceiver" android:exported="true">
-    <intent-filter>
-      <action android:name="com.android.vending.INSTALL_REFERRER" />
-    </intent-filter>
-  </receiver>
-</application>
+AppsFlyer SDK 7 **removed** the legacy broadcast receivers
+`com.appsflyer.SingleInstallBroadcastReceiver` and
+`com.appsflyer.MultipleInstallBroadcastReceiver`. **Do not** add them to your
+`AndroidManifest.xml` — leftover entries from a v6 integration cause a **build failure**
+during manifest merge.
+
+Play Install Referrer is collected via Google's Install Referrer library instead. Add this
+to your **app module** `android/app/build.gradle` (the SDK declares it as `compileOnly`; your
+app must include it explicitly):
+
+```gradle
+dependencies {
+    implementation 'com.android.installreferrer:installreferrer:2.2'
+}
 ```
 
-Set the alternative store at runtime with `setOutOfStore` (Android only) — see the
+See [Migrate Android SDK to V7 — §8](https://dev.appsflyer.com/hc/docs/migrate-android-sdk-to-v7#8-remove-legacy-broadcast-receivers).
+
+If you upgraded from plugin v6, **remove** any existing `<receiver>` entries for those
+classes and their `com.android.vending.INSTALL_REFERRER` intent filters.
+
+### Alternative stores (Samsung, Xiaomi, Huawei)
+
+If you publish to Samsung Galaxy Store, Xiaomi GetApps, or Huawei AppGallery, add the
+optional store referrer Gradle dependencies from the native migration guide
+([§11 — optional store referrer libraries](https://dev.appsflyer.com/hc/docs/migrate-android-sdk-to-v7#11-add-optional-store-referrer-libraries)).
+No extra Flutter plugin setup is required beyond those dependencies.
+
+### Runtime configuration
+
+Set the alternative store label at runtime with `setOutOfStore` (Android only). Re-apply on
+every cold start — SDK 7 does not persist setter values. See the
 [API reference](api-reference.md#setOutOfStore):
 
 ```dart

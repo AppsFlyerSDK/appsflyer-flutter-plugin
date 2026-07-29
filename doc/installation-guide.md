@@ -26,6 +26,29 @@ Huawei Referrer is supported in SDK v6.14.0 and above.
 Due to changes in the Huawei AppGallery store, previous versions of the AppsFlyer SDK are not able to fetch the referrer from the store. [Learn more](https://dev.appsflyer.com/hc/docs/install-android-sdk#huawei-install-referrer).
 ---
 
+## Android: Google Play Install Referrer (SDK 7)
+
+Plugin `7.x` uses AppsFlyer Android SDK 7, which collects Play Install Referrer via
+Google's Install Referrer library — **not** legacy `INSTALL_REFERRER` broadcast receivers.
+
+Add to your **app module** `android/app/build.gradle`:
+
+```gradle
+dependencies {
+    implementation 'com.android.installreferrer:installreferrer:2.2'
+}
+```
+
+If your app still declares `com.appsflyer.SingleInstallBroadcastReceiver` or
+`com.appsflyer.MultipleInstallBroadcastReceiver` from a v6 integration, **remove** those
+`<receiver>` blocks (including `INSTALL_REFERRER` intent filters). Leaving them breaks
+manifest merge at build time.
+
+See [Migrate Android SDK to V7 — §8](https://dev.appsflyer.com/hc/docs/migrate-android-sdk-to-v7#8-remove-legacy-broadcast-receivers)
+and the [migration guide](migration-guide.md).
+
+---
+
 ## <a id="strictMode">👨‍👩‍👧‍👦  Strict mode for Kids Apps
 
 The iOS SDK ships in two variants: **Strict** mode and **Regular** mode.

@@ -59,7 +59,8 @@ void main() {
 
     // The unified event path subscribes to the af-events EventChannel on both platforms.
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(eventMethodChannel, (methodCall) async => null);
+        .setMockMethodCallHandler(
+            eventMethodChannel, (methodCall) async => null);
   });
 
   tearDown(() {
@@ -86,7 +87,8 @@ void main() {
     expect(rpcParams?['awaitResponse'], false);
   });
 
-  test('startSDK forwards awaitResponse and invokes onSuccess when a callback is passed',
+  test(
+      'startSDK forwards awaitResponse and invokes onSuccess when a callback is passed',
       () async {
     var ok = false;
     instance.startSDK(onSuccess: () => ok = true);
@@ -375,7 +377,8 @@ void main() {
       expect(rpcMethod, 'clearUserPii');
     });
 
-    test('setUserFbLoginId parses to a numeric id (dispatched on both platforms)',
+    test(
+        'setUserFbLoginId parses to a numeric id (dispatched on both platforms)',
         () {
       instance.setUserFbLoginId('1234567890123456');
       expect(rpcMethod, 'setUserFbLoginId');
@@ -460,7 +463,8 @@ void main() {
       expect(executeRpcCalled, false);
     });
 
-    test('getAttributionId (Android-only) returns null without dispatching', () async {
+    test('getAttributionId (Android-only) returns null without dispatching',
+        () async {
       final id = await instance.getAttributionId();
       expect(executeRpcCalled, false);
       expect(id, isNull);

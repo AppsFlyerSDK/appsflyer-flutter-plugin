@@ -1173,7 +1173,12 @@ _Example:_
 
 **Android Only!**
 
-Specify the alternative app store that the app is downloaded from.
+Specify the alternative app store that the app is downloaded from (out-of-store
+attribution). Re-apply on every cold start — SDK 7 does not persist setter values.
+
+This API does **not** register manifest receivers. SDK 7 uses the Google Play Install
+Referrer library instead of legacy `INSTALL_REFERRER` broadcast receivers. See
+[Advanced features — Android Out of Store](advanced-features.md#out-of-store).
 
 _Example:_
 ```dart

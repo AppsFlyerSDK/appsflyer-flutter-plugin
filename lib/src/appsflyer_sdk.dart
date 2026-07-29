@@ -213,7 +213,8 @@ class AppsflyerSdk {
           'AppsflyerSdk was constructed without valid options; cannot initialize the SDK.');
     }
 
-    validatedOptions[AppsflyerConstants.AF_GCD] = registerConversionDataCallback;
+    validatedOptions[AppsflyerConstants.AF_GCD] =
+        registerConversionDataCallback;
     validatedOptions[AppsflyerConstants.AF_UDL] = registerOnDeepLinkingCallback;
 
     return _executeRpc('init', validatedOptions);
@@ -646,8 +647,7 @@ class AppsflyerSdk {
     bool? hasConsentForAdStorage,
   }) {
     if (isUserSubjectToGDPR &&
-        (consentForDataUsage == null ||
-            consentForAdsPersonalization == null)) {
+        (consentForDataUsage == null || consentForAdsPersonalization == null)) {
       throw ArgumentError(
           'consentForDataUsage and consentForAdsPersonalization are required '
           'when isUserSubjectToGDPR is true.');
