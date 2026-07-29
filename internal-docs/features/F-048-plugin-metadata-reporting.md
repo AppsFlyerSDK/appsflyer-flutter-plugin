@@ -57,7 +57,7 @@ No dedicated test found. The call is not exposed as a distinct Dart method (the 
 ---
 
 ## Known Limitations
-- The reported plugin version constant is maintained per platform and currently aligned at `"7.0.0"` (Dart `AppsflyerConstants.PLUGIN_VERSION`, Android `AppsFlyerConstants.PLUGIN_VERSION`, iOS `kAppsFlyerPluginVersion`). There is no single source of truth tying the three together, so they must be kept in sync manually on each release.
+- The reported plugin version constant is maintained per platform and currently aligned at `"7.0.1"` (Dart `AppsflyerConstants.PLUGIN_VERSION`, Android `AppsFlyerConstants.PLUGIN_VERSION`, iOS `kAppsFlyerPluginVersion`). There is no single source of truth tying the three together, so they must be kept in sync manually on each release.
 - No public Dart API exists to inspect, override, or disable the reported plugin metadata; it is entirely internal and always fires as part of init with no error handling or confirmation callback.
 - The `setPluginInfo` RPC is dispatched before the `init` RPC; if init fails or the SDK is re-initialized, there is no guard against issuing `setPluginInfo` more than once.
 

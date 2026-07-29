@@ -2,7 +2,7 @@
 
 <img src="https://massets.appsflyer.com/wp-content/uploads/2018/06/20092440/static-ziv_1TP.png" width="400">
 
-Plugin `7.0.0` migrates to **AppsFlyer SDK 7** (Android & iOS `7.0.1`) and routes every
+Plugin `7.0.1` migrates to **AppsFlyer SDK 7** (Android & iOS `7.0.1`) and routes every
 call through the native RPC bridges (Android `AppsFlyerRpcHandler`, iOS
 `AFRPCRequestHandler`). This is a major release with intentional breaking changes.
 

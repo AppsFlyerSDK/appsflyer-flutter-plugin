@@ -1,7 +1,7 @@
 package com.appsflyer.appsflyersdk;
 
 public final class AppsFlyerConstants {
-    final static String PLUGIN_VERSION = "7.0.0";
+    final static String PLUGIN_VERSION = "7.0.1";
     final static String AF_APP_INVITE_ONE_LINK = "appInviteOneLink";
     final static String AF_IS_DEBUG = "isDebug";
     final static String AF_DEV_KEY = "afDevKey";

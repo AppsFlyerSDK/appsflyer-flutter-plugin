@@ -1,16 +1,17 @@
 # Versions
 
-## 7.0.0
+## 7.0.1
 
 Migration to **AppsFlyer SDK 7** with a full RPC architecture. This is a major release with breaking changes — see the [v6 → v7 migration guide](/doc/migration-guide.md) and the notes below.
 
 > **API Removal Rule — _Preserve SDK 7 behavior, not SDK 6 APIs._** Any public API removed from the native AppsFlyer SDK 7 is also removed from this plugin; obsolete SDK 6 APIs are not kept for backward compatibility.
 
+- Flutter plugin version **7.0.1**, aligned with native AppsFlyer SDK **7.0.1**
 - Updated Android SDK to **7.0.1** (`com.appsflyer:af-android-sdk-bom:7.0.1`, now including `af-android-plugin-bridge`)
 - Updated iOS SDK to **7.0.1** (`AppsFlyerRPC 7.0.12`, which pins `AppsFlyerFramework 7.0.1`)
 - Updated iOS Purchase Connector to **7.0.1**
 - iOS minimum deployment target raised to **13.0**
-- Documentation reorganized under `doc/` (see [documentation index](/doc/README.md)); update bookmarks from legacy names such as `API.md` / `DeepLink.md` to the new guides listed there.
+- Documentation reorganized under `doc/` (see [documentation index](/doc/README.md)); update bookmarks from legacy names such as `API.md` / `DeepLink.md` to the new guides listed there. Android install-referrer docs align with SDK 7 migration §8 (remove legacy `SingleInstallBroadcastReceiver`, document Play Install Referrer library).
 
 **Architecture**
 

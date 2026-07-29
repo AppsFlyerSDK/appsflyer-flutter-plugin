@@ -169,7 +169,7 @@ directMonetizationNetwork     |
 ---
 
 
-##### <a id="initSdk"> **`initSdk({bool registerConversionDataCallback, bool registerOnDeepLinkingCallback}) async` (Changed in 7.0.0)**
+##### <a id="initSdk"> **`initSdk({bool registerConversionDataCallback, bool registerOnDeepLinkingCallback}) async` (Changed in 7.0.1)**
 
 initialize the SDK, using the options initialized from the constructor|
 Return response object with the field `status`

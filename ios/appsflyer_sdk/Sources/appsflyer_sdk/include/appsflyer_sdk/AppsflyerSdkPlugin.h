@@ -14,7 +14,7 @@
 @end
 
 // Plugin version
-#define kAppsFlyerPluginVersion             @"7.0.0"
+#define kAppsFlyerPluginVersion             @"7.0.1"
 
 // initSdk option keys (sent from Dart in the `init` RPC params map)
 #define afDevKey                            @"afDevKey"

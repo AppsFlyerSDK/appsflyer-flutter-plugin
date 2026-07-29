@@ -21,7 +21,7 @@ To do so, please follow [this article](https://support.appsflyer.com/hc/en-us/ar
 
 ## ❗❗ Breaking changes when updating to v7.x.x❗❗
 
-Version `7.0.0` migrates the plugin to **AppsFlyer SDK 7** (Android & iOS `7.0.1`) using the new RPC architecture. If you are upgrading from `6.x`, follow the [**v6 → v7 migration guide**](/doc/migration-guide.md) and review the changes below and the [full migration notes in the CHANGELOG](/CHANGELOG.md).
+Version `7.0.1` migrates the plugin to **AppsFlyer SDK 7** (Android & iOS `7.0.1`) using the new RPC architecture. If you are upgrading from `6.x`, follow the [**v6 → v7 migration guide**](/doc/migration-guide.md) and review the changes below and the [full migration notes in the CHANGELOG](/CHANGELOG.md).
 
 > **API Removal Rule — _Preserve SDK 7 behavior, not SDK 6 APIs._** Any public API removed from the native AppsFlyer SDK 7 is also removed from this plugin; obsolete SDK 6 APIs are not kept for backward compatibility. See the [migration guide](/doc/migration-guide.md) for the full removed/changed API mapping.
 

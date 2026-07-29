@@ -39,7 +39,7 @@ AppsflyerSdk.getVersionNumber()                                       [lib/src/a
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `getSDKVersion()` (async RPC round-trip), `getVersionNumber()` (sync, local constant) |
-| `lib/src/appsflyer_constants.dart` | `PLUGIN_VERSION = "7.0.0"` constant returned by `getVersionNumber()` |
+| `lib/src/appsflyer_constants.dart` | `PLUGIN_VERSION = "7.0.1"` constant returned by `getVersionNumber()` |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | generic `getSdkVersion` dispatch over `AppsFlyerRpcHandler` |
 | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | generic `getSdkVersion` dispatch; `unwrapValueForMethod` extracts `data.version` |
 
@@ -49,7 +49,7 @@ AppsflyerSdk.getVersionNumber()                                       [lib/src/a
 | | |
 |--|--|
 | **Input** | None |
-| **Output** | `getSDKVersion()` → `Future<String?>` — the native AppsFlyer SDK's version string. `getVersionNumber()` → `String` — the Flutter plugin's version constant (`7.0.0`, synchronous). |
+| **Output** | `getSDKVersion()` → `Future<String?>` — the native AppsFlyer SDK's version string. `getVersionNumber()` → `String` — the Flutter plugin's version constant (`7.0.1`, synchronous). |
 
 ---
 
@@ -59,7 +59,7 @@ AppsflyerSdk.getVersionNumber()                                       [lib/src/a
 ---
 
 ## Known Limitations
-- `AppsflyerConstants.PLUGIN_VERSION` is a manually maintained constant with no CI check tying it to `pubspec.yaml`; keep both at `7.0.0`.
+- `AppsflyerConstants.PLUGIN_VERSION` is a manually maintained constant with no CI check tying it to `pubspec.yaml`; keep both at `7.0.1`.
 - `getVersionNumber()` reports the *plugin's* version, not the native SDK's — the naming similarity to `getSDKVersion()` is a common source of confusion.
 
 ---

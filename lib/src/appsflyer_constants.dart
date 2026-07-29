@@ -1,7 +1,7 @@
 part of appsflyer_sdk;
 
 class AppsflyerConstants {
-  static const String PLUGIN_VERSION = "7.0.0";
+  static const String PLUGIN_VERSION = "7.0.1";
   static const String AF_DEV_KEY = "afDevKey";
   static const String AF_APP_Id = "afAppId";
   static const String AF_IS_DEBUG = "isDebug";
