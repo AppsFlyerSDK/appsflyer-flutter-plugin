@@ -96,8 +96,8 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
       throw MissingConfigurationException();
     } else if (_instance == null && config != null) {
       // no existing instance. Create new instance and apply config
-      MethodChannel methodChannel =
-          const MethodChannel(_AppsFlyerConstants.AF_PURCHASE_CONNECTOR_CHANNEL);
+      MethodChannel methodChannel = const MethodChannel(
+          _AppsFlyerConstants.AF_PURCHASE_CONNECTOR_CHANNEL);
       _instance = _PurchaseConnectorImpl._internal(methodChannel, config);
     } else if (_instance != null && config != null) {
       debugPrint(_AppsFlyerConstants.RE_CONFIGURE_ERROR_MSG);
@@ -157,11 +157,11 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
 
     switch (call.method) {
       case _AppsFlyerConstants
-          .SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_RESPONSE:
+            .SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_RESPONSE:
         _handleSubscriptionPurchaseValidationResultListenerOnResponse(callMap);
         break;
       case _AppsFlyerConstants
-          .SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_FAILURE:
+            .SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_FAILURE:
         _handleSubscriptionPurchaseValidationResultListenerOnFailure(callMap);
         break;
       case _AppsFlyerConstants.IN_APP_VALIDATION_RESULT_LISTENER_ON_RESPONSE:

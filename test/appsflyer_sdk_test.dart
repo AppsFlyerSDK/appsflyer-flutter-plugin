@@ -222,7 +222,8 @@ void main() {
         throwsA(
           isA<AppsFlyerException>()
               .having((error) => error.code, 'code', 422)
-              .having((error) => error.message, 'message', 'devKey cannot be empty'),
+              .having((error) => error.message, 'message',
+                  'devKey cannot be empty'),
         ),
       );
     });
@@ -255,7 +256,8 @@ void main() {
       );
     });
 
-    test('MissingPluginException is not converted to AppsFlyerException', () async {
+    test('MissingPluginException is not converted to AppsFlyerException',
+        () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(methodChannel, (_) async {
         throw MissingPluginException('No implementation found');
@@ -375,8 +377,7 @@ void main() {
       });
     });
 
-    test(
-        'direct monetization network preserves native platform naming',
+    test('direct monetization network preserves native platform naming',
         () async {
       await androidSdk.logAdRevenue(
         monetizationNetwork: 'network',
@@ -1035,7 +1036,8 @@ void main() {
       expect(await result, {'error': 'Network unavailable'});
     });
 
-    test('ignores transport-only envelope fields on conversion stream', () async {
+    test('ignores transport-only envelope fields on conversion stream',
+        () async {
       final result = androidSdk.onConversionDataSuccess.first;
       await pumpEventQueue();
       await _emitEvent({

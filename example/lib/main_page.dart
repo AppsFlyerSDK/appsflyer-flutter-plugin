@@ -101,8 +101,7 @@ class MainPageState extends State<MainPage> {
       _appsflyerSdk.onDeepLinkReceived.listen((result) {
         // Empty payload when the SDK didn't resolve a deep link, so the
         // smoke runner's pattern check sees a stable `payload={}` shape.
-        final payload =
-            result.deepLink == null ? const {} : result.toJson();
+        final payload = result.deepLink == null ? const {} : result.toJson();
         AfQaLogger.callback(
           'onDeepLinking',
           'status=${_deepLinkStatusForQaLog(result.status)}, '
