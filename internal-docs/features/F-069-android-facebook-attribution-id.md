@@ -27,7 +27,7 @@ AppsFlyerSdk.getAttributionId()                                      [lib/src/ap
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | Public Android-guarded nullable getter |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | Generic RPC forwarding and reply serialization |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Generic RPC forwarding and reply serialization |
 | Android `plugin_bridge/.../RpcRequest.kt` and `AppsFlyerRpcHandler.kt` | Getter request and native SDK call |
 
 ## Input / Output

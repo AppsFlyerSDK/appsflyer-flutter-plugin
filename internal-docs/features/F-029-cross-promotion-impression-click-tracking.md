@@ -36,7 +36,7 @@ AppsFlyerSdk.logAndOpenStore(promotedAppId, campaign: ..., userParams: ...)     
       → Android: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRpcHandler
         → LogAndOpenStoreRequest  // init: require(promotedAppId.isNotEmpty())
         → CrossPromotionHelper.logAndOpenStore(context, promotedAppId, campaign, userParams)
-      → iOS: AppsflyerSdkPlugin.logAndOpenStoreFromRpc:params:result:      [ios/.../AppsflyerSdkPlugin.m]
+      → iOS: AppsflyerSdkPlugin.logAndOpenStoreFromRpc:params:result:      [ios/.../AppsflyerSdkPlugin.swift]
         → AppsFlyerRPCBridge executeJson → result.data.clickURL → UIApplication openURL:options:completionHandler:
   → PlatformException is converted to AppsFlyerException
 ```
@@ -47,8 +47,8 @@ AppsFlyerSdk.logAndOpenStore(promotedAppId, campaign: ..., userParams: ...)     
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `logCrossPromoteImpression(String appId, {String campaign, Map<String, String>? userParams})` and `logAndOpenStore(String promotedAppId, {String campaign, Map<String, String>? userParams})` — both return `Future<void>` |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | No per-method handler — both methods go through the generic `executeRpc` → `dispatchRpc` path to the native RPC bridge |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `logAndOpenStoreFromRpc:params:result:` — plugin-orchestrated: reads `data.clickURL` from the RPC result and opens it with `UIApplication`. `logCrossPromoteImpression` uses the generic dispatch. |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | No per-method handler — both methods go through the generic `executeRpc` → `dispatchRpc` path to the native RPC bridge |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | `logAndOpenStoreFromRpc:params:result:` — plugin-orchestrated: reads `data.clickURL` from the RPC result and opens it with `UIApplication`. `logCrossPromoteImpression` uses the generic dispatch. |
 
 ---
 

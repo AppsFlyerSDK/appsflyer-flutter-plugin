@@ -83,7 +83,7 @@ object AppsFlyerPurchaseConnector : FlutterPlugin, MethodChannel.MethodCallHandl
         methodChannel =
             MethodChannel(
                 binding.binaryMessenger,
-                AppsFlyerConstants.AF_PURCHASE_CONNECTOR_CHANNEL
+                AF_PURCHASE_CONNECTOR_CHANNEL
             ).also {
                 it.setMethodCallHandler(this)
             }
@@ -131,9 +131,9 @@ object AppsFlyerPurchaseConnector : FlutterPlugin, MethodChannel.MethodCallHandl
     private fun configure(call: MethodCall, result: MethodChannel.Result) {
         if (connectorWrapper == null) {
             contextRef?.get()?.let { ctx ->
-                val logSubs = call.getBoolean(AppsFlyerConstants.LOG_SUBS_KEY)
-                val logInApps = call.getBoolean(AppsFlyerConstants.LOG_IN_APP_KEY)
-                val sandbox = call.getBoolean(AppsFlyerConstants.SANDBOX_KEY)
+                val logSubs = call.getBoolean(LOG_SUBS_KEY)
+                val logInApps = call.getBoolean(LOG_IN_APP_KEY)
+                val sandbox = call.getBoolean(SANDBOX_KEY)
                 
                 android.util.Log.d("AppsFlyer_PC_Config", "Native received - logSubs: $logSubs, logInApps: $logInApps, sandbox: $sandbox")
                 android.util.Log.d("AppsFlyer_PC_Config", "Arguments received: ${call.arguments}")

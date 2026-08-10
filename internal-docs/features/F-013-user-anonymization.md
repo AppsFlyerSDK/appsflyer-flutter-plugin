@@ -38,8 +38,8 @@ AppsFlyerSdk.anonymizeUser(shouldAnonymize)                           [lib/src/a
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `anonymizeUser(bool shouldAnonymize)` — awaitable RPC setter |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | Forwards `anonymizeUser` through the Android RPC handler |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | Forwards `anonymizeUser` through the iOS RPC bridge |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Forwards `anonymizeUser` through the Android RPC handler |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | Forwards `anonymizeUser` through the iOS RPC bridge |
 
 ---
 

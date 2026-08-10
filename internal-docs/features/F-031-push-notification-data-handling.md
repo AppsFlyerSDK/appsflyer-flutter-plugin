@@ -28,7 +28,7 @@ AppsFlyerSdk.sendPushNotificationData(campaign:, pid:, isRetargeting:, additiona
   → not Android: log warning, return (no RPC dispatched)
   → _invokeVoidRpc('sendPushNotificationData', {campaign, pid, isRetargeting, additionalParameters})
     → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
-      → AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRpcHandler                 [android/.../AppsflyerSdkPlugin.java]
+      → AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRpcHandler                 [android/.../AppsflyerSdkPlugin.kt]
         → SendPushNotificationDataRequest  // init: require(campaign.isNotEmpty()), require(pid.isNotEmpty())
         → AFPushData(campaign, pid, isRetargeting, additionalParameters)
         → appsFlyerLib.sendPushNotificationData(pushData)
@@ -36,7 +36,7 @@ AppsFlyerSdk.sendPushNotificationData(campaign:, pid:, isRetargeting:, additiona
 AppsFlyerSdk.handlePushNotification(pushPayload)                                               [iOS only]
   → not iOS: log warning, return (no RPC dispatched)
   → _invokeVoidRpc('handlePushNotification', {'pushPayload': pushPayload})
-      → AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRPCBridge                  [ios/.../AppsflyerSdkPlugin.m]
+      → AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRPCBridge                  [ios/.../AppsflyerSdkPlugin.swift]
         → non-empty pushPayload required, else a validation error
         → [[AppsFlyerLib shared] handlePushNotification:] → deep-link event (F-037)
 
@@ -50,7 +50,7 @@ Any OneLink URL found at the configured path (F-022) is resolved and delivered a
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `sendPushNotificationData({required String campaign, required String pid, bool isRetargeting = false, Map<String, dynamic>? additionalParameters})` (Android-only, guarded by an Android platform check) and `handlePushNotification(Map<String, dynamic> pushPayload)` (iOS-only, guarded by an iOS platform check) |
-| `android/.../AppsflyerSdkPlugin.java` / `ios/.../AppsflyerSdkPlugin.m` | No per-method handler — the generic `executeRpc` → `dispatchRpc` path forwards the JSON envelope to the native RPC bridge |
+| `android/.../AppsflyerSdkPlugin.kt` / `ios/.../AppsflyerSdkPlugin.swift` | No per-method handler — the generic `executeRpc` → `dispatchRpc` path forwards the JSON envelope to the native RPC bridge |
 | `android/.../plugin_bridge` / `AppsFlyerRPC` framework (native SDKs, not the Flutter plugin) | Parse the request and call `sendPushNotificationData` (Android) / `handlePushNotification:` (iOS) |
 | `doc/api-reference.md` | Documents both methods and the per-platform push + deep-link matrix |
 

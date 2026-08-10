@@ -26,7 +26,7 @@ AppsFlyerSdk.setDisableNetworkData(isDisable)                          [lib/src/
   → not Android: log warning, return (no RPC dispatched)
   → _invokeVoidRpc('setDisableNetworkData', {'isDisable': isDisable})
     → MethodChannel "af-api".invokeMethod('executeRpc', {method:'setDisableNetworkData', params:{isDisable}})
-      → Android: AppsflyerSdkPlugin.executeRpc → dispatchRpc → AppsFlyerRpcHandler   [android/.../AppsflyerSdkPlugin.java]
+      → Android: AppsflyerSdkPlugin.executeRpc → dispatchRpc → AppsFlyerRpcHandler   [android/.../AppsflyerSdkPlugin.kt]
         → AppsFlyerLib.getInstance().setDisableNetworkData(disable)
 ```
 
@@ -36,7 +36,7 @@ AppsFlyerSdk.setDisableNetworkData(isDisable)                          [lib/src/
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `Future<void> setDisableNetworkData(bool isDisable)` — guarded by an Android platform check |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | RPC bridge entry (`executeRpc`) routing `setDisableNetworkData` to `AppsFlyerRpcHandler` |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | RPC bridge entry (`executeRpc`) routing `setDisableNetworkData` to `AppsFlyerRpcHandler` |
 | `doc/api-reference.md` | Documents the method as **"Android Only!"** and describes it as opting out of "collecting the network operator name (carrier) and sim operator name from the device" |
 
 ---

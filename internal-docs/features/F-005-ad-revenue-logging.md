@@ -57,8 +57,8 @@ Every other value returns the same string on both platforms.
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `logAdRevenue({monetizationNetwork, mediationNetwork, currencyIso4217Code, revenue, additionalParameters})` → `Future<void>`; builds the flat RPC parameter map |
 | `lib/src/appsflyer_constants.dart` | `AFMediationNetwork` enum and its `rpcValue({required bool isIOS})` platform mapping |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | No per-method handler — generic `executeRpc` → `dispatchRpc('logAdRevenue', ...)` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | No per-method handler — generic `executeRpc` → `dispatchRpc` |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | No per-method handler — generic `executeRpc` → `dispatchRpc('logAdRevenue', ...)` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | No per-method handler — generic `executeRpc` → `dispatchRpc` |
 | `doc/api-reference.md` | `logAdRevenue` and `AFMediationNetwork` public documentation |
 
 ---

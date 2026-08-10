@@ -42,7 +42,7 @@ The resolved deep link surfaces asynchronously over the `af-events` EventChannel
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `performDeepLinking(String url, {bool shouldTriggerSession = false})` — platform-branching wrapper: Android sends the `performDeepLinking` RPC with `{url, shouldTriggerSession}`; iOS sends `performOnAppAttributionWithURL` with `{url}`. Returns `Future<void>`. |
 | `lib/src/udl/deep_link_result.dart` | `DeepLinkResult._fromEvent` maps the resulting native event into `DeepLinkStatus` plus an optional `DeepLink` payload and `DeepLinkFailure` |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` / `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | No per-method handler — the generic `executeRpc` dispatch forwards the JSON envelope to the native RPC bridge |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` / `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | No per-method handler — the generic `executeRpc` dispatch forwards the JSON envelope to the native RPC bridge |
 
 ---
 

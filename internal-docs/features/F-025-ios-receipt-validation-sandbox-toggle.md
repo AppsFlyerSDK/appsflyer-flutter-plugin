@@ -44,7 +44,7 @@ AppsFlyerSdk.setUseUninstallSandbox(bool sandbox)
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `setUseReceiptValidationSandbox(bool sandbox)` → RPC `setUseReceiptValidationSandbox` with `{sandbox}`; `setUseUninstallSandbox(bool sandbox)` → RPC `setUseUninstallSandbox` with `{sandbox}`. Both iOS-only, guarded by an iOS platform check |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | No per-method handler — generic `executeRpc` → `dispatchRpc` forwards to `AppsFlyerRPCBridge` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | No per-method handler — generic `executeRpc` → `dispatchRpc` forwards to `AppsFlyerRPCBridge` |
 
 ---
 

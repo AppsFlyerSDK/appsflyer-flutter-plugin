@@ -38,24 +38,25 @@ iOS (CocoaPods, evaluated at `pod install` time):
       s.default_subspecs = 'Core', 'PurchaseConnector'
         subspec 'PurchaseConnector' → depends on CocoaPods 'PurchaseConnector' pod
                                      → pod_target_xcconfig sets GCC_PREPROCESSOR_DEFINITIONS 'ENABLE_PURCHASE_CONNECTOR=1'
+                                       and SWIFT_ACTIVE_COMPILATION_CONDITIONS '$(inherited) ENABLE_PURCHASE_CONNECTOR'
+                                       (the Swift compiler ignores GCC_PREPROCESSOR_DEFINITIONS)
     else
       s.default_subspecs = 'Core'   (PurchaseConnector subspec/pod not included at all)
 
-  ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m (compiled per the xcconfig macro above):
-    #ifdef ENABLE_PURCHASE_CONNECTOR
-      #import "appsflyer_sdk/appsflyer_sdk-Swift.h"
-    #endif
-    ...
-    + (void)registerWithRegistrar:...
-    #ifdef ENABLE_PURCHASE_CONNECTOR
-      [PurchaseConnectorPlugin registerWithRegistrar:registrar];
-    #endif
+  ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift (compiled per the xcconfig condition above):
+    public static func register(with registrar: FlutterPluginRegistrar) {
+      #if ENABLE_PURCHASE_CONNECTOR
+        PurchaseConnectorPlugin.register(with: registrar)
+      #endif
+      ...
+    }
+    (no bridging-header import is needed — both files compile into the same Swift module)
 
 iOS (SPM, resolved at `swift build`/`flutter build` time — third gate, added by F-060):
   ios/appsflyer_sdk/Package.swift
     targets: [.target(name: "appsflyer_sdk", ...)]   — Core only, no PurchaseConnector target/product exists
     → ENABLE_PURCHASE_CONNECTOR is never defined for this target (SPM has no equivalent of CocoaPods' pod_target_xcconfig)
-    → the same AppsflyerSdkPlugin.m above compiles with the #ifdef guard resolving false, identically to the CocoaPods not-opted-in path
+    → the same AppsflyerSdkPlugin.swift above compiles with the #if guard resolving false, identically to the CocoaPods not-opted-in path
 ```
 
 ---
@@ -67,8 +68,8 @@ iOS (SPM, resolved at `swift build`/`flutter build` time — third gate, added b
 | `android/src/main/include-connector/com/appsflyer/appsflyersdk/AppsFlyerPurchaseConnector.kt` | Real Android implementation: registers the `af-purchase-connector` MethodChannel and handles `configure`/`startObservingTransactions`/`stopObservingTransactions` |
 | `android/src/main/include-connector/com/appsflyer/appsflyersdk/ConnectorWrapper.kt` | Wraps `PurchaseClient` (Play Billing Library) — only compiled in the include-connector variant |
 | `android/src/main/exlude-connector/com/appsflyer/appsflyersdk/AppsFlyerPurchaseConnector.kt` | No-op stub: implements `FlutterPlugin` but registers no `MethodChannel` at all |
-| `ios/appsflyer_sdk.podspec` | Defines the `PurchaseConnector` CocoaPods subspec conditionally on `$AppsFlyerPurchaseConnector`, and sets the `ENABLE_PURCHASE_CONNECTOR=1` preprocessor macro for that subspec only |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `#ifdef ENABLE_PURCHASE_CONNECTOR` guards both the Swift-bridging header import and the `[PurchaseConnectorPlugin registerWithRegistrar:registrar]` call |
+| `ios/appsflyer_sdk.podspec` | Defines the `PurchaseConnector` CocoaPods subspec conditionally on `$AppsFlyerPurchaseConnector`, and sets both the `ENABLE_PURCHASE_CONNECTOR=1` preprocessor macro and the matching `SWIFT_ACTIVE_COMPILATION_CONDITIONS` entry for that subspec only |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | `#if ENABLE_PURCHASE_CONNECTOR` guards the `PurchaseConnectorPlugin.register(with: registrar)` call |
 | `ios/appsflyer_sdk/Package.swift` (added by F-060) | Declares only the Core target — has no PurchaseConnector target/product and no mechanism to define `ENABLE_PURCHASE_CONNECTOR`, so this gate is permanently "not opted in" for any SPM-only integration |
 | `doc/purchase-connector.md` | App-facing opt-in instructions (`$AppsFlyerPurchaseConnector = true` in Podfile; `appsflyer.enable_purchase_connector=true` in gradle.properties) and an explicit "What Happens if You Use Dart Files Without Opting In?" section |
 

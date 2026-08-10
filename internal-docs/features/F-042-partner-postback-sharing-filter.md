@@ -41,8 +41,8 @@ AppsFlyerSdk.setSharingFilterForPartners(List<String>? partners)         [lib/sr
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `Future<void> setSharingFilterForPartners(List<String>? partners)` — sends the `setSharingFilterForPartners` RPC with `{partners}`; normalizes an empty list to `null`, and ignores a clear request on Android with a logged warning |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | No per-method handler — the generic `executeRpc` → `dispatchRpc` forwards to the native RPC bridge |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | No per-method handler — the generic `executeRpc` → `dispatchRpc` forwards to the native RPC bridge |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | No per-method handler — the generic `executeRpc` → `dispatchRpc` forwards to the native RPC bridge |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | No per-method handler — the generic `executeRpc` → `dispatchRpc` forwards to the native RPC bridge |
 
 ---
 

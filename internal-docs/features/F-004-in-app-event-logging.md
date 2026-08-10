@@ -40,8 +40,8 @@ AppsFlyerSdk.logEvent(eventName, {eventValues, awaitResponse})        [lib/src/a
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `logEvent(String eventName, {Map<String, dynamic>? eventValues, bool awaitResponse = false})` — public API over the shared RPC path |
 | `lib/src/appsflyer_exception.dart` | `AppsFlyerException.fromPlatformException` — converts the native error reply into a typed Dart exception |
-| `android/.../AppsflyerSdkPlugin.java` | No per-method handler — generic `executeRpc` → `dispatchRpc('logEvent', ...)` forwards the envelope to `AppsFlyerRpcHandler` |
-| `ios/.../AppsflyerSdkPlugin.m` | No per-method handler — generic `executeRpc` → `dispatchRpc` forwards the envelope to `AppsFlyerRPCBridge` |
+| `android/.../AppsflyerSdkPlugin.kt` | No per-method handler — generic `executeRpc` → `dispatchRpc('logEvent', ...)` forwards the envelope to `AppsFlyerRpcHandler` |
+| `ios/.../AppsflyerSdkPlugin.swift` | No per-method handler — generic `executeRpc` → `dispatchRpc` forwards the envelope to `AppsFlyerRPCBridge` |
 | `doc/in-app-events.md` | Public integration guide with usage example |
 
 ---

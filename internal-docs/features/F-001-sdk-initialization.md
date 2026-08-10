@@ -26,10 +26,10 @@ AppsFlyerSdk.instance.init(devKey: ..., appId: ...)                    [lib/src/
   → empty devKey, or missing/empty appId on iOS → ArgumentError (no RPC dispatched)
   → _invokeVoidRpc('init', platform-specific params)
     → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
-      → Android: AppsflyerSdkPlugin.initFromRpc                       [android/.../AppsflyerSdkPlugin.java]
+      → Android: AppsflyerSdkPlugin.initFromRpc                       [android/.../AppsflyerSdkPlugin.kt]
         → best-effort setPluginInfo(plugin: flutter, pluginVersion); failure is ignored
         → Android RPC init(devKey)
-      → iOS: AppsflyerSdkPlugin.initFromRpc                           [ios/.../AppsflyerSdkPlugin.m]
+      → iOS: AppsflyerSdkPlugin.initFromRpc                           [ios/.../AppsflyerSdkPlugin.swift]
         → best-effort setPluginInfo(plugin: flutter, pluginVersion); failure is ignored
         → iOS RPC initialize(devKey, appId)
         → handle pending launch options, when present
@@ -44,8 +44,8 @@ Listener registration is intentionally not part of this sequence. The app separa
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `AppsFlyerSdk.instance`, `init`, `_invokeVoidRpc`, and `_invokeRpc` |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | Makes the non-blocking `setPluginInfo` call before the required `init` RPC; dev-key validation is left to the RPC layer so its `422` reaches the caller intact |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | Makes the non-blocking `setPluginInfo` call before `initialize`, forwards pending launch options, and marks the attribution bridge ready |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Makes the non-blocking `setPluginInfo` call before the required `init` RPC; dev-key validation is left to the RPC layer so its `422` reaches the caller intact |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | Makes the non-blocking `setPluginInfo` call before `initialize`, forwards pending launch options, and marks the attribution bridge ready |
 
 ---
 

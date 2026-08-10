@@ -27,7 +27,7 @@ AppsFlyerSdk.logSession()                                             [lib/src/a
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | Public Android-guarded method |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | Generic RPC forwarding |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Generic RPC forwarding |
 | Android `plugin_bridge/.../AppsFlyerRpcHandler.kt` | Invokes `AppsFlyerLib.logSession(context)` |
 
 ## Input / Output

@@ -42,7 +42,7 @@ AppsFlyerSdk.setOneLinkCustomDomain(List<String> domains)                       
 | `lib/src/appsflyer_sdk.dart` | `setOneLinkCustomDomain(List<String> domains)` — awaitable passthrough that sends the RPC `setOneLinkCustomDomain` with `{domains}`; it does not pre-validate the list |
 | `android/.../plugin_bridge` (native SDK, not the Flutter plugin) | `SetOneLinkCustomDomainRequest(domains)` — `init { require(domains.isNotEmpty()) }`; handler → `appsFlyerLib.setOneLinkCustomDomain(*domains.toTypedArray())` |
 | `AppsFlyerRPC` framework (native iOS SDK, not the Flutter plugin) | `AFRPCSetOneLinkCustomDomainsRequest(domains)` — rejects an empty list; `AFRPCComplexConfigHandler` → `sdk.oneLinkCustomDomains = domains` |
-| `android/.../AppsflyerSdkPlugin.java` / `ios/.../AppsflyerSdkPlugin.m` | No per-method handler — the generic `executeRpc` dispatch forwards the JSON envelope to the native RPC bridge above |
+| `android/.../AppsflyerSdkPlugin.kt` / `ios/.../AppsflyerSdkPlugin.swift` | No per-method handler — the generic `executeRpc` dispatch forwards the JSON envelope to the native RPC bridge above |
 
 ---
 

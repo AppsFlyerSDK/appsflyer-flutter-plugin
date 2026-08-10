@@ -26,7 +26,7 @@ AppsFlyerSdk.setCollectAndroidID(isCollect)                           [lib/src/a
   → not Android: log warning, return (no RPC dispatched)
   → _invokeVoidRpc('setCollectAndroidID', {isCollect})
     → af-api "executeRpc" {method:'setCollectAndroidID', params}
-      → Android: dispatchRpc → AppsFlyerRpcHandler → AppsFlyerLib.setCollectAndroidID(isCollect)  [android/.../AppsflyerSdkPlugin.java]
+      → Android: dispatchRpc → AppsFlyerRpcHandler → AppsFlyerLib.setCollectAndroidID(isCollect)  [android/.../AppsflyerSdkPlugin.kt]
 ```
 
 ---
@@ -35,7 +35,7 @@ AppsFlyerSdk.setCollectAndroidID(isCollect)                           [lib/src/a
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `setCollectAndroidID(bool)` — guarded by an Android platform check |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | generic `setCollectAndroidID` RPC dispatch over `AppsFlyerRpcHandler` |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | generic `setCollectAndroidID` RPC dispatch over `AppsFlyerRpcHandler` |
 
 ---
 

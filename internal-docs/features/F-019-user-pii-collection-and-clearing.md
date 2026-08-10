@@ -39,8 +39,8 @@ AppsFlyerSdk.setUserEmail / setUserPhone / setUserFirstName /
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | Public PII setters and `clearUserPii()` |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | Forwards all PII methods through the Android RPC handler |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | Forwards all PII methods through the iOS RPC bridge |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Forwards all PII methods through the Android RPC handler |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | Forwards all PII methods through the iOS RPC bridge |
 
 ---
 

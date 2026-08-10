@@ -25,8 +25,8 @@ Called on demand by host app code — typically diagnostic/support tooling, debu
 AppsFlyerSdk.getSdkVersion()                                          [lib/src/appsflyer_sdk.dart]
   → _invokeRpc<String>('getSdkVersion')
     → MethodChannel('af-api').invokeMethod('executeRpc', {method:'getSdkVersion', params:{}})
-      → Android: dispatchRpc → AppsFlyerRpcHandler → AppsFlyerLib.getSdkVersion()   [android/.../AppsflyerSdkPlugin.java]
-      → iOS: dispatchRpc → AppsFlyerRPCBridge → [AppsFlyerLib shared] ...           [ios/.../AppsflyerSdkPlugin.m]
+      → Android: dispatchRpc → AppsFlyerRpcHandler → AppsFlyerLib.getSdkVersion()   [android/.../AppsflyerSdkPlugin.kt]
+      → iOS: dispatchRpc → AppsFlyerRPCBridge → [AppsFlyerLib shared] ...           [ios/.../AppsflyerSdkPlugin.swift]
         (iOS unwraps the version from the nested {data:{version}} result)
   → null or empty reply is rejected with AppsFlyerException (code 500)
   → PlatformException is converted to AppsFlyerException
@@ -42,8 +42,8 @@ AppsFlyerSdk.pluginVersion                                            [lib/src/a
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `Future<String> getSdkVersion()` (async RPC round-trip), `String get pluginVersion` (sync, local constant) |
 | `lib/src/appsflyer_constants.dart` | `_AppsFlyerConstants.PLUGIN_VERSION = "7.0.1"` constant returned by `pluginVersion` |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | generic `getSdkVersion` dispatch over `AppsFlyerRpcHandler` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | generic `getSdkVersion` dispatch; `unwrapValueForMethod` extracts `data.version` |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | generic `getSdkVersion` dispatch over `AppsFlyerRpcHandler` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | generic `getSdkVersion` dispatch; `unwrapValueForMethod` extracts `data.version` |
 
 ---
 
@@ -62,7 +62,7 @@ AppsFlyerSdk.pluginVersion                                            [lib/src/a
 
 ## Known Limitations
 - `_AppsFlyerConstants.PLUGIN_VERSION` is a separate compiled constant rather than a runtime read of `pubspec.yaml`. The RC and production-promotion workflows rewrite the Dart constant alongside the package version, but no general validation check guarantees that they remain equal when changes are made outside those workflows.
-- The same release workflows still target the obsolete `ios/Classes/AppsflyerSdkPlugin.h` path when updating the native iOS plugin-version constant. The current constant is in `ios/appsflyer_sdk/Sources/appsflyer_sdk/include/appsflyer_sdk/AppsflyerSdkPlugin.h`, so native iOS `setPluginInfo` can report a stale plugin version until the release tooling is corrected. This does not change the Dart `pluginVersion` getter.
+- The same release workflows still target the obsolete `ios/Classes/AppsflyerSdkPlugin.h` path when updating the native iOS plugin-version constant. The current constant is `kAppsFlyerPluginVersion` in `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift`, so native iOS `setPluginInfo` can report a stale plugin version until the release tooling is corrected. This does not change the Dart `pluginVersion` getter.
 - `pluginVersion` reports the *plugin's* version, not the native SDK's — integrators looking for the native version must use `getSdkVersion()`.
 
 ---

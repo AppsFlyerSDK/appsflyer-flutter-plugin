@@ -38,7 +38,7 @@ AppsFlyerSdk.setDisableSKAdNetwork(disable)                           [lib/src/a
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `setDisableSKAdNetwork(bool disable)` — guarded by an iOS platform check; sends the `setDisableSKAdNetwork` RPC with `{disable}` |
 | `lib/src/appsflyer_exception.dart` | `AppsFlyerException` — the failure type raised for native failures |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | No per-method handler — the generic `executeRpc` → `dispatchRpc` forwards the JSON envelope to `AppsFlyerRPCBridge`, which applies it to the SDK |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | No per-method handler — the generic `executeRpc` → `dispatchRpc` forwards the JSON envelope to `AppsFlyerRPCBridge`, which applies it to the SDK |
 
 ---
 

@@ -42,8 +42,8 @@ The configured path is later consulted when a push payload reaches the native SD
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `addPushNotificationDeepLinkPath(List<String> deepLinkPath)` — awaitable passthrough that sends the generic RPC `addPushNotificationDeepLinkPath` with `{deepLinkPath}`; performs no Dart-side validation. Also hosts the two deliberately non-unified push entry points: Android-only `sendPushNotificationData(...)` and iOS-only `handlePushNotification(pushPayload)`. |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | Generic `executeRpc` dispatch — forwards the JSON envelope to the Android RPC handler |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | Generic `executeRpc` dispatch — forwards the JSON envelope to the iOS RPC bridge |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Generic `executeRpc` dispatch — forwards the JSON envelope to the Android RPC handler |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | Generic `executeRpc` dispatch — forwards the JSON envelope to the iOS RPC bridge |
 
 ---
 

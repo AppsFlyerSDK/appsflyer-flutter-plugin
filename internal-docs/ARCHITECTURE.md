@@ -136,7 +136,7 @@ Flutter public method
 
 ### 4.2 Android transport
 
-`AppsflyerSdkPlugin.java` forwards every method except plugin-orchestrated `init` to `AppsFlyerRpcHandler`.
+`AppsflyerSdkPlugin.kt` forwards every method except plugin-orchestrated `init` to `AppsFlyerRpcHandler`.
 
 - Requests run on a single-thread `rpcExecutor`, preserving FIFO ordering.
 - The handler uses `JsonRpcRequestParser` and the typed Android RPC request catalog.
@@ -147,9 +147,10 @@ Flutter public method
 
 ### 4.3 iOS transport
 
-`AppsflyerSdkPlugin.m` serializes `{method, params}` and calls `AppsFlyerRPCBridge.executeJson`.
+`AppsflyerSdkPlugin.swift` serializes `{method, params}` and calls `AppsFlyerRPCBridge.executeJson`.
 
 - `AppsFlyerRPCBridge` is `@MainActor`-isolated. It starts an async task per request; unlike Android, the plugin has no single FIFO executor for unrelated calls. Callers must `await` operations whose ordering matters.
+- Because the plugin's Flutter-facing methods are non-isolated, it reaches the bridge through the `appsflyer_sdk_objc` shim (`AFFlutterRPCBridge`), which calls the bridge's Objective-C interface exactly as the previous Objective-C plugin did — no actor isolation is introduced on the plugin side. The same shim provides the `@try/@catch` boundary that turns malformed Flutter arguments into an `UNEXPECTED_ERROR` `FlutterError`.
 - Native completion-handler APIs are invoked on the main queue and bridged into Swift concurrency. RPC state used to gate listeners is held in an actor.
 - JSON protocol errors and SDK failures become `FlutterError` values.
 - iOS-specific nested result envelopes are unwrapped into the primitive or map shape expected by Dart.
@@ -349,7 +350,7 @@ Purchase Connector is a separate optional native subsystem using `af-purchase-co
 - Explicitly platform-gated calls are short-circuited with a logged warning before a channel request is sent; shared calls are not guaranteed to work outside Android/iOS.
 - Dart throws `ArgumentError` before transport for an empty `devKey`, a missing/empty iOS `appId`, incomplete GDPR consent, or purchase details for the wrong platform. Most business validation remains in the typed native RPC request and SDK.
 - Android converts parser/validation failures to numeric `RpcResponse.Error` values. Unexpected plugin orchestration failures use plugin error strings such as `UNEXPECTED_ERROR` or `INIT_ERROR`.
-- iOS distinguishes protocol errors in the response `error` envelope from handler failures represented by `result.success == false`; the Objective-C adapter converts both to `FlutterError` and unwraps successful values.
+- iOS distinguishes protocol errors in the response `error` envelope from handler failures represented by `result.success == false`; the iOS plugin adapter converts both to `FlutterError` and unwraps successful values.
 - A malformed native event is logged and dropped by Dart. It does not become a stream error. Conversion-data failure and UDL failure are normal event payloads, not failed MethodChannel requests.
 - Android detaches channels, clears pending events, shuts down its executor, and releases its RPC handler/context when the Flutter engine detaches.
 - iOS registers its RPC event handler during plugin construction and tears it down in `detachFromEngineForRegistrar:` (after `publish:` in `registerWithRegistrar:`), clearing `eventSink`, `pendingEvents`, and the bridge event handler when the `FlutterEngine` is deallocated.
@@ -452,10 +453,11 @@ Keep platform-only behavior visibly gated in Dart and documented as such. Purcha
 | Errors | `lib/src/appsflyer_exception.dart` | Public SDK exceptions |
 | Purchase models | `lib/src/af_purchase_details.dart` | Android/iOS purchase request implementations |
 | Invite model | `lib/src/appsflyer_invite_link_params.dart` | Platform-aware invite parameter mapping |
-| Android plugin | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | Channels, RPC dispatch, lifecycle forwarding, event buffering |
+| Android plugin | `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Channels, RPC dispatch, lifecycle forwarding, event buffering |
 | Android dependencies | `android/build.gradle` | SDK/RPC BOM, optional connector source set, Android compatibility |
-| iOS plugin | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | Channels, RPC dispatch, lifecycle forwarding, result unwrapping |
-| iOS attribution adapter | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerAttribution.m` | Queues and forwards early URL/Universal Link RPC calls |
+| iOS plugin | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | Channels, RPC dispatch, lifecycle forwarding, result unwrapping |
+| iOS attribution adapter | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerAttribution.swift` | Queues and forwards early URL/Universal Link RPC calls |
+| iOS Objective-C shim | `ios/appsflyer_sdk/Sources/appsflyer_sdk_objc/AppsFlyerFlutterObjCShim.{h,m}` | `NSException` boundary around RPC dispatch and isolation-free `AppsFlyerRPCBridge` pass-throughs |
 | iOS dependencies | `ios/appsflyer_sdk.podspec`, `ios/appsflyer_sdk/Package.swift` | CocoaPods subspecs and Core-only SPM product/version pins |
 | Purchase Connector | `lib/src/purchase_connector/`, `android/src/main/include-connector/`, `ios/PurchaseConnector/` | Optional non-core channel, state, models, and native callbacks |
 | Dart contract tests | `test/appsflyer_sdk_test.dart` | Public mapping, platform behavior, errors, and event decoding |

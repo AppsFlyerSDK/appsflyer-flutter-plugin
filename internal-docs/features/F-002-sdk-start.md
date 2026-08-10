@@ -57,8 +57,8 @@ AppsFlyerSdk.unregisterSessionReadyListener()
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `onSessionReady`, `registerSessionReadyListener`, and `start({bool awaitResponse = false})` |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | Forwards `start` through the Android RPC handler |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | Forwards `start` through the iOS RPC bridge |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Forwards `start` through the Android RPC handler |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | Forwards `start` through the iOS RPC bridge |
 
 ---
 

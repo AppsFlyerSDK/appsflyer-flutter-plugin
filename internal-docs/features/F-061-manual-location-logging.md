@@ -27,8 +27,8 @@ AppsFlyerSdk.logLocation(latitude:, longitude:)                       [lib/src/a
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | Public named-parameter API and RPC map |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | Generic Android RPC forwarding |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | Generic iOS RPC forwarding |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Generic Android RPC forwarding |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | Generic iOS RPC forwarding |
 | Android `plugin_bridge/.../RpcRequest.kt` and `AppsFlyerRpcHandler.kt` | Range validation and SDK call |
 | iOS `AppsFlyerRPC/.../AFRPCTypedRequests.swift` and `AFRPCDataHandler.swift` | Range validation and SDK call, including native longitude-first ordering |
 

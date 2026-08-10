@@ -21,8 +21,8 @@ Fires whenever iOS launches or resumes the app via a deep link: URI-scheme opens
 ## Call Chain
 ```
 iOS OS-level deep-link delivery (app already running or resuming):
-  application:openURL:options: (iOS 9+)                                    [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
-    → [[AppsFlyerAttribution shared] handleOpenUrl:url options:options]    [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerAttribution.m]
+  application:openURL:options: (iOS 9+)                                    [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift]
+    → [[AppsFlyerAttribution shared] handleOpenUrl:url options:options]    [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerAttribution.swift]
   application:openURL:sourceApplication:annotation: (iOS 8 and below)
     → [[AppsFlyerAttribution shared] handleOpenUrl:url sourceApplication:annotation:]
   application:continueUserActivity:restorationHandler: (Universal Links)
@@ -35,14 +35,14 @@ iOS UIScene-based delivery (Flutter 3.41+ UIScene migration, iOS 13+, only compi
     → for each userActivity of type NSUserActivityTypeBrowsingWeb → continueUserActivity:
   scene:continueUserActivity: → [[AppsFlyerAttribution shared] continueUserActivity:userActivity]
 
-AppsFlyerAttribution (queueing singleton, isBridgeReady initially NO)                               [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerAttribution.m]
+AppsFlyerAttribution (queueing singleton, isBridgeReady initially NO)                               [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerAttribution.swift]
   handleOpenUrl:.../continueUserActivity:...
     → builds an RPC envelope: handleOpenUrl / handleOpenURL / continueUserActivity with {url, options|activityType}
     → executeOrQueueMethod:params:
       → if isBridgeReady == YES: [[AppsFlyerRPCBridge shared] executeJson:completion:]
       → else: append {method, params} to the pendingRequests queue
 
-AppsflyerSdkPlugin initFromRpc:result: (Dart AppsFlyerSdk.init() → af-api executeRpc('init') → native init sequence)   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
+AppsflyerSdkPlugin initFromRpc:result: (Dart AppsFlyerSdk.init() → af-api executeRpc('init') → native init sequence)   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift]
   → runSequence: setPluginInfo → initialize → handleLaunchOptions (only when launch options were captured)
   → [[AppsFlyerAttribution shared] markBridgeReady]
     → isBridgeReady = YES, then drains pendingRequests through [[AppsFlyerRPCBridge shared] executeJson:]
@@ -55,10 +55,10 @@ Deep-link listener registration is no longer part of the init sequence. Dart reg
 ## Files
 | File | Role |
 |------|------|
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `application:openURL:options:`, `application:openURL:sourceApplication:annotation:`, `application:continueUserActivity:restorationHandler:`, and (behind `FlutterSceneLifeCycle.h` availability) `scene:openURLContexts:`, `scene:willConnectToSession:options:`, `scene:continueUserActivity:` — all OS/Scene entry points, each forwarding into `AppsFlyerAttribution`; `initFromRpc:result:` calls `markBridgeReady` once Dart's `init()` (`executeRpc('init')`) RPC sequence completes |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/include/appsflyer_sdk/AppsFlyerAttribution.h` | Declares the `AppsFlyerAttribution` singleton interface: the three `handleOpenUrl:`/`continueUserActivity:` entry points and `markBridgeReady` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerAttribution.m` | Singleton implementation — private `isBridgeReady` flag and `pendingRequests` queue; `handleOpenUrl:...`/`continueUserActivity:...` build an RPC envelope and pass it to `executeOrQueueMethod:params:`, which either sends it through `AppsFlyerRPCBridge` or appends to the queue; `markBridgeReady` sets `isBridgeReady` and drains that queue in arrival order |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/include/appsflyer_sdk/AppsflyerSdkPlugin.h` | `AppsflyerSdkPlugin` class declaration; conditionally conforms to `FlutterSceneLifeCycleDelegate` when available |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | `application:openURL:options:`, `application:openURL:sourceApplication:annotation:`, `application:continueUserActivity:restorationHandler:`, and (registered only when the registrar responds to `addSceneDelegate:`) `scene:openURLContexts:`, `scene:willConnectToSession:options:`, `scene:continueUserActivity:` — all OS/Scene entry points, each forwarding into `AppsFlyerAttribution`; `initFromRpc:result:` calls `markBridgeReady` once Dart's `init()` (`executeRpc('init')`) RPC sequence completes |
+| Generated `appsflyer_sdk-Swift.h` | Exposes the `AppsFlyerAttribution` singleton interface to Objective-C: the three `handleOpenUrl:`/`continueUserActivity:` entry points and `markBridgeReady`, all pinned with explicit `@objc(...)` selectors in the Swift source |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerAttribution.swift` | Singleton implementation — private `isBridgeReady` flag and `pendingRequests` queue; `handleOpenUrl:...`/`continueUserActivity:...` build an RPC envelope and pass it to `executeOrQueueMethod:params:`, which either sends it through `AppsFlyerRPCBridge` or appends to the queue; `markBridgeReady` sets `isBridgeReady` and drains that queue in arrival order |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` (registration) | `@objc(AppsflyerSdkPlugin)` pins the runtime class name; scene-lifecycle support is registered at runtime via `registrar.responds(to: #selector(addSceneDelegate:))` instead of a compile-time header check, since Swift has no `__has_include` equivalent for a framework subheader |
 
 ---
 
@@ -71,7 +71,7 @@ Deep-link listener registration is no longer part of the init sequence. Dart reg
 ---
 
 ## Tests
-No dedicated test found — this logic lives entirely in Objective-C native code with no automated coverage found under `test/` (Dart tests only) or any discoverable native (XCTest) test target in `ios/`.
+No dedicated test found — this logic lives entirely in Swift native code with no automated coverage found under `test/` (Dart tests only) or any discoverable native (XCTest) test target in `ios/`.
 
 ---
 

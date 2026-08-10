@@ -37,7 +37,7 @@ AppsFlyerSdk.setCurrentDeviceLanguage(language)                         [lib/src
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `setCurrentDeviceLanguage(String language)` — iOS-guarded; sends the `setCurrentDeviceLanguage` RPC with `{language}` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | No per-method handler — the generic `executeRpc` → `dispatchRpc` forwards the JSON envelope to the `AppsFlyerRPC` bridge |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | No per-method handler — the generic `executeRpc` → `dispatchRpc` forwards the JSON envelope to the `AppsFlyerRPC` bridge |
 
 ---
 

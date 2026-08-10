@@ -34,9 +34,10 @@ For everything outside of feature delivery, invoke skills directly:
 - `lib/src/appsflyer_event.dart` — Native RPC event envelope
 - `lib/src/udl/deeplink.dart` — Unified Deep Linking (UDL) implementation
 - `lib/src/purchase_connector/` — In-app purchase validation models
-- `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` — Android entry point
+- `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` — Android entry point
 - `android/src/main/include-connector/` — Optional Kotlin Purchase Connector bridge
-- `ios/appsflyer_sdk/Sources/appsflyer_sdk/` — iOS RPC entry point (Objective-C)
+- `ios/appsflyer_sdk/Sources/appsflyer_sdk/` — iOS RPC entry point (Swift)
+- `ios/appsflyer_sdk/Sources/appsflyer_sdk_objc/` — minimal Objective-C shim (`NSException` boundary + RPC bridge pass-through)
 - `ios/PurchaseConnector/` — iOS purchase validation module
 - `test/` — Dart unit tests (mockito)
 - `example/` — Full Flutter example app (iOS + Android)
@@ -77,8 +78,9 @@ flutter pub run build_runner build   # Regenerate JSON serialization code
 - SDK version is set in `pubspec.yaml` and native dependency specs (podspec / `build.gradle`).
 - Generated files (`*.g.dart`) must be committed — run `build_runner` after model changes.
 - `doc/` and `example/` must be kept in sync with API changes — see Documentation review.
-- The iOS core bridge is Objective-C; Swift and Kotlin implement the optional
-  Purchase Connector bridges.
+- The iOS core bridge is Swift, with a minimal Objective-C shim target
+  (`appsflyer_sdk_objc`) for the `NSException` boundary that Swift cannot express;
+  Swift and Kotlin implement the optional Purchase Connector bridges.
 
 ## Documentation review
 

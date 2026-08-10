@@ -41,8 +41,8 @@ AppsFlyerSdk.updateServerUninstallToken(token)                        [lib/src/a
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `updateServerUninstallToken(String token)` — dispatches `updateServerUninstallToken` (Android) / `registerUninstall` (iOS) |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | No per-method handler — the generic `executeRpc` → `dispatchRpc` path forwards the envelope to `AppsFlyerRpcHandler` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | No per-method handler — the generic `executeRpc` → `dispatchRpc` path forwards the envelope to `AppsFlyerRPCBridge`, which decodes the hex token into `NSData` |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | No per-method handler — the generic `executeRpc` → `dispatchRpc` path forwards the envelope to `AppsFlyerRpcHandler` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | No per-method handler — the generic `executeRpc` → `dispatchRpc` path forwards the envelope to `AppsFlyerRPCBridge`, which decodes the hex token into `NSData` |
 | `doc/advanced-features.md` | "Measure App Uninstalls" section documents both platforms and the Firebase Messaging integration pattern |
 
 ---

@@ -54,8 +54,8 @@ A `null` native reply is normalized to an empty map rather than propagated as `n
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `validateAndLogInAppPurchase(AFPurchaseDetails purchase, {Map<String, String>? additionalParameters, bool awaitResponse = true})` → `Future<Map<String, dynamic>>`; delegates purchase parameter building to the model, appends `awaitResponse` for Android, and invokes the RPC |
 | `lib/src/af_purchase_details.dart` | `sealed class AFPurchaseDetails` (closed to `AFAndroidPurchaseDetails` and `AFIOSPurchaseDetails`), `AFPurchaseType`, and the per-platform `toRpcMap` contracts |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | No per-method handler — generic `executeRpc` → `dispatchRpc('validateAndLogInAppPurchase', ...)` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | No per-method handler; generic dispatch, with `unwrapValueForMethod:` returning the `data` map for `validateAndLogInAppPurchase` |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | No per-method handler — generic `executeRpc` → `dispatchRpc('validateAndLogInAppPurchase', ...)` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | No per-method handler; generic dispatch, with `unwrapValueForMethod:` returning the `data` map for `validateAndLogInAppPurchase` |
 
 ---
 

@@ -27,7 +27,7 @@ AppsFlyerSdk.setAppId(appId)                                         [lib/src/ap
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | Public Android-guarded API |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | Generic RPC forwarding |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Generic RPC forwarding |
 | Android `plugin_bridge/.../RpcRequest.kt` and `AppsFlyerRpcHandler.kt` | Non-empty validation and SDK setter |
 
 ## Input / Output

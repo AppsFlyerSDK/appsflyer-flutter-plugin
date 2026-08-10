@@ -21,7 +21,7 @@ Fires whenever Android calls `onNewIntent` on the host `Activity` while the Flut
 ## Call Chain
 ```
 Android delivers a new Intent to the running Activity (app already warm)
-  → PluginRegistry.NewIntentListener.onNewIntent(Intent intent)                    [android/.../AppsflyerSdkPlugin.java]
+  → PluginRegistry.NewIntentListener.onNewIntent(Intent intent)                    [android/.../AppsflyerSdkPlugin.kt]
     → if (activity != null) activity.setIntent(intent)   // keep the Activity's intent in sync
     → return false                                       // does not claim exclusive handling
       // init() establishes SDK lifecycle handling; registerDeepLinkListener() separately
@@ -35,7 +35,7 @@ Note: unlike SDK 6, the listener no longer calls `AppsFlyerLib.performOnDeepLink
 ## Files
 | File | Role |
 |------|------|
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `onNewIntentListener` (`PluginRegistry.NewIntentListener`) — calls `activity.setIntent(intent)` (guarded by `activity != null`) and returns `false`; registered via `binding.addOnNewIntentListener(onNewIntentListener)` in both `onAttachedToActivity` and `onReattachedToActivityForConfigChanges` |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | `onNewIntentListener` (`PluginRegistry.NewIntentListener`) — calls `activity.setIntent(intent)` (guarded by `activity != null`) and returns `false`; registered via `binding.addOnNewIntentListener(onNewIntentListener)` in both `onAttachedToActivity` and `onReattachedToActivityForConfigChanges` |
 
 ---
 

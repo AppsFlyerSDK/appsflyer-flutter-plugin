@@ -37,7 +37,7 @@ AppsFlyerSdk.disableAppSetId()                                        [lib/src/a
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `disableAppSetId()` — no-argument, awaitable, guarded by an Android platform check |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | Forwards `disableAppSetId` through the Android RPC handler |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Forwards `disableAppSetId` through the Android RPC handler |
 | `doc/api-reference.md` | Documents the method as Android-only, "Disables AppSet ID collection." |
 
 ---

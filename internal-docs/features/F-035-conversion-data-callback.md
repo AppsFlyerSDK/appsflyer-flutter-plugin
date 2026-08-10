@@ -50,8 +50,8 @@ Android also exposes `unregisterConversionListener()`; on iOS the call is ignore
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `onConversionDataSuccess` / `onConversionDataFailure` streams, `registerConversionListener()`, and the Android-only `unregisterConversionListener()` |
 | `lib/src/appsflyer_event.dart` | `_AppsFlyerEvent.fromNative` — parses the RPC envelope (`event`, map-or-null `data`) |
-| `android/.../AppsflyerSdkPlugin.java` | `processBridgeEvent` / `deliverEvent` forward bridge events to the `af-events` sink and buffer them in `pendingEvents` until Dart subscribes |
-| `ios/.../AppsflyerSdkPlugin.m` | `handleBridgeEvent` / `deliverEvent` do the same on iOS, with the same `pendingEvents` buffering |
+| `android/.../AppsflyerSdkPlugin.kt` | `processBridgeEvent` / `deliverEvent` forward bridge events to the `af-events` sink and buffer them in `pendingEvents` until Dart subscribes |
+| `ios/.../AppsflyerSdkPlugin.swift` | `handleBridgeEvent` / `deliverEvent` do the same on iOS, with the same `pendingEvents` buffering |
 
 ---
 

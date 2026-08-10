@@ -43,7 +43,7 @@ AppsFlyerSdk.setDisableAppleAdsAttribution(disable)                   [lib/src/a
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `setDisableCollectASA(bool disable)` and `setDisableAppleAdsAttribution(bool disable)`, both guarded by an iOS platform check |
 | `lib/src/appsflyer_exception.dart` | `AppsFlyerException` for native failures |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | Generic `executeRpc` → `dispatchRpc` forwarding to `AppsFlyerRPCBridge`; no per-method handler |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | Generic `executeRpc` → `dispatchRpc` forwarding to `AppsFlyerRPCBridge`; no per-method handler |
 
 ---
 

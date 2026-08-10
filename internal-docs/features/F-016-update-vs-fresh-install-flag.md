@@ -38,7 +38,7 @@ AppsFlyerSdk.setIsUpdate(bool isUpdate)                               [lib/src/a
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `setIsUpdate(bool isUpdate)` — guarded by an Android platform check |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | Generic `setIsUpdate` dispatch through the Android RPC handler |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Generic `setIsUpdate` dispatch through the Android RPC handler |
 
 ---
 

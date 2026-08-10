@@ -29,7 +29,7 @@ isPreInstalledApp()
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | Public Android-only setter/getter and safe off-platform defaults |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | Generic RPC forwarding |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Generic RPC forwarding |
 | Android `plugin_bridge/.../RpcRequest.kt`, `JsonRpcRequestParser.kt`, and `AppsFlyerRpcHandler.kt` | Validation, mapping, native calls, and getter reply |
 
 ## Input / Output

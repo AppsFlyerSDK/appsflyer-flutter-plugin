@@ -39,8 +39,8 @@ AppsFlyerSdk.getAppsFlyerUID()                                        [lib/src/a
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `getAppsFlyerUID()` — `Future<String?>` round trip over the `getAppsFlyerUID` RPC, with no platform guard and no post-processing of the native value |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | RPC bridge entry (`executeRpc`) routing `getAppsFlyerUID` to `AppsFlyerRpcHandler` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | RPC bridge entry (`executeRpc`) forwarding `getAppsFlyerUID` to `AppsFlyerRPCBridge` |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | RPC bridge entry (`executeRpc`) routing `getAppsFlyerUID` to `AppsFlyerRpcHandler` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | RPC bridge entry (`executeRpc`) forwarding `getAppsFlyerUID` to `AppsFlyerRPCBridge` |
 
 ---
 

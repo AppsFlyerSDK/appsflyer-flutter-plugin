@@ -42,8 +42,8 @@ AppsFlyerSdk.getHostName() / AppsFlyerSdk.getHostPrefix()   (Android only)
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `setHost(String hostPrefixName, String hostName)`, plus the Android-gated `getHostName()` and `getHostPrefix()` |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | Generic RPC dispatch for `setHost`, `getHostName`, and `getHostPrefix` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | Generic RPC dispatch for `setHost` |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Generic RPC dispatch for `setHost`, `getHostName`, and `getHostPrefix` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | Generic RPC dispatch for `setHost` |
 
 ---
 

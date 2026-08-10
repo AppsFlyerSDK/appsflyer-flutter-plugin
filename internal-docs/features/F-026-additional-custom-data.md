@@ -38,8 +38,8 @@ AppsFlyerSdk.setAdditionalData(customData)                            [lib/src/a
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `setAdditionalData(Map<String, dynamic> customData)` — awaitable, platform-agnostic RPC setter; non-null `Map` (pass an empty map to clear) |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | No per-method handler — generic `executeRpc` → `dispatchRpc('setAdditionalData', ...)` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | No per-method handler — generic `executeRpc` → `dispatchRpc` |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | No per-method handler — generic `executeRpc` → `dispatchRpc('setAdditionalData', ...)` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | No per-method handler — generic `executeRpc` → `dispatchRpc` |
 | `doc/api-reference.md` | Public documentation for `setAdditionalData` |
 
 ---

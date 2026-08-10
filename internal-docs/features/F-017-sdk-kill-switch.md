@@ -42,8 +42,8 @@ AppsFlyerSdk.isStopped()                                              [Android o
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `stop(bool shouldStop)` on both platforms; `isStopped()` guarded by an Android platform check |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | Forwards `stop` and `isStopped` through the Android RPC handler |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | Forwards `stop` through the iOS RPC bridge |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Forwards `stop` and `isStopped` through the Android RPC handler |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | Forwards `stop` through the iOS RPC bridge |
 
 ---
 

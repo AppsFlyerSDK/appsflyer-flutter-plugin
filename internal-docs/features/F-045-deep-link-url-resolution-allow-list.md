@@ -43,8 +43,8 @@ AppsFlyerSdk.setResolveDeepLinkURLs(List<String> urls)                          
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `setResolveDeepLinkURLs(List<String> urls)` — awaitable passthrough that sends the generic RPC `setResolveDeepLinkURLs` with `{urls}`; performs no Dart-side validation |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | Generic `executeRpc` dispatch — forwards the JSON envelope to the Android RPC handler |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | Generic `executeRpc` dispatch — forwards the JSON envelope to the iOS RPC bridge |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Generic `executeRpc` dispatch — forwards the JSON envelope to the Android RPC handler |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | Generic `executeRpc` dispatch — forwards the JSON envelope to the iOS RPC bridge |
 
 ---
 

@@ -27,7 +27,7 @@ AppsFlyerSdk.setShouldCollectDeviceName(collect)                      [lib/src/a
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | Public iOS-guarded APIs and parameter keys |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | Generic RPC forwarding |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | Generic RPC forwarding |
 | iOS `AppsFlyerRPC/.../AFRPCTypedRequests.swift` and `AFRPCSimpleConfigHandler.swift` | Boolean parsing and SDK assignments |
 | iOS `AppsFlyerLib/AppsFlyerLib.h` and `AppsFlyerLib.m` | Native properties/default behavior |
 

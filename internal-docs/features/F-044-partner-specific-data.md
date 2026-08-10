@@ -35,8 +35,8 @@ AppsFlyerSdk.setPartnerData(String partnerId, Map<String, dynamic> data) [lib/sr
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `Future<void> setPartnerData(String partnerId, Map<String, dynamic> data)` — sends the `setPartnerData` RPC with `{partnerId, data}` |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | No per-method handler — the generic `executeRpc` → `dispatchRpc` forwards to the native RPC bridge |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | No per-method handler — the generic `executeRpc` → `dispatchRpc` forwards to the native RPC bridge |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | No per-method handler — the generic `executeRpc` → `dispatchRpc` forwards to the native RPC bridge |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | No per-method handler — the generic `executeRpc` → `dispatchRpc` forwards to the native RPC bridge |
 
 ---
 

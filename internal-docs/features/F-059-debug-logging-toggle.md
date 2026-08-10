@@ -40,8 +40,8 @@ AppsFlyerSdk.setLogLevel(logLevel)                                    [Android o
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `enableDebug(bool enabled)` — maps to the `isDebug` RPC; `setLogLevel(AFLogLevel logLevel)` — Android-only, guarded by an Android platform check |
 | `lib/src/appsflyer_constants.dart` | `AFLogLevel` (`none`, `error`, `warning`, `info`, `debug`, `verbose`) and its uppercase `rpcValue` |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | No per-method handler — generic `executeRpc` → `dispatchRpc` forwards `isDebug` / `setLogLevel` to `AppsFlyerRpcHandler` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | No per-method handler — generic `executeRpc` → `dispatchRpc` forwards `isDebug` to `AppsFlyerRPCBridge` |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | No per-method handler — generic `executeRpc` → `dispatchRpc` forwards `isDebug` / `setLogLevel` to `AppsFlyerRpcHandler` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | No per-method handler — generic `executeRpc` → `dispatchRpc` forwards `isDebug` to `AppsFlyerRPCBridge` |
 | `doc/getting-started.md`, `doc/api-reference.md`, `doc/testing-and-troubleshooting.md` | Document `enableDebug` / `setLogLevel` and warn against releasing to production with debug logging enabled |
 
 ---

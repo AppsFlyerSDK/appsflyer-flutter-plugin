@@ -52,8 +52,8 @@ Android also exposes `unregisterDeeplinkListener()`, which dispatches `unsubscri
 | `lib/src/appsflyer_event.dart` | `_AppsFlyerEvent.fromNative` — parses the RPC envelope (`event`, map-or-null `data`) |
 | `lib/src/udl/deeplink.dart` | `DeepLink` — the raw `clickEvent` map plus typed accessors (`deepLinkValue`, `matchType`, `clickHttpReferrer`, `mediaSource`, `campaign`, `campaignId`, `afSub1..5`, `isDeferred`) and `getStringValue(key)` |
 | `lib/src/udl/deep_link_result.dart` | `DeepLinkResult` (`status`, `deepLink`, `error`, `toJson`), `DeepLinkResult._fromEvent`, `DeepLinkStatus` (`found`/`notFound`/`error`/`unknown`), and `DeepLinkFailure` (`type`, `message`) |
-| `android/.../AppsflyerSdkPlugin.java` | `processBridgeEvent` / `deliverEvent` forward the bridge deep-link event to the `af-events` sink and buffer it in `pendingEvents` until Dart subscribes |
-| `ios/.../AppsflyerSdkPlugin.m` | `handleBridgeEvent` / `deliverEvent` do the same on iOS, with the same `pendingEvents` buffering |
+| `android/.../AppsflyerSdkPlugin.kt` | `processBridgeEvent` / `deliverEvent` forward the bridge deep-link event to the `af-events` sink and buffer it in `pendingEvents` until Dart subscribes |
+| `ios/.../AppsflyerSdkPlugin.swift` | `handleBridgeEvent` / `deliverEvent` do the same on iOS, with the same `pendingEvents` buffering |
 
 ---
 

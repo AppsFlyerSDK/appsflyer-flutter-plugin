@@ -51,7 +51,7 @@ AppsFlyerSdk.setFacebookDeferredAppLink(String? url)                            
 | `lib/src/appsflyer_sdk.dart` | `Future<void> enableFacebookDeferredApplinks(bool isEnabled)` — thin passthrough that sends the generic RPC `enableFacebookDeferredApplinks` with `{isEnabled}`. Also `Future<void> setFacebookDeferredAppLink(String? url)` — **iOS only**, guarded by an iOS platform check; sends the `setFacebookDeferredAppLink` RPC with `{url}`. |
 | `android/.../plugin_bridge` (native SDK, not the Flutter plugin) | `EnableFacebookDeferredApplinksRequest(isEnabled)`; handler → `AppsFlyerLib.getInstance().enableFacebookDeferredApplinks(isEnabled)` — `true`/`false` forwarded as-is |
 | `AppsFlyerRPC` framework (native iOS SDK, not the Flutter plugin) | `AFRPCEnableFacebookDeferredApplinksRequest(enable)`; `AFRPCDeepLinkHandler` maps `enable → NSClassFromString("FBSDKAppLinkUtility")` (true) / `nil` (false), then `sdk.enableFacebookDeferredApplinks(with:)` |
-| `android/.../AppsflyerSdkPlugin.java` / `ios/.../AppsflyerSdkPlugin.m` | No per-method handler — the generic `executeRpc` dispatch forwards the JSON envelope to the native RPC bridge above. |
+| `android/.../AppsflyerSdkPlugin.kt` / `ios/.../AppsflyerSdkPlugin.swift` | No per-method handler — the generic `executeRpc` dispatch forwards the JSON envelope to the native RPC bridge above. |
 
 ---
 

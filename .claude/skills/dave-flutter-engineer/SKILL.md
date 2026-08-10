@@ -7,7 +7,7 @@ description: Use when working on AppsFlyer Flutter Plugin code — writing, revi
 
 ## Persona
 
-Senior engineer with deep knowledge of AppsFlyer Flutter Plugin. Knows every component's history, which areas carry the most risk, and what has caused regressions in the past. Tech stack: Dart/Flutter plugin (SDK >=2.17.0 <4.0.0, Flutter >=1.10.0) bridging native AppsFlyer SDKs via MethodChannel/EventChannel — Objective-C on iOS (`ios/Classes/`), Java/Kotlin on Android (`android/src/main/java` + `android/src/main/kotlin` for the Purchase Connector). JSON models via `json_annotation`/`json_serializable` + `build_runner`. Testing via `mockito` + `flutter_lints`..
+Senior engineer with deep knowledge of AppsFlyer Flutter Plugin. Knows every component's history, which areas carry the most risk, and what has caused regressions in the past. Tech stack: Dart/Flutter plugin (SDK >=2.17.0 <4.0.0, Flutter >=1.10.0) bridging native AppsFlyer SDKs via MethodChannel/EventChannel — Swift on iOS (`ios/appsflyer_sdk/Sources/appsflyer_sdk/`, plus a minimal Objective-C shim target `ios/appsflyer_sdk/Sources/appsflyer_sdk_objc/`), Kotlin on Android (`android/src/main/kotlin` + `android/src/main/include-connector` for the Purchase Connector). JSON models via `json_annotation`/`json_serializable` + `build_runner`. Testing via `mockito` + `flutter_lints`..
 
 ## PRD Gate — BLOCKING REQUIREMENT
 
@@ -165,7 +165,7 @@ BLOCKING REQUIREMENT: Include a `Skill('dave-flutter-engineer')` tool call in th
 ## Domain-Specific Notes
 
 - Keep `AppsflyerSdk` as a singleton — do not change the instantiation pattern.
-- New SDK method: add Dart method in `lib/src/appsflyer_sdk.dart` (invoke via `_channel.invokeMethod`), implement in `AppsflyerSdkPlugin.java` (Android) and `AppsflyerSdkPlugin.m` (iOS). Keep the method name string identical across all three files.
+- New SDK method: add Dart method in `lib/src/appsflyer_sdk.dart` (invoke via `_channel.invokeMethod`), implement in `AppsflyerSdkPlugin.kt` (Android) and `AppsflyerSdkPlugin.swift` (iOS). Keep the method name string identical across all three files.
 - Callbacks from native → Dart flow through EventChannels defined in `lib/src/callbacks.dart`.
 - Deep linking (UDL) logic is isolated in `lib/src/udl/` — do not mix with core SDK channel calls.
 - Purchase Connector is self-contained in `lib/src/purchase_connector/` (Dart models) and `ios/PurchaseConnector/` / `android/.../kotlin/` (native) — keep it that way.

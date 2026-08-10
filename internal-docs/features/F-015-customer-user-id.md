@@ -38,8 +38,8 @@ AppsFlyerSdk.setCustomerUserId(customerId)                            [lib/src/a
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `setCustomerUserId(String customerId)` — dispatches the RPC with the `customerId` param |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | generic `setCustomerUserId` dispatch over `AppsFlyerRpcHandler` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | generic `setCustomerUserId` dispatch over `AppsFlyerRPCBridge` |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | generic `setCustomerUserId` dispatch over `AppsFlyerRpcHandler` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | generic `setCustomerUserId` dispatch over `AppsFlyerRPCBridge` |
 
 ---
 

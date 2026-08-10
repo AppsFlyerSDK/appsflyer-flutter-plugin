@@ -318,8 +318,8 @@ jobs:
           VERSION='${{ needs.validate-release.outputs.version }}'
           echo "Updating PLUGIN_VERSION constants to: $VERSION"
 
-          # Android - AppsFlyerConstants.java
-          ANDROID_FILE="android/src/main/java/com/appsflyer/appsflyersdk/AppsFlyerConstants.java"
+          # Android - AppsFlyerConstants.kt
+          ANDROID_FILE="android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsFlyerConstants.kt"
           if [ -f "$ANDROID_FILE" ]; then
             sed -i.bak "s/PLUGIN_VERSION = \".*\"/PLUGIN_VERSION = \"$VERSION\"/" "$ANDROID_FILE"
             rm "$ANDROID_FILE.bak"
