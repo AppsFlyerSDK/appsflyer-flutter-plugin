@@ -95,7 +95,14 @@ object AppsFlyerPurchaseConnector : FlutterPlugin, MethodChannel.MethodCallHandl
      *
      * @param binding The binding that was provided in [onAttachedToEngine].
      */
-    override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) = Unit
+    override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        runCatching { connectorWrapper?.stopObservingTransactions() }
+        methodChannel?.setMethodCallHandler(null)
+        methodChannel = null
+        contextRef?.clear()
+        contextRef = null
+        connectorWrapper = null
+    }
 
     /**
      * Handles incoming method calls from Flutter.

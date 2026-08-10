@@ -71,13 +71,13 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
     _methodChannel.setMethodCallHandler(_methodCallHandler);
 
     final configMap = {
-      AppsflyerConstants.LOG_SUBS_KEY: config.logSubscriptions,
-      AppsflyerConstants.LOG_IN_APP_KEY: config.logInApps,
-      AppsflyerConstants.SANDBOX_KEY: config.sandbox,
-      AppsflyerConstants.STORE_KIT_VERSION_KEY: config.storeKitVersion.value,
+      _AppsFlyerConstants.LOG_SUBS_KEY: config.logSubscriptions,
+      _AppsFlyerConstants.LOG_IN_APP_KEY: config.logInApps,
+      _AppsFlyerConstants.SANDBOX_KEY: config.sandbox,
+      _AppsFlyerConstants.STORE_KIT_VERSION_KEY: config.storeKitVersion.value,
     };
 
-    _methodChannel.invokeMethod(AppsflyerConstants.CONFIGURE_KEY, configMap);
+    _methodChannel.invokeMethod(_AppsFlyerConstants.CONFIGURE_KEY, configMap);
   }
 
   /// Factory constructor.
@@ -97,10 +97,10 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
     } else if (_instance == null && config != null) {
       // no existing instance. Create new instance and apply config
       MethodChannel methodChannel =
-          const MethodChannel(AppsflyerConstants.AF_PURCHASE_CONNECTOR_CHANNEL);
+          const MethodChannel(_AppsFlyerConstants.AF_PURCHASE_CONNECTOR_CHANNEL);
       _instance = _PurchaseConnectorImpl._internal(methodChannel, config);
     } else if (_instance != null && config != null) {
-      debugPrint(AppsflyerConstants.RE_CONFIGURE_ERROR_MSG);
+      debugPrint(_AppsFlyerConstants.RE_CONFIGURE_ERROR_MSG);
     }
 
     return _instance!;
@@ -156,21 +156,21 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
     final dynamic callMap = rawArgs is String ? jsonDecode(rawArgs) : rawArgs;
 
     switch (call.method) {
-      case AppsflyerConstants
+      case _AppsFlyerConstants
           .SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_RESPONSE:
         _handleSubscriptionPurchaseValidationResultListenerOnResponse(callMap);
         break;
-      case AppsflyerConstants
+      case _AppsFlyerConstants
           .SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_FAILURE:
         _handleSubscriptionPurchaseValidationResultListenerOnFailure(callMap);
         break;
-      case AppsflyerConstants.IN_APP_VALIDATION_RESULT_LISTENER_ON_RESPONSE:
+      case _AppsFlyerConstants.IN_APP_VALIDATION_RESULT_LISTENER_ON_RESPONSE:
         _handleInAppValidationResultListenerOnResponse(callMap);
         break;
-      case AppsflyerConstants.IN_APP_VALIDATION_RESULT_LISTENER_ON_FAILURE:
+      case _AppsFlyerConstants.IN_APP_VALIDATION_RESULT_LISTENER_ON_FAILURE:
         _handleInAppValidationResultListenerOnFailure(callMap);
         break;
-      case AppsflyerConstants.DID_RECEIVE_PURCHASE_REVENUE_VALIDATION_INFO:
+      case _AppsFlyerConstants.DID_RECEIVE_PURCHASE_REVENUE_VALIDATION_INFO:
         _handleDidReceivePurchaseRevenueValidationInfo(callMap);
         break;
       default:
@@ -222,10 +222,10 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
   ///
   /// [callbackData] is the callback data expected in the form of a map.
   void _handleDidReceivePurchaseRevenueValidationInfo(dynamic callbackData) {
-    var validationInfo = callbackData[AppsflyerConstants.VALIDATION_INFO]
+    var validationInfo = callbackData[_AppsFlyerConstants.VALIDATION_INFO]
         as Map<String, dynamic>?;
     var errorMap =
-        callbackData[AppsflyerConstants.ERROR] as Map<String, dynamic>?;
+        callbackData[_AppsFlyerConstants.ERROR] as Map<String, dynamic>?;
     var error = errorMap != null ? IosError.fromJson(errorMap) : null;
 
     if (_didReceivePurchaseRevenueValidationInfo != null) {
@@ -252,9 +252,9 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
   /// [onFailureCallback] is a function to be called on failure.
   void _handleValidationResultListenerOnFailure(
       dynamic callbackData, OnFailure? onFailureCallback) {
-    var resultMsg = callbackData[AppsflyerConstants.RESULT] as String;
+    var resultMsg = callbackData[_AppsFlyerConstants.RESULT] as String;
     var errorMap =
-        callbackData[AppsflyerConstants.ERROR] as Map<String, dynamic>?;
+        callbackData[_AppsFlyerConstants.ERROR] as Map<String, dynamic>?;
     var error = errorMap != null ? JVMThrowable.fromJson(errorMap) : null;
     if (onFailureCallback != null) {
       onFailureCallback(resultMsg, error);

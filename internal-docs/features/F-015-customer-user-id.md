@@ -4,17 +4,17 @@ name: Customer User ID (CUID)
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-07-29
+last_verified: 2026-08-04
 depends_on: []
 ---
 
 ## Business Purpose
-AppsFlyer generates its own device-scoped unique ID (`getAppsFlyerUID`), but businesses need to join AppsFlyer's attribution/reporting data against their own internal user records. `setCustomerUserId` registers the app's developer-defined ID alongside AppsFlyer's, so every report and postback can be cross-referenced against the app's user database. In SDK 7, set the CUID **before** `startSDK()` to attribute the first session with it (the SDK-6 `setCustomerIdAndLogSession` / `waitForCustomerUserId` pair has been removed — see [`doc/migration-guide.md`](/doc/migration-guide.md)).
+AppsFlyer generates its own device-scoped unique ID (`getAppsFlyerUID`), but businesses need to join AppsFlyer's attribution/reporting data against their own internal user records. `setCustomerUserId` registers the app's developer-defined ID alongside AppsFlyer's, so every report and postback can be cross-referenced against the app's user database. In SDK 7, await the CUID **before** `start()` to attribute the first session with it (the SDK-6 `setCustomerIdAndLogSession` / `waitForCustomerUserId` pair has been removed — see [`doc/migration-guide.md`](/doc/migration-guide.md) and F-021).
 
 ---
 
 ## Trigger
-Called by the host app whenever it knows the user's internal identifier — typically right after login/signup, or before `startSDK()` to gate the first session on the CUID.
+The host app awaits `AppsFlyerSdk.instance.setCustomerUserId(id)` whenever it knows the user's internal identifier — typically right after login/signup, or before `start()` to gate the first session on the CUID.
 
 ---
 
@@ -22,11 +22,14 @@ Called by the host app whenever it knows the user's internal identifier — typi
 Generic RPC on both platforms.
 
 ```
-AppsflyerSdk.setCustomerUserId(id)                                    [lib/src/appsflyer_sdk.dart]
-  → _executeRpc('setCustomerUserId', {customerId: id})
-    → af-api "executeRpc" {method:'setCustomerUserId', params}
-      → Android: dispatchRpc → AppsFlyerRpcHandler → AppsFlyerLib.setCustomerUserId(...)  [android/.../AppsflyerSdkPlugin.java]
-      → iOS: dispatchRpc → AppsFlyerRPCBridge → [AppsFlyerLib shared] setCustomerUserID:...  [ios/.../AppsflyerSdkPlugin.m]
+AppsFlyerSdk.setCustomerUserId(customerId)                            [lib/src/appsflyer_sdk.dart]
+  → _invokeVoidRpc('setCustomerUserId', {'customerId': customerId})
+    → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
+      → Android: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRpcHandler
+        → AppsFlyerLib.setCustomerUserId(...)
+      → iOS: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRPCBridge
+        → [AppsFlyerLib shared] setCustomerUserID:
+  → PlatformException is converted to AppsFlyerException
 ```
 
 ---
@@ -34,7 +37,7 @@ AppsflyerSdk.setCustomerUserId(id)                                    [lib/src/a
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `setCustomerUserId(String)` — dispatches the RPC with the `customerId` param |
+| `lib/src/appsflyer_sdk.dart` | `setCustomerUserId(String customerId)` — dispatches the RPC with the `customerId` param |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | generic `setCustomerUserId` dispatch over `AppsFlyerRpcHandler` |
 | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | generic `setCustomerUserId` dispatch over `AppsFlyerRPCBridge` |
 
@@ -43,19 +46,19 @@ AppsflyerSdk.setCustomerUserId(id)                                    [lib/src/a
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `id` (String) — the developer-defined customer user ID. RPC param key `customerId`. |
-| **Output** | `void` — fire-and-forget; no confirmation returned to Dart. |
+| **Input** | `customerId` (String) — the developer-defined customer user ID. RPC param key `customerId`. |
+| **Output** | `Future<void>` completes when the native request succeeds and throws `AppsFlyerException` for native errors. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` verifies that `setCustomerUserId` dispatches the `setCustomerUserId` RPC with the value under the `customerId` param.
+`test/appsflyer_sdk_test.dart` — `maps cross-platform configuration and identity APIs` verifies that `setCustomerUserId` dispatches the `setCustomerUserId` RPC with the value under the `customerId` param.
 
 ---
 
 ## Known Limitations
-- No validation of the `id` string (empty, whitespace, length) before it is forwarded to native code.
-- To associate the first session with the CUID, it must be set before `startSDK()`; there is no dedicated "set CUID and log session" API in SDK 7.
+- No validation of the `customerId` string (empty, whitespace, length) before it is forwarded to native code.
+- To associate the first session with the CUID, await it before `start()`; there is no dedicated "set CUID and log session" API in SDK 7.
 
 ---
 

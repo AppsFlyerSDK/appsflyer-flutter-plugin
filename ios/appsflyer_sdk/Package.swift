@@ -9,13 +9,16 @@ let package = Package(
     ],
     dependencies: [
         .package(name: "FlutterFramework", path: "../FlutterFramework"),
-        .package(url: "https://github.com/AppsFlyerSDK/AppsFlyerFramework.git", .exact("7.0.1"))
+        .package(
+            url: "https://github.com/AppsFlyerSDK/AppsFlyerFramework.git",
+            exact: "7.0.1"
+        )
     ],
     targets: [
         .binaryTarget(
             name: "AppsFlyerRPC",
             url: "https://github.com/AppsFlyerSDK/appsflyer-apple-rpc/releases/download/7.0.12/AppsFlyerRPC-static.xcframework.zip",
-            checksum: "14484bce262c2bea03cb4fb0ca85818560dd72831915246f5cc268eb196f87f"
+            checksum: "14484bce262c2bea03cb4fb0ca85818560dd72831915246f5cc2686eb196f87f"
         ),
         .target(
             name: "appsflyer_sdk",

@@ -4,7 +4,7 @@ name: Facebook Deferred App Links
 type: deepLinking
 platform: both
 status: active
-last_verified: 2026-07-29
+last_verified: 2026-08-05
 depends_on: []
 ---
 
@@ -21,23 +21,25 @@ Called once by the host app during startup configuration (before/around SDK init
 ---
 
 ## Call Chain
-Since the SDK 7 / RPC migration this is a generic RPC call (no per-method channel handler): the Dart wrapper sends `{method:'enableFacebookDeferredApplinks', params:{isEnabled:<bool>}}` (params key is **`isEnabled`**) through the single `executeRpc` entry point, and each platform's native RPC bridge parses and forwards it.
+Since the SDK 7 / RPC migration this is a generic RPC call (no per-method channel handler): the Dart wrapper sends `{method:'enableFacebookDeferredApplinks', params:{isEnabled:<bool>}}` (params key is **`isEnabled`**) through the single `executeRpc` entry point, and each platform's native RPC bridge parses and forwards it. Both Dart methods are awaitable and surface native failures as `AppsFlyerException`.
 ```
-AppsflyerSdk.enableFacebookDeferredApplinks(bool isEnabled)                           [lib/src/appsflyer_sdk.dart]
-  → _executeRpc('enableFacebookDeferredApplinks', {'isEnabled': isEnabled})   // MethodChannel af-api → executeRpc
-    → Android: AppsFlyerRpcHandler.execute(json)                                          [plugin_bridge/.../AppsFlyerRpcHandler.kt]
-      → JsonRpcRequestParser → EnableFacebookDeferredApplinksRequest(isEnabled)  // optBoolean("isEnabled", false)
-      → AppsFlyerLib.getInstance().enableFacebookDeferredApplinks(isEnabled)  // true|false forwarded as-is
-      → RpcResponse.Success
-    → iOS: AppsFlyerRPCBridge / AFRPCRequestHandler                                        [AppsFlyerRPC framework]
-      → AFRPCParser → AFRPCEnableFacebookDeferredApplinksRequest(enable)  // requireBool("isEnabled")
-      → AFRPCDeepLinkHandler → fbClass = enable ? NSClassFromString("FBSDKAppLinkUtility") : nil
-      → sdk.enableFacebookDeferredApplinks(with: fbClass)  ([AppsFlyerLib shared])
+AppsFlyerSdk.enableFacebookDeferredApplinks(bool isEnabled)                           [lib/src/appsflyer_sdk.dart]
+  → _invokeVoidRpc('enableFacebookDeferredApplinks', {'isEnabled': isEnabled})
+    → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
+      → Android: AppsFlyerRpcHandler.execute(json)                                        [plugin_bridge/.../AppsFlyerRpcHandler.kt]
+        → JsonRpcRequestParser → EnableFacebookDeferredApplinksRequest(isEnabled)  // optBoolean("isEnabled", false)
+        → AppsFlyerLib.getInstance().enableFacebookDeferredApplinks(isEnabled)  // true|false forwarded as-is
+        → RpcResponse.Success
+      → iOS: AppsFlyerRPCBridge / AFRPCRequestHandler                                      [AppsFlyerRPC framework]
+        → AFRPCParser → AFRPCEnableFacebookDeferredApplinksRequest(enable)  // requireBool("isEnabled")
+        → AFRPCDeepLinkHandler → fbClass = enable ? NSClassFromString("FBSDKAppLinkUtility") : nil
+        → sdk.enableFacebookDeferredApplinks(with: fbClass)  ([AppsFlyerLib shared])
 ```
 The iOS-only companion routes the same way:
 ```
-AppsflyerSdk.setFacebookDeferredAppLink(String? url)  // iOS only; no-op on Android      [lib/src/appsflyer_sdk.dart]
-  → _executeRpc('setFacebookDeferredAppLink', {'url': url})   // MethodChannel af-api → executeRpc
+AppsFlyerSdk.setFacebookDeferredAppLink(String? url)                                     [lib/src/appsflyer_sdk.dart]
+  → not iOS: log warning, return (no RPC dispatched)
+  → _invokeVoidRpc('setFacebookDeferredAppLink', {'url': url})
     → iOS: AppsFlyerRPCBridge / AFRPCRequestHandler → [AppsFlyerLib shared] (unsafe schemes rejected)
 ```
 
@@ -46,7 +48,7 @@ AppsflyerSdk.setFacebookDeferredAppLink(String? url)  // iOS only; no-op on Andr
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `enableFacebookDeferredApplinks(bool isEnabled)` — thin passthrough that sends the generic RPC `enableFacebookDeferredApplinks` with `{isEnabled}`. Fire-and-forget (`void`). Also `setFacebookDeferredAppLink(String? url)` — **iOS only** (`Platform.isIOS` guard); sends the `setFacebookDeferredAppLink` RPC with `{url}`. |
+| `lib/src/appsflyer_sdk.dart` | `Future<void> enableFacebookDeferredApplinks(bool isEnabled)` — thin passthrough that sends the generic RPC `enableFacebookDeferredApplinks` with `{isEnabled}`. Also `Future<void> setFacebookDeferredAppLink(String? url)` — **iOS only**, guarded by an iOS platform check; sends the `setFacebookDeferredAppLink` RPC with `{url}`. |
 | `android/.../plugin_bridge` (native SDK, not the Flutter plugin) | `EnableFacebookDeferredApplinksRequest(isEnabled)`; handler → `AppsFlyerLib.getInstance().enableFacebookDeferredApplinks(isEnabled)` — `true`/`false` forwarded as-is |
 | `AppsFlyerRPC` framework (native iOS SDK, not the Flutter plugin) | `AFRPCEnableFacebookDeferredApplinksRequest(enable)`; `AFRPCDeepLinkHandler` maps `enable → NSClassFromString("FBSDKAppLinkUtility")` (true) / `nil` (false), then `sdk.enableFacebookDeferredApplinks(with:)` |
 | `android/.../AppsflyerSdkPlugin.java` / `ios/.../AppsflyerSdkPlugin.m` | No per-method handler — the generic `executeRpc` dispatch forwards the JSON envelope to the native RPC bridge above. |
@@ -56,20 +58,21 @@ AppsflyerSdk.setFacebookDeferredAppLink(String? url)  // iOS only; no-op on Andr
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `isEnabled` (bool) |
-| **Output** | `void` — fire-and-forget; both handlers always call `result.success(null)`/`result(nil)`. Resolved deferred-link data (if any) is not returned here — it surfaces through whichever conversion/attribution channel the app has registered (`onInstallConversionData` (GCD), or UDL `onDeepLinking`), which are native-SDK internal behaviors this plugin does not directly wire to this flag. |
+| **Input** | `enableFacebookDeferredApplinks`: `isEnabled` (bool). `setFacebookDeferredAppLink`: `url` (`String?`; `null` clears the current URL). |
+| **Output** | `Future<void>` — completes when the native request succeeds and throws `AppsFlyerException` for native errors or RPC timeouts. On Android, `setFacebookDeferredAppLink` logs a warning and returns without dispatching an RPC. Resolved deferred-link data (if any) is not returned here — it surfaces through whichever conversion/attribution stream the app has registered (`onConversionDataSuccess`, or UDL `onDeepLinkReceived`), which are native-SDK internal behaviors this plugin does not directly wire to this flag. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` → `'enableFacebookDeferredApplinks maps to isEnabled'` verifies the Dart wrapper dispatches the `enableFacebookDeferredApplinks` RPC with the `isEnabled` param. Native behavior (true→class / false→nil on iOS, bool forwarding on Android) is covered by the native SDK's own bridge tests.
+`test/appsflyer_sdk_test.dart` → `'maps deep-link, sharing, push, and uninstall APIs'` verifies that `enableFacebookDeferredApplinks(true)` dispatches RPC method `enableFacebookDeferredApplinks` with `{'isEnabled': true}`, and that `setFacebookDeferredAppLink(null)` dispatches `setFacebookDeferredAppLink` with `{'url': null}` on iOS. `'platform-only void calls are ignored without reaching the native RPC'` covers `setFacebookDeferredAppLink` on Android and asserts that no RPC is dispatched. Native behavior (true→class / false→nil on iOS, bool forwarding on Android) is covered by the native SDK's own bridge tests.
 
 ---
 
 ## Known Limitations
 - **No more disable asymmetry (RPC migration)**: both platforms now honor `false`. Android forwards the literal bool; the iOS RPC bridge maps `false → nil` and calls `enableFacebookDeferredApplinks(with: nil)`, so the feature can be turned back off on iOS. (The pre-RPC iOS handler treated `false` as a no-op — that limitation no longer applies.)
-- **iOS requires the Facebook SDK linked**: the iOS bridge resolves `FBSDKAppLinkUtility` via `NSClassFromString`, so if the Facebook SDK isn't linked into the app, enabling passes a `nil` class and is effectively a no-op. Android's flag is self-contained. This platform difference is now called out in the Dart dartdoc.
-- No signal is returned to Dart indicating whether Facebook deferred-app-link interop actually engaged (e.g. class not found) — the Dart wrapper is fire-and-forget `void` and discards the RPC result.
+- **iOS requires the Facebook SDK linked**: the iOS bridge resolves `FBSDKAppLinkUtility` via `NSClassFromString`, so if the Facebook SDK isn't linked into the app, enabling passes a `nil` class and is effectively a no-op. Android's flag is self-contained. This platform difference is called out in the Dart dartdoc.
+- The awaited `Future` confirms that the native RPC request succeeded, not that Facebook deferred-app-link interop actually engaged. A missing `FBSDKAppLinkUtility` class on iOS still resolves successfully.
+- `setFacebookDeferredAppLink` is iOS-only: on Android the call is ignored with a logged warning and no RPC is dispatched, so shared code can call it unconditionally but gets no feedback beyond the log line.
 
 ---
 

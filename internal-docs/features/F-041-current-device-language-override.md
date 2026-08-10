@@ -4,7 +4,7 @@ name: Current Device Language Override
 type: platformIntegration
 platform: ios
 status: active
-last_verified: 2026-07-29
+last_verified: 2026-08-05
 depends_on: []
 ---
 
@@ -14,16 +14,21 @@ AppsFlyer's attribution and in-app-event reporting includes the device's languag
 ---
 
 ## Trigger
-Called by the host app whenever it needs to explicitly declare (or correct) the language reported to AppsFlyer — typically during startup configuration or right after an in-app language change.
+Awaited by the host app whenever it needs to explicitly declare (or correct) the language reported to AppsFlyer — typically during startup configuration or right after an in-app language change.
 
 ---
 
 ## Call Chain
-Generic RPC call over the single `executeRpc` entry point. The Dart method is iOS-guarded (`Platform.isIOS`), so on Android it is a no-op (no RPC is sent).
+An awaitable RPC call over the single `executeRpc` entry point. The method is iOS-only; on any other platform the call is ignored with a logged warning and no RPC is dispatched.
+
 ```
-AppsflyerSdk.setCurrentDeviceLanguage(language)                          [lib/src/appsflyer_sdk.dart]
-  → if (Platform.isIOS) _executeRpc('setCurrentDeviceLanguage', {'language': language})   // af-api → executeRpc
-    → iOS: dispatchRpc → AppsFlyerRPCBridge executeJson("setCurrentDeviceLanguage") → SDK setCurrentDeviceLanguage:
+AppsFlyerSdk.setCurrentDeviceLanguage(language)                         [lib/src/appsflyer_sdk.dart]
+  → not iOS: log warning, return (no RPC dispatched)
+  → _invokeVoidRpc('setCurrentDeviceLanguage', {'language': language})
+    → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
+      → iOS: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRPCBridge
+        → AFRPCSimpleConfigHandler → sdk.currentDeviceLanguage = language
+  → PlatformException is converted to AppsFlyerException
 ```
 
 ---
@@ -39,19 +44,18 @@ AppsflyerSdk.setCurrentDeviceLanguage(language)                          [lib/sr
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `language` (String) — an IETF/ISO language code (e.g. `"en"`) forwarded as-is under the `language` param key; no format validation. |
-| **Output** | `void` — fire-and-forget; the `_executeRpc` Future is discarded. |
+| **Input** | `language` (`String`) — an IETF/ISO language code (e.g. `"en"`) forwarded as-is under the `language` param key; no format validation in Dart. |
+| **Output** | `Future<void>` that completes when the native request succeeds and throws `AppsFlyerException` on a native or RPC failure. On a non-iOS platform the call is ignored with a logged warning, dispatches no RPC, and completes without throwing. |
 
 ---
 
 ## Tests
-No dedicated test found. `test/appsflyer_sdk_test.dart` does not exercise `instance.setCurrentDeviceLanguage(...)`.
+`test/appsflyer_sdk_test.dart` — `maps every iOS-only API` asserts that `setCurrentDeviceLanguage('en')` dispatches RPC `setCurrentDeviceLanguage` with `{'language': 'en'}`. `platform-only void calls are ignored without reaching the native RPC` calls `setCurrentDeviceLanguage('en')` on Android and asserts that no RPC method is dispatched.
 
 ---
 
 ## Known Limitations
-- **iOS-only**: no Android implementation exists. The Dart API is guarded by `Platform.isIOS`, so calling it on Android is a silent no-op (no RPC is dispatched).
-- No dedicated automated test coverage.
+- **iOS-only**: no Android implementation exists. Calling it on Android is a no-op, but a logged one — the plugin emits a `debugPrint` warning and dispatches no RPC, so the mismatch is visible in the device log rather than to the calling code.
 - No validation of the `language` string (e.g. against a locale code list); malformed input is passed straight through to the underlying SDK.
 
 ---

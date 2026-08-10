@@ -7,7 +7,15 @@ package.json
 package-lock.json
 node_modules/
 local.properties
+build/
+coverage/
+.githooks/
 .cursor/
+.claude/
+CLAUDE.md
+ai-delivery-workflow-templat/
+internal-docs/
+output.af-quiz-me/
 
 # Example app files that shouldn't be in package
 example/.env

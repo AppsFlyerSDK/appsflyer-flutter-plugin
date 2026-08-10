@@ -18,6 +18,10 @@ ones your app needs.
 
 ## <a id="uninstall"> Measure App Uninstalls
 
+Flutter exposes one cross-platform API:
+`updateServerUninstallToken(String token)`. Pass an FCM registration token on
+Android or a hexadecimal APNs device token on iOS.
+
 ### iOS
 
 You may update the uninstall token from the native side and from the plugin side, as shown in the methods below, you do not have to implement both of the methods, but only one.
@@ -34,9 +38,10 @@ You can register the uninstall token with AppsFlyer by modifying your `AppDelega
 
 ...
 
-- (void)application:(UIApplication ​*)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *​)deviceToken {
-// notify AppsFlyerLib
- [[AppsFlyerLib shared] registerUninstall:deviceToken];
+- (void)application:(UIApplication *)application
+    didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
+  // Notify AppsFlyerLib.
+  [[AppsFlyerLib shared] registerUninstall:deviceToken];
 }
 ```
 
@@ -44,7 +49,7 @@ You can register the uninstall token with AppsFlyer by modifying your `AppDelega
 
 You can register the uninstall token with AppsFlyer by calling the following API with your uninstall token:
 ```dart
-appsFlyerSdk.updateServerUninstallToken("token");
+await appsFlyerSdk.updateServerUninstallToken("0123456789abcdef");
 ```
 
 > **Note:** When using this method on iOS, the token should be passed as a **hexadecimal string representation** of the device token. The plugin will automatically convert the hex string to the required `NSData` format for the AppsFlyer SDK.
@@ -58,7 +63,7 @@ You can read more about Android Uninstall Measurement in our [knowledge base](ht
 
 On the Flutter side, you can register the uninstall token with AppsFlyer by calling the following API with your uninstall token:
 ```dart
-appsFlyerSdk.updateServerUninstallToken("token");
+await appsFlyerSdk.updateServerUninstallToken("fcm-registration-token");
 ```
 
 **Example using Firebase Messaging (cross-platform):**
@@ -66,85 +71,94 @@ appsFlyerSdk.updateServerUninstallToken("token");
 import 'dart:io' show Platform;
 import 'package:firebase_messaging/firebase_messaging.dart';
 
-// Update uninstall token for AppsFlyer
-void _updateUninstallToken(appsFlyerSdk) {
+// Update uninstall token for AppsFlyer.
+Future<void> _updateUninstallToken(AppsFlyerSdk appsFlyerSdk) async {
   if (Platform.isAndroid) {
-    FirebaseMessaging.instance.getToken().then((token) {
-      if (token != null) {
-        appsFlyerSdk.updateServerUninstallToken(token);
-      }
-    });
+    final token = await FirebaseMessaging.instance.getToken();
+    if (token != null) {
+      await appsFlyerSdk.updateServerUninstallToken(token);
+    }
   } else if (Platform.isIOS) {
-    FirebaseMessaging.instance.getAPNSToken().then((token) {
-      if (token != null) {
-        appsFlyerSdk.updateServerUninstallToken(token);
-      }
-    });
+    final token = await FirebaseMessaging.instance.getAPNSToken();
+    if (token != null) {
+      await appsFlyerSdk.updateServerUninstallToken(token);
+    }
   }
 }
 ```
 **Note:**  
 - On Android, `getToken()` returns the FCM token.  
 - On iOS, `getAPNSToken()` returns the APNs token as a hex string, suitable for `updateServerUninstallToken`.  
-- Replace `appsFlyerSdk` with your instance of `AppsflyerSdk`.
+- Replace `appsFlyerSdk` with your `AppsFlyerSdk.instance` reference.
 
 ---
 
 ## <a id="user-invite"> User invite
 
-A complete list of supported parameters is available [here](https://support.appsflyer.com/hc/en-us/articles/115004480866-User-Invite-Tracking), you can also make use of the `customParams` field to include custom parameters of your choice.
+A complete list of supported parameters is available [here](https://support.appsflyer.com/hc/en-us/articles/115004480866-User-Invite-Tracking), you can also make use of the `userParams` field to include custom parameters of your choice.
 
-1. First define the Onelink ID either in the AppsFlyerOptions, or in the setAppInviteOneLinkID API (find it in the AppsFlyer dashboard in the onelink section):
+1. First define the OneLink ID with `setAppInviteOneLink` (find it in the AppsFlyer dashboard in the OneLink section):
 
-  **`Future<void> setAppInviteOneLinkID(String oneLinkID, [Function? callback])`**  (the `callback` is optional; it only signals a static `"success"`)
+  **`Future<void> setAppInviteOneLink(String oneLinkId)`**
 
 2. Utilize the AppsFlyerInviteLinkParams class to set the query params in the user invite link:
 
 ```dart
 class AppsFlyerInviteLinkParams {
-  final String channel;
-  final String campaign;
-  final String referrerName;
-  final String referrerImageUrl;
-  final String customerID;
-  final String baseDeepLink;
-  final String brandDomain;
-  final Map<String?, String?>? customParams;
+  final String? channel;
+  final String? campaign;
+  final String? referrerName;
+  final String? referrerImageUrl;
+  final String? referrerCustomerId;
+  final String? baseDeepLink;
+  final String? brandDomain;
+  final Map<String, String>? userParams;
 }
 ```
 
-3. Call the generateInviteLink API to generate the user invite link. Use the success and error callbacks for handling.
+3. Call `generateInviteLink` to generate the user invite link. The returned
+   Future completes with the generated URL or throws `AppsFlyerException`.
+   `awaitResponse` defaults to `true`. On Android, `false` returns the
+   synchronously generated long link. On iOS, link generation always waits for
+   the asynchronous result.
+
+4. Pass the generated URL to your app's share flow. After the user shares the
+   invite, call `logInvite` with the same channel to log the `af_invite` event:
+
+   **`Future<void> logInvite(String channel, [Map<String, String>? eventParameters])`**
+
+   Do not call `logInvite` when the link is only generated; call it for the
+   actual share action.
 
 **Full example:**
 
 ```dart
-// Setting the OneLinkID
-appsFlyerSdk.setAppInviteOneLinkID('OnelinkID', 
-(res){ 
-  print("setAppInviteOneLinkID callback: $res"); 
-});
+// Setting the OneLink ID
+await appsFlyerSdk.setAppInviteOneLink('OnelinkID');
 
 // Creating the required parameters of the OneLink
-AppsFlyerInviteLinkParams inviteLinkParams = new AppsFlyerInviteLinkParams(
-      channel: "",
-      referrerName: "",
-      baseDeepLink: "",
-      brandDomain: "",
-      customerID: "",
-      referrerImageUrl: "",
-      campaign: "",
-      customParams: {"key":"value"}
+const AppsFlyerInviteLinkParams inviteLinkParams = AppsFlyerInviteLinkParams(
+      channel: "whatsapp",
+      campaign: "summer_sale",
+      userParams: {"key":"value"}
 );
 
 // Generating the OneLink
-appsFlyerSdk.generateInviteLink(inviteLinkParams, 
-  (result){ 
-    print(result); 
-  }, 
-  (error){ 
-    print(error);
-  }
-);
+try {
+  final url = await appsFlyerSdk.generateInviteLink(
+    parameters: inviteLinkParams,
+    awaitResponse: true,
+  );
+
+  // Pass url to your app's share UI.
+  // After the user completes the share action:
+  await appsFlyerSdk.logInvite(
+    "whatsapp",
+    {"campaign": "summer_sale"},
+  );
+} on AppsFlyerException catch (error) {
+  print(error);
+}
 ```
 
 ---
@@ -153,63 +167,75 @@ appsFlyerSdk.generateInviteLink(inviteLinkParams,
 Receipt validation is a secure mechanism whereby the payment platform (e.g. Apple or Google) validates that an in-app purchase indeed occurred as reported.<br>
 Learn more - https://support.appsflyer.com/hc/en-us/articles/207032106-Receipt-validation-for-in-app-purchases<br>
 
-**Cross-Platform V2 API (Recommended - SDK v6.17.3+):**
+**Cross-platform API:**
 
 The unified purchase validation API that works across both Android and iOS platforms:
 
 ```dart
-Future<Map<String, dynamic>> validateAndLogInAppPurchaseV2(
-      AFPurchaseDetails purchaseDetails,
-      {Map<String, String>? additionalParameters})
+Future<Map<String, dynamic>> validateAndLogInAppPurchase(
+  AFPurchaseDetails purchase, {
+  Map<String, String>? additionalParameters,
+  bool awaitResponse = true,
+})
 ```
 
-**AFPurchaseDetails class:**
+`awaitResponse` defaults to `true`. On Android, `false` starts validation
+without waiting for a result and returns an empty map. On iOS, validation
+always waits for completion.
+
+**AFPurchaseDetails interface and platform implementations:**
 ```dart
-AFPurchaseDetails(
+AFAndroidPurchaseDetails(
   purchaseType: AFPurchaseType,    // oneTimePurchase or subscription
   purchaseToken: String,           // Purchase token from app store
   productId: String,               // Product identifier
 )
+
+AFIOSPurchaseDetails(
+  purchaseType: AFPurchaseType,    // oneTimePurchase or subscription
+  transactionId: String,           // App Store transaction identifier
+  productId: String,               // Product identifier
+)
 ```
+
+Passing an Android purchase-details object on iOS, or an iOS purchase-details
+object on Android, throws `ArgumentError` before the native validation call.
 
 **Example:**
 ```dart
-// Create purchase details
-AFPurchaseDetails purchaseDetails = AFPurchaseDetails(
-  purchaseType: AFPurchaseType.oneTimePurchase,
-  purchaseToken: "sample_purchase_token_12345",
-  productId: "com.example.product",
-);
+import 'dart:io' show Platform;
+
+final AFPurchaseDetails purchaseDetails = Platform.isAndroid
+    ? const AFAndroidPurchaseDetails(
+        purchaseType: AFPurchaseType.oneTimePurchase,
+        purchaseToken: "sample_purchase_token_12345",
+        productId: "com.example.product",
+      )
+    : const AFIOSPurchaseDetails(
+        purchaseType: AFPurchaseType.oneTimePurchase,
+        transactionId: "sample_transaction_id",
+        productId: "com.example.product",
+      );
 
 // Validate purchase (works on both Android and iOS)
 try {
-  Map<String, dynamic> result = await appsFlyerSdk.validateAndLogInAppPurchaseV2(
+  Map<String, dynamic> result = await appsFlyerSdk.validateAndLogInAppPurchase(
     purchaseDetails,
-    additionalParameters: {"custom_param": "value"}
+    additionalParameters: {"custom_param": "value"},
+    awaitResponse: true,
   );
   print("Validation successful: $result");
-} on PlatformException catch (e) {
-  // Handle platform-specific errors with detailed information
-  print("Validation failed: ${e.message}");
-  print("Error code: ${e.code}");
-  if (e.details != null) {
-    // Access detailed error information
-    final details = e.details as Map<String, dynamic>;
-    print("Error details: $details");
-    // On iOS, additional fields may include:
-    // - error_code: The NSError code
-    // - error_domain: The NSError domain
-    // - error_user_info: Additional error context
-  }
-} catch (e) {
-  print("Unexpected error: $e");
+} on AppsFlyerException catch (error) {
+  print("Validation failed: $error");
+} on ArgumentError catch (error) {
+  print("Invalid purchase details: $error");
 }
 ```
 
-**Benefits of V2 API:**
+**Benefits:**
 - ✅ **Cross-platform**: Single API works on both Android and iOS
 - ✅ **Type-safe**: Uses structured data classes instead of raw strings
-- ✅ **Comprehensive error handling**: Returns structured error information including NSError details on iOS
+- ✅ **Comprehensive error handling**: `AppsFlyerException` provides an optional numeric `code` and `message` for failed SDK calls
 - ✅ **Enhanced validation**: Uses AppsFlyer's latest validation infrastructure
 - ✅ **Future-proof**: Built for AppsFlyer's V2 validation endpoints
 
@@ -220,10 +246,11 @@ try {
 For testing iOS purchase validation against the App Store sandbox, enable sandbox mode before validating:
 
 ```dart
-appsFlyerSdk.useReceiptValidationSandbox(true);
+await appsFlyerSdk.setUseReceiptValidationSandbox(true);
 ```
 
-For the uninstall-measurement flow, `useUninstallSandbox(true)` is the sandbox companion.
+For the uninstall-measurement flow,
+`setUseUninstallSandbox(true)` is the sandbox companion.
 
 ---
 
@@ -233,17 +260,11 @@ Use out-of-store attribution when you distribute the Android app through a store
 than Google Play. Read AppsFlyer's
 [out-of-store attribution guide](https://support.appsflyer.com/hc/en-us/articles/207447023-Attributing-out-of-store-Android-markets-guide).
 
-### SDK 7: install referrer (Google Play and most stores)
+### Google Play Install Referrer
 
-AppsFlyer SDK 7 **removed** the legacy broadcast receivers
-`com.appsflyer.SingleInstallBroadcastReceiver` and
-`com.appsflyer.MultipleInstallBroadcastReceiver`. **Do not** add them to your
-`AndroidManifest.xml` — leftover entries from a v6 integration cause a **build failure**
-during manifest merge.
-
-Play Install Referrer is collected via Google's Install Referrer library instead. Add this
-to your **app module** `android/app/build.gradle` (the SDK declares it as `compileOnly`; your
-app must include it explicitly):
+Play Install Referrer is collected via Google's Install Referrer library. The native SDK
+declares this dependency as `compileOnly`, and the Flutter plugin supplies the required
+runtime dependency transitively:
 
 ```gradle
 dependencies {
@@ -251,10 +272,11 @@ dependencies {
 }
 ```
 
-See [Migrate Android SDK to V7 — §8](https://dev.appsflyer.com/hc/docs/migrate-android-sdk-to-v7#8-remove-legacy-broadcast-receivers).
+No app-level Gradle change is required for AppsFlyer. Add the dependency to your app
+module only if your application code imports and uses the Install Referrer API directly.
 
-If you upgraded from plugin v6, **remove** any existing `<receiver>` entries for those
-classes and their `com.android.vending.INSTALL_REFERRER` intent filters.
+Upgrade-specific receiver removal instructions are documented in
+[doc/migration-guide.md](migration-guide.md).
 
 ### Alternative stores (Samsung, Xiaomi, Huawei)
 
@@ -265,13 +287,13 @@ No extra Flutter plugin setup is required beyond those dependencies.
 
 ### Runtime configuration
 
-Set the alternative store label at runtime with `setOutOfStore` (Android only). Re-apply on
-every cold start — SDK 7 does not persist setter values. See the
+Set the alternative store label at runtime with `setOutOfStore` (Android only). The value
+is runtime-only, so re-apply it on every cold start. See the
 [API reference](api-reference.md#setOutOfStore):
 
 ```dart
 if (Platform.isAndroid) {
-  appsflyerSdk.setOutOfStore("facebook_int");
+  await appsflyerSdk.setOutOfStore("facebook_int");
 }
 ```
 

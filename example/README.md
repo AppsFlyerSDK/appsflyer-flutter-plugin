@@ -1,12 +1,23 @@
 # appsflyer_sdk_example
 
-This plugin has a demo project bundled with it. To give it a try , clone this repo and from root a.e. `flutter_appsflyer_sdk` execute the following:
+This plugin includes a demo project. To run it, clone the
+`appsflyer-flutter-plugin` repository and execute the following from the
+repository root:
+
+Create `example/.env` with your AppsFlyer credentials:
+
+```dotenv
+DEV_KEY=YOUR_DEV_KEY
+APP_ID=YOUR_IOS_APP_ID
+```
+
+`APP_ID` is required for iOS. For an Android-only run, its value may be empty,
+but the key must still be present because the example loads it from `.env`.
 
 ```bash
-$ flutter packages get
-$ cd example/
-$ flutter run
-
+cd example
+flutter pub get
+flutter run
 ```
 
 ![demo printscreen](assets/demo_example.png?raw=true)

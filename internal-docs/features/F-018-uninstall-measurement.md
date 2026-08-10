@@ -4,7 +4,7 @@ name: Uninstall Measurement
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-07-29
+last_verified: 2026-08-04
 depends_on: []
 ---
 
@@ -14,23 +14,25 @@ Attribution isn't just about installs — media sources and marketers also need 
 ---
 
 ## Trigger
-Called by the host app whenever it obtains/refreshes its push token — typically inside a Firebase Messaging (`FirebaseMessaging.instance.getToken()` on Android / `getAPNSToken()` on iOS) callback, or from native `didRegisterForRemoteNotificationsWithDeviceToken:` on iOS.
+The host app awaits `updateServerUninstallToken` whenever it obtains or refreshes its push token — typically from a Firebase Messaging callback (`FirebaseMessaging.instance.getToken()` on Android, `getAPNSToken()` on iOS, or the `onTokenRefresh` stream).
 
 ---
 
 ## Call Chain
-The single Dart method dispatches to a different RPC per platform (Android's FCM path vs. iOS's `registerUninstall`).
+One Dart method, one public parameter; the platform difference is confined to the RPC name and parameter key. The call is awaitable and native failures surface as `AppsFlyerException`.
 
 ```
-AppsflyerSdk.updateServerUninstallToken(token)                         [lib/src/appsflyer_sdk.dart]
-  → Android: _executeRpc('updateServerUninstallToken', {'token': token})
-  → iOS:     _executeRpc('registerUninstall', {'deviceToken': token})
-
-  → MethodChannel "af-api".invokeMethod('executeRpc', {method, params})
-    → Android: AppsflyerSdkPlugin.executeRpc → dispatchRpc → AppsFlyerRpcHandler   [android/.../AppsflyerSdkPlugin.java]
-      → AppsFlyerLib.getInstance().updateServerUninstallToken(context, token)   [FCM token as-is]
-    → iOS: AppsflyerSdkPlugin executeRpc → AppsFlyerRPCBridge                       [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
-      → hex-string token decoded into NSData → [[AppsFlyerLib shared] registerUninstall:deviceTokenData]
+AppsFlyerSdk.updateServerUninstallToken(token)                        [lib/src/appsflyer_sdk.dart]
+  → Android: _invokeVoidRpc('updateServerUninstallToken', {'token': token})
+  → iOS:     _invokeVoidRpc('registerUninstall', {'deviceToken': token})
+    → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
+      → Android: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRpcHandler
+        → UpdateServerUninstallTokenRequest(token)  // init: require(token.isNotEmpty())
+        → appsFlyerLib.updateServerUninstallToken(context, token)   // FCM token as-is
+      → iOS: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRPCBridge
+        → AFRPCRegisterUninstallRequest  // hex string decoded to Data, else validationError
+        → [[AppsFlyerLib shared] registerUninstall:deviceTokenData]
+  → PlatformException is converted to AppsFlyerException
 ```
 
 ---
@@ -38,29 +40,29 @@ AppsflyerSdk.updateServerUninstallToken(token)                         [lib/src/
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `updateServerUninstallToken(String)` — dispatches `updateServerUninstallToken` (Android) / `registerUninstall` (iOS) RPC |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | RPC bridge entry (`executeRpc`) routing `updateServerUninstallToken` to `AppsFlyerRpcHandler` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | RPC bridge entry (`executeRpc`) forwarding `registerUninstall`; the bridge converts the hex-string token to `NSData` |
-| `doc/advanced-features.md` | "Measure App Uninstalls" section documents both the iOS-native (`registerUninstall:` in `AppDelegate.m`) and plugin-side paths, and the Firebase Messaging integration pattern |
+| `lib/src/appsflyer_sdk.dart` | `updateServerUninstallToken(String token)` — dispatches `updateServerUninstallToken` (Android) / `registerUninstall` (iOS) |
+| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | No per-method handler — the generic `executeRpc` → `dispatchRpc` path forwards the envelope to `AppsFlyerRpcHandler` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | No per-method handler — the generic `executeRpc` → `dispatchRpc` path forwards the envelope to `AppsFlyerRPCBridge`, which decodes the hex token into `NSData` |
+| `doc/advanced-features.md` | "Measure App Uninstalls" section documents both platforms and the Firebase Messaging integration pattern |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `token` (String) — Android: FCM registration token, passed through as-is. iOS: APNs device token as an even-length **hexadecimal string** (e.g. from `FirebaseMessaging.instance.getAPNSToken()`); the bridge converts each hex byte pair into raw `NSData` before calling `registerUninstall:` (a non-hex string is rejected silently). |
-| **Output** | `void` — fire-and-forget; no confirmation returned to Dart. |
+| **Input** | `token` (`String`). Android: FCM registration token, passed through as-is under the `token` key. iOS: APNs device token as an even-length **hexadecimal string**, sent under the `deviceToken` key; the iOS RPC layer converts each hex byte pair into raw `Data` before calling `registerUninstall:`. |
+| **Output** | `Future<void>` that completes when the native request succeeds and throws `AppsFlyerException` for native validation errors, bridge failures, or RPC timeouts. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` — `check updateServerUninstallToken call` asserts the mocked `af-api` channel receives `executeRpc` with method `updateServerUninstallToken` and params `{'token': 'token123'}` (host tests run the Android branch). No test covers the iOS `registerUninstall` branch or the hex-to-`NSData` conversion.
+`test/appsflyer_sdk_test.dart` — `maps deep-link, sharing, push, and uninstall APIs` asserts both branches: the Android SDK instance dispatches `updateServerUninstallToken` with `{'token': 'fcm-token'}`, and the iOS SDK instance dispatches `registerUninstall` with `{'deviceToken': '0123456789abcdef'}`. The hex-to-`Data` conversion itself lives in the native iOS RPC layer and is covered by its own tests, not by the Dart suite.
 
 ---
 
 ## Known Limitations
-- On iOS, the hex-string token is decoded byte-pair by byte-pair; a malformed/odd-length hex string is rejected silently by the bridge rather than raising an error back to Dart.
-- The app is responsible for obtaining and refreshing the push token itself (e.g. via `firebase_messaging`); this API only forwards whatever string it is given, so a stale or missing token upstream silently degrades uninstall measurement with no error surfaced to the caller.
+- The Flutter layer performs no token validation. An empty token (Android `require(token.isNotEmpty())`) or a malformed/odd-length hex string (iOS `validationError`) is rejected natively; the rejection now propagates back as `AppsFlyerException`, so the caller must `await` the call to observe it.
+- The app is responsible for obtaining and refreshing the push token itself (e.g. via `firebase_messaging`). This API only forwards the string it is given, so a stale token upstream still degrades uninstall measurement without any error.
 
 ---
 

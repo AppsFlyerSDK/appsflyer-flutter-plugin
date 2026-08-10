@@ -1,225 +1,106 @@
 # Deep linking
 
-> **Audience:** apps routing users to in-app content via OneLink. Requires the [core setup](getting-started.md); for the deep-link APIs see the [API reference](api-reference.md#onDeepLinking). For push-notification deep links, see [`addPushNotificationDeepLinkPath`](api-reference.md#addPushNotificationDeepLinkPath) and [`sendPushNotificationData`](api-reference.md#sendPushNotificationData).
+> **Audience:** apps routing users to in-app content via OneLink. Complete
+> [Getting started](getting-started.md) first. API details:
+> [`onDeepLinkReceived`](api-reference.md#onDeepLinkReceived),
+> [`registerDeepLinkListener`](api-reference.md#registerDeepLinkListener).
+> Push deep links:
+> [`addPushNotificationDeepLinkPath`](api-reference.md#addPushNotificationDeepLinkPath),
+> Android [`sendPushNotificationData`](api-reference.md#sendPushNotificationData),
+> iOS [`handlePushNotification`](api-reference.md#handlePushNotification).
 
-> ⚠️ **IMPORTANT: Flutter 3.27+ Breaking Change**
+> ⚠️ **IMPORTANT: Flutter 3.27+ breaking change**
 >
-> Starting from Flutter 3.27, the default value for Flutter's deep linking option has changed from `false` to `true`. This means Flutter's built-in deep linking is now enabled by default, which can conflict with third-party deep linking plugins like AppsFlyer.
+> From Flutter 3.27, built-in Flutter deep linking defaults to **enabled** and
+> can conflict with AppsFlyer. **Disable it** when you use this plugin:
 >
-> **If you're using Flutter 3.27 or higher, you MUST disable Flutter's built-in deep linking** by adding the following configurations:
->
-> **Android** - Add to your `AndroidManifest.xml` inside the `<activity>` tag:
+> **Android** — inside the main `<activity>` in `AndroidManifest.xml`:
 >
 > ```xml
 > <meta-data android:name="flutter_deeplinking_enabled" android:value="false" />
 > ```
 >
-> **iOS** - Add to your `Info.plist` file:
+> **iOS** — in `Info.plist`:
 >
 > ```xml
 > <key>FlutterDeepLinkingEnabled</key>
 > <false/>
 > ```
 >
-> For more details, see the [official Flutter documentation](https://docs.flutter.dev/release/breaking-changes/deep-links-flag-change).
+> See the [Flutter breaking change](https://docs.flutter.dev/release/breaking-changes/deep-links-flag-change).
 
-Deep Linking vs Deferred Deep Linking:
+## Overview
 
-A deep link is a special URL that routes to a specific spot, whether that's on a website or in an app. A "mobile deep link" then, is a link that contains all the information needed to take a user directly into an app or a particular location within an app instead of just launching the app's home page.
+A **deep link** routes a user to a specific place in your app. If the app is not
+installed, **deferred deep linking** routes the user to the store first and
+delivers the in-app destination after install.
 
-If the app is installed on the user's device - the deep link routes them to the correct location in the app. But what if the app isn't installed? This is where Deferred Deep Linking is used. When the app isn't installed, clicking on the link routes the user to the store to download the app. Deferred Deep linking defer or delay the deep linking process until after the app has been downloaded, and ensures that after they install, the user gets to the right location in the app.
+The plugin uses **Unified Deep Linking (UDL)** for both direct and deferred deep
+links. Results are delivered through `onDeepLinkReceived` after you call
+`registerDeepLinkListener()`.
 
-[Android and iOS set-up](#setup)
+Read the [OneLink™ Deep Linking Guide](https://support.appsflyer.com/hc/en-us/articles/208874366-OneLink-Deep-Linking-Guide#Intro) for dashboard and link configuration.
 
-![alt text](https://massets.appsflyer.com/wp-content/uploads/2018/03/21101417/app-installed-Recovered.png "")
-
-
-#### <a id="Deep-Linking"> Deep Linking Types:
-There are two ways users reach in-app content:
-
-1. Deferred Deep Linking (Get Conversion Data) - serving personalized content to new or former users, directly after the installation.
-2. Unified Deep Linking (UDL) - sends new and existing users to a specific in-app activity as soon as the app is opened. This is the recommended deep-linking method.
-
-> The legacy Direct Deep Linking API (`onAppOpenAttribution`) was removed in AppsFlyer SDK 7 — use Unified Deep Linking (`onDeepLinking`) instead.
-
-For more info please check out the [OneLink™ Deep Linking Guide](https://support.appsflyer.com/hc/en-us/articles/208874366-OneLink-Deep-Linking-Guide#Intro).
+![Deep linking flow](https://massets.appsflyer.com/wp-content/uploads/2018/03/21101417/app-installed-Recovered.png)
 
 ---
 
-###  <a id="deferred-deep-linking"> 1. Deferred Deep Linking (Get Conversion Data)
+## <a id="setup"></a> Platform setup
 
-Check out the deferred deeplinking guide from the AppFlyer knowledge base [here](https://support.appsflyer.com/hc/en-us/articles/207032096-Accessing-AppsFlyer-Attribution-Conversion-Data-from-the-SDK-Deferred-Deeplinking-#Introduction).
+Configure native link handling before you wire up Dart listeners. The plugin
+forwards incoming URLs and Universal Links to the AppsFlyer SDK; your app must
+declare the schemes and domains the OS should open.
 
-Code sample to handle the `onInstallConversionData`:
+### <a id="android-deeplink"></a> Android
 
-```dart
-appsflyerSdk.onInstallConversionData((res){
-    print("res: " + res.toString());
-});
-```
+#### <a id="uri-scheme"></a> URI scheme
 
-**Note:** The code implementation for `onInstallConversionData` must be made **prior to the initialization** code of the SDK.
+Add an intent filter on the activity that should receive the link:
 
-> **Both calls are required.** Registering `onInstallConversionData` is not enough on its own — you must **also** pass `registerConversionDataCallback: true` to `initSdk(...)`. The flag enables the native conversion-data event; the callback receives it. One without the other means no data is delivered.
-
----
-
-###  <a id="handle-deeplinking"> 2. Direct Deeplinking (removed in SDK 7)
-
-`onAppOpenAttribution` (OAOA / Direct Deep Linking) and the `registerOnAppOpenAttributionCallback` flag were removed in AppsFlyer SDK 7. Use [Unified Deep Linking](#unified-deeplinking) (`onDeepLinking`) for all deep-link handling.
-
----
-
-###  <a id="unified-deeplinking"> 3. Unified deep linking
-
-> 📘 **UDL privacy protection**
-> 
-> For new users, the UDL method only returns parameters relevant to deferred deep linking: `deep_link_value` and `deep_link_sub1` to `deep_link_sub10`. If you try to get any other parameters (`media_source`, `campaign`, `af_sub1-5`, etc.), they return `null`.
-
-The flow works as follows:
-
-1. User clicks the OneLink short URL.
-2. The iOS Universal Links/ Android App Links (for deep linking) or the deferred deep link, triggers the SDK.
-3. The SDK triggers the didResolveDeepLink method, and passes the deep link result object to the user.
-4. The onDeepLinking method uses the deep link result object that includes the deep_link_value and other parameters to create the personalized experience for the users, which is the main goal of OneLink.
-
-> Check out the Unified Deep Linking docs for [Android](https://dev.appsflyer.com/docs/android-unified-deep-linking) and [iOS](https://dev.appsflyer.com/docs/ios-unified-deep-linking).
-
-Considerations:
-
-* Requires AppsFlyer Android SDK V6.1.3 or later.
-* Does not support SRN campaigns.
-* Does not provide af_dp in the API response.
-* `onAppOpenAttribution` will not be called. All code should migrate to `onDeepLinking`.
-
-**Note:** The code implementation for `onDeepLinking` must be made **prior to the initialization** code of the SDK.
-
-> **Both calls are required.** Registering `onDeepLinking` is not enough on its own — you must **also** pass `registerOnDeepLinkingCallback: true` to `initSdk(...)`. The flag enables the native UDL event; the callback receives it. One without the other means deep links are not delivered.
-
-Code sample to handle `onDeepLinking`:
-
-```dart
- appsflyerSdk.onDeepLinking((DeepLinkResult dp) {
-      switch (dp.status) {
-        case Status.FOUND:
-          print(dp.deepLink?.toString());
-          print("deep link value: ${dp.deepLink?.deepLinkValue}");
-          break;
-        case Status.NOT_FOUND:
-          print("deep link not found");
-          break;
-        case Status.ERROR:
-          print("deep link error: ${dp.error}");
-          break;
-        case Status.PARSE_ERROR:
-          print("deep link status parsing error");
-          break;
-      }
-    }
-```
-
-From version v6.4.0 a Unified deeplinking class was addded. You may use the following class to handle the deeplink:
-
-```dart
-class DeepLink {
-
-    DeepLink(this._clickEvent);
-    final Map<String , dynamic> _clickEvent;
-    Map<String , dynamic> get clickEvent => _clickEvent;
-    String? get deepLinkValue =>  _clickEvent["deep_link_value"] as String;
-    String? get matchType =>  _clickEvent["match_type"] as String;
-    String? get clickHttpReferrer =>   _clickEvent["click_http_referrer"] as String;
-    String? get mediaSource =>  _clickEvent["media_source"] as String;
-    String? get campaign =>  _clickEvent["campaign"] as String;
-    String? get campaignId =>   _clickEvent["campaign_id"] as String;
-    String? get afSub1 => _clickEvent["af_sub1"] as String;
-    String? get afSub2 =>  _clickEvent["af_sub2"] as String;
-    String? get afSub3 => _clickEvent["af_sub3"] as String;
-    String? get afSub4 =>  _clickEvent["af_sub4"] as String;
-    String? get afSub5 =>   _clickEvent["af_sub5"] as String;
-    bool get isDeferred =>  _clickEvent["is_deferred"] as bool;
-
-    @override
-    String toString() {
-        return 'DeepLink: ${jsonEncode(_clickEvent)}';
-    }
-    String? getStringValue(String key) {
-        return _clickEvent[key] as String;
-    }
-}
-```
-
----
-    
-# <a id="setup"> Set-up
-
-###  <a id="android-deeplink"> Android Deeplink Setup
-    
-#### <a id="uri-scheme"> URI Scheme
-In your app’s manifest add the following intent-filter to your relevant activity:
-```xml 
+```xml
 <intent-filter>
     <action android:name="android.intent.action.VIEW" />
     <category android:name="android.intent.category.DEFAULT" />
     <category android:name="android.intent.category.BROWSABLE" />
-    <data android:scheme="your unique scheme" />
+    <data
+        android:scheme="afshopapp"
+        android:host="mainactivity" />
 </intent-filter>
 ```
 
----
+#### <a id="app-links"></a> App Links
 
-#### <a id="app-links"> App Links
-For more on App Links check out the guide [here](https://support.appsflyer.com/hc/en-us/articles/115005314223-Deep-Linking-Users-with-Android-App-Links#what-are-android-app-links).
+For App Links, see AppsFlyer's
+[Android App Links guide](https://support.appsflyer.com/hc/en-us/articles/115005314223-Deep-Linking-Users-with-Android-App-Links#what-are-android-app-links).
 
-In your app's manifest add the following intent-filter to your relevant activity:
 ```xml
 <intent-filter android:autoVerify="true">
     <action android:name="android.intent.action.VIEW" />
     <category android:name="android.intent.category.DEFAULT" />
     <category android:name="android.intent.category.BROWSABLE" />
-    <data android:scheme="your unique scheme" />
-    <data android:scheme="https"
-        android:host="yourcompany.onelink.me" 
-        android:pathPrefix="your path prefix" />
+    <data
+        android:scheme="https"
+        android:host="yourcompany.onelink.me"
+        android:pathPrefix="/your-path-prefix" />
 </intent-filter>
 ```
 
----
+#### <a id="on-new-intent"></a> Warm starts (`onNewIntent`)
 
-#### <a id="on-new-intent"> onNewIntent
+The plugin updates the attached activity with each new intent. The Android SDK
+resolves warm-start deep links through its activity-lifecycle hook after
+`registerDeepLinkListener()` has subscribed the native listener. No custom
+`MainActivity.onNewIntent` implementation is required.
 
-**❗Setting the intent this way is not required from v6.4.0 and above❗**
-**❗If you are using a plugin version higher or equal to v6.4.0, ignore this section❗**
+### <a id="ios-deeplink"></a> iOS
 
-**NOTE:** On Android, AppsFlyer SDK inspects the activity intent object during onResume(). Because of that, for each activity that may be configured or launched with any [non-standard launch mode](https://developer.android.com/guide/topics/manifest/activity-element#lmode) please make sure to add the following code to `MainActivity.java` in `android/app/src/main/java/com...`
+#### <a id="universal-links"></a> Universal Links
 
-Java example:
-```java
-    @Override
-    public void onNewIntent(Intent intent) {
-         super.onNewIntent(intent);
-         setIntent(intent);
-    }
-```
+See AppsFlyer's
+[Universal Links setup](https://support.appsflyer.com/hc/en-us/articles/208874366-OneLink-Deep-Linking-Guide#setups-universal-links).
 
-Kotlin example:
-```
-    override fun onNewIntent(intent : Intent){
-        super.onNewIntent(intent)
-        setIntent(intent)
-    }
-```
-
-✏️✏️
-
-###  <a id="ios-deeplink"> iOS Deeplink Setup
-
-For more on Universal Links check out the guide [here](https://support.appsflyer.com/hc/en-us/articles/208874366-OneLink-Deep-Linking-Guide#setups-universal-links).
-    
-Essentially, the Universal Links method links between an iOS mobile app and an associate website/domain, such as AppsFlyer’s OneLink domain (xxx.onelink.me). To do so, it is required to:
-
-1. Configure OneLink sub-domain and link to the mobile app (by hosting the ‘apple-app-site-association’ file - AppsFlyer takes care of this part in the onelink setup on your dashboard)
-2. Configure the mobile app to register approved domains:
+1. Configure your OneLink sub-domain in the AppsFlyer dashboard (AppsFlyer hosts the `apple-app-site-association` file).
+2. Enable **Associated Domains** and add approved domains to `Runner.entitlements`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -234,86 +115,144 @@ Essentially, the Universal Links method links between an iOS mobile app and an a
 </plist>
 ```
 
-#### <a id="ios-uri-scheme">  URI Scheme
+The plugin forwards Universal Link callbacks from `UIApplicationDelegate` and,
+when available, from `UISceneDelegate` (Flutter 3.41+). No AppsFlyer-specific
+`AppDelegate` forwarding code is required.
 
-Add your URI Scheme in the project's settings under "General" -> "URL Types" -> Add a new "URI Scheme".
+#### <a id="ios-uri-scheme"></a> URI scheme
 
-**❗Adding the following URI Scheme code is not required from v6.4.0 and above❗**
-**❗If you are using a plugin version higher or equal to v6.4.0, ignore the rest of this section❗**
+Add your URI scheme under Xcode **General → URL Types**.
 
-Add the following to your `AppDelegate`:
-
-Objective-C example:
-
-```
-    - (BOOL)application:(UIApplication *)application openURL:(NSURL *)url sourceApplication:(NSString*)sourceApplication annotation:(id)annotation {
-        // Only for AppsFlyer SDK version 6.2.0 and above 
-        [[AppsFlyerAttribution shared] handleOpenUrl:url sourceApplication:sourceApplication annotation:annotation];
-        
-        // Only for AppsFlyer SDK version 6.1.0 and below 
-        [[AppsFlyerLib shared] handleOpenURL:url sourceApplication:sourceApplication withAnnotation:annotation];
-        return YES;
-    }
-
-    // Reports app open from deep link for iOS 10
-    - (BOOL)application:(UIApplication *)application openURL:(NSURL *)url options:(NSDictionary *) options {
-        
-        // Only for AppsFlyer SDK version 6.2.0 and above 
-        [[AppsFlyerAttribution shared] handleOpenUrl:url options:options];
-        
-        // Only for AppsFlyer SDK version 6.1.0 and below 
-        [[AppsFlyerLib shared] handleOpenUrl:url options:options];
-        return YES;
-    }
-```
-
-Swift example:
-
-```swift
-    override func application(_ application: UIApplication, open url: URL, sourceApplication: String?, annotation: Any) -> Bool {
-        AppsFlyerAttribution.shared()!.handleOpenUrl(url, sourceApplication: sourceApplication, annotation: annotation);
-        return true
-    }
-
-    override func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
-        AppsFlyerAttribution.shared()!.handleOpenUrl(url, options: options)
-        return true
-    }
-```
-
-For more information on URI-Schemes check out the guide [here](https://support.appsflyer.com/hc/en-us/articles/208874366-OneLink-deep-linking-guide#setups-uri-scheme-for-ios-8-and-below).
+The plugin forwards URL-scheme callbacks the same way. See AppsFlyer's
+[URI scheme guide](https://support.appsflyer.com/hc/en-us/articles/208874366-OneLink-deep-linking-guide#setups-uri-scheme-for-ios-8-and-below).
 
 ---
 
-#### <a id="universal-links">  Universal Links
+## Flutter integration
 
-**❗Adding the following Universal Links code is not required from v6.4.0 and above❗**
-**❗If you are using a plugin version higher or equal to v6.4.0, ignore the rest of this section❗**
+1. Complete [Getting started](getting-started.md) — `init()`, listener
+   registration, and `start()` from `onSessionReady`.
+2. Subscribe to `onDeepLinkReceived` **before** calling
+   `registerDeepLinkListener()` so the first native result is not missed.
+3. Call `registerDeepLinkListener()` after `init()` (see Getting started).
 
-Objective-C example:
+### <a id="unified-deeplinking"></a> Unified Deep Linking (recommended)
 
-    ```
-    // Reports app open from a Universal Link for iOS 9 or above
-    - (BOOL) application:(UIApplication *)application continueUserActivity:(NSUserActivity *)userActivity restorationHandler:(void (^)(NSArray<id<UIUserActivityRestoring>> *restorableObjects))restorationHandler {
-        // AppsFlyer SDK version 6.2.0 and above 
-        [[AppsFlyerAttribution shared] continueUserActivity:userActivity restorationHandler:restorationHandler];
-        
-        // AppsFlyer SDK version 6.1.0 and below 
-        [[AppsFlyerLib shared] continueUserActivity:userActivity restorationHandler:restorationHandler];
-        return YES;
-    }
-    ```
-    
-Swift example:
+UDL handles **direct** links (app already open or cold start) and **deferred**
+links (after install) through the same `onDeepLinkReceived` stream.
 
-```swift
-    private func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([Any]?) -> Void) -> Bool {
-        AppsFlyerAttribution.shared()!.continueUserActivity(userActivity, restorationHandler: nil)
-        return true
-    }
+**Flow:**
 
-    override func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
-        AppsFlyerAttribution.shared()!.continueUserActivity(userActivity, restorationHandler: nil)
-        return true
-     }
+1. User clicks a OneLink short URL.
+2. Android App Links / iOS Universal Links (or the deferred install path) open the app.
+3. The native SDK resolves the link and delivers a result to the plugin.
+4. `onDeepLinkReceived` emits a `DeepLinkResult` with `deep_link_value` and other available fields.
+
+> 📘 **UDL privacy (new users):** UDL returns only deferred deep-linking
+> parameters (`deep_link_value`, `deep_link_sub1`–`deep_link_sub10`). Other
+> fields such as `media_source`, `campaign`, and `af_sub1`–`af_sub5` may be
+> `null` for new users.
+
+**Considerations:**
+
+- Uses the AppsFlyer SDK 7 Unified Deep Linking implementation.
+- `af_dp` is not returned in the API response.
+
+Platform references: [Android UDL](https://dev.appsflyer.com/docs/android-unified-deep-linking), [iOS UDL](https://dev.appsflyer.com/docs/ios-unified-deep-linking).
+
+```dart
+appsflyerSdk.onDeepLinkReceived.listen((DeepLinkResult result) {
+  switch (result.status) {
+    case DeepLinkStatus.found:
+      print(result.deepLink);
+      print('deep link value: ${result.deepLink?.deepLinkValue}');
+      break;
+    case DeepLinkStatus.notFound:
+      print('deep link not found');
+      break;
+    case DeepLinkStatus.error:
+      print('deep link error: ${result.error}');
+      break;
+    case DeepLinkStatus.unknown:
+      print('unknown deep link status');
+      break;
+  }
+});
+
+await appsflyerSdk.registerDeepLinkListener();
 ```
+
+`DeepLinkResult` exposes a `DeepLink` model:
+
+```dart
+class DeepLink {
+  final Map<String, dynamic> _clickEvent;
+
+  const DeepLink(this._clickEvent);
+
+  Map<String, dynamic> get clickEvent => _clickEvent;
+
+  String? getStringValue(String key) => _clickEvent[key]?.toString();
+
+  String? get deepLinkValue => getStringValue('deep_link_value');
+  String? get matchType => getStringValue('match_type');
+  String? get clickHttpReferrer => getStringValue('click_http_referrer');
+  String? get mediaSource => getStringValue('media_source');
+  String? get campaign => getStringValue('campaign');
+  String? get campaignId => getStringValue('campaign_id');
+  String? get afSub1 => getStringValue('af_sub1');
+  String? get afSub2 => getStringValue('af_sub2');
+  String? get afSub3 => getStringValue('af_sub3');
+  String? get afSub4 => getStringValue('af_sub4');
+  String? get afSub5 => getStringValue('af_sub5');
+
+  bool? get isDeferred {
+    final value = _clickEvent['is_deferred'];
+    if (value is bool) {
+      return value;
+    }
+    if (value?.toString().toLowerCase() == 'true') {
+      return true;
+    }
+    if (value?.toString().toLowerCase() == 'false') {
+      return false;
+    }
+    return null;
+  }
+  @override
+  String toString() {
+    return 'DeepLink: ${jsonEncode(_clickEvent)}';
+  }
+}
+```
+
+> **Platform behavior:** `DeepLink.isDeferred` is reliable on Android. On iOS
+> it is always `null` because the native click event does not include an
+> `is_deferred` value. Do not use `isDeferred` alone to control cross-platform
+> navigation. Handle a found result using `deepLinkValue` and the other
+> available deep-link parameters instead.
+
+### <a id="handle-deeplinking"></a> Direct deep linking
+
+When the app is already installed, a URL scheme, App Link, or Universal Link
+opens the app and the resolved destination is delivered on `onDeepLinkReceived`.
+Use the UDL listener above — no separate direct-link API is required.
+
+### <a id="deferred-deep-linking"></a> Deferred deep linking
+
+When the app is not installed, the link first sends the user to the app store.
+After installation and the first app open, the resolved destination is
+delivered through `onDeepLinkReceived`. Use the same UDL listener described
+above; no separate deferred-link listener is required.
+
+---
+
+## <a id="Deep-Linking"></a> Quick reference
+
+| Topic | Section |
+| --- | --- |
+| Disable Flutter 3.27+ default deep linking | Top of this page |
+| Android / iOS manifest and entitlements | [Platform setup](#setup) |
+| UDL listener and `DeepLink` model | [Unified Deep Linking](#unified-deeplinking) |
+| Direct deep linking | [Direct deep linking](#handle-deeplinking) |
+| Deferred deep linking | [Deferred deep linking](#deferred-deep-linking) |

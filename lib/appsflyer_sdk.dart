@@ -1,20 +1,22 @@
+// ignore_for_file: unnecessary_library_name
+
+/// The public API for the AppsFlyer SDK 7 Flutter plugin.
+///
+/// Use [AppsFlyerSdk.instance] to initialize the SDK, register native listeners,
+/// receive SDK events, and call the supported Android and iOS APIs.
 library appsflyer_sdk;
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:core';
-import 'dart:developer' as developer;
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'package:json_annotation/json_annotation.dart';
+import 'package:meta/meta.dart';
 
-part 'src/callbacks.dart';
 part 'src/appsflyer_constants.dart';
+part 'src/appsflyer_event.dart';
 part 'src/appsflyer_invite_link_params.dart';
-part 'src/appsflyer_options.dart';
 part 'src/appsflyer_sdk.dart';
 part 'src/udl/deep_link_result.dart';
 part 'src/udl/deeplink.dart';
@@ -30,7 +32,6 @@ part 'src/purchase_connector/models/subscription_validation_result.dart';
 part 'src/purchase_connector/models/validation_failure_data.dart';
 part 'src/purchase_connector/models/jvm_throwable.dart';
 part 'src/purchase_connector/models/ios_error.dart';
-part 'src/appsflyer_consent.dart';
 part 'appsflyer_sdk.g.dart';
-part 'src/appsflyer_ad_revenue_data.dart';
 part 'src/af_purchase_details.dart';
+part 'src/appsflyer_exception.dart';

@@ -4,32 +4,33 @@ name: Debug Logging Toggle
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-07-29
+last_verified: 2026-08-05
 depends_on: ["F-001"]
 ---
 
 ## Business Purpose
-During integration and QA, developers need verbose native SDK logging (request/response payloads, session lifecycle, error detail) to diagnose why attribution or events aren't showing up as expected. `showDebug` is the init-time switch that turns this on. AppsFlyer explicitly warns this must not ship to production, since verbose logs can leak internal request data into device logs.
+During integration and QA, developers need verbose native SDK logging (request/response payloads, session lifecycle, error detail) to diagnose why attribution or events aren't showing up as expected. `enableDebug` is the switch that turns this on. AppsFlyer explicitly warns this must not ship to production, since verbose logs can leak internal request data into device logs.
 
 ---
 
 ## Trigger
-Set once by the host app as part of `AppsFlyerOptions` (or the raw options `Map`), defaulting to `false`, and applied during the `init` orchestration on both platforms before the native SDK starts.
+The host app awaits `AppsFlyerSdk.instance.enableDebug(true)`. This is a standalone runtime call, not an init option: it may be called before `init()`, and must be called before `start()` so the first session is logged with the selected setting. Android integrations can additionally select a granular level with `setLogLevel(AFLogLevel)`.
 
 ---
 
 ## Call Chain
 ```
-AppsFlyerOptions(showDebug: true)                                       [lib/src/appsflyer_options.dart]
-  → AppsflyerSdk.initSdk(...)                                          [lib/src/appsflyer_sdk.dart]
-    → _validateAFOptions / _validateMapOptions
-      → validatedOptions[AF_IS_DEBUG] = options.showDebug ?? false
-      → _executeRpc('init', validatedOptions)
-        → MethodChannel "af-api".invokeMethod('executeRpc', {method:'init', params})
-          → Android: AppsflyerSdkPlugin.initFromRpc(...)               [android/.../AppsflyerSdkPlugin.java]
-            → if (isDebug) executeRpcSync('setLogLevel', {logLevel:"DEBUG"})
-            → executeRpcSync('setDebugLog', {isDebug})   [dispatched before the init RPC]
-          → iOS: AppsFlyerRPCBridge init orchestration applies the debug flag to the native SDK   [ios/.../AppsflyerSdkPlugin.m]
+AppsFlyerSdk.enableDebug(enabled)                                     [lib/src/appsflyer_sdk.dart]
+  → _invokeVoidRpc('isDebug', {'isDebug': enabled})
+    → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
+      → Android: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRpcHandler
+        → AppsFlyerLib.setDebugLog(enabled)
+      → iOS: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRPCBridge
+  → PlatformException is converted to AppsFlyerException
+
+AppsFlyerSdk.setLogLevel(logLevel)                                    [Android only]
+  → _invokeVoidRpc('setLogLevel', {'logLevel': logLevel.rpcValue})    // "NONE".."VERBOSE"
+    → AppsFlyerRpcHandler → AppsFlyerLib.setLogLevel(...)
 ```
 
 ---
@@ -37,40 +38,40 @@ AppsFlyerOptions(showDebug: true)                                       [lib/src
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_options.dart` | `AppsFlyerOptions.showDebug` (`bool`, defaults to `false`) |
-| `lib/src/appsflyer_sdk.dart` | `_validateAFOptions` / `_validateMapOptions` — always writes `AF_IS_DEBUG` into the validated options map, defaulting to `false` if unset |
-| `lib/src/appsflyer_constants.dart` | `AF_IS_DEBUG = "isDebug"` — shared Dart↔native key |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `initFromRpc(...)` — dispatches `setLogLevel` (DEBUG) and `setDebugLog` RPCs before `init` |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsFlyerConstants.java` | `AF_IS_DEBUG = "isDebug"` — native Android mirror of the Dart key |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | Init orchestration applies the debug flag to the native SDK via the RPC bridge |
-| `doc/installation-guide.md`, `doc/api-reference.md`, `doc/testing-and-troubleshooting.md` | Document `showDebug` and warn "do not release to production with this parameter set to `true`" |
+| `lib/src/appsflyer_sdk.dart` | `enableDebug(bool enabled)` — maps to the `isDebug` RPC; `setLogLevel(AFLogLevel logLevel)` — Android-only, guarded by an Android platform check |
+| `lib/src/appsflyer_constants.dart` | `AFLogLevel` (`none`, `error`, `warning`, `info`, `debug`, `verbose`) and its uppercase `rpcValue` |
+| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | No per-method handler — generic `executeRpc` → `dispatchRpc` forwards `isDebug` / `setLogLevel` to `AppsFlyerRpcHandler` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | No per-method handler — generic `executeRpc` → `dispatchRpc` forwards `isDebug` to `AppsFlyerRPCBridge` |
+| `doc/getting-started.md`, `doc/api-reference.md`, `doc/testing-and-troubleshooting.md` | Document `enableDebug` / `setLogLevel` and warn against releasing to production with debug logging enabled |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `showDebug` (`bool`, defaults to `false`) via `AppsFlyerOptions` or the equivalent Map key |
-| **Output** | `void` — toggles native SDK verbose logging as a side effect of init; no confirmation returned to Dart. |
+| **Input** | `enabled` (`bool`) sent as the `isDebug` RPC parameter. Android only: `logLevel` (`AFLogLevel`) sent as its uppercase name. |
+| **Output** | `Future<void>` completes when the native request succeeds and throws `AppsFlyerException` for native errors. Off Android, `setLogLevel` is ignored with a logged warning and no RPC is dispatched. |
 
 ---
 
 ## Tests
-No dedicated test found. `test/appsflyer_sdk_test.dart`'s init test uses `mapOptions: {'afDevKey': ...}` with no `isDebug` key set, so it only exercises the default-`false` path implicitly and never asserts the value of `AF_IS_DEBUG` in the resulting `init` RPC params, nor exercises the `true` branch on either platform.
+`test/appsflyer_sdk_test.dart`:
+- `enableDebug maps to the isDebug RPC method` — asserts the RPC method is `isDebug` with params `{'isDebug': true}`.
+- `maps every Android-only API` — asserts `setLogLevel` dispatches `setLogLevel` with the uppercase value for every `AFLogLevel`.
+- `platform-only void calls are ignored without reaching the native RPC` — asserts `setLogLevel(AFLogLevel.debug)` on iOS dispatches no RPC method.
 
 ---
 
 ## Known Limitations
-- Android and iOS apply the flag differently: Android's init orchestration dispatches two RPCs when enabling (`setLogLevel` DEBUG **and** `setDebugLog`) but only `setDebugLog(false)` when disabling (the log level is never explicitly reset), while iOS applies a single debug flag via the bridge. This asymmetry is not tested and could produce subtly different logging verbosity between platforms if the native SDKs' internal defaults ever diverge.
-- No public Dart getter exists to read back the current debug-logging state after init.
-- The Dart-side null-coalescing comment (`// ignore: unnecessary_null_comparison`) on `options.showDebug != null` in `_validateAFOptions` suggests this check is dead code, since `showDebug` is a non-nullable `bool` with a default value in `AppsFlyerOptions` and can never be `null` at that call site.
-- This is an init-time-only toggle — there is no runtime API in this plugin to turn debug logging on/off after `initSdk()` has already run.
+- No public Dart getter exists to read back the current debug-logging state.
+- Verbosity is not identical across platforms: `enableDebug` maps to the native Android `setDebugLog`, while a granular level requires the Android-only `setLogLevel`. iOS has no log-level equivalent in the RPC layer.
+- The toggle is applied when the RPC is dispatched, so anything logged before the call (including a `start()` issued earlier) uses the previous setting.
 
 ---
 
 ## Dependencies
 ```mermaid
 flowchart LR
-    F059["F-059 · Debug Logging Toggle"]:::sdkCore -->|"applied only during"| F001["F-001 · SDK Initialization & Options Validation"]:::sdkCore
+    F059["F-059 · Debug Logging Toggle"]:::sdkCore -->|"dispatched over the RPC bridge established by"| F001["F-001 · SDK Initialization"]:::sdkCore
     classDef sdkCore fill:#4C6EF5,color:#fff
 ```

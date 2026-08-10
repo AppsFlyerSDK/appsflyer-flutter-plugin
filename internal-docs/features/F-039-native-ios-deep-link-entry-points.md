@@ -4,7 +4,7 @@ name: Native iOS Deep-Link Entry Points (URL scheme / Universal Links / Scenes)
 type: deepLinking
 platform: ios
 status: active
-last_verified: 2026-07-29
+last_verified: 2026-08-04
 depends_on: []
 ---
 
@@ -26,37 +26,38 @@ iOS OS-level deep-link delivery (app already running or resuming):
   application:openURL:sourceApplication:annotation: (iOS 8 and below)
     → [[AppsFlyerAttribution shared] handleOpenUrl:url sourceApplication:annotation:]
   application:continueUserActivity:restorationHandler: (Universal Links)
-    → [[AppsFlyerAttribution shared] continueUserActivity:userActivity restorationHandler:]
+    → [[AppsFlyerAttribution shared] continueUserActivity:userActivity]
 
 iOS UIScene-based delivery (Flutter 3.41+ UIScene migration, iOS 13+, only compiled when FlutterSceneLifeCycle.h is available):
   scene:openURLContexts: → for each context → [[AppsFlyerAttribution shared] handleOpenUrl:context.URL options:opts]
   scene:willConnectToSession:options: (cold start via UISceneConnectionOptions)
     → for each URLContext → handleOpenUrl:options:
-    → for each userActivity of type NSUserActivityTypeBrowsingWeb → continueUserActivity:restorationHandler:nil
-  scene:continueUserActivity: → [[AppsFlyerAttribution shared] continueUserActivity:userActivity restorationHandler:nil]
+    → for each userActivity of type NSUserActivityTypeBrowsingWeb → continueUserActivity:
+  scene:continueUserActivity: → [[AppsFlyerAttribution shared] continueUserActivity:userActivity]
 
-AppsFlyerAttribution (buffering singleton, isBridgeReady initially NO)                              [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerAttribution.m]
+AppsFlyerAttribution (queueing singleton, isBridgeReady initially NO)                               [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerAttribution.m]
   handleOpenUrl:.../continueUserActivity:...
-    → if isBridgeReady == YES: forward immediately to [AppsFlyerLib shared] handleOpenUrl:/continueUserActivity:
-    → else: buffer url/options/sourceApplication/annotation/userActivity/restorationHandler on self
+    → builds an RPC envelope: handleOpenUrl / handleOpenURL / continueUserActivity with {url, options|activityType}
+    → executeOrQueueMethod:params:
+      → if isBridgeReady == YES: [[AppsFlyerRPCBridge shared] executeJson:completion:]
+      → else: append {method, params} to the pendingRequests queue
 
-AppsflyerSdkPlugin initFromRpc:result: (Dart initSdk → af-api executeRpc('init') → native init sequence)   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
-  → ... AppsFlyerRPCBridge setPluginInfo/initialize/registerDeeplinkListener ... (runSequence completion)
-  → [AppsFlyerAttribution shared].isBridgeReady = YES
-  → [[NSNotificationCenter defaultCenter] postNotificationName:AF_BRIDGE_SET object:nil]
-    → AppsFlyerAttribution receiveBridgeReadyNotification: (registered as observer in -init)
-      → flushes any buffered url/options/sourceApplication/annotation/userActivity to [AppsFlyerLib shared] handleOpenUrl:/continueUserActivity:
-        → native SDK resolves the deep link → triggers F-037 (UDL) delivery to Dart
+AppsflyerSdkPlugin initFromRpc:result: (Dart AppsFlyerSdk.init() → af-api executeRpc('init') → native init sequence)   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
+  → runSequence: setPluginInfo → initialize → handleLaunchOptions (only when launch options were captured)
+  → [[AppsFlyerAttribution shared] markBridgeReady]
+    → isBridgeReady = YES, then drains pendingRequests through [[AppsFlyerRPCBridge shared] executeJson:]
+      → native SDK resolves the deep link → triggers F-037 (UDL) delivery to Dart
 ```
+Deep-link listener registration is no longer part of the init sequence. Dart registers it explicitly with `AppsFlyerSdk.registerDeepLinkListener()`, which sends the `registerDeeplinkListener` RPC on iOS.
 
 ---
 
 ## Files
 | File | Role |
 |------|------|
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `application:openURL:options:`, `application:openURL:sourceApplication:annotation:`, `application:continueUserActivity:restorationHandler:`, and (behind `FlutterSceneLifeCycle.h` availability) `scene:openURLContexts:`, `scene:willConnectToSession:options:`, `scene:continueUserActivity:` — all OS/Scene entry points, each forwarding into `AppsFlyerAttribution`; `initFromRpc:result:` sets `isBridgeReady = YES` and posts `AF_BRIDGE_SET` once Dart's `initSdk` (`executeRpc('init')`) RPC sequence completes |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/include/appsflyer_sdk/AppsFlyerAttribution.h` | Declares the `AppsFlyerAttribution` singleton interface: buffering properties (`userActivity`, `restorationHandler`, `url`, `options`, `sourceApplication`, `annotation`), `isBridgeReady` flag, and the `AF_BRIDGE_SET` notification name constant |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerAttribution.m` | Singleton implementation — `handleOpenUrl:...`/`continueUserActivity:...` either forward immediately to `AppsFlyerLib` or buffer until `isBridgeReady`; `receiveBridgeReadyNotification:` flushes exactly one buffered event (checked in priority order: sourceApplication+annotation form, then options form, then userActivity form) when notified |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `application:openURL:options:`, `application:openURL:sourceApplication:annotation:`, `application:continueUserActivity:restorationHandler:`, and (behind `FlutterSceneLifeCycle.h` availability) `scene:openURLContexts:`, `scene:willConnectToSession:options:`, `scene:continueUserActivity:` — all OS/Scene entry points, each forwarding into `AppsFlyerAttribution`; `initFromRpc:result:` calls `markBridgeReady` once Dart's `init()` (`executeRpc('init')`) RPC sequence completes |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/include/appsflyer_sdk/AppsFlyerAttribution.h` | Declares the `AppsFlyerAttribution` singleton interface: the three `handleOpenUrl:`/`continueUserActivity:` entry points and `markBridgeReady` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerAttribution.m` | Singleton implementation — private `isBridgeReady` flag and `pendingRequests` queue; `handleOpenUrl:...`/`continueUserActivity:...` build an RPC envelope and pass it to `executeOrQueueMethod:params:`, which either sends it through `AppsFlyerRPCBridge` or appends to the queue; `markBridgeReady` sets `isBridgeReady` and drains that queue in arrival order |
 | `ios/appsflyer_sdk/Sources/appsflyer_sdk/include/appsflyer_sdk/AppsflyerSdkPlugin.h` | `AppsflyerSdkPlugin` class declaration; conditionally conforms to `FlutterSceneLifeCycleDelegate` when available |
 
 ---
@@ -65,7 +66,7 @@ AppsflyerSdkPlugin initFromRpc:result: (Dart initSdk → af-api executeRpc('init
 | | |
 |--|--|
 | **Input** | `NSURL`/`NSDictionary` options (URI-scheme opens), `NSUserActivity` (Universal Links), or `UISceneConnectionOptions`/`UIOpenURLContext` sets (UIScene cold start/live events) — all supplied by iOS, not by Dart. |
-| **Output** | No direct Dart-facing output from this feature; it forwards raw URL/activity data into `[AppsFlyerLib shared]`, which performs OneLink resolution and (if UDL is subscribed, F-037) surfaces a `DeepLinkResult` back over the `af-events` EventChannel. |
+| **Output** | No direct Dart-facing output from this feature; it forwards the URL/activity data through `AppsFlyerRPCBridge` into the native SDK, which performs OneLink resolution and (if the deep-link listener is registered, F-037) surfaces a `DeepLinkResult` on the `onDeepLinkReceived` stream over the `af-events` EventChannel. |
 
 ---
 
@@ -75,11 +76,12 @@ No dedicated test found — this logic lives entirely in Objective-C native code
 ---
 
 ## Known Limitations
-- **Single-slot buffer, not a queue**: `AppsFlyerAttribution` buffers only one pending deep-link event at a time (a fixed set of instance properties, not a list); if the OS delivers multiple deep-link-shaped events before `isBridgeReady` flips to `YES` (e.g. both a URL and a Universal Link in rapid succession during cold start), only the values from the last call survive — earlier ones are silently overwritten.
-- **All delegate methods return `NO`**: every intercepted method explicitly returns `NO`/is documented as "Results of this are ORed and NO doesn't affect other delegate interceptors' result" — by design, so as not to block other plugins/interceptors from also handling the same URL, but it also means AppsFlyer's interception is invisible to code checking the return value for "was this URL handled."
-- **UIScene support is conditionally compiled**: the `scene:...` methods only exist when `__has_include(<Flutter/FlutterSceneLifeCycle.h>)` is true (Flutter 3.41+); on older Flutter/Flutter engine versions without UIScene support, only the legacy `UIApplicationDelegate` methods run, and per `doc/deep-linking.md` those legacy methods are also documented as unnecessary from plugin v6.4.0+ if the app doesn't override them itself (i.e. AppsFlyer intercepts automatically via method swizzling/plugin registration, not by requiring the host `AppDelegate` to call these directly).
-- The `isBridgeReady`/`AF_BRIDGE_SET` handshake depends on Dart actually calling `initSdk`; if the Dart app never initializes the SDK (or does so much later), buffered deep-link data waits indefinitely in `AppsFlyerAttribution`'s single-slot buffer.
-- **`handleLaunchOptions` is not forwarded**: the plugin intercepts `openURL`, `continueUserActivity`, and the `scene:` entry points, but does not implement `application:didFinishLaunchingWithOptions:` to forward `UIApplicationLaunchOptionsURLKey`/user-activity launch options. Cold-start URI-scheme launches are covered via `scene:willConnectToSession:options:` on the UIScene lifecycle; on non-scene launch paths there is no explicit `handleLaunchOptions` forwarding.
+- **Queued, but only JSON-serializable data survives**: `AppsFlyerAttribution` keeps every early event in the `pendingRequests` queue and drains them in arrival order, so multiple deep-link-shaped events during cold start are all forwarded. Each entry is an RPC envelope. `openURL` `options`/`annotation` values are filtered through `jsonSafeOptionsFromDictionary:` before queueing or send; non-JSON entries are omitted rather than failing the whole deep link.
+- **`restorationHandler` is not forwarded**: `UIApplicationDelegate` requires the parameter on `continueUserActivity:`, but attribution only needs `webpageURL` for RPC (the AppsFlyer SDK ignores the handler as well). Handoff/UI restoration remains the host app's responsibility.
+- **All delegate methods return `NO`**: every intercepted method (including `application:didFinishLaunchingWithOptions:`) explicitly returns `NO`. Flutter ORs the results of its registered delegates, so returning `NO` avoids blocking other plugins from handling the same URL — but it also means AppsFlyer's interception is invisible to code that checks the return value for "was this URL handled."
+- **UIScene support is conditionally compiled**: the `scene:...` methods only exist when `__has_include(<Flutter/FlutterSceneLifeCycle.h>)` is true (Flutter 3.41+); on older Flutter engine versions without UIScene support, only the legacy `UIApplicationDelegate` methods run. Either way the host `AppDelegate` does not have to forward anything, because the plugin is registered as a delegate itself.
+- The `markBridgeReady` handshake depends on Dart actually calling `AppsFlyerSdk.init()`; if the app never initializes the SDK (or does so much later), queued deep-link data waits indefinitely in `pendingRequests`. A failed init sequence returns the error to Dart without marking the bridge ready, so the queue is never drained for that launch.
+- **`handleLaunchOptions` is lifecycle-managed**: `application:didFinishLaunchingWithOptions:` captures JSON-safe launch options, and `initFromRpc` forwards them after `initialize` through the iOS RPC before marking the attribution bridge ready. `NSURL` values are converted to strings and non-JSON values are dropped.
 - No test coverage exists for any of the buffering/forwarding logic described here.
 
 ---

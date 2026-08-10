@@ -4,7 +4,7 @@ name: Additional Custom Data
 type: eventsAndRevenue
 platform: both
 status: active
-last_verified: 2026-07-29
+last_verified: 2026-08-04
 depends_on: []
 ---
 
@@ -14,19 +14,22 @@ Some integrations need to enrich every outbound AppsFlyer SDK request with custo
 ---
 
 ## Trigger
-Called by the host app whenever it needs to attach custom key/value context to subsequent AppsFlyer SDK requests — typically once at startup, but callable at any point.
+The host app awaits `AppsFlyerSdk.instance.setAdditionalData(...)` whenever it needs to attach custom key/value context to subsequent AppsFlyer SDK requests — typically once at startup before `start()`, but callable at any point. Passing an empty map clears previously supplied data.
 
 ---
 
 ## Call Chain
-Since the SDK 7 / RPC migration this is a generic, fire-and-forget RPC call.
+`setAdditionalData` is an awaitable RPC setter available on both platforms.
+
 ```
-AppsflyerSdk.setAdditionalData(customData)                                          [lib/src/appsflyer_sdk.dart]
-  → _executeRpc('setAdditionalData', {'customData': customData})                   // MethodChannel af-api → executeRpc
-    → Android: AppsflyerSdkPlugin.executeRpc → dispatchRpc('setAdditionalData', ...) [android/.../AppsflyerSdkPlugin.java]
-      → AppsFlyerRpcHandler.execute(json) → AppsFlyerLib.setAdditionalData(...)      [plugin_bridge module]
-    → iOS: AppsflyerSdkPlugin.executeRpc → dispatchRpc:method:@"setAdditionalData"   [ios/.../AppsflyerSdkPlugin.m]
-      → [AppsFlyerRPCBridge shared] executeJson:completion: → AFRPCRequestHandler → SDK
+AppsFlyerSdk.setAdditionalData(customData)                            [lib/src/appsflyer_sdk.dart]
+  → _invokeVoidRpc('setAdditionalData', {'customData': customData})
+    → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
+      → Android: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRpcHandler
+        → AppsFlyerLib.setAdditionalData(...)
+      → iOS: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRPCBridge
+        → [AppsFlyerRPCBridge shared] executeJson:completion: → AFRPCRequestHandler → SDK
+  → PlatformException is converted to AppsFlyerException
 ```
 
 ---
@@ -34,9 +37,9 @@ AppsflyerSdk.setAdditionalData(customData)                                      
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `setAdditionalData(Map<String, dynamic> customData)` — platform-agnostic Dart API, `void`, non-null `Map` (pass an empty map to clear) |
-| `android/.../AppsflyerSdkPlugin.java` | No per-method handler — generic `executeRpc` → `dispatchRpc('setAdditionalData', ...)` |
-| `ios/.../AppsflyerSdkPlugin.m` | No per-method handler — generic `executeRpc` → `dispatchRpc` |
+| `lib/src/appsflyer_sdk.dart` | `setAdditionalData(Map<String, dynamic> customData)` — awaitable, platform-agnostic RPC setter; non-null `Map` (pass an empty map to clear) |
+| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | No per-method handler — generic `executeRpc` → `dispatchRpc('setAdditionalData', ...)` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | No per-method handler — generic `executeRpc` → `dispatchRpc` |
 | `doc/api-reference.md` | Public documentation for `setAdditionalData` |
 
 ---
@@ -44,18 +47,18 @@ AppsflyerSdk.setAdditionalData(customData)                                      
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `customData` (`Map<String, dynamic>`, non-null) — arbitrary key/value pairs; pass an empty map to clear |
-| **Output** | `void` — fire-and-forget; no result or error is surfaced to Dart |
+| **Input** | `customData` (`Map<String, dynamic>`, non-null) — arbitrary key/value pairs; pass an empty map to clear. RPC param key `customData`. |
+| **Output** | `Future<void>` completes when the native request succeeds and throws `AppsFlyerException` for native errors or RPC timeouts. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` — `setAdditionalData` calls `setAdditionalData({'k': 'v'})` and asserts the `setAdditionalData` RPC is dispatched with the map.
+`test/appsflyer_sdk_test.dart` verifies in the cross-platform RPC mapping test that `setAdditionalData({'source': 'flutter'})` dispatches RPC method `setAdditionalData` with `{'customData': {'source': 'flutter'}}`.
 
 ---
 
 ## Known Limitations
-- No documented or enforced key/value shape — arbitrary nested values are passed straight through to the native SDK with no serialization validation in this plugin layer; malformed values only surface as a native SDK-level failure.
+- No documented or enforced key/value shape — arbitrary nested values are passed straight through to the native SDK with no serialization validation in this plugin layer; malformed values surface only as a native RPC failure, reported as `AppsFlyerException`.
 - No API to read back previously set additional data; merge-vs-replace semantics live entirely in the native `setAdditionalData` implementation, outside this plugin's code.
 
 ---

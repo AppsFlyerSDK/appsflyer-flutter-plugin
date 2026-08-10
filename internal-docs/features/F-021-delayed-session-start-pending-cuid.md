@@ -1,32 +1,32 @@
 ---
 id: F-021
-name: Delayed Session Start Pending CUID (removed in SDK 7)
+name: Delayed Session Start Pending CUID
 type: sdkCore
 platform: android
 status: removed
-last_verified: 2026-07-29
+last_verified: 2026-08-04
 depends_on: ["F-015"]
 ---
 
 ## Business Purpose
 In SDK 6 the plugin exposed `waitForCustomerUserId(bool)` and `setCustomerIdAndLogSession(String)` so an app could hold the first session until it supplied a customer user ID after login.
 
-> **Removed in SDK 7.** Both APIs no longer exist in the Flutter plugin. SDK 7 replaces this pattern with the app-driven session model: initialization no longer auto-starts, so the app simply calls `setCustomerUserId()` **before** `startSDK()` to guarantee a CUID-attributed first session. See [`doc/migration-guide.md`](/doc/migration-guide.md) and F-002 (SDK Start).
+> **Removed in SDK 7.** Both APIs no longer exist in the Flutter plugin. SDK 7 replaces this pattern with the app-driven session model: `init()` does not send a session, so the app simply awaits `setCustomerUserId()` **before** `start()` to guarantee a CUID-attributed first session. See [`doc/migration-guide.md`](/doc/migration-guide.md) and F-002 (SDK Start).
 
 ---
 
 ## Trigger
-N/A — the APIs have been removed. To gate the first session on a CUID, defer `startSDK()` (called from `registerSessionReadyListener`) until after `setCustomerUserId()` has run.
+None. The APIs have been removed. To gate the first session on a CUID, defer `start()` — called from the `onSessionReady` stream listener registered with `registerSessionReadyListener()` — until after `setCustomerUserId()` has completed.
 
 ---
 
 ## Call Chain
-N/A — removed. Neither `waitForCustomerUserId` nor `setCustomerIdAndLogSession` exists in `lib/src/appsflyer_sdk.dart`, and neither is handled by the `executeRpc` dispatch on Android or iOS. The SDK 7 equivalent is:
+There is no current call chain. Neither `waitForCustomerUserId` nor `setCustomerIdAndLogSession` exists in `lib/src/appsflyer_sdk.dart`, and neither is handled by the `executeRpc` dispatch on Android or iOS. The SDK 7 equivalent is call ordering:
 
 ```
-AppsflyerSdk.setCustomerUserId(id)   → _executeRpc('setCustomerUserId', {customerId})  [F-015]
-AppsflyerSdk.startSDK(...)           → _executeRpc('start', ...)                        [F-002]
-  (call startSDK() after setCustomerUserId(), from registerSessionReadyListener)
+AppsFlyerSdk.setCustomerUserId(id)   → RPC setCustomerUserId {customerId}   [F-015]
+AppsFlyerSdk.start()                 → RPC start {awaitResponse: false}     [F-002]
+  (await setCustomerUserId() first, then call start() from the onSessionReady listener)
 ```
 
 ---
@@ -41,18 +41,19 @@ AppsflyerSdk.startSDK(...)           → _executeRpc('start', ...)              
 ## Input / Output
 | | |
 |--|--|
-| **Input** | N/A (removed) |
-| **Output** | N/A (removed) |
+| **Input** | Removed: `waitForCustomerUserId(bool)` / `setCustomerIdAndLogSession(String)` |
+| **Output** | None. Use F-015 and F-002, which each return `Future<void>`. |
 
 ---
 
 ## Tests
-No tests — the APIs no longer exist. `test/appsflyer_sdk_test.dart` contains no references to `waitForCustomerUserId` / `setCustomerIdAndLogSession`.
+No tests — the APIs no longer exist. `test/appsflyer_sdk_test.dart` contains no references to `waitForCustomerUserId` / `setCustomerIdAndLogSession`. The replacement ordering is covered by the existing `setCustomerUserId` RPC mapping and `start awaits the native request callback` tests.
 
 ---
 
 ## Known Limitations
-- The delayed-session guarantee is now expressed through call ordering (`setCustomerUserId()` before `startSDK()`), not a dedicated API.
+- The delayed-session guarantee is now expressed through call ordering (`await setCustomerUserId()` before `start()`), not a dedicated API.
+- The removed APIs must not be restored or simulated in Dart, because the SDK 7 session model already lets the app decide when the first session is sent.
 
 ---
 

@@ -4,7 +4,7 @@ name: User Anonymization (Opt-out logging)
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-07-29
+last_verified: 2026-08-04
 depends_on: []
 ---
 
@@ -14,19 +14,22 @@ When a specific user opts out of tracking (via an in-app privacy setting or a "d
 ---
 
 ## Trigger
-Called by the host app whenever the current user's tracking-opt-out preference changes (e.g. a settings toggle, or a privacy-compliance check at login).
+The host app awaits `AppsFlyerSdk.instance.anonymizeUser(...)` whenever the current user's tracking-opt-out preference changes — a settings toggle, or a privacy-compliance check at login. Apply the setting before `start()` when the first session must already be anonymized.
 
 ---
 
 ## Call Chain
-Generic RPC on both platforms.
+`anonymizeUser` is an awaitable RPC setter available on both platforms.
 
 ```
-AppsflyerSdk.anonymizeUser(shouldAnonymize)                           [lib/src/appsflyer_sdk.dart]
-  → _executeRpc('anonymizeUser', {shouldAnonymize})
-    → af-api "executeRpc" {method:'anonymizeUser', params}
-      → Android: dispatchRpc → AppsFlyerRpcHandler → AppsFlyerLib.anonymizeUser(shouldAnonymize)  [android/.../AppsflyerSdkPlugin.java]
-      → iOS: dispatchRpc → AppsFlyerRPCBridge → [AppsFlyerLib shared] ...                          [ios/.../AppsflyerSdkPlugin.m]
+AppsFlyerSdk.anonymizeUser(shouldAnonymize)                           [lib/src/appsflyer_sdk.dart]
+  → _invokeVoidRpc('anonymizeUser', {'shouldAnonymize': shouldAnonymize})
+    → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
+      → Android: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRpcHandler
+        → AppsFlyerLib.anonymizeUser(shouldAnonymize)
+      → iOS: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRPCBridge
+        → [AppsFlyerLib shared] anonymize flag
+  → PlatformException is converted to AppsFlyerException
 ```
 
 ---
@@ -34,22 +37,22 @@ AppsflyerSdk.anonymizeUser(shouldAnonymize)                           [lib/src/a
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `anonymizeUser(bool)` — dispatches the RPC |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | generic `anonymizeUser` dispatch over `AppsFlyerRpcHandler` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | generic `anonymizeUser` dispatch over `AppsFlyerRPCBridge` |
+| `lib/src/appsflyer_sdk.dart` | `anonymizeUser(bool shouldAnonymize)` — awaitable RPC setter |
+| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | Forwards `anonymizeUser` through the Android RPC handler |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | Forwards `anonymizeUser` through the iOS RPC bridge |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `shouldAnonymize` (bool) — `true` anonymizes logging for the current user, `false` restores normal logging. RPC param key `shouldAnonymize`. |
-| **Output** | `void` — fire-and-forget; no confirmation returned to Dart. |
+| **Input** | `shouldAnonymize` (`bool`) — `true` anonymizes logging for the current user, `false` restores normal logging. RPC param key `shouldAnonymize`. |
+| **Output** | `Future<void>` completes when the native request succeeds and throws `AppsFlyerException` for native errors or RPC timeouts. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` verifies that `anonymizeUser` dispatches the `anonymizeUser` RPC with the `shouldAnonymize` param.
+`test/appsflyer_sdk_test.dart` verifies in the cross-platform RPC mapping test that `anonymizeUser(true)` dispatches RPC method `anonymizeUser` with `{'shouldAnonymize': true}`. Error conversion is covered generically by the test asserting that a `PlatformException` becomes an `AppsFlyerException` on the shared RPC path.
 
 ---
 

@@ -4,6 +4,12 @@
 > **Audience:** apps measuring in-app purchase / subscription revenue. Requires the [core setup](getting-started.md). **iOS: CocoaPods only — not compatible with Swift Package Manager.**
 
 **At a glance:** Automatically validate and measure revenue from in-app purchases and auto-renewable subscriptions to get the full picture of your customers' life cycles and accurate ROAS measurements.
+
+> Purchase Connector requires an ROI360 subscription. When Purchase Connector
+> reports purchase revenue, do not also send the same purchase through
+> `validateAndLogInAppPurchase` or an in-app event containing revenue, because
+> doing so can result in duplicate revenue reporting.
+
 For more information please check the following pages:
 *  [ROI360 in-app purchase (IAP) and subscription revenue measurement](https://support.appsflyer.com/hc/en-us/articles/7459048170769-ROI360-in-app-purchase-IAP-and-subscription-revenue-measurement?query=purchase)
 * [Android Purchase Connector](https://dev.appsflyer.com/hc/docs/purchase-connector-android)
@@ -19,8 +25,8 @@ support@appsflyer.com
 
 * [Important Note](#important-note)
 * [Adding The Connector To Your Project](#install-connector)
-  - [How to Opt-In](#install-connector)
-  - [What Happens if You Use Dart Files Without Opting In?](#install-connector)
+  - [How to Opt-In](#how-to-opt-in)
+  - [What Happens if You Use Dart Files Without Opting In?](#what-happens-if-you-use-dart-files-without-opting-in)
 * [Basic Integration Of The Connector](#basic-integration)
   - [Create PurchaseConnector Instance](#create-instance)
   - [Start Observing Transactions](#start)
@@ -48,23 +54,24 @@ support@appsflyer.com
 
 ## <a id="important-note"> ⚠️ ⚠️ Important Note ⚠️ ⚠️
 
-> **🚨 BREAKING CHANGE**: Starting with Purchase Connector version 2.2.0, the module now uses **Google Play Billing Library 8.x.x**. While Gradle will automatically resolve to version 8.x.x in your final APK, **we strongly recommend that your app also upgrades to Billing Library 8.x.x or higher** to ensure API compatibility.
->
-> **Why this matters:**
-> - If your app code still uses **older Billing Library APIs** (e.g., `querySkuDetailsAsync()` from versions 5-7), these APIs were **removed in version 8** and **will cause runtime crashes** (`NoSuchMethodError`).
-> - **Version 8 introduced new APIs** like `queryProductDetailsAsync()` that replace the deprecated methods.
-> - **Recommendation**: Update your app's billing integration to use Billing Library 8.x.x APIs to prevent runtime issues.
+Plugin `7.0.1` resolves Android Purchase Connector `2.2.0` and iOS Purchase
+Connector `7.0.1` when the feature is enabled. Android Purchase Connector
+`2.2.0` supports Google Play Billing Library `8.x`. The Flutter plugin does
+not add the Billing Library itself, so your app or IAP plugin must provide a
+Billing Library `8.x` dependency and use Billing 8-compatible APIs.
 
 The Purchase Connector feature of the AppsFlyer SDK depends on specific libraries provided by Google and Apple for managing in-app purchases:
 
--   For Android, it depends on the  [Google Play Billing Library](https://developer.android.com/google/play/billing/integrate) (Minimum required version: 8.x.x and higher).
--   For iOS, it depends on  [StoreKit](https://developer.apple.com/documentation/storekit). (Supported versions are StoreKit V1 + V2)
+-   For Android, it depends on the [Google Play Billing Library](https://developer.android.com/google/play/billing/integrate) `8.x`.
+-   For iOS, it observes transactions from the system [StoreKit](https://developer.apple.com/documentation/storekit) framework. StoreKit 1 and StoreKit 2 are supported.
 
-However, these dependencies aren't actively included with the SDK. This means that the responsibility of managing these dependencies and including the necessary libraries in your project falls on you as the consumer of the SDK.
+The Purchase Connector observes purchases; it does not implement your app's
+purchase flow. Provide that flow in native application code or with a Flutter
+plugin such as [`in_app_purchase`](https://pub.dev/packages/in_app_purchase).
 
-If you're implementing in-app purchases in your app, you'll need to ensure that the Google Play Billing Library (for Android) or StoreKit (for iOS) are included in your project. You can include these libraries manually in your native code, or you can use a third-party Flutter plugin, such as the  [`in_app_purchase`](https://pub.dev/packages/in_app_purchase)  plugin.
-
-Remember to appropriately manage these dependencies when implementing the Purchase Validation feature in your app. Failing to include the necessary libraries might result in failures when attempting to conduct in-app purchases or validate purchases.
+Remember to appropriately manage these dependencies when implementing Purchase
+Connector. Failing to provide the required purchase framework can prevent the
+app from conducting or validating purchases.
 
 ## <a id="install-connector">  Adding The Connector To Your Project
 
@@ -74,34 +81,34 @@ The Purchase Connector feature in AppsFlyer SDK Flutter Plugin is an optional en
 
 To opt-in and include this feature in your app, you need to set specific properties based on your platform:
 
-For **iOS**, in your Podfile located within the `iOS` folder of your Flutter project, set `$AppsFlyerPurchaseConnector` to `true`.
+For **iOS**, in your Podfile located within the `ios` folder of your Flutter project, set `$AppsFlyerPurchaseConnector` to `true`.
 ```ruby
 $AppsFlyerPurchaseConnector = true
 ```
-For **Android**, in your `gradle.properties` file located within the `Android` folder of your Flutter project,, set `appsflyer.enable_purchase_connector` to `true`.
+For **Android**, in your `gradle.properties` file located within the `android` folder of your Flutter project, set `appsflyer.enable_purchase_connector` to `true`.
 ```groovy
 appsflyer.enable_purchase_connector=true
 ```
-Once you set these properties, the Purchase Validation feature will be integrated into your project and you can utilize its functionality in your app.
+Once you set these properties and rebuild the app, Purchase Connector will be integrated into your project and you can utilize its functionality in your app.
 
-> ⚠️ **iOS + Swift Package Manager**: Purchase Connector requires **CocoaPods for the entire plugin** — there is no Swift Package Manager path for it, and it cannot currently be combined with Swift Package Manager for the Core integration either. This is a temporary limitation pending an upstream Flutter fix ([flutter/flutter#161182](https://github.com/flutter/flutter/issues/161182)). **If your app uses Purchase Connector, do not enable Swift Package Manager for this plugin — keep your `Podfile` and use CocoaPods for both Core and Purchase Connector.** If you enable SPM anyway, calling any Purchase Connector API will silently fail with a `MissingPluginException` — see the next section. SPM is only recommended for apps that don't use Purchase Connector at all (see [installation-guide.md](installation-guide.md#ios-swift-package-manager-spm-support)).
+> ⚠️ **iOS + Swift Package Manager**: Purchase Connector requires **CocoaPods for the entire plugin** — there is no Swift Package Manager path for it, and it cannot currently be combined with Swift Package Manager for the Core integration either. This is a temporary limitation pending an upstream Flutter fix ([flutter/flutter#161182](https://github.com/flutter/flutter/issues/161182)). **If your app uses Purchase Connector, do not enable Swift Package Manager for this plugin — keep your `Podfile` and use CocoaPods for both Core and Purchase Connector.** If you enable SPM anyway, calling any Purchase Connector API throws `MissingPluginException` — see the next section. SPM is only recommended for apps that don't use Purchase Connector at all (see [installation-guide.md](installation-guide.md#ios-swift-package-manager-spm-support)).
 
 ### What Happens if You Use Dart Files Without Opting In?
 
-The Dart files for the Purchase Validation feature are always included in the plugin. If you try to use these Dart APIs without opting into the feature, the APIs will not have effect because the corresponding native code necessary for them to function will not be included in your project.
+The Dart files for Purchase Connector are always included in the plugin. If you try to use these Dart APIs without opting into the feature, the corresponding native code is not included and calling any Purchase Connector API throws `MissingPluginException`.
 
-In such cases, you'll likely experience errors or exceptions when trying to use functionalities provided by the Purchase Validation feature. To avoid these issues, ensure that you opt-in to the feature if you intend to use any related APIs.
+In such cases, you'll experience errors when invoking native Purchase Connector operations. To avoid these issues, ensure that you opt in to the feature if you intend to use it.
 
 ## <a id="basic-integration"> Basic Integration Of The Connector
 ### <a id="create-instance"> Create PurchaseConnector Instance
 The `PurchaseConnector` requires a configuration object of type `PurchaseConnectorConfiguration` at instantiation time. This configuration object governs how the `PurchaseConnector` behaves in your application.
 
-To properly set up the configuration object, you must specify certain parameters:
+The configuration object has the following optional parameters:
 
 - `logSubscriptions`: If set to `true`, the connector logs all subscription events.
 - `logInApps`: If set to `true`, the connector logs all in-app purchase events.
 - `sandbox`: If set to `true`, transactions are tested in a sandbox environment. Be sure to set this to `false` in production.
-- `storeKitVersion`: (iOS only) Specifies which StoreKit version to use. Defaults to `StoreKitVersion.storeKit1` if not specified.
+- `storeKitVersion`: (iOS only) Specifies which StoreKit version to use. Defaults to `StoreKitVersion.SK1` if not specified.
 
 Here's an example usage:
 
@@ -112,7 +119,7 @@ void main() {
       logSubscriptions: true,   // Enables logging of subscription events
       logInApps: true,          // Enables logging of in-app purchase events
       sandbox: true,            // Enables testing in a sandbox environment
-      storeKitVersion: StoreKitVersion.storeKit1,  // iOS only: StoreKit version (defaults to storeKit1)
+      storeKitVersion: StoreKitVersion.SK1,  // iOS only: StoreKit version (defaults to SK1)
     ),
   );
 
@@ -132,7 +139,7 @@ void main() {
       logSubscriptions: true,
       logInApps: true,
       sandbox: true,
-      storeKitVersion: StoreKitVersion.storeKit1,  // Default StoreKit version
+      storeKitVersion: StoreKitVersion.SK1,  // Default StoreKit version
     ),
   );
 
@@ -143,7 +150,7 @@ void main() {
       logSubscriptions: false,
       logInApps: false,
       sandbox: false,
-      storeKitVersion: StoreKitVersion.storeKit2,  // This will be ignored
+      storeKitVersion: StoreKitVersion.SK2,  // This will be ignored
     ),
   );
 
@@ -156,10 +163,10 @@ Thus, always ensure that the initial configuration fully suits your requirements
 
 Remember to set `sandbox` to `false` before releasing your app to production. If the production purchase event is sent in sandbox mode, your event won't be validated properly by AppsFlyer.
 ### <a id="start"> Start Observing Transactions
-Start the SDK instance to observe transactions. </br>
+Start Purchase Connector to observe transactions. </br>
 
 **⚠️ Please Note**
-> This should be called right after calling the `AppsflyerSdk` [start](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/blob/master/doc/getting-started.md#startsdk).
+> This should be called right after calling `AppsFlyerSdk` [start](getting-started.md#start).
 >  Calling `startObservingTransactions` activates a listener that automatically observes new billing transactions. This includes new and existing subscriptions and new in app purchases.
 >  The best practice is to activate the listener as early as possible.
 ```dart
@@ -168,14 +175,14 @@ Start the SDK instance to observe transactions. </br>
 ```
 
 ### <a id="stop"> Stop Observing Transactions
-Stop the SDK instance from observing transactions. </br>
+Stop Purchase Connector from observing transactions. </br>
 **⚠️ Please Note**
 > This should be called if you would like to stop the Connector from listening to billing transactions. This removes the listener and stops observing new transactions.
 > An example for using this API is if the app wishes to stop sending data to AppsFlyer due to changes in the user's consent (opt-out from data sharing). Otherwise, there is no reason to call this method.
 > If you do decide to use it, it should be called right before calling the Android SDK's [`stop`](https://dev.appsflyer.com/hc/docs/android-sdk-reference-appsflyerlib#stop) API
 
 ```dart
-        // start
+        // stop
         afPurchaseClient.stopObservingTransactions();
 ```
 
@@ -204,8 +211,8 @@ The Purchase Connector supports both StoreKit 1 and StoreKit 2 on iOS. You can c
 
 ### <a id="storekit-versions"> Available StoreKit Versions
 
-- **`StoreKitVersion.storeKit1`** (Default) - Uses the original StoreKit framework
-- **`StoreKitVersion.storeKit2`** - Uses the modern StoreKit 2 framework (iOS 15.0+)
+- **`StoreKitVersion.SK1`** (Default) - Uses the original StoreKit framework
+- **`StoreKitVersion.SK2`** - Uses the modern StoreKit 2 framework (iOS 15.0+)
 
 ### <a id="storekit-examples"> Configuration Examples
 
@@ -228,7 +235,7 @@ final afPurchaseClient = PurchaseConnector(
     logSubscriptions: true,
     logInApps: true,
     sandbox: true,
-    storeKitVersion: StoreKitVersion.storeKit1,  // Explicitly set to StoreKit 1
+    storeKitVersion: StoreKitVersion.SK1,  // Explicitly set to StoreKit 1
   ),
 );
 ```
@@ -240,7 +247,7 @@ final afPurchaseClient = PurchaseConnector(
     logSubscriptions: true,
     logInApps: true,
     sandbox: true,
-    storeKitVersion: StoreKitVersion.storeKit2,  // Use modern StoreKit 2
+    storeKitVersion: StoreKitVersion.SK2,  // Use modern StoreKit 2
   ),
 );
 ```
@@ -260,34 +267,33 @@ final afPurchaseClient = PurchaseConnector(
 
 **Example with Error Handling:**
 ```dart
-try {
-  final afPurchaseClient = PurchaseConnector(
-    config: PurchaseConnectorConfiguration(
-      logSubscriptions: true,
-      logInApps: true,
-      sandbox: true,
-      storeKitVersion: StoreKitVersion.storeKit2,
-    ),
-  );
-  
-  // Start observing transactions
-  afPurchaseClient.startObservingTransactions();
-  
-  print("Purchase Connector initialized with StoreKit 2");
-} catch (e) {
-  print("Failed to initialize Purchase Connector: $e");
-  // Consider fallback to StoreKit 1 or handle error appropriately
-}
+final afPurchaseClient = PurchaseConnector(
+  config: PurchaseConnectorConfiguration(
+    logSubscriptions: true,
+    logInApps: true,
+    sandbox: true,
+    storeKitVersion: StoreKitVersion.SK2,
+  ),
+);
+
+// Start observing transactions
+afPurchaseClient.startObservingTransactions();
 ```
 
-> 📝 **Note**: If you don't specify `storeKitVersion`, the connector defaults to `StoreKitVersion.storeKit1` for maximum compatibility. Only use StoreKit 2 if your app's minimum iOS version is 15.0 or higher, or if you've implemented proper fallback handling.
+> 📝 **Note**: If you don't specify `storeKitVersion`, the connector defaults
+> to `StoreKitVersion.SK1`. When `StoreKitVersion.SK2` is selected, the
+> connector uses StoreKit 2 on iOS 15.0 and later and automatically falls back
+> to StoreKit 1 on iOS 13 and 14. The app does not need to implement this
+> fallback.
 
 ##  <a id="validation-callbacks"> Register Validation Results Listeners
 You can register listeners to get the validation results once getting a response from AppsFlyer servers to let you know if the purchase was validated successfully.</br>
 
 ### <a id="cross-platform-considerations">  Cross-Platform Considerations
 
-The AppsFlyer SDK Flutter plugin acts as a bridge between your Flutter app and the underlying native SDKs provided by AppsFlyer. It's crucial to understand that the native infrastructure of iOS and Android is quite different, and so is the AppsFlyer SDK built on top of them. These differences are reflected in how you would handle callbacks separately for each platform.
+The Flutter plugin provides a common API, but purchase callbacks differ between
+iOS and Android. Handle the callback model for the platform your app is running
+on.
 
 In the iOS environment, there is a single callback method  `didReceivePurchaseRevenueValidationInfo`  to handle both subscriptions and in-app purchases. You set this callback using  `setDidReceivePurchaseRevenueValidationInfo`.
 
@@ -350,21 +356,21 @@ To test purchases in an iOS environment on a real device with a TestFlight sandb
 
 **StoreKit Version Considerations for Testing:**
 - **StoreKit 1**: Works on all iOS versions, well-established testing procedures
-- **StoreKit 2**: Requires iOS 15.0+, provides enhanced testing capabilities and more detailed transaction information
+- **StoreKit 2**: Used on iOS 15.0+; older supported iOS versions automatically fall back to StoreKit 1
 
 ```dart
 // Example configuration for testing with StoreKit 2
 final purchaseConnector = PurchaseConnector(
   config: PurchaseConnectorConfiguration(
     sandbox: true,  // Enable sandbox for testing
-    storeKitVersion: StoreKitVersion.storeKit2,  
+    storeKitVersion: StoreKitVersion.SK2,
     logSubscriptions: true,
     logInApps: true,
   ),
 );
 ```
 
-> *IMPORTANT NOTE: Before releasing your app to production please be sure to set `sandbox` to `false`. If a production purchase event is sent in sandbox mode, your event will not be validated properly! *
+> *IMPORTANT NOTE: Before releasing your app to production please be sure to set `sandbox` to `false`. If a production purchase event is sent in sandbox mode, your event will not be validated properly!*
 
 ### <a id="testing-config"> Dart Usage for Android and iOS
 
@@ -377,17 +383,17 @@ final purchaseConnector = PurchaseConnector(
     sandbox: true,
     logSubscriptions: true,
     logInApps: true,
-    // storeKitVersion defaults to StoreKitVersion.storeKit1
+    // storeKitVersion defaults to StoreKitVersion.SK1
   )
 );
 
-// Testing in a sandbox environment with StoreKit 2 (iOS 15.0+)
+// Prefer StoreKit 2 in the sandbox (used on iOS 15.0+)
 final purchaseConnectorSK2 = PurchaseConnector(
   config: PurchaseConnectorConfiguration(
     sandbox: true,
     logSubscriptions: true,
     logInApps: true,
-    storeKitVersion: StoreKitVersion.storeKit2,  // Enhanced testing capabilities
+    storeKitVersion: StoreKitVersion.SK2,  // Enhanced testing capabilities
   )
 );
 ```
@@ -404,58 +410,65 @@ Add following keep rules to your  `proguard-rules.pro`  file:
 -keep  class  com.appsflyer.** { *; }  
 -keep  class  kotlin.jvm.internal.Intrinsics{ *; }  
 -keep  class  kotlin.collections.**{ *; }
+-keep  class  kotlin.Result$Companion { *; }
 ```
 
 ## <a id="example"> Full Code Example
 ```dart
-PurchaseConnectorConfiguration config = PurchaseConnectorConfiguration(  
-    logSubscriptions: true, 
-    logInApps: true, 
+import 'dart:convert';
+
+import 'package:appsflyer_sdk/appsflyer_sdk.dart';
+import 'package:flutter/foundation.dart';
+
+void configurePurchaseConnector() {
+  final config = PurchaseConnectorConfiguration(
+    logSubscriptions: true,
+    logInApps: true,
     sandbox: false,
-    storeKitVersion: StoreKitVersion.storeKit2  // Use StoreKit 2 on iOS (requires iOS 15.0+)
-);  
-final afPurchaseClient = PurchaseConnector(config: config);  
-  
-// set listeners for Android  
-afPurchaseClient.setSubscriptionValidationResultListener(  
-    (Map<String, SubscriptionValidationResult>? result) {  
-  // handle subscription validation result for Android  
-  result?.entries.forEach((element) {  
-    debugPrint(  
-        "Subscription Validation Result\n\t Token: ${element.key}\n\tresult: ${jsonEncode(element.value.toJson())}");  
-  });  
-}, (String result, JVMThrowable? error) {  
-  // handle subscription validation error for Android  
-  var errMsg = error != null ? jsonEncode(error.toJson()) : null;  
-  debugPrint(  
-      "Subscription Validation Result\n\t result: $result\n\terror: $errMsg");  
-});  
-  
-afPurchaseClient.setInAppValidationResultListener(  
-    (Map<String, InAppPurchaseValidationResult>? result) {  
-  // handle in-app validation result for Android  
-  result?.entries.forEach((element) {  
-    debugPrint(  
-        "In App Validation Result\n\t Token: ${element.key}\n\tresult: ${jsonEncode(element.value.toJson())}");  
-  });  
-}, (String result, JVMThrowable? error) {  
-  // handle in-app validation error for Android  
-  var errMsg = error != null ? jsonEncode(error.toJson()) : null;  
-  debugPrint(  
-      "In App Validation Result\n\t result: $result\n\terror: $errMsg");  
-});  
-  
-// set listener for iOS  
-afPurchaseClient  
-    .setDidReceivePurchaseRevenueValidationInfo((validationInfo, error) {  
-  var validationInfoMsg =  
-      validationInfo != null ? jsonEncode(validationInfo) : null;  
-  var errMsg = error != null ? jsonEncode(error.toJson()) : null;  
-  debugPrint(  
-      "iOS Validation Result\n\t validationInfo: $validationInfoMsg\n\terror: $errMsg");  
-  // handle subscription and in-app validation result and errors for iOS  
-});  
-  
-// start  
-afPurchaseClient.startObservingTransactions();
+    storeKitVersion: StoreKitVersion.SK2, // Uses SK2 on iOS 15+; SK1 on iOS 13-14
+  );
+  final afPurchaseClient = PurchaseConnector(config: config);
+
+  // Set listeners for Android.
+  afPurchaseClient.setSubscriptionValidationResultListener(
+      (Map<String, SubscriptionValidationResult>? result) {
+    // Handle subscription validation result for Android.
+    result?.entries.forEach((element) {
+      debugPrint(
+          "Subscription Validation Result\n\t Token: ${element.key}\n\tresult: ${jsonEncode(element.value.toJson())}");
+    });
+  }, (String result, JVMThrowable? error) {
+    // Handle subscription validation error for Android.
+    final errMsg = error != null ? jsonEncode(error.toJson()) : null;
+    debugPrint(
+        "Subscription Validation Result\n\t result: $result\n\terror: $errMsg");
+  });
+
+  afPurchaseClient.setInAppValidationResultListener(
+      (Map<String, InAppPurchaseValidationResult>? result) {
+    // Handle in-app validation result for Android.
+    result?.entries.forEach((element) {
+      debugPrint(
+          "In App Validation Result\n\t Token: ${element.key}\n\tresult: ${jsonEncode(element.value.toJson())}");
+    });
+  }, (String result, JVMThrowable? error) {
+    // Handle in-app validation error for Android.
+    final errMsg = error != null ? jsonEncode(error.toJson()) : null;
+    debugPrint(
+        "In App Validation Result\n\t result: $result\n\terror: $errMsg");
+  });
+
+  // Set listener for iOS.
+  afPurchaseClient
+      .setDidReceivePurchaseRevenueValidationInfo((validationInfo, error) {
+    final validationInfoMsg =
+        validationInfo != null ? jsonEncode(validationInfo) : null;
+    final errMsg = error != null ? jsonEncode(error.toJson()) : null;
+    debugPrint(
+        "iOS Validation Result\n\t validationInfo: $validationInfoMsg\n\terror: $errMsg");
+    // Handle subscription and in-app validation results and errors for iOS.
+  });
+
+  afPurchaseClient.startObservingTransactions();
+}
 ```

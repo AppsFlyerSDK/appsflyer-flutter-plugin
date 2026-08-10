@@ -4,7 +4,7 @@ name: Deep-Link URL Resolution Allow-list
 type: deepLinking
 platform: both
 status: active
-last_verified: 2026-07-29
+last_verified: 2026-08-04
 depends_on: []
 ---
 
@@ -14,23 +14,27 @@ Advertisers sometimes wrap an AppsFlyer OneLink inside another Universal Link/Ap
 ---
 
 ## Trigger
-Called explicitly by the integrating Dart app, typically once at startup (independent of `initSdk`/SDK-start ordering — no code enforces call ordering relative to `initSdk`), whenever the app needs to configure which wrapped/custom domains the SDK should resolve as deep links.
+Awaited explicitly by the integrating Dart app, typically once at startup, whenever the app needs to configure which wrapped/custom domains the SDK should resolve as deep links. Nothing in the Flutter layer enforces ordering relative to `init()` or `start()`, and the dartdoc states no ordering requirement.
+
+The sibling API for branded OneLink domains is `setOneLinkCustomDomain(List<String> domains)`, which follows the same RPC shape with a `domains` parameter.
 
 ---
 
 ## Call Chain
-Since the SDK 7 / RPC migration this is a generic RPC call (no per-method channel handler): the Dart wrapper sends `{method:'setResolveDeepLinkURLs', params:{urls:[...]}}` through the single `executeRpc` entry point, and each platform's native RPC bridge parses it into a typed request and forwards it to the SDK.
+This is a generic RPC call (no per-method channel handler): the Dart wrapper sends `{method: 'setResolveDeepLinkURLs', params: {urls: [...]}}` through the single `executeRpc` entry point, and each platform's native RPC bridge parses it into a typed request and forwards it to the SDK.
+
 ```
-AppsflyerSdk.setResolveDeepLinkURLs(List<String> urls)                                     [lib/src/appsflyer_sdk.dart]
-  → _executeRpc('setResolveDeepLinkURLs', {'urls': urls})   // MethodChannel af-api → executeRpc
-    → Android: AppsFlyerRpcHandler.execute(json)                                          [plugin_bridge/.../AppsFlyerRpcHandler.kt]
-      → JsonRpcRequestParser → SetResolveDeepLinkURLsRequest(urls)  // init: require(urls.isNotEmpty())
-      → handleSetResolveDeepLinkURLs → AppsFlyerLib.getInstance().setResolveDeepLinkURLs(*urls.toTypedArray())
-      → RpcResponse.Success
-    → iOS: AppsFlyerRPCBridge / AFRPCRequestHandler                                        [AppsFlyerRPC framework]
-      → AFRPCParser → AFRPCSetResolveDeepLinkURLsRequest(urls)  // guard: !urls.isEmpty else validationError
-      → AFRPCComplexConfigHandler → sdk.resolveDeepLinkURLs = urls  ([AppsFlyerLib shared])
-      → SDKSuccess("resolveDeepLinkURLs set with N URL(s)")
+AppsFlyerSdk.setResolveDeepLinkURLs(List<String> urls)                                     [lib/src/appsflyer_sdk.dart]
+  → _invokeVoidRpc('setResolveDeepLinkURLs', {'urls': urls})
+    → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
+      → Android: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRpcHandler
+        → SetResolveDeepLinkURLsRequest(urls)  // init: require(urls.isNotEmpty())
+        → AppsFlyerLib.getInstance().setResolveDeepLinkURLs(*urls.toTypedArray())
+      → iOS: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRPCBridge
+        → AFRPCSetResolveDeepLinkURLsRequest(urls)  // guard: !urls.isEmpty else validationError
+        → sdk.resolveDeepLinkURLs = urls  ([AppsFlyerLib shared])
+  → successful reply completes Future<void>
+  → PlatformException is converted to AppsFlyerException
 ```
 
 ---
@@ -38,31 +42,29 @@ AppsflyerSdk.setResolveDeepLinkURLs(List<String> urls)                          
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `setResolveDeepLinkURLs(List<String> urls)` — thin passthrough that sends the generic RPC `setResolveDeepLinkURLs` with `{urls}`. Fire-and-forget (`void`); does not validate `urls` (see CR-033). |
-| `android/.../plugin_bridge` (native SDK, not the Flutter plugin) | `SetResolveDeepLinkURLsRequest(urls)` — `init { require(urls.isNotEmpty()) }`; `AppsFlyerRpcHandler.handleSetResolveDeepLinkURLs` → `AppsFlyerLib.getInstance().setResolveDeepLinkURLs(*urls.toTypedArray())` |
-| `AppsFlyerRPC` framework (native iOS SDK, not the Flutter plugin) | `AFRPCSetResolveDeepLinkURLsRequest(urls)` — guards `!urls.isEmpty` else `validationError`; `AFRPCComplexConfigHandler` → `sdk.resolveDeepLinkURLs = urls` |
-| `android/.../AppsflyerSdkPlugin.java` / `ios/.../AppsflyerSdkPlugin.m` | No per-method handler — the generic `executeRpc` dispatch forwards the JSON envelope to the native RPC bridge above. |
-| `doc/api-reference.md` / `doc/deep-linking.md` | Document the API (`setResolveDeepLinkURLs`) with the wrapped-OneLink rationale and a usage example; not restricted to a single platform |
+| `lib/src/appsflyer_sdk.dart` | `setResolveDeepLinkURLs(List<String> urls)` — awaitable passthrough that sends the generic RPC `setResolveDeepLinkURLs` with `{urls}`; performs no Dart-side validation |
+| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | Generic `executeRpc` dispatch — forwards the JSON envelope to the Android RPC handler |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | Generic `executeRpc` dispatch — forwards the JSON envelope to the iOS RPC bridge |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `List<String> urls` — the domains/URLs (e.g. `"clickdomain.com"`) the SDK should attempt to resolve as deep links. |
-| **Output** | None (`result.success(null)`/`result(nil)`) — this configures internal native SDK state; it does not itself deliver deep-link data. Once configured, subsequently opened URLs matching these domains become eligible for the same deep-link resolution flow that ordinarily feeds F-037 (UDL) and F-035 (GCD) callbacks. |
+| **Input** | `urls` (`List<String>`) — the domains/URLs (for example `"click.example.com"`) the SDK should attempt to resolve as deep links. The native bridges require a non-empty list. |
+| **Output** | `Future<void>` completes when the native request succeeds and throws `AppsFlyerException` for native errors, including the empty-list rejection. Configuring the allow-list does not itself deliver deep-link data; matching URLs simply become eligible for the resolution flow that feeds F-037 (UDL) and F-035 (GCD). |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` → `'setResolveDeepLinkURLs maps to urls'` verifies the Dart wrapper dispatches the `setResolveDeepLinkURLs` RPC with the `urls` param. Native contract (empty-list rejection, SDK forwarding) is covered by the native SDK's own bridge tests (`RpcRequestValidationTest` / `AppsFlyerRPCParseNewMethodsTests`).
+`test/appsflyer_sdk_test.dart` → `'maps deep-link, sharing, push, and uninstall APIs'` verifies that `setResolveDeepLinkURLs(['example.com'])` dispatches RPC method `setResolveDeepLinkURLs` with params `{'urls': ['example.com']}`. The same test covers the sibling `setOneLinkCustomDomain` mapping. `'PlatformException becomes AppsFlyerException'` covers the shared error conversion this method relies on. Native contract enforcement (empty-list rejection, SDK forwarding) is covered by the native SDKs' own bridge tests.
 
 ---
 
 ## Known Limitations
-- **Both platforms implemented**: `setResolveDeepLinkURLs` has a real native implementation on both Android (`AppsFlyerLib.getInstance().setResolveDeepLinkURLs(String[])`) and iOS (`sdk.resolveDeepLinkURLs = [...]`); the docs do not flag any platform restriction, and both RPC bridges are wired.
-- **Empty list is rejected, but the Dart wrapper swallows it (CR-033)**: both native bridges reject an empty `urls` list (Android `require(urls.isNotEmpty())`, iOS `validationError`). The Dart method is fire-and-forget `void` (discards the `_executeRpc` Future — CR-007 class), so `setResolveDeepLinkURLs([])` surfaces only as a swallowed unhandled async error with no caller feedback, and nothing is set. Dart does not pre-validate the list (Cordova, by contrast, guards client-side and silently returns on empty).
-- No ordering guarantee relative to `initSdk`/`startSDK` is enforced or documented; whether URLs must be registered before the SDK starts resolving deep links (to catch a cold-start wrapped link) is not verified by code inspection alone.
+- **Both platforms implemented**: `setResolveDeepLinkURLs` has a real native implementation on Android (`AppsFlyerLib.getInstance().setResolveDeepLinkURLs(String[])`) and iOS (`sdk.resolveDeepLinkURLs = [...]`), and both RPC bridges are wired.
+- **Empty list fails at the native bridge, not in Dart**: both bridges reject an empty `urls` list. Because the method is awaitable, that rejection now reaches the caller as `AppsFlyerException` instead of being swallowed — but Dart still does not pre-validate, so the round trip happens before the error is known.
+- No ordering guarantee relative to `init()`/`start()` is enforced. Whether URLs must be registered before the SDK starts resolving deep links (to catch a cold-start wrapped link) is not verified by code inspection alone.
 
 ---
 

@@ -4,76 +4,88 @@ name: Conversion Data Callback (GCD)
 type: deepLinking
 platform: both
 status: active
-last_verified: 2026-07-29
+last_verified: 2026-08-05
 depends_on: ["F-001"]
 ---
 
 ## Business Purpose
-When a user installs the app after clicking an attributed link (or organically), the app often needs to know immediately — before the user even signs in — which campaign drove the install and whether it carries a deferred deep link, so it can personalize the very first session (e.g. show a specific onboarding screen or promo). `onInstallConversionData` ("Get Conversion Data", GCD) delivers this attribution/conversion payload to Dart right after install. Without it, apps lose the ability to react to install-time attribution data and deferred-deep-link payloads inside the app itself.
+When a user installs the app after clicking an attributed link (or organically), the app often needs to know immediately — before the user even signs in — which campaign drove the install and whether it carries a deferred deep link, so it can personalize the very first session (e.g. show a specific onboarding screen or promo). "Get Conversion Data" (GCD) delivers this attribution/conversion payload to Dart right after install, through the `onConversionDataSuccess` and `onConversionDataFailure` streams. Without it, apps lose the ability to react to install-time attribution data and deferred-deep-link payloads inside the app itself.
 
 ---
 
 ## Trigger
-Native SDK fires this once conversion data has been fetched from AppsFlyer's servers following an app install/launch — gated end-to-end by the `registerConversionDataCallback` flag passed to `initSdk()` (F-001) and by the Dart app having called `onInstallConversionData(callback)` to subscribe before that init.
+The host app subscribes to `onConversionDataSuccess` (and `onConversionDataFailure`), calls `registerConversionListener()` after `init()`, and then receives conversion data once the native SDK has fetched it from AppsFlyer's servers following an app install/launch. There is no init-time flag: registration is an explicit RPC call.
 
 ---
 
 ## Call Chain
-Registration is driven from the init orchestration: when `registerConversionDataCallback: true`, the init RPC sequence calls the native `registerConversionListener` RPC. Reverse events return over the **`af-events` EventChannel** as an `{id, status, data}` JSON envelope (there is no `callbacks` MethodChannel).
-```
-AppsflyerSdk.initSdk(registerConversionDataCallback: true, ...)                        [lib/src/appsflyer_sdk.dart]
-  → validatedOptions[AF_GCD] = registerConversionDataCallback
-  → _executeRpc('init', validatedOptions)   // MethodChannel af-api → executeRpc
-    → Android: initFromRpc → if (getGCD) executeRpcSync('registerConversionListener')  [android/.../AppsflyerSdkPlugin.java]
-    → iOS: initFromRpc → if (isGCD) sequence += 'registerConversionListener'           [ios/.../AppsflyerSdkPlugin.m]
+Registration is an ordinary awaitable RPC. Results arrive on the **`af-events` EventChannel** as a native RPC JSON envelope, are parsed into a `_AppsFlyerEvent` (`name` + `data`), and are filtered by event name into the typed streams.
 
-AppsflyerSdk.onInstallConversionData(MultiUseCallback callback)                        [lib/src/appsflyer_sdk.dart]
-  → _startListening(callback, "onInstallConversionData")                               [lib/src/callbacks.dart]
-    → _callbacksById["onInstallConversionData"] = callback; subscribe to af-events
-
-Native SDK conversion data arrives (bridge RpcEventNotifier / iOS bridge event handler):
-  → normalized to {"id":"onInstallConversionData", "status":"success"|"failure", "data": <json>} on af-events
-    → Dart: _dispatchCallListener [lib/src/callbacks.dart] → id == "onInstallConversionData"
-      → _callbacksById["onInstallConversionData"]({"status": ..., "payload": decodedData})
 ```
+AppsFlyerSdk.onConversionDataSuccess.listen(...)                       [lib/src/appsflyer_sdk.dart]
+AppsFlyerSdk.onConversionDataFailure.listen(...)
+  → filters of the shared af-events broadcast stream
+
+AppsFlyerSdk.registerConversionListener()
+  → _invokeVoidRpc('registerConversionListener')
+    → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
+      → Android: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRpcHandler
+      → iOS: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRPCBridge
+
+Native conversion data arrives (Android RpcEventNotifier / iOS handleBridgeEvent):
+  → deliverEvent(json) on EventChannel('af-events'), buffered in pendingEvents until Dart subscribes
+    → _AppsFlyerEvent.fromNative(json)                                 [lib/src/appsflyer_event.dart]
+      → event.name == 'onConversionDataSuccess'
+          → Map<String, dynamic> emitted on onConversionDataSuccess
+      → event.name == 'onConversionDataFail'
+          → Map<String, dynamic> emitted on onConversionDataFailure (raw payload, not an RPC exception)
+```
+
+Android also exposes `unregisterConversionListener()`; on iOS the call is ignored with a logged warning and no RPC is dispatched.
 
 ---
 
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `onInstallConversionData(MultiUseCallback)` — registers the Dart callback via `_startListening`; `initSdk(registerConversionDataCallback:)` sets the `AF_GCD` init flag. `unregisterConversionDataListener()` drops the Dart routing entry (observer-only). |
-| `lib/src/callbacks.dart` | `_dispatchCallListener` — decodes the `af-events` `{id, status, data}` envelope and dispatches `{"status", "payload"}` to the registered `"onInstallConversionData"` callback |
-| `android/.../AppsflyerSdkPlugin.java` | `initFromRpc` runs the `registerConversionListener` RPC when `AF_GCD` is set; `processBridgeEvent` maps the bridge conversion success/fail events to the `onInstallConversionData` af-events envelope |
-| `ios/.../AppsflyerSdkPlugin.m` | `initFromRpc` adds `registerConversionListener` to the RPC sequence when the `GCD` flag is set; `handleBridgeEvent` maps `onConversionDataSuccess`/`onConversionDataFail` to the same af-events envelope |
+| `lib/src/appsflyer_sdk.dart` | `onConversionDataSuccess` / `onConversionDataFailure` streams, `registerConversionListener()`, and the Android-only `unregisterConversionListener()` |
+| `lib/src/appsflyer_event.dart` | `_AppsFlyerEvent.fromNative` — parses the RPC envelope (`event`, map-or-null `data`) |
+| `android/.../AppsflyerSdkPlugin.java` | `processBridgeEvent` / `deliverEvent` forward bridge events to the `af-events` sink and buffer them in `pendingEvents` until Dart subscribes |
+| `ios/.../AppsflyerSdkPlugin.m` | `handleBridgeEvent` / `deliverEvent` do the same on iOS, with the same `pendingEvents` buffering |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | None from Dart beyond registering the callback; the payload itself originates from AppsFlyer's attribution servers via the native SDK. |
-| **Output** | `{"status": "success"｜"failure", "payload": Map?}` delivered to the Dart callback passed to `onInstallConversionData`. On failure, native wraps the error into the same envelope shape rather than a distinct failure structure. |
+| **Input** | None from Dart beyond `registerConversionListener()`; the payload itself originates from AppsFlyer's attribution servers via the native SDK. |
+| **Output** | `onConversionDataSuccess` emits `Map<String, dynamic>` (the raw conversion payload). `onConversionDataFailure` emits the raw failure payload as `Map<String, dynamic>` — not an RPC exception, since the RPC call itself already succeeded. Payload shape differs by platform: Android sends `{"error": String}` with no error code; iOS sends `{"error": String, "code": int}`. `registerConversionListener()` itself returns `Future<void>`. |
 
 ---
 
 ## Tests
-No dedicated test found. `test/appsflyer_sdk_test.dart` does not exercise `onInstallConversionData` or the af-events dispatch path in `lib/src/callbacks.dart`.
+`test/appsflyer_sdk_test.dart`:
+- `filters conversion events from the raw RPC stream` — emits an `onConversionDataSuccess` envelope on `af-events` and asserts the decoded payload reaches `onConversionDataSuccess`.
+- `listeners are registered explicitly` — asserts `registerConversionListener()` dispatches the `registerConversionListener` RPC.
+- `maps every Android-only API` — asserts `unregisterConversionListener` dispatches the matching RPC with no params.
+- `platform-only void calls are ignored without reaching the native RPC` — asserts `unregisterConversionListener` on iOS dispatches no RPC.
+
+`test/appsflyer_sdk_test.dart` — `ignores transport-only envelope fields on conversion stream` covers the `onConversionDataSuccess` envelope shape (`event`, `data`).
 
 ---
 
 ## Known Limitations
-- **Flag + listener are both required**: setting `registerConversionDataCallback: true` without calling `onInstallConversionData()` (or vice versa) delivers nothing. The init flag arms the native listener; the Dart registration gates routing.
-- Documentation requires the Dart-side `onInstallConversionData` implementation to be registered **before** SDK initialization; nothing in code enforces or warns about this ordering.
-- Android buffers events that arrive before Dart subscribes to `af-events` (`pendingEvents`, RD-65582) and replays them on attach, so an install-conversion event emitted before the stream is attached is not lost.
-- Error payloads use the same JSON envelope as success payloads, so Dart-side consumers must inspect `status` rather than relying on a distinct shape to detect failure.
+- Subscribe to the streams **before** calling `registerConversionListener()`. The streams are broadcast filters over `af-events`, so events delivered before a subscription exists are not replayed by Dart.
+- Both platforms buffer native events in `pendingEvents` until Dart attaches to `af-events` (RD-65582), so an install-conversion event emitted before the stream is attached is not lost at the native layer.
+- `onConversionDataFailure` passes through the raw native payload unchanged: on Android it never carries a `code` field (the native delegate only supplies an error message), while on iOS it does. Callers that need a `code` must handle its absence on Android rather than relying on a synthesized default.
+- `unregisterConversionListener()` is Android-only; iOS integrations cannot stop conversion-data delivery through the RPC bridge.
 
 ---
 
 ## Dependencies
 ```mermaid
 flowchart LR
-    F035["F-035 · Conversion Data Callback (GCD)"]:::deepLinking -->|"listener registration gated by GCD flag set in"| F001["F-001 · SDK Initialization & Options Validation"]:::sdkCore
+    F035["F-035 · Conversion Data Callback (GCD)"]:::deepLinking -->|"listener registered after"| F001["F-001 · SDK Initialization"]:::sdkCore
     classDef deepLinking fill:#E64980,color:#fff
     classDef sdkCore fill:#4C6EF5,color:#fff
 ```

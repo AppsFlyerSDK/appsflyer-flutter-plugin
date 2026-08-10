@@ -1,23 +1,9 @@
 part of appsflyer_sdk;
 
-class AppsflyerConstants {
+class _AppsFlyerConstants {
   static const String PLUGIN_VERSION = "7.0.1";
-  static const String AF_DEV_KEY = "afDevKey";
-  static const String AF_APP_Id = "afAppId";
-  static const String AF_IS_DEBUG = "isDebug";
-  static const String AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION =
-      "timeToWaitForATTUserAuthorization";
-  static const String AF_GCD = "GCD";
-  static const String AF_UDL = "UDL";
-
   static const String AF_EVENTS_CHANNEL = "af-events";
   static const String AF_METHOD_CHANNEL = "af-api";
-
-  static const String APP_INVITE_ONE_LINK = "appInviteOneLink";
-
-  static const String DISABLE_COLLECT_ASA = "disableCollectASA";
-  static const String DISABLE_ADVERTISING_IDENTIFIER =
-      "disableAdvertisingIdentifier";
 
   // Purchase Connector constants
   static const String AF_PURCHASE_CONNECTOR_CHANNEL = "af-purchase-connector";
@@ -30,9 +16,7 @@ class AppsflyerConstants {
   static const String RESULT = "result";
   static const String STORE_KIT_VERSION_KEY = "storeKitVersion";
   // Purchase Connector listeners
-  // NOTE: these must match the exact method names the native Android side sends
-  // over the PC MethodChannel (`:` separator — see AppsFlyerPurchaseConnector.kt /
-  // AppsFlyerConstants.java). A prior `#` separator here silently broke delivery.
+  // These match the exact method names sent by the native Android channel.
   static const String
       SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_RESPONSE =
       "SubscriptionPurchaseValidationResultListener:onResponse";
@@ -69,7 +53,7 @@ enum AFMediationNetwork {
   customMediation,
   directMonetizationNetwork;
 
-  String get value {
+  String rpcValue({required bool isIOS}) {
     switch (this) {
       case AFMediationNetwork.ironSource:
         return "ironsource";
@@ -96,9 +80,21 @@ enum AFMediationNetwork {
       case AFMediationNetwork.toponPte:
         return "topon_pte";
       case AFMediationNetwork.customMediation:
-        return "custom_mediation";
+        return isIOS ? "custom" : "custom_mediation";
       case AFMediationNetwork.directMonetizationNetwork:
-        return "direct_monetization_network";
+        return isIOS ? "directmonetization" : "direct_monetization_network";
     }
   }
+}
+
+/// Android SDK logging levels supported by [AppsFlyerSdk.setLogLevel].
+enum AFLogLevel {
+  none,
+  error,
+  warning,
+  info,
+  debug,
+  verbose;
+
+  String get rpcValue => name.toUpperCase();
 }

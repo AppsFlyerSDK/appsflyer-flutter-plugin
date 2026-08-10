@@ -1,10 +1,10 @@
 ---
 id: F-008
-name: Manual IMEI/Android ID Override (removed in SDK 7)
+name: Manual IMEI/Android ID Override
 type: sdkCore
 platform: android
 status: removed
-last_verified: 2026-07-29
+last_verified: 2026-08-04
 depends_on: []
 ---
 
@@ -28,7 +28,7 @@ N/A — removed. No `setImeiData` / `setAndroidIdData` method exists in `lib/src
 ## Files
 | File | Role |
 |------|------|
-| — | No implementation remains. Removal is documented in [`doc/migration-guide.md`](/doc/migration-guide.md) and `CHANGELOG.md`. |
+| — | No implementation remains in `lib/src/appsflyer_sdk.dart`. Removal is documented in [`doc/migration-guide.md`](/doc/migration-guide.md) and `CHANGELOG.md`. |
 
 ---
 
@@ -46,7 +46,7 @@ No tests — the APIs no longer exist. `test/appsflyer_sdk_test.dart` contains n
 ---
 
 ## Known Limitations
-- No RPC-reachable replacement exists in SDK 7. Apps that previously fed device identifiers manually must rely on the SDK's own (policy-compliant) collection; the Android-ID opt-out is covered by F-007.
+- No RPC-reachable replacement exists in SDK 7. Apps that previously fed device identifiers manually must rely on the SDK's own (policy-compliant) collection; the Android-ID opt-out is covered by F-007 through `AppsFlyerSdk.instance.setCollectAndroidID(bool)`.
 
 ---
 

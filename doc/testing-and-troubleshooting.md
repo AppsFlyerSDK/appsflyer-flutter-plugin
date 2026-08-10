@@ -6,20 +6,15 @@ More info about testing the SDK for marketers [here](https://support.appsflyer.c
 - [Testing for Android](#Android)
 - [Troubleshooting](#troubleshooting)
 
-Before testing the SDK, you need to enable the debug mode so the SDK will produce the full logs.
-To enable it, set the appsFlyer options object with `showDebug` as `true`, and then initialize the SDK:
+Before testing the SDK, enable debug mode so the SDK produces full logs.
+Call `enableDebug(true)` before `init()` and `start()`:
 
 ```dart
-AppsFlyerOptions appsFlyerOptions = AppsFlyerOptions(
-        afDevKey: afDevKey,
-        appId: appId,
-        showDebug: true);
-
-AppsflyerSdk appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
-
-appsflyerSdk.initSdk(
-    registerConversionDataCallback: true,
-    registerOnDeepLinkingCallback: false
+final appsflyerSdk = AppsFlyerSdk.instance;
+await appsflyerSdk.enableDebug(true);
+await appsflyerSdk.init(
+  devKey: afDevKey,
+  appId: appId,
 );
 ```
 
@@ -73,23 +68,33 @@ For more Android integration tests, see [Here](https://dev.appsflyer.com/hc/docs
 
 ### No launch/session is sent ("SDK session not started")
 
-In SDK 7, `initSdk()` only initializes the SDK — it does **not** send a session.
-`startSDK()` must be called **once per foreground cycle**. Register a session-ready
-listener and call `startSDK()` from inside it so every foreground (including
+In SDK 7, `init()` only initializes the SDK — it does **not** send a session.
+`start()` must be called **once per foreground cycle**. Subscribe to
+`onSessionReady`, register the native session-ready listener, and call `start()`
+from the stream so every foreground (including
 background→foreground) reports a session:
 
 ```dart
-appsflyerSdk.registerSessionReadyListener((res) => appsflyerSdk.startSDK());
-appsflyerSdk.initSdk(registerConversionDataCallback: true, registerOnDeepLinkingCallback: true);
+final appsflyerSdk = AppsFlyerSdk.instance;
+
+appsflyerSdk.onSessionReady.listen((_) async {
+  await appsflyerSdk.start();
+});
+
+await appsflyerSdk.init(
+  devKey: afDevKey,
+  appId: appId,
+);
+await appsflyerSdk.registerSessionReadyListener();
 ```
 
-See [Getting started → startSdk](getting-started.md#startsdk).
+See [Getting started → start](getting-started.md#start).
 
 ### Setter values are lost after a cold start
 
-SDK 7 setters (`setCustomerUserId`, `setCurrencyCode`, `setConsentDataV2`, …) are
-runtime-only. Re-apply them on every cold start **before** `startSDK()` — see the
-setter-persistence note in [Getting started](getting-started.md#startsdk).
+SDK 7 setters (`setCustomerUserId`, `setCurrencyCode`, `setConsentData`, …) are
+runtime-only. Re-apply them on every cold start **before** `start()` — see the
+setter-persistence note in [Getting started](getting-started.md#start).
 
 ### Deep links stop working on Flutter 3.27+
 
@@ -100,12 +105,12 @@ OneLinks. Disable it via `flutter_deeplinking_enabled=false` (Android) and
 
 ### `MissingPluginException` when calling a Purchase Connector API
 
-Purchase Connector has no Swift Package Manager path. If you enabled SPM, Purchase
-Connector calls fail silently with `MissingPluginException`. Use CocoaPods for the whole
-plugin — see [Purchase Connector](purchase-connector.md).
+Purchase Connector has no Swift Package Manager path. If you enabled SPM, calling
+any Purchase Connector API throws `MissingPluginException`. Use CocoaPods for the
+whole plugin — see [Purchase Connector](purchase-connector.md).
 
 ### iOS installs not attributed to IDFA
 
-The ATT prompt must be presented and `timeToWaitForATTUserAuthorization` set so the SDK
-waits for the user's decision before the first session. See
+The ATT prompt must be presented and completed before the app allows the first
+`start()` call. The Flutter plugin does not provide an ATT-wait API. See
 [Getting started → iOS 14 & ATT](getting-started.md#ios-14--app-tracking-transparency).

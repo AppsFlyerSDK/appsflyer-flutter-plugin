@@ -13,39 +13,42 @@ flutter pub add appsflyer_sdk
 
 This will download the AppsFlyer flutter plugin to your project, you may observe the changes in your `pubspec.yaml` file.
 
+The plugin requires:
+
+- Flutter `3.24.0` or later;
+- Dart `3.5.0` or later;
+- Android API 21 or later;
+- iOS 13.0 or later.
+
 ---
 ## iOS: Swift Package Manager (SPM) support
 
 Starting with v6.18.0, the plugin's **Core** integration supports Swift Package Manager on iOS, alongside continued full CocoaPods support. If your app has SPM enabled (the default on Flutter 3.44+, or via `flutter config --enable-swift-package-manager` on Flutter 3.24+), no extra setup is needed — Flutter's tooling picks up the plugin's `Package.swift` automatically.
 
-**If you use Purchase Connector, do not enable SPM for this plugin.** [Purchase Connector](purchase-connector.md) requires CocoaPods for the entire plugin (Core included) — it cannot currently be combined with SPM, pending resolution of an upstream Flutter limitation ([flutter/flutter#161182](https://github.com/flutter/flutter/issues/161182)). SPM is recommended only for apps that don't use Purchase Connector at all; if you don't, keep CocoaPods and the `$AppsFlyerPurchaseConnector` Podfile flag as documented in [purchase-connector.md](purchase-connector.md).
+**If you use Purchase Connector, do not enable SPM for this plugin.** [Purchase Connector](purchase-connector.md) requires CocoaPods for the entire plugin (Core included) — it cannot currently be combined with SPM, pending resolution of an upstream Flutter limitation ([flutter/flutter#161182](https://github.com/flutter/flutter/issues/161182)). Apps that do not use Purchase Connector can use SPM. Apps that use Purchase Connector must keep CocoaPods and set the `$AppsFlyerPurchaseConnector` Podfile flag as documented in [purchase-connector.md](purchase-connector.md).
 
 ---
-## Huawei Referrer
-Huawei Referrer is supported in SDK v6.14.0 and above.
-Due to changes in the Huawei AppGallery store, previous versions of the AppsFlyer SDK are not able to fetch the referrer from the store. [Learn more](https://dev.appsflyer.com/hc/docs/install-android-sdk#huawei-install-referrer).
----
-
 ## Android: Google Play Install Referrer (SDK 7)
 
 Plugin `7.x` uses AppsFlyer Android SDK 7, which collects Play Install Referrer via
 Google's Install Referrer library — **not** legacy `INSTALL_REFERRER` broadcast receivers.
 
-Add to your **app module** `android/app/build.gradle`:
+The plugin already declares the required dependency and includes it transitively
+in the application runtime:
 
 ```gradle
-dependencies {
-    implementation 'com.android.installreferrer:installreferrer:2.2'
-}
+implementation 'com.android.installreferrer:installreferrer:2.2'
 ```
 
-If your app still declares `com.appsflyer.SingleInstallBroadcastReceiver` or
-`com.appsflyer.MultipleInstallBroadcastReceiver` from a v6 integration, **remove** those
-`<receiver>` blocks (including `INSTALL_REFERRER` intent filters). Leaving them breaks
-manifest merge at build time.
+No app-level Gradle change is required for AppsFlyer. Add the dependency to your
+app module only if your application code imports and uses the Install Referrer
+API directly.
 
-See [Migrate Android SDK to V7 — §8](https://dev.appsflyer.com/hc/docs/migrate-android-sdk-to-v7#8-remove-legacy-broadcast-receivers)
-and the [migration guide](migration-guide.md).
+For Samsung Galaxy Store, Xiaomi GetApps, or Huawei AppGallery, see
+[Advanced features — Alternative stores](advanced-features.md#alternative-stores-samsung-xiaomi-huawei).
+
+Upgrade-specific removal of legacy receiver declarations is documented in
+[doc/migration-guide.md](migration-guide.md).
 
 ---
 
@@ -54,16 +57,7 @@ and the [migration guide](migration-guide.md).
 The iOS SDK ships in two variants: **Strict** mode and **Regular** mode.
 Please read more: https://support.appsflyer.com/hc/en-us/articles/207032066#integration-strict-mode-sdk
 
-> **⚠️ SDK 7 note:** In plugin `7.x` the iOS **Core** integration no longer depends on
-> `AppsFlyerFramework` directly — it depends on the RPC bridge pod **`AppsFlyerRPC`**
-> (pinned in `appsflyer_sdk.podspec`, see the `Core` subspec). The old
-> `s.ios.dependency 'AppsFlyerFramework/Strict', '6.x.x'` edit no longer applies.
-> Before releasing a Kids app on plugin 7.x, **verify the correct Strict variant of the
-> `AppsFlyerRPC` pod** with AppsFlyer support / the current
-> [AppsFlyerRPC CocoaPods spec](https://cocoapods.org/pods/AppsFlyerRPC), then pin that
-> variant in the `Core` subspec of `appsflyer_sdk.podspec`.
-
-To locate the plugin's podspec:
-1. Go to the `$HOME/.pub-cache/hosted/pub.dev/appsflyer_sdk-<CURRENT VERSION>/ios` folder.
-2. Open `appsflyer_sdk.podspec` and edit the `AppsFlyerRPC` dependency in the `Core` subspec.
-3. Go to the `ios` folder of your current project and run `pod update`.
+> **⚠️ SDK 7 note:** The Flutter plugin does not currently expose Strict mode
+> as a public configuration option. Swift Package Manager uses the Regular SDK
+> variant. If your Kids App requires Strict mode, use CocoaPods and contact
+> AppsFlyer Support for the supported plugin configuration.

@@ -1,39 +1,42 @@
 ---
 id: F-012
-name: Manual GDPR/DMA Consent API (V1 + V2)
+name: Manual GDPR/DMA Consent API
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-07-29
+last_verified: 2026-08-04
 depends_on: []
 ---
 
 ## Business Purpose
-Apps that don't rely on a TCF-compatible CMP (F-011) still need a way to legally record and forward the user's GDPR/DMA consent decisions before AppsFlyer collects or uses their data. `setConsentDataV2`/`setConsentData` are the manual counterpart: the app itself determines whether GDPR applies and what the user consented to, then hands that decision to the SDK explicitly. `setConsentDataV2` is the current, primary API (`isUserSubjectToGDPR` plus `consentForDataUsage`, `consentForAdsPersonalization`, and the granular `hasConsentForAdStorage`, all supporting nullable "not yet decided" states); `setConsentData(AppsFlyerConsent)` is the `@Deprecated` V1 shape kept for backward compatibility. Both dispatch the same RPC method `setConsentData`. Getting this right is a legal-compliance requirement, not just a UX nicety — incorrect or missing consent forwarding can put the integrating company in violation of GDPR/DMA.
+Apps that do not rely on a TCF-compatible CMP (F-011) still need a way to legally record and forward the user's GDPR/DMA consent decisions before AppsFlyer collects or uses their data. `setConsentData` is the manual counterpart: the app itself determines whether GDPR applies and what the user consented to, then hands that decision to the SDK explicitly. Getting this right is a legal-compliance requirement, not a UX nicety — incorrect or missing consent forwarding can put the integrating company in violation of GDPR/DMA.
+
+SDK 7 replaces the previous two-variant surface (the deprecated `AppsFlyerConsent` object and `setConsentDataV2`) with a single flat method whose named parameters map one-to-one onto the RPC contract. There is no consent model class to construct and no deprecated alternative to choose between.
 
 ---
 
 ## Trigger
-Called by the host app once consent has been captured from the user (via its own consent UI), and per `doc/consent-dma.md`, ideally called *before* `startSDK()` so the very first SDK network request already carries the correct consent state. Consent is not persisted across sessions — supply it on every app start.
+Called by the host app once consent has been captured from the user through the app's own consent UI. Per `doc/consent-dma.md`, call it after `init()` and before `start()`, so the very first SDK network request already carries the correct consent state. Consent is not persisted across sessions — supply it on every app start.
 
 ---
 
 ## Call Chain
-Both variants converge on the single RPC method `setConsentData` over the `af-api` MethodChannel.
+A single flat method dispatches the `setConsentData` RPC on both platforms. Dart validates the GDPR-required fields before any channel call is made.
 
 ```
-AppsflyerSdk.setConsentDataV2({isUserSubjectToGDPR, consentForDataUsage, consentForAdsPersonalization, hasConsentForAdStorage})   [lib/src/appsflyer_sdk.dart]
-  → validates: when isUserSubjectToGDPR == true, the two consent flags are required (else ArgumentError)
-  → _executeRpc('setConsentData', {isUserSubjectToGDPR, hasConsentForDataUsage, hasConsentForAdsPersonalization, hasConsentForAdStorage})
-
-AppsflyerSdk.setConsentData(AppsFlyerConsent consentData)   [@Deprecated]              [lib/src/appsflyer_sdk.dart]
-  → _executeRpc('setConsentData', consentData.toMap())
-
-  → MethodChannel "af-api".invokeMethod('executeRpc', {method:'setConsentData', params:{...}})
-    → Android: AppsflyerSdkPlugin.executeRpc → dispatchRpc → AppsFlyerRpcHandler   [android/.../AppsflyerSdkPlugin.java]
-      → new AppsFlyerConsent(...) → AppsFlyerLib.getInstance().setConsentData(consent)
-    → iOS: AppsflyerSdkPlugin executeRpc → AppsFlyerRPCBridge                       [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
-      → [[AppsFlyerConsent alloc] init...] → [[AppsFlyerLib shared] setConsentData:consentData]
+AppsFlyerSdk.setConsentData({isUserSubjectToGDPR, hasConsentForDataUsage,
+                             hasConsentForAdsPersonalization, hasConsentForAdStorage})
+                                                                      [lib/src/appsflyer_sdk.dart]
+  → when isUserSubjectToGDPR == true, hasConsentForDataUsage and
+    hasConsentForAdsPersonalization must be non-null, else ArgumentError.notNull
+  → _invokeVoidRpc('setConsentData', {isUserSubjectToGDPR, hasConsentForDataUsage,
+                                      hasConsentForAdsPersonalization, hasConsentForAdStorage})
+    → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
+      → Android: AppsflyerSdkPlugin.executeRpc → dispatchRpc → AppsFlyerRpcHandler
+        → AppsFlyerConsent → AppsFlyerLib.getInstance().setConsentData(consent)
+      → iOS: AppsflyerSdkPlugin.executeRpc → dispatchRpc → AppsFlyerRPCBridge.executeJson
+        → AppsFlyerConsent → [[AppsFlyerLib shared] setConsentData:consentData]
+  → PlatformException is converted to AppsFlyerException
 ```
 
 ---
@@ -41,38 +44,40 @@ AppsflyerSdk.setConsentData(AppsFlyerConsent consentData)   [@Deprecated]       
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_consent.dart` | `AppsFlyerConsent` model — `forGDPRUser`/`nonGDPRUser` factories, `toMap()` (used by deprecated V1 API only) |
-| `lib/src/appsflyer_sdk.dart` | `setConsentData` (`@Deprecated`), `setConsentDataV2` |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | RPC bridge entry (`executeRpc`) routing `setConsentData` to `AppsFlyerRpcHandler` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | RPC bridge entry (`executeRpc`) forwarding `setConsentData` to `AppsFlyerRPCBridge` |
-| `doc/consent-dma.md` | Full integration guide for both the CMP-automatic (F-011) and manual (this feature) consent paths |
+| `lib/src/appsflyer_sdk.dart` | `setConsentData({required bool isUserSubjectToGDPR, bool? hasConsentForDataUsage, bool? hasConsentForAdsPersonalization, bool? hasConsentForAdStorage})` and its `ArgumentError` validation |
+| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | Generic `executeRpc` → `dispatchRpc` routing `setConsentData` to `AppsFlyerRpcHandler` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | Generic `executeRpc` → `dispatchRpc` forwarding `setConsentData` to `AppsFlyerRPCBridge` |
+| `doc/consent-dma.md` | Integration guide for both the CMP-automatic (F-011) and manual (this feature) consent paths |
+| `doc/migration-guide.md` | Maps the removed `setConsentDataV2(...)` / `setConsentData(AppsFlyerConsent)` variants onto the flat `setConsentData(...)` API |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | V1 (`setConsentData`): `AppsFlyerConsent` object — `isUserSubjectToGDPR` (bool), `hasConsentForDataUsage` (bool), `hasConsentForAdsPersonalization` (bool). V2 (`setConsentDataV2`): `isUserSubjectToGDPR` (required bool); `consentForDataUsage`, `consentForAdsPersonalization`, `hasConsentForAdStorage` (nullable bools, `null` = "not yet decided"). When `isUserSubjectToGDPR` is `true`, `consentForDataUsage` and `consentForAdsPersonalization` are **required** — omitting either throws an `ArgumentError` in Dart before any RPC is sent; when `false` they are ignored. `hasConsentForAdStorage` is always optional. |
-| **Output** | `void` for both — fire-and-forget on the Dart side. Any native failure surfaces as the RPC error envelope but is not observed by these `void` methods. |
+| **Input** | `isUserSubjectToGDPR` (required `bool`); `hasConsentForDataUsage`, `hasConsentForAdsPersonalization`, and `hasConsentForAdStorage` (`bool?`, where `null` means "not yet decided"). When `isUserSubjectToGDPR` is `true`, `hasConsentForDataUsage` and `hasConsentForAdsPersonalization` are **required** — omitting either throws an `ArgumentError` before any RPC is sent. `hasConsentForAdStorage` is always optional. All four keys are sent, including `null` values. |
+| **Output** | `Future<void>` completes once the RPC layer accepts the fire-and-forget native call; native errors throw `AppsFlyerException`. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` mocks the `af-api` `executeRpc` channel but has **no test** that asserts on the `setConsentData` RPC for either variant, despite `setConsentDataV2` being the currently recommended API per `doc/consent-dma.md`. The `ArgumentError` guard in `setConsentDataV2` (GDPR-true requires both consent flags) is also untested.
+`test/appsflyer_sdk_test.dart` covers both the mapping and the validation guard:
+- `maps cross-platform configuration and identity APIs` asserts that a fully populated call dispatches RPC method `setConsentData` with `{'isUserSubjectToGDPR': true, 'hasConsentForDataUsage': true, 'hasConsentForAdsPersonalization': false, 'hasConsentForAdStorage': true}`.
+- `consent validates GDPR-required fields in release behavior` asserts that `setConsentData(isUserSubjectToGDPR: true)` alone throws an `ArgumentError`.
 
 ---
 
 ## Known Limitations
-- `setConsentData` (V1) is `@Deprecated('Use setConsentDataV2 instead')` in Dart, and `doc/consent-dma.md` explicitly flags it as deprecated, yet it remains fully wired end-to-end (dispatching the same `setConsentData` RPC as V2) with no runtime warning or removal timeline.
-- V1's `AppsFlyerConsent` model (`lib/src/appsflyer_consent.dart`) forces `hasConsentForDataUsage`/`hasConsentForAdsPersonalization` to non-null booleans, which cannot represent an explicit "user has not yet decided" state — this is precisely the gap V2's nullable parameters were introduced to close.
-- `setConsentDataV2` has zero test coverage despite being the actively recommended, DMA-critical API — a regression in its argument marshaling (e.g. a renamed key on one platform) would not be caught by the existing test suite.
-- Both consent APIs are order-sensitive relative to `initSdk()`/`startSDK()` (must be called first to affect the initial request), but neither the Dart API nor either native handler enforces or warns about this ordering.
+- Dart applies the stricter iOS contract on both platforms: when `isUserSubjectToGDPR` is `true`, the two consent flags are required even though the Android native API would accept them as absent. This is intentional — a single cross-platform contract avoids a call that succeeds on one platform and fails on the other.
+- The validation is a thrown `ArgumentError` rather than an `assert`, so it holds in release builds as well as debug.
+- Consent is order-sensitive relative to `init()` and `start()` (it must be set before the first session to affect the initial request), but neither the Dart API nor either native handler enforces or warns about this ordering.
+- The native API has no completion callback, so a completed `Future` confirms only that the RPC layer accepted the call — not that the consent state reached AppsFlyer's servers.
 
 ---
 
 ## Dependencies
 ```mermaid
 flowchart LR
-    F012["F-012 · Manual GDPR/DMA Consent API (V1 + V2)"]:::sdkCore
+    F012["F-012 · Manual GDPR/DMA Consent API"]:::sdkCore
     classDef sdkCore fill:#4C6EF5,color:#fff
 ```

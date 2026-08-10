@@ -4,7 +4,7 @@ name: In-App Event Logging
 type: eventsAndRevenue
 platform: both
 status: active
-last_verified: 2026-07-29
+last_verified: 2026-08-07
 depends_on: []
 ---
 
@@ -14,30 +14,32 @@ AppsFlyer's attribution model can only compute ROI (Return on Investment) and LT
 ---
 
 ## Trigger
-Called by the host app at any point after the SDK is initialized (`initSdk`) and started (`startSDK`), whenever a business-significant in-app action occurs (e.g. purchase, level completion, tutorial finish, subscription).
+The host app awaits `AppsFlyerSdk.instance.logEvent(...)` whenever a business-significant in-app action occurs (purchase, level completion, tutorial finish, subscription). The supported lifecycle is to call it after `init()` and the first `start()`; neither Dart nor the RPC layers enforce that ordering before forwarding the event.
 
 ---
 
 ## Call Chain
-Since the SDK 7 / RPC migration this is a generic RPC call routed through the per-call reply mechanism (same as `startSDK`). When `onSuccess`/`onError` is passed, `_executeRequest` sets `awaitResponse: true` so the native call blocks and the result is returned on the MethodChannel reply; otherwise it is fire-and-forget.
+`logEvent` forwards the public `awaitResponse` flag to the native RPC layer. Default `false` is fire-and-forget; `true` waits for the native request completion callback.
+
 ```
-AppsflyerSdk.logEvent(eventName, eventValues, {onSuccess, onError})            [lib/src/appsflyer_sdk.dart]
-  → _executeRequest('logEvent', {eventName, eventValues}, ...)                  // sets awaitResponse when a listener is passed
-    → _executeRpc('logEvent', {eventName, eventValues, awaitResponse})         // MethodChannel af-api → executeRpc
-      → Android: AppsflyerSdkPlugin.executeRpc → dispatchRpc('logEvent', ...)  [android/.../AppsflyerSdkPlugin.java]
-        → AppsFlyerRpcHandler.execute(json) → AppsFlyerLib.logEvent(...)       [plugin_bridge module]
-      → iOS: AppsflyerSdkPlugin.executeRpc → dispatchRpc:method:@"logEvent"    [ios/.../AppsflyerSdkPlugin.m]
-        → [AppsFlyerRPCBridge shared] executeJson:completion: → AFRPCRequestHandler → SDK
+AppsFlyerSdk.logEvent(eventName, {eventValues, awaitResponse})        [lib/src/appsflyer_sdk.dart]
+  → _invokeVoidRpc('logEvent', {eventName, eventValues, awaitResponse})
+    → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
+      → Android: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRpcHandler
+        → AppsFlyerLib.logEvent(...)
+      → iOS: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRPCBridge
+        → AppsFlyerLib logEvent
+  → awaitResponse true: successful per-call reply completes Future<void>; PlatformException → AppsFlyerException
+  → awaitResponse false: Future completes after the native fire-and-forget API returns and RPC reports immediate success
 ```
-On success `onSuccess()` is invoked; on failure the reply throws a `PlatformException` whose `code`/`message` are surfaced as `onError(errorCode, errorMessage)` (e.g. codes 41/42 when logged before init/start).
 
 ---
 
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `logEvent(String eventName, Map? eventValues, {RequestSuccessListener? onSuccess, RequestErrorListener? onError})` — Dart public API, returns `void`; delegates to `_executeRequest` |
-| `lib/src/callbacks.dart` | `RequestSuccessListener` / `RequestErrorListener` typedefs |
+| `lib/src/appsflyer_sdk.dart` | `logEvent(String eventName, {Map<String, dynamic>? eventValues, bool awaitResponse = false})` — public API over the shared RPC path |
+| `lib/src/appsflyer_exception.dart` | `AppsFlyerException.fromPlatformException` — converts the native error reply into a typed Dart exception |
 | `android/.../AppsflyerSdkPlugin.java` | No per-method handler — generic `executeRpc` → `dispatchRpc('logEvent', ...)` forwards the envelope to `AppsFlyerRpcHandler` |
 | `ios/.../AppsflyerSdkPlugin.m` | No per-method handler — generic `executeRpc` → `dispatchRpc` forwards the envelope to `AppsFlyerRPCBridge` |
 | `doc/in-app-events.md` | Public integration guide with usage example |
@@ -47,23 +49,24 @@ On success `onSuccess()` is invoked; on failure the reply throws a `PlatformExce
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `eventName` (String, required — AppsFlyer docs recommend ≤45 chars or the event is dropped from the dashboard but still visible in raw data); `eventValues` (Map, nullable — arbitrary event parameters, e.g. `af_revenue`, `af_content_id`); optional `onSuccess` / `onError` listeners |
-| **Output** | `void`. Without a listener the call is fire-and-forget. With `onSuccess`/`onError`, the native call blocks (up to ~10s) and reports the SDK request result: `onSuccess()` on success, or `onError(errorCode, errorMessage)` on failure |
+| **Input** | `eventName` (`String`, required and non-empty on both RPC layers; Android additionally enforces a maximum of 255 characters, while iOS has no RPC-level maximum); `eventValues` (`Map<String, dynamic>?`, optional named — values must survive the Flutter platform codec and the platform plugin's JSON serialization); `awaitResponse` (`bool`, named, default `false` — when `true`, wait for the native request callback; when `false`, return after the native fire-and-forget API returns and RPC reports immediate success). |
+| **Output** | `Future<void>`. With the default `awaitResponse: false`, completion does not confirm delivery. With `awaitResponse: true`, completes when the native request succeeds and throws `AppsFlyerException` for native errors or RPC timeouts. |
 
 ---
 
 ## Tests
 `test/appsflyer_sdk_test.dart`:
-- `logEvent (fire and forget)` — asserts the `logEvent` RPC is dispatched with the event name/values.
-- `logEvent forwards awaitResponse and invokes onSuccess on a 200 OK` — verifies `awaitResponse: true` is sent and `onSuccess` fires on a successful reply.
-- `logEvent invokes onError with the SDK code/message on failure` — verifies a `PlatformException` reply is surfaced as `onError(code, message)`.
+- `logEvent is fire-and-forget by default` — asserts the `logEvent` RPC is dispatched with `eventName`, `eventValues`, and `awaitResponse: false`.
+- `logEvent can wait for the native request callback` — asserts `awaitResponse: true` is forwarded.
+- `PlatformException with a numeric RPC code becomes AppsFlyerException` — drives a failing `logEvent` call with platform code `422` and verifies code `422` and message.
 
 ---
 
 ## Known Limitations
-- No client-side validation of the 45-character event-name limit; events with longer names are still accepted by the plugin and silently excluded from the AppsFlyer dashboard (visible only via raw data / Pull-Push APIs).
-- `eventValues` accepts an untyped `Map`, so type mismatches (e.g. non-JSON-serializable values) are only caught when the native SDK serializes the payload, not at the Dart call site.
-- The blocking behavior (native call waits ~10s) only applies when `onSuccess`/`onError` is supplied; fire-and-forget calls return no delivery signal at all.
+- Dart performs no event-name validation. Both RPC layers reject an empty name with code `422`; Android also rejects names longer than 255 characters, while iOS applies no bridge-level maximum. Any additional backend or dashboard limit is outside the verified plugin/RPC contract.
+- `eventValues` accepts `Map<String, dynamic>`, but not every Dart object is transport-safe. Unsupported values can fail in the Flutter platform-channel codec or the platform plugin's JSON serialization before reaching the native SDK; there is no Dart-side schema validation.
+- When `awaitResponse` is `true`, the RPC wait is bounded to 5 seconds on Android and 10 seconds on iOS. A timeout throws `AppsFlyerException` but does not cancel the native request, which may still succeed later without another Dart result.
+- When `awaitResponse` is `false`, delivery success or failure is not surfaced to Dart.
 
 ---
 

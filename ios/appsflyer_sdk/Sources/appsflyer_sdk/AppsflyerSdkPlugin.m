@@ -1,4 +1,5 @@
 #import "AppsflyerSdkPlugin.h"
+#import "AppsFlyerAttribution.h"
 
 #ifdef ENABLE_PURCHASE_CONNECTOR
 #import "appsflyer_sdk/appsflyer_sdk-Swift.h"
@@ -12,29 +13,18 @@
 @import AppsFlyerRPC;
 #endif
 
-// Canonical Flutter event ids/statuses. These MUST match callbacks.dart routing and the shapes the
-// Android bridge already emits, so the Dart layer has a single, platform-agnostic decode path.
-static NSString *const kEventInstallConversionData = @"onInstallConversionData";
-static NSString *const kEventDeepLinking           = @"onDeepLinking";
-static NSString *const kEventGenerateInviteSuccess = @"generateInviteLinkSuccess";
-static NSString *const kEventGenerateInviteFailure = @"generateInviteLinkFailure";
-static NSString *const kEventSetAppInviteOneLink   = @"setAppInviteOneLinkIDCallback";
-static NSString *const kEventSessionReady          = @"onSessionReady";
-static NSString *const kStatusSuccess              = @"success";
-static NSString *const kStatusFailure              = @"failure";
-
 // RPC method names that need plugin-side orchestration (everything else is forwarded generically).
-static NSString *const kRpcInit                = @"init";
-static NSString *const kRpcGenerateInviteLink  = @"generateInviteLink";
-static NSString *const kRpcSetAppInviteOneLink = @"setAppInviteOneLink";
-static NSString *const kRpcLogAndOpenStore     = @"logAndOpenStore";
+static NSString *const kRpcInit            = @"init";
+static NSString *const kRpcLogAndOpenStore = @"logAndOpenStore";
+static NSString *const kRpcSetPluginInfo   = @"setPluginInfo";
 
 @interface AppsflyerSdkPlugin ()
-@property (nonatomic, strong) FlutterMethodChannel *methodChannel;
 @property (nonatomic, strong) FlutterEventChannel *eventChannel;
 @property (nonatomic, copy) FlutterEventSink eventSink;
 @property (nonatomic, strong) NSMutableArray<NSString *> *pendingEvents;
 @property (nonatomic, assign) BOOL eventHandlerRegistered;
+@property (nonatomic, strong) NSDictionary *pendingLaunchOptions;
+- (void)tearDownForEngineDetach;
 @end
 
 @implementation AppsflyerSdkPlugin
@@ -47,7 +37,6 @@ static NSString *const kRpcLogAndOpenStore     = @"logAndOpenStore";
     self = [super init];
     if (self) {
         _pendingEvents = [NSMutableArray array];
-        _methodChannel = [FlutterMethodChannel methodChannelWithName:afMethodChannel binaryMessenger:messenger];
         _eventChannel = [FlutterEventChannel eventChannelWithName:afEventChannel binaryMessenger:messenger];
         [_eventChannel setStreamHandler:self];
         // Wire the bridge event handler as early as possible: the RPC layer drops events emitted
@@ -63,6 +52,8 @@ static NSString *const kRpcLogAndOpenStore     = @"logAndOpenStore";
 #endif
     id<FlutterBinaryMessenger> messenger = [registrar messenger];
     AppsflyerSdkPlugin *instance = [[AppsflyerSdkPlugin alloc] initWithMessenger:messenger];
+    // publish: is required so FlutterEngine dealloc invokes detachFromEngineForRegistrar:.
+    [registrar publish:instance];
     FlutterMethodChannel *channel = [FlutterMethodChannel methodChannelWithName:afMethodChannel binaryMessenger:messenger];
     [registrar addMethodCallDelegate:instance channel:channel];
     [registrar addApplicationDelegate:instance];
@@ -71,6 +62,19 @@ static NSString *const kRpcLogAndOpenStore     = @"logAndOpenStore";
         [registrar addSceneDelegate:instance];
     }
 #endif
+}
+
+- (void)detachFromEngineForRegistrar:(NSObject<FlutterPluginRegistrar> *)registrar {
+    (void)registrar;
+    [self tearDownForEngineDetach];
+}
+
+- (void)tearDownForEngineDetach {
+    self.eventSink = nil;
+    [self.pendingEvents removeAllObjects];
+    self.eventHandlerRegistered = NO;
+    [[AppsFlyerRPCBridge shared] removeEventHandler];
+    [self.eventChannel setStreamHandler:nil];
 }
 
 - (void)registerEventHandler {
@@ -109,29 +113,19 @@ static NSString *const kRpcLogAndOpenStore     = @"logAndOpenStore";
     }
 }
 
-/// Single RPC entry point. Unwraps {method, params} and routes it: init/start, the invite-link
-/// methods and logAndOpenStore run plugin-side orchestration; everything else is forwarded to the
-/// AppsFlyerRPC bridge as-is.
+/// Single RPC entry point. Initialization and the cross-promotion URL side effect require
+/// plugin orchestration; every other method is forwarded to AppsFlyerRPC as-is.
 - (void)executeRpc:(FlutterMethodCall *)call result:(FlutterResult)result {
-    if (![call.arguments isKindOfClass:[NSDictionary class]]) {
-        result([FlutterError errorWithCode:@"INVALID_PARAMETERS" message:@"executeRpc requires a {method, params} map" details:nil]);
-        return;
-    }
-    NSDictionary *args = call.arguments;
-    NSString *method = args[@"method"];
-    if (![method isKindOfClass:[NSString class]] || method.length == 0) {
-        result([FlutterError errorWithCode:@"INVALID_PARAMETERS" message:@"executeRpc requires a 'method'" details:nil]);
-        return;
-    }
-    NSDictionary *params = [args[@"params"] isKindOfClass:[NSDictionary class]] ? args[@"params"] : @{};
-
+    // Parsing happens inside @try too: unlike Android, Flutter's iOS MethodChannel does not
+    // catch NSException around handleMethodCall: itself, so a malformed call.arguments would
+    // otherwise crash the app instead of being reported as a Flutter error.
     @try {
+        NSDictionary *args = call.arguments;
+        NSString *method = args[@"method"];
+        NSDictionary *params = [args[@"params"] isKindOfClass:[NSDictionary class]] ? args[@"params"] : @{};
+
         if ([kRpcInit isEqualToString:method]) {
             [self initFromRpc:params result:result];
-        } else if ([kRpcGenerateInviteLink isEqualToString:method]) {
-            [self generateInviteLinkFromRpc:params result:result];
-        } else if ([kRpcSetAppInviteOneLink isEqualToString:method]) {
-            [self setAppInviteOneLinkFromRpc:params result:result];
         } else if ([kRpcLogAndOpenStore isEqualToString:method]) {
             [self logAndOpenStoreFromRpc:params result:result];
         } else {
@@ -150,132 +144,82 @@ static NSString *const kRpcLogAndOpenStore     = @"logAndOpenStore";
 - (void)initFromRpc:(NSDictionary *)params result:(FlutterResult)result {
     [self registerEventHandler];
 
-    NSString *devKey = [self stringParam:params key:afDevKey];
-    NSString *appId = [self stringParam:params key:afAppId];
-    BOOL isDebug = [self boolParam:params key:afIsDebug];
-    BOOL isGCD = [self boolParam:params key:afConversionData];
-    BOOL isUDL = [self boolParam:params key:afUDL];
-    BOOL disableCollectASA = [self boolParam:params key:afDisableCollectASA];
-    BOOL disableAdvertisingIdentifier = [self boolParam:params key:afDisableAdvertisingIdentifier];
-    NSString *inviteOneLink = [self stringParam:params key:afInviteOneLink];
-    NSTimeInterval attTimeout = [params[afTimeToWaitForATTUserAuthorization] isKindOfClass:[NSNumber class]]
-        ? [params[afTimeToWaitForATTUserAuthorization] doubleValue]
-        : 0;
+    NSString *devKey = [self stringParam:params key:@"devKey"];
+    NSString *appId = [self stringParam:params key:@"appId"];
 
-    // Ordered RPC sequence: setPluginInfo -> initialize -> config -> listeners. Order matters (SDK 7),
-    // so the calls are chained through their completion handlers rather than fired concurrently.
+    // Ordered RPC sequence: initialize -> pending launch options. Listener registration
+    // is explicit in Dart, so initialization has no hidden callback side effects.
     NSMutableArray<NSDictionary *> *sequence = [NSMutableArray array];
-    [sequence addObject:@{@"method": @"setPluginInfo", @"params": @{@"plugin": @"flutter", @"pluginVersion": kAppsFlyerPluginVersion}}];
     [sequence addObject:@{@"method": @"initialize", @"params": @{@"devKey": devKey ?: @"", @"appId": appId ?: @""}}];
-    [sequence addObject:@{@"method": @"isDebug", @"params": @{@"isDebug": @(isDebug)}}];
-    if (disableCollectASA) {
-        [sequence addObject:@{@"method": @"setDisableCollectASA", @"params": @{@"disable": @(YES)}}];
+    if (self.pendingLaunchOptions) {
+        [sequence addObject:@{
+            @"method": @"handleLaunchOptions",
+            @"params": @{@"launchOptions": self.pendingLaunchOptions}
+        }];
     }
-    if (disableAdvertisingIdentifier) {
-        [sequence addObject:@{@"method": @"setDisableAdvertisingIdentifiers", @"params": @{@"disable": @(YES)}}];
-    }
-    if (inviteOneLink.length > 0) {
-        [sequence addObject:@{@"method": @"setAppInviteOneLink", @"params": @{@"oneLinkId": inviteOneLink}}];
-    }
-    if (isGCD) {
-        [sequence addObject:@{@"method": @"registerConversionListener", @"params": @{}}];
-    }
-    if (isUDL) {
-        [sequence addObject:@{@"method": @"registerDeeplinkListener", @"params": @{}}];
-    }
-    // SDK 7 session model: register the session-ready listener so the app can OBSERVE readiness via
-    // registerSessionReadyListener()/onSessionReady (and isSessionReady()). It does NOT gate start():
-    // the app issues startSDK() itself (from that callback), matching Android and the Cordova bridge. The
-    // native SDK fires this listener independently of start(), once config is valid and any launch deep
-    // link has resolved (see AFSDKSessionReadyService), so registering here never blocks the first session.
-    [sequence addObject:@{@"method": @"registerSessionReadyListener", @"params": @{}}];
 
-    __weak typeof(self) weakSelf = self;
-    [self runSequence:sequence index:0 completion:^{
-        // ATT wait is not exposed by the RPC layer, so it is set directly on the SDK singleton
-        // (the same instance AppsFlyerRPC wraps) before the first session is sent.
-        if (attTimeout > 0) {
-            [[AppsFlyerLib shared] waitForATTUserAuthorizationWithTimeoutInterval:attTimeout];
-        }
-        // The deep-link/attribution bridge is now ready; replay any launch URLs captured before init.
-        [AppsFlyerAttribution shared].isBridgeReady = YES;
-        [[NSNotificationCenter defaultCenter] postNotificationName:AF_BRIDGE_SET object:nil];
-        (void)weakSelf;
-        result(nil);
+    // setPluginInfo runs ahead of the sequence rather than inside it: the plugin name must
+    // reach the first session payload, but it only labels reporting, so its outcome must not
+    // abort initialization.
+    //
+    // self is captured strongly here and in runSequence: executeJsonForMethod: already retains
+    // self for the round trip, and messaging a nil weak self would silently skip the rest of
+    // the chain, leaving the Flutter result — and the Dart Future awaiting it — unresolved.
+    // No cycle is possible: the block is handed to the RPC bridge and never stored on self.
+    [self executeJsonForMethod:kRpcSetPluginInfo
+                        params:@{@"plugin": @"flutter", @"pluginVersion": kAppsFlyerPluginVersion}
+                    completion:^(NSDictionary *resultObj, FlutterError *error) {
+        [self runSequence:sequence index:0 completion:^(FlutterError *sequenceError) {
+            if (sequenceError) {
+                result(sequenceError);
+                return;
+            }
+            self.pendingLaunchOptions = nil;
+            [[AppsFlyerAttribution shared] markBridgeReady];
+            result(nil);
+        }];
     }];
 }
 
 /// Fires the RPC sequence one entry at a time, each in the previous call's completion handler.
-- (void)runSequence:(NSArray<NSDictionary *> *)sequence index:(NSUInteger)index completion:(void (^)(void))completion {
+- (void)runSequence:(NSArray<NSDictionary *> *)sequence
+              index:(NSUInteger)index
+         completion:(void (^)(FlutterError *error))completion {
     if (index >= sequence.count) {
-        completion();
+        completion(nil);
         return;
     }
     NSDictionary *entry = sequence[index];
-    NSString *json = [self jsonEnvelopeForMethod:entry[@"method"] params:entry[@"params"]];
-    if (json == nil) {
-        [self runSequence:sequence index:index + 1 completion:completion];
-        return;
-    }
-    __weak typeof(self) weakSelf = self;
-    [[AppsFlyerRPCBridge shared] executeJson:json completion:^(NSString *response) {
-        [weakSelf runSequence:sequence index:index + 1 completion:completion];
-    }];
-}
-
-// ============================================================================
-// Invite links + cross-promotion (results delivered on the af-events stream)
-// ============================================================================
-
-- (void)generateInviteLinkFromRpc:(NSDictionary *)params result:(FlutterResult)result {
-    __weak typeof(self) weakSelf = self;
-    [self executeJsonForMethod:kRpcGenerateInviteLink params:params completion:^(NSDictionary *resultObj, FlutterError *error) {
-        typeof(self) strongSelf = weakSelf;
-        if (strongSelf == nil) {
-            return;
-        }
+    [self executeJsonForMethod:entry[@"method"] params:entry[@"params"] completion:^(NSDictionary *resultObj, FlutterError *error) {
         if (error) {
-            [strongSelf deliverEventWithId:kEventGenerateInviteFailure status:kStatusFailure dataJsonString:(error.message ?: @"The URL wasn't generated!")];
+            completion(error);
             return;
         }
-        NSDictionary *data = [resultObj[@"data"] isKindOfClass:[NSDictionary class]] ? resultObj[@"data"] : nil;
-        NSString *url = data[@"url"];
-        if (url.length > 0) {
-            [strongSelf deliverEventWithId:kEventGenerateInviteSuccess status:kStatusSuccess dataJsonString:[strongSelf jsonStringFromObject:@{@"userInviteURL": url}]];
-        } else {
-            [strongSelf deliverEventWithId:kEventGenerateInviteFailure status:kStatusFailure dataJsonString:@"The URL wasn't generated!"];
-        }
+        [self runSequence:sequence index:index + 1 completion:completion];
     }];
-    result(nil);
-}
-
-- (void)setAppInviteOneLinkFromRpc:(NSDictionary *)params result:(FlutterResult)result {
-    __weak typeof(self) weakSelf = self;
-    [self executeJsonForMethod:kRpcSetAppInviteOneLink params:params completion:^(NSDictionary *resultObj, FlutterError *error) {
-        if (error == nil) {
-            [weakSelf deliverEventWithId:kEventSetAppInviteOneLink status:kStatusSuccess dataJsonString:kStatusSuccess];
-        }
-    }];
-    result(nil);
 }
 
 - (void)logAndOpenStoreFromRpc:(NSDictionary *)params result:(FlutterResult)result {
     [self executeJsonForMethod:kRpcLogAndOpenStore params:params completion:^(NSDictionary *resultObj, FlutterError *error) {
         if (error) {
+            result(error);
             return;
         }
         NSDictionary *data = [resultObj[@"data"] isKindOfClass:[NSDictionary class]] ? resultObj[@"data"] : nil;
         NSString *clickURL = data[@"clickURL"];
-        if (clickURL.length > 0) {
-            NSURL *url = [NSURL URLWithString:clickURL];
-            if (url) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:nil];
-                });
-            }
+        NSURL *url = clickURL.length > 0 ? [NSURL URLWithString:clickURL] : nil;
+        if (url) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [[UIApplication sharedApplication] openURL:url
+                                                     options:@{}
+                                           completionHandler:^(__unused BOOL success) {
+                    result(nil);
+                }];
+            });
+            return;
         }
+        result(nil);
     }];
-    result(nil);
 }
 
 // ============================================================================
@@ -313,7 +257,7 @@ static NSString *const kRpcLogAndOpenStore     = @"logAndOpenStore";
         if ([envelopeError isKindOfClass:[NSDictionary class]]) {
             NSDictionary *e = envelopeError;
             NSString *code = e[@"code"] ? [NSString stringWithFormat:@"%@", e[@"code"]] : @"RPC_ERROR";
-            completion(nil, [FlutterError errorWithCode:code message:e[@"message"] details:nil]);
+            completion(nil, [FlutterError errorWithCode:code message:e[@"message"] details:e]);
             return;
         }
         id resultObj = parsed[@"result"];
@@ -327,7 +271,8 @@ static NSString *const kRpcLogAndOpenStore     = @"logAndOpenStore";
         BOOL success = [successVal isKindOfClass:[NSNumber class]] ? [successVal boolValue] : YES;
         if (!success) {
             NSString *msg = r[@"error"] ?: r[@"message"] ?: @"RPC operation failed";
-            completion(nil, [FlutterError errorWithCode:@"SDK_ERROR" message:msg details:r[@"errorType"]]);
+            NSString *code = r[@"errorCode"] ? [NSString stringWithFormat:@"%@", r[@"errorCode"]] : @"SDK_ERROR";
+            completion(nil, [FlutterError errorWithCode:code message:msg details:r]);
             return;
         }
         completion(r, nil);
@@ -346,12 +291,14 @@ static NSString *const kRpcLogAndOpenStore     = @"logAndOpenStore";
         return data[@"uid"];
     }
     if ([method isEqualToString:@"isSessionReady"]) {
-        // AFRPCCoreHandler returns the flag under `isSessionReady` (the README's `ready` is stale).
-        // Read the canonical key and fall back to `ready` for forward-compatibility.
+        // Read the current key and retain the bridge's alternate `ready` key.
         return data[@"isSessionReady"] ?: data[@"ready"];
     }
     if ([method isEqualToString:@"validateAndLogInAppPurchase"]) {
         return data ?: @{};
+    }
+    if ([method isEqualToString:@"generateInviteLink"]) {
+        return data[@"url"];
     }
     return nil;
 }
@@ -360,62 +307,16 @@ static NSString *const kRpcLogAndOpenStore     = @"logAndOpenStore";
 // Event forwarding (bridge -> af-events stream)
 // ============================================================================
 
-/// Translates a raw AppsFlyerRPC event JSON string into the canonical Flutter event shape and
-/// forwards it to the af-events stream. This is shape adaptation only; no SDK logic lives here.
+/// Forwards the native AppsFlyerRPC envelope without changing event names or payloads.
 - (void)handleBridgeEvent:(NSString *)jsonEvent {
-    NSDictionary *event = [self dictionaryFromJson:jsonEvent error:nil];
-    if (event == nil) {
-        return;
-    }
-    NSString *name = event[@"event"];
-    NSDictionary *data = [event[@"data"] isKindOfClass:[NSDictionary class]] ? event[@"data"] : @{};
-
-    if ([name isEqualToString:@"onConversionDataSuccess"]) {
-        [self deliverEventWithId:kEventInstallConversionData status:kStatusSuccess dataJsonString:[self jsonStringFromObject:data]];
-    } else if ([name isEqualToString:@"onConversionDataFail"]) {
-        [self deliverEventWithId:kEventInstallConversionData status:kStatusFailure dataJsonString:[self jsonStringFromObject:data]];
-    } else if ([name isEqualToString:@"onDeepLinkReceived"]) {
-        [self deliverDeepLinkEvent:data];
-    } else if ([name isEqualToString:kEventSessionReady]) {
-        // SDK 7 session-ready signal. Observational only (start() is issued directly). Delivered with
-        // an empty JSON-object payload so the Dart onSessionReady route matches the Android shape.
-        [self deliverEventWithId:kEventSessionReady status:kStatusSuccess dataJsonString:@"{}"];
-    }
-}
-
-- (void)deliverDeepLinkEvent:(NSDictionary *)data {
-    // iOS RPC status (found/failure/notFound) -> the FOUND/NOT_FOUND/ERROR strings callbacks.dart parses.
-    NSString *iosStatus = data[@"status"];
-    NSString *deepLinkStatus = @"ERROR";
-    if ([iosStatus isEqualToString:@"found"]) {
-        deepLinkStatus = @"FOUND";
-    } else if ([iosStatus isEqualToString:@"notFound"]) {
-        deepLinkStatus = @"NOT_FOUND";
-    }
-
-    NSMutableDictionary *args = [NSMutableDictionary dictionary];
-    args[@"id"] = kEventDeepLinking;
-    args[@"deepLinkStatus"] = deepLinkStatus;
-    if ([data[@"deepLink"] isKindOfClass:[NSDictionary class]]) {
-        args[@"deepLinkObj"] = data[@"deepLink"];
-    }
-    if ([data[@"error"] isKindOfClass:[NSString class]]) {
-        args[@"deepLinkError"] = data[@"error"];
-    }
-    NSString *json = [self jsonStringFromObject:args];
-    if (json) {
-        [self deliverEvent:json];
-    }
-}
-
-/// Builds the {id, status, data} envelope callbacks.dart expects. `dataJsonString` is forwarded as
-/// the "data" field verbatim (a JSON-object string for structured payloads, or a plain string for
-/// simple callbacks), matching the Android bridge output exactly.
-- (void)deliverEventWithId:(NSString *)eventId status:(NSString *)status dataJsonString:(NSString *)dataJsonString {
-    NSDictionary *envelope = @{@"id": eventId, @"status": status ?: kStatusSuccess, @"data": dataJsonString ?: @"{}"};
-    NSString *json = [self jsonStringFromObject:envelope];
-    if (json) {
-        [self deliverEvent:json];
+    if ([jsonEvent isKindOfClass:[NSString class]]) {
+        if ([NSThread isMainThread]) {
+            [self deliverEvent:jsonEvent];
+        } else {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self deliverEvent:jsonEvent];
+            });
+        }
     }
 }
 
@@ -477,15 +378,26 @@ static NSString *const kRpcLogAndOpenStore     = @"logAndOpenStore";
     return [value isKindOfClass:[NSString class]] ? value : nil;
 }
 
-- (BOOL)boolParam:(NSDictionary *)params key:(NSString *)key {
-    id value = params[key];
-    return [value isKindOfClass:[NSNumber class]] ? [value boolValue] : NO;
-}
+// ============================================================================
+// Lifecycle forwarding (AppDelegate + UIScene). AppsFlyerAttribution queues early links and sends
+// them through AppsFlyerRPC after initialize completes.
+// ============================================================================
 
-// ============================================================================
-// Deep links (AppDelegate + UIScene). These drive AppsFlyerLib.shared() directly — the same
-// singleton AppsFlyerRPC wraps — so the resolved link surfaces through the RPC deep-link delegate.
-// ============================================================================
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+    if (launchOptions.count > 0) {
+        NSMutableDictionary *jsonSafeOptions = [NSMutableDictionary dictionary];
+        [launchOptions enumerateKeysAndObjectsUsingBlock:^(id key, id value, BOOL *stop) {
+            NSString *stringKey = [key description];
+            if ([value isKindOfClass:[NSURL class]]) {
+                jsonSafeOptions[stringKey] = [value absoluteString];
+            } else if ([NSJSONSerialization isValidJSONObject:@[value]]) {
+                jsonSafeOptions[stringKey] = value;
+            }
+        }];
+        self.pendingLaunchOptions = jsonSafeOptions;
+    }
+    return NO;
+}
 
 - (BOOL)application:(UIApplication *)application openURL:(NSURL *)url options:(NSDictionary *)options {
     [[AppsFlyerAttribution shared] handleOpenUrl:url options:options];
@@ -497,8 +409,11 @@ static NSString *const kRpcLogAndOpenStore     = @"logAndOpenStore";
     return NO;
 }
 
+// UIApplicationDelegate requires restorationHandler; attribution only forwards webpageURL to RPC
+// (AppsFlyer SDK ignores the handler too). Handoff/UI restoration stays with the host app.
 - (BOOL)application:(UIApplication *)application continueUserActivity:(NSUserActivity *)userActivity restorationHandler:(void (^)(NSArray *_Nullable))restorationHandler {
-    [[AppsFlyerAttribution shared] continueUserActivity:userActivity restorationHandler:restorationHandler];
+    (void)restorationHandler;
+    [[AppsFlyerAttribution shared] continueUserActivity:userActivity];
     return NO;
 }
 
@@ -530,7 +445,7 @@ static NSString *const kRpcLogAndOpenStore     = @"logAndOpenStore";
     }
     for (NSUserActivity *activity in connectionOptions.userActivities) {
         if ([activity.activityType isEqualToString:NSUserActivityTypeBrowsingWeb]) {
-            [[AppsFlyerAttribution shared] continueUserActivity:activity restorationHandler:nil];
+            [[AppsFlyerAttribution shared] continueUserActivity:activity];
         }
     }
     return NO;
@@ -538,7 +453,7 @@ static NSString *const kRpcLogAndOpenStore     = @"logAndOpenStore";
 
 // UIScene-based Universal Links (iOS 13+)
 - (BOOL)scene:(UIScene *)scene continueUserActivity:(NSUserActivity *)userActivity API_AVAILABLE(ios(13.0)) {
-    [[AppsFlyerAttribution shared] continueUserActivity:userActivity restorationHandler:nil];
+    [[AppsFlyerAttribution shared] continueUserActivity:userActivity];
     return NO;
 }
 #endif // __has_include(<Flutter/FlutterSceneLifeCycle.h>)

@@ -4,28 +4,27 @@ name: Android ID Collection Opt-out
 type: sdkCore
 platform: android
 status: active
-last_verified: 2026-07-29
+last_verified: 2026-08-07
 depends_on: []
 ---
 
 ## Business Purpose
-Google Play policy prohibits apps that bundle Google Play Services from collecting the Android ID for advertising/attribution purposes. `setCollectAndroidId(false)` lets a Play-Services-enabled app opt out of this collection so it stays compliant, while apps without Play Services can leave it enabled as a device-level fallback. Getting this wrong risks Play Store policy violations.
-
-> **SDK 7 change:** the IMEI opt-out `setCollectIMEI` has been **removed** — IMEI auto-collection no longer exists in the native SDK 7, and there is no RPC bridge method for it. Only the Android-ID opt-out remains. See [`doc/migration-guide.md`](/doc/migration-guide.md).
+Google Play policy prohibits apps that bundle Google Play Services from collecting the Android ID for advertising/attribution purposes. `setCollectAndroidID(false)` lets a Play-Services-enabled app opt out of this collection so it stays compliant, while the native SDK can use Android ID as a device-level fallback on apps without Google Play Services. Getting this wrong risks Play Store policy violations.
 
 ---
 
 ## Trigger
-Called by the host app during startup configuration, before `startSDK()`, when it needs to declare its Android ID collection posture (typically apps shipping with Google Play Services present).
+Called by the host app during startup configuration, before `start()`, when it needs to declare its Android ID collection posture (typically apps shipping with Google Play Services present). Dart and RPC do not enforce this ordering.
 
 ---
 
 ## Call Chain
-`setCollectAndroidId` is a generic RPC, Android-gated in Dart (no-op on iOS — Android ID is an Android-only identifier).
+`setCollectAndroidID` is a generic RPC, Android-gated in Dart (Android ID is an Android-only identifier, so on iOS the call is ignored with a logged warning).
 
 ```
-AppsflyerSdk.setCollectAndroidId(isCollect)                           [lib/src/appsflyer_sdk.dart]
-  → Platform.isAndroid ? _executeRpc('setCollectAndroidID', {isCollect}) : no-op
+AppsFlyerSdk.setCollectAndroidID(isCollect)                           [lib/src/appsflyer_sdk.dart]
+  → not Android: log warning, return (no RPC dispatched)
+  → _invokeVoidRpc('setCollectAndroidID', {isCollect})
     → af-api "executeRpc" {method:'setCollectAndroidID', params}
       → Android: dispatchRpc → AppsFlyerRpcHandler → AppsFlyerLib.setCollectAndroidID(isCollect)  [android/.../AppsflyerSdkPlugin.java]
 ```
@@ -35,7 +34,7 @@ AppsflyerSdk.setCollectAndroidId(isCollect)                           [lib/src/a
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `setCollectAndroidId(bool)` — `Platform.isAndroid`-guarded |
+| `lib/src/appsflyer_sdk.dart` | `setCollectAndroidID(bool)` — guarded by an Android platform check |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | generic `setCollectAndroidID` RPC dispatch over `AppsFlyerRpcHandler` |
 
 ---
@@ -43,19 +42,19 @@ AppsflyerSdk.setCollectAndroidId(isCollect)                           [lib/src/a
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `isCollect` (bool) — `true` keeps collection enabled (default), `false` opts out. RPC param key `isCollect`. |
-| **Output** | `void` — fire-and-forget; no confirmation returned to Dart. No-op on iOS. |
+| **Input** | `isCollect` (`bool`) — `true` enables Android ID collection and `false` opts out. The native SDK's stored opt-in flag defaults to `false`. RPC param key `isCollect`. |
+| **Output** | `Future<void>` — on Android, completes after RPC handling and the synchronous native setter invocation; it does not confirm that an Android ID was subsequently collected. RPC or bridge failures are exposed as `AppsFlyerException`. On iOS the call is ignored with a logged warning and never reaches the channel. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` verifies that `setCollectAndroidId` is a no-op on the test host (neither `Platform.isAndroid` nor `Platform.isIOS` is true), dispatching no RPC.
+`test/appsflyer_sdk_test.dart` → `'maps every Android-only API'` verifies that `setCollectAndroidID(true)` dispatches RPC method `setCollectAndroidID` with `{'isCollect': true}`. `'platform-only void calls are ignored without reaching the native RPC'` asserts that calling it on iOS dispatches no RPC. The Flutter tests do not verify whether the native SDK subsequently collects an Android ID.
 
 ---
 
 ## Known Limitations
-- **Android-only** and Dart-guarded: calling it on iOS is a silent no-op.
-- `setCollectIMEI` was removed in SDK 7 (no native API, no RPC bridge method) — no replacement.
+- **Android-only** and Dart-guarded: calling it on iOS is a logged no-op rather than a silent one — a warning is printed and no RPC is dispatched.
+- Calling the API before `start()` is recommended configuration ordering but is not enforced by Dart or RPC.
 
 ---
 

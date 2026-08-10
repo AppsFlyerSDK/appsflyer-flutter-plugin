@@ -3,33 +3,34 @@ id: F-058
 name: ATT Authorization Wait Timeout (iOS)
 type: sdkCore
 platform: ios
-status: active
-last_verified: 2026-07-29
-depends_on: ["F-001"]
+status: removed
+last_verified: 2026-08-04
+depends_on: []
 ---
 
 ## Business Purpose
-Since iOS 14.5, apps must show Apple's App Tracking Transparency (ATT) prompt before collecting the IDFA. If the AppsFlyer SDK starts (and fires its first session/attribution request) before the user responds to that prompt, it may miss the IDFA and under-report attribution. `timeToWaitForATTUserAuthorization` lets the host app delay the SDK's `start()` call for up to N seconds so it can wait for the user to accept, decline, or time out on the consent dialog before the first session is sent — improving IDFA-based attribution accuracy without requiring the app to manually gate SDK start behind a callback.
+This entry is retained as a tombstone for the former `AppsFlyerOptions.timeToWaitForATTUserAuthorization` init-time option, which asked the native iOS SDK to delay its first session for up to N seconds while the user answered Apple's App Tracking Transparency (ATT) prompt.
+
+The native-aligned SDK 7 Flutter API has **no** ATT surface at all: there is no `waitForATT` method, no ATT-wait-timeout parameter, and no init-time configuration object to carry one. `init()` accepts only `devKey` and `appId`.
+
+The replacement is the explicit SDK 7 session model documented by F-002. Because initialization no longer sends a session, the application controls exactly when the first session is sent: request ATT authorization in application code, and only then call `await AppsFlyerSdk.instance.start()` from the `onSessionReady` listener. This replaces an opaque native timer with ordering the app can observe and test.
 
 ---
 
 ## Trigger
-Set once by the host app as part of `AppsFlyerOptions` (or the raw options `Map`), read only on iOS (`Platform.isIOS`), and applied natively during the `init` orchestration before the SDK's `start`.
+None. No Dart API accepts an ATT wait interval, and neither platform implementation consumes such a key.
 
 ---
 
 ## Call Chain
+There is no current call chain. The replacement is application-controlled session timing, documented by F-002:
+
 ```
-AppsFlyerOptions(timeToWaitForATTUserAuthorization: 50.0)               [lib/src/appsflyer_options.dart]
-  → AppsflyerSdk.initSdk(...)                                          [lib/src/appsflyer_sdk.dart]
-    → _validateAFOptions / _validateMapOptions
-      → if (Platform.isIOS) { assert(value is double);
-          validatedOptions[AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION] = value }
-      → _executeRpc('init', validatedOptions)
-        → MethodChannel "af-api".invokeMethod('executeRpc', {method:'init', params})
-          → iOS: AppsFlyerRPCBridge init orchestration reads timeToWaitForATTUserAuthorization and calls
-              [[AppsFlyerLib shared] waitForATTUserAuthorizationWithTimeoutInterval:...] before start   [ios/.../AppsflyerSdkPlugin.m]
-          → Android: value is never sent — no Android equivalent exists (ATT is an iOS-only framework)
+AppsFlyerSdk.instance.onSessionReady.listen((_) async {
+  // application requests ATT authorization here, then:
+  await AppsFlyerSdk.instance.start();
+});
+  → RPC start {awaitResponse: false} // default; pass awaitResponse: true to await completion
 ```
 
 ---
@@ -37,37 +38,30 @@ AppsFlyerOptions(timeToWaitForATTUserAuthorization: 50.0)               [lib/src
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_options.dart` | `AppsFlyerOptions.timeToWaitForATTUserAuthorization` (`double?`, optional named constructor param) |
-| `lib/src/appsflyer_sdk.dart` | `_validateAFOptions` / `_validateMapOptions` — reads the value **only** when `Platform.isIOS`, asserts it is a `double`, copies into the validated options map |
-| `lib/src/appsflyer_constants.dart` | `AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION = "timeToWaitForATTUserAuthorization"` — shared Dart↔native key |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | Init orchestration reads the interval and calls `waitForATTUserAuthorizationWithTimeoutInterval:` before `start` |
-| `doc/installation-guide.md`, `doc/advanced-features.md`, `doc/api-reference.md` | Document the option as delaying SDK start "for x seconds until the user either accepts the consent dialog, declines it, or the timer runs out" |
+| `doc/migration-guide.md` | Lists `waitForATTUserAuthorization` under removed APIs and directs integrators to control the timing of `start()` in application code |
+| `lib/src/appsflyer_sdk.dart` | Contains no ATT symbol; `init()` accepts only `devKey` and `appId`, and `start()` is the explicit session call |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `timeToWaitForATTUserAuthorization` (`double?`, seconds) via `AppsFlyerOptions` or the equivalent Map key; only read/applied when `Platform.isIOS` |
-| **Output** | `void` — delays the native SDK's internal `start()`/first session dispatch by up to the given interval (or until ATT authorization resolves, whichever comes first); no value or confirmation returned to Dart. |
+| **Input** | Removed: `AppsFlyerOptions.timeToWaitForATTUserAuthorization` / the equivalent map init key |
+| **Output** | None. Use F-002 `start()`, which returns `Future<void>`. |
 
 ---
 
 ## Tests
-No dedicated test found. `test/appsflyer_sdk_test.dart`'s init test does not set `timeToWaitForATTUserAuthorization`, and because Dart tests do not run with `Platform.isIOS == true`, the entire `if (Platform.isIOS) { ... }` validation branch (including the `assert(timeToWaitForATTUserAuthorization is double)` check and the iOS App ID regex validation alongside it) is untested.
+No test references ATT. `test/appsflyer_sdk_test.dart` asserts that `init` sends only `devKey` (Android) or `devKey` and `appId` (iOS), and that `start` forwards the public `awaitResponse` value (default `false`). No test should expect an ATT wait option.
 
 ---
 
 ## Known Limitations
-- Android has no equivalent: the key is never sent from Dart (the `Platform.isIOS` guard lives in `_validateAFOptions`/`_validateMapOptions`), so the Android bridge never sees it.
-- A value of exactly `0` is treated as "not set", so a host app cannot explicitly pass `0.0` to mean "no wait" versus simply omitting the option — both behave identically.
-- The Dart-side `assert(timeToWaitForATTUserAuthorization is double)` is stripped in release builds, so passing a non-double dynamic value (e.g. via the raw `Map` options path) would silently misbehave in production rather than failing fast.
+- Existing SDK 6 integrations that relied on the native wait timer must move ATT sequencing into application code: request authorization, then call `start()`.
+- The removed option must not be restored or emulated in Dart. Emulating it would mean adding a Dart-side timer around `start()`, which would hide session timing from the application rather than expose it.
+- The Flutter plugin does not wrap `ATTrackingManager`; requesting ATT authorization is the application's responsibility.
 
 ---
 
 ## Dependencies
-```mermaid
-flowchart LR
-    F058["F-058 · ATT Authorization Wait Timeout (iOS)"]:::sdkCore -->|"applied only during"| F001["F-001 · SDK Initialization & Options Validation"]:::sdkCore
-    classDef sdkCore fill:#4C6EF5,color:#fff
-```
+No active feature depends on F-058. F-002 (SDK Start) is the supported replacement.

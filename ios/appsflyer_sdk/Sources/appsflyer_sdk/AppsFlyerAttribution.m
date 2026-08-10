@@ -8,6 +8,21 @@
 #import <Foundation/Foundation.h>
 #import "AppsFlyerAttribution.h"
 
+#if __has_include(<AppsFlyerRPC/AppsFlyerRPC-Swift.h>)
+#import <AppsFlyerRPC/AppsFlyerRPC-Swift.h>
+#else
+@import AppsFlyerRPC;
+#endif
+
+@interface AppsFlyerAttribution ()
+@property (nonatomic, assign) BOOL isBridgeReady;
+@property (nonatomic, strong) NSMutableArray<NSDictionary *> *pendingRequests;
+- (void)executeMethod:(NSString *)method params:(NSDictionary *)params;
+- (void)executeOrQueueMethod:(NSString *)method params:(NSDictionary *)params;
+- (NSDictionary *)jsonSafeOptionsFromDictionary:(NSDictionary *)options;
+- (id)jsonSafeValue:(id)value;
+@end
+
 @implementation AppsFlyerAttribution
 
 + (id)shared {
@@ -21,66 +36,108 @@
 
 - (id)init {
     if (self = [super init]) {
-        self.options = nil;
-        self.restorationHandler = nil;
-        self.url = nil;
-        self.userActivity = nil;
-        self.annotation = nil;
-        self.sourceApplication = nil;
+        self.pendingRequests = [NSMutableArray array];
         self.isBridgeReady = NO;
-        [[NSNotificationCenter defaultCenter] addObserver:self
-                                                 selector:@selector(receiveBridgeReadyNotification:)
-                                                     name:AF_BRIDGE_SET
-                                                   object:nil];
   }
   return self;
 }
 
-- (void) continueUserActivity: (NSUserActivity*_Nullable) userActivity restorationHandler: (void (^_Nullable)(NSArray * _Nullable))restorationHandler{
-    if(self.isBridgeReady == YES){
-        [[AppsFlyerLib shared] continueUserActivity:userActivity restorationHandler:restorationHandler];
-    }else{
-        [AppsFlyerAttribution shared].userActivity = userActivity;
-        [AppsFlyerAttribution shared].restorationHandler = restorationHandler;
+- (void)continueUserActivity:(NSUserActivity *_Nullable)userActivity {
+    if (userActivity.webpageURL == nil) {
+        return;
     }
+    [self executeOrQueueMethod:@"continueUserActivity" params:@{
+        @"url": userActivity.webpageURL.absoluteString,
+        @"activityType": userActivity.activityType ?: NSUserActivityTypeBrowsingWeb
+    }];
 }
 
 - (void) handleOpenUrl:(NSURL *)url options:(NSDictionary *)options{
-    if(self.isBridgeReady == YES){
-        [[AppsFlyerLib shared] handleOpenUrl:url options:options];
-    }else{
-        [AppsFlyerAttribution shared].url = url;
-        [AppsFlyerAttribution shared].options = options;
+    if (url == nil) {
+        return;
     }
+    [self executeOrQueueMethod:@"handleOpenUrl" params:@{
+        @"url": url.absoluteString,
+        @"options": [self jsonSafeOptionsFromDictionary:options]
+    }];
 }
 
 - (void) handleOpenUrl:(NSURL *)url sourceApplication:(NSString*)sourceApplication annotation:(id)annotation{
-    if(self.isBridgeReady == YES){
-        [[AppsFlyerLib shared] handleOpenURL:url sourceApplication:sourceApplication withAnnotation:annotation];
-    }else{
-        [AppsFlyerAttribution shared].url = url;
-        [AppsFlyerAttribution shared].sourceApplication = sourceApplication;
-        [AppsFlyerAttribution shared].annotation = annotation;
+    if (url == nil) {
+        return;
     }
-
+    NSMutableDictionary *rawOptions = [NSMutableDictionary dictionary];
+    if (sourceApplication) {
+        rawOptions[UIApplicationOpenURLOptionsSourceApplicationKey] = sourceApplication;
+    }
+    if (annotation) {
+        rawOptions[UIApplicationOpenURLOptionsAnnotationKey] = annotation;
+    }
+    [self executeOrQueueMethod:@"handleOpenURL" params:@{
+        @"url": url.absoluteString,
+        @"options": [self jsonSafeOptionsFromDictionary:rawOptions]
+    }];
 }
 
-- (void) receiveBridgeReadyNotification:(NSNotification *) notification
-{
-    // Bridge is ready: replay whichever launch URL / user activity was captured before init.
-    if(self.url && self.sourceApplication && self.annotation){
-        [[AppsFlyerLib shared] handleOpenURL:self.url sourceApplication:self.sourceApplication withAnnotation:self.annotation];
-        self.url = nil;
-        self.sourceApplication = nil;
-        self.annotation = nil;
-    }else if(self.options && self.url){
-        [[AppsFlyerLib shared] handleOpenUrl:self.url options:self.options];
-        self.options = nil;
-        self.url = nil;
-    }else if(self.userActivity){
-        [[AppsFlyerLib shared] continueUserActivity:self.userActivity restorationHandler:nil];
-        self.userActivity = nil;
-        self.restorationHandler = nil;
+- (void)markBridgeReady {
+    self.isBridgeReady = YES;
+    NSArray<NSDictionary *> *requests = [self.pendingRequests copy];
+    [self.pendingRequests removeAllObjects];
+    for (NSDictionary *request in requests) {
+        [self executeMethod:request[@"method"] params:request[@"params"]];
+    }
+}
+
+- (void)executeOrQueueMethod:(NSString *)method params:(NSDictionary *)params {
+    if (self.isBridgeReady) {
+        [self executeMethod:method params:params];
+    } else {
+        [self.pendingRequests addObject:@{
+            @"method": method,
+            @"params": params ?: @{}
+        }];
+    }
+}
+
+- (NSDictionary *)jsonSafeOptionsFromDictionary:(NSDictionary *)options {
+    if (options.count == 0) {
+        return @{};
+    }
+    NSMutableDictionary *safe = [NSMutableDictionary dictionaryWithCapacity:options.count];
+    [options enumerateKeysAndObjectsUsingBlock:^(id key, id value, BOOL *stop) {
+        if (![key isKindOfClass:[NSString class]]) {
+            return;
+        }
+        id jsonSafeValue = [self jsonSafeValue:value];
+        if (jsonSafeValue != nil) {
+            safe[key] = jsonSafeValue;
+        }
+    }];
+    return safe;
+}
+
+- (id)jsonSafeValue:(id)value {
+    if (value == nil || value == [NSNull null]) {
+        return nil;
+    }
+    if ([value isKindOfClass:[NSString class]] || [value isKindOfClass:[NSNumber class]]) {
+        return value;
+    }
+    if ([value isKindOfClass:[NSDictionary class]] || [value isKindOfClass:[NSArray class]]) {
+        return [NSJSONSerialization isValidJSONObject:value] ? value : nil;
+    }
+    return [NSJSONSerialization isValidJSONObject:@[value]] ? value : nil;
+}
+
+- (void)executeMethod:(NSString *)method params:(NSDictionary *)params {
+    NSDictionary *envelope = @{@"method": method, @"params": params ?: @{}};
+    if (![NSJSONSerialization isValidJSONObject:envelope]) {
+        return;
+    }
+    NSData *data = [NSJSONSerialization dataWithJSONObject:envelope options:0 error:nil];
+    NSString *json = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+    if (json) {
+        [[AppsFlyerRPCBridge shared] executeJson:json completion:^(__unused NSString *response) {}];
     }
 }
 @end

@@ -4,7 +4,7 @@ name: AppSet ID Collection Opt-out (Android)
 type: sdkCore
 platform: android
 status: active
-last_verified: 2026-07-29
+last_verified: 2026-08-05
 depends_on: []
 ---
 
@@ -14,19 +14,21 @@ Starting with SDK v6.17.0, the Android SDK automatically collects the Google Pla
 ---
 
 ## Trigger
-Called by the host app during startup configuration, on Android only, whenever it needs to opt out of automatic AppSet ID collection.
+The host app awaits `AppsFlyerSdk.instance.disableAppSetId()` during startup configuration on Android, before `start()`, when it needs to opt out of automatic AppSet ID collection.
 
 ---
 
 ## Call Chain
-The Dart method is guarded by `Platform.isAndroid`, so it is a no-op on iOS (no RPC is dispatched). AppSet ID is a Google Play Services / Android-only concept.
+`disableAppSetId` is an awaitable Android-only RPC call. AppSet ID is a Google Play Services concept, so the Dart method is Android-only: on any other platform the call is ignored with a logged warning instead of dispatching an RPC.
 
 ```
-AppsflyerSdk.disableAppSetId()                                         [lib/src/appsflyer_sdk.dart]
-  → if (Platform.isAndroid) _executeRpc('disableAppSetId')
-    → MethodChannel "af-api".invokeMethod('executeRpc', {method:'disableAppSetId', params:{}})
-      → Android: AppsflyerSdkPlugin.executeRpc → dispatchRpc → AppsFlyerRpcHandler   [android/.../AppsflyerSdkPlugin.java]
+AppsFlyerSdk.disableAppSetId()                                        [lib/src/appsflyer_sdk.dart]
+  → not Android: log warning, return (no RPC dispatched)
+  → _invokeVoidRpc('disableAppSetId')
+    → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params: {}})
+      → Android: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRpcHandler
         → AppsFlyerLib.getInstance().disableAppSetId()
+  → PlatformException is converted to AppsFlyerException
 ```
 
 ---
@@ -34,27 +36,27 @@ AppsflyerSdk.disableAppSetId()                                         [lib/src/
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `disableAppSetId()` — no-argument, guarded by `Platform.isAndroid` |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | RPC bridge entry (`executeRpc`) routing `disableAppSetId` to `AppsFlyerRpcHandler` |
-| `doc/api-reference.md` | Documents the method as **"Android Only!"**, "Disables AppSet ID collection." |
+| `lib/src/appsflyer_sdk.dart` | `disableAppSetId()` — no-argument, awaitable, guarded by an Android platform check |
+| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | Forwards `disableAppSetId` through the Android RPC handler |
+| `doc/api-reference.md` | Documents the method as Android-only, "Disables AppSet ID collection." |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | None |
-| **Output** | `void` — fire-and-forget; no confirmation returned to Dart. |
+| **Input** | None. The RPC is dispatched with an empty `params` map. |
+| **Output** | `Future<void>` completes when the native request succeeds and throws `AppsFlyerException` for native errors. Called off Android it completes without throwing: the call is ignored with a logged warning and no RPC is dispatched. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` — `check disableAppSetId call` asserts the mocked `af-api` channel receives `executeRpc` with method `disableAppSetId` (host tests exercise the Android branch).
+`test/appsflyer_sdk_test.dart` verifies in the Android-only RPC mapping test that `disableAppSetId` dispatches RPC method `disableAppSetId` with empty params. `'platform-only void calls are ignored without reaching the native RPC'` calls `disableAppSetId()` on iOS and asserts that no RPC method is dispatched.
 
 ---
 
 ## Known Limitations
-- **Android-only** (by design — AppSet ID is a Google Play Services concept with no iOS equivalent). The Dart method is guarded by `Platform.isAndroid`, so on iOS it silently does nothing.
+- **Android-only** by design — AppSet ID is a Google Play Services concept with no iOS equivalent. Calling the method on iOS is a no-op, but a logged one — the plugin emits a `debugPrint` warning and dispatches no RPC.
 - There is no way to re-enable AppSet ID collection once disabled within the same process — the call is one-directional (opt-out only), matching the native SDK's own API shape.
 - No getter to confirm whether AppSet ID collection is currently disabled.
 

@@ -4,34 +4,36 @@ name: Custom Host Configuration
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-07-29
+last_verified: 2026-08-07
 depends_on: []
 ---
 
 ## Business Purpose
-Enterprises operating in regulated markets (e.g. China) or behind private network/CDN setups need the AppsFlyer SDK to send its HTTPS traffic to a non-default host. `setHost` lets the integrator redirect the SDK's network calls to a custom domain/prefix; `getHostName`/`getHostPrefix` let the app (or diagnostics tooling) read back what is configured (Android only). Without this, apps requiring a custom collection endpoint could not integrate AppsFlyer in those environments.
+Enterprises operating in regulated markets (for example China) or behind private network/CDN setups need the AppsFlyer SDK to send its HTTPS traffic to a non-default host. `setHost` lets the integrator redirect the SDK's network calls to a custom domain and prefix; `getHostName`/`getHostPrefix` let the app (or diagnostics tooling) read back what is configured on Android. Without this, apps requiring a custom collection endpoint could not integrate AppsFlyer in those environments. Use it only when instructed by AppsFlyer support.
 
 ---
 
 ## Trigger
-Called by the host app before `startSDK()`, whenever the default AppsFlyer collection host must be overridden. `getHostName`/`getHostPrefix` are called on demand (e.g. debug screens) on Android.
+`setHost` is awaited by the host app before `start()`, whenever the default AppsFlyer collection host must be overridden. `getHostName`/`getHostPrefix` are awaited on demand (for example from a debug screen) and only on Android.
 
 ---
 
 ## Call Chain
-All three are generic RPCs. `setHost` is a Dart-side no-op if either argument is empty.
+All three are generic RPC calls. Dart performs no value validation on `setHost`; the two getters are gated by an Android platform check — off Android they log a warning and return `null` without dispatching an RPC. Android RPC requires a non-empty `hostName` but permits an empty `hostPrefixName`; iOS RPC requires both values to be non-empty.
 
 ```
-AppsflyerSdk.setHost(hostPrefix, hostName)                            [lib/src/appsflyer_sdk.dart]
-  → no-op if hostPrefix.isEmpty || hostName.isEmpty
-  → _executeRpc('setHost', {hostPrefixName, hostName})
-    → af-api "executeRpc" {method:'setHost', params}
-      → Android: dispatchRpc → AppsFlyerRpcHandler → AppsFlyerLib.setHost(...)   [android/.../AppsflyerSdkPlugin.java]
-      → iOS: dispatchRpc → AppsFlyerRPCBridge → [AppsFlyerLib shared] setHost:...  [ios/.../AppsflyerSdkPlugin.m]
+AppsFlyerSdk.setHost(String hostPrefixName, String hostName)          [lib/src/appsflyer_sdk.dart]
+  → _invokeVoidRpc('setHost', {'hostPrefixName': ..., 'hostName': ...})
+    → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
+      → Android: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRpcHandler → AppsFlyerLib.setHost(...)
+      → iOS: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRPCBridge → [AppsFlyerLib shared] setHost:...
 
-AppsflyerSdk.getHostName() / getHostPrefix()   (Android only; return null on iOS)
-  → _executeRpc<String>('getHostName' | 'getHostPrefix')
-    → Android: dispatchRpc → AppsFlyerRpcHandler → AppsFlyerLib.getHostName()/getHostPrefix()
+AppsFlyerSdk.getHostName() / AppsFlyerSdk.getHostPrefix()   (Android only)
+  → not Android: log warning, return null (no RPC dispatched)
+  → _invokeRpc<String>('getHostName' | 'getHostPrefix')
+    → Android: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRpcHandler
+      → AppsFlyerLib.getHostName() / getHostPrefix()  (returned on the RPC reply)
+  → PlatformException is converted to AppsFlyerException
 ```
 
 ---
@@ -39,28 +41,29 @@ AppsflyerSdk.getHostName() / getHostPrefix()   (Android only; return null on iOS
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `setHost` (empty-guard), `getHostName`, `getHostPrefix` (Android-gated) |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | generic RPC dispatch for `setHost` / `getHostName` / `getHostPrefix` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | generic RPC dispatch for `setHost` |
+| `lib/src/appsflyer_sdk.dart` | `setHost(String hostPrefixName, String hostName)`, plus the Android-gated `getHostName()` and `getHostPrefix()` |
+| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | Generic RPC dispatch for `setHost`, `getHostName`, and `getHostPrefix` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | Generic RPC dispatch for `setHost` |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `setHost`: `hostPrefix` (String), `hostName` (String) — both must be non-empty (RPC param keys `hostPrefixName`/`hostName`). `getHostName`/`getHostPrefix`: none. |
-| **Output** | `setHost` → `void`. `getHostName()`/`getHostPrefix()` → `Future<String?>` on Android; **`null` on iOS** (no native RPC-reachable getter). |
+| **Input** | `setHost`: `hostPrefixName` (`String`) and `hostName` (`String`), sent under the RPC param keys `hostPrefixName` and `hostName`. Android RPC requires a non-empty `hostName` and permits an empty `hostPrefixName`; iOS RPC requires both values to be non-empty. `getHostName`/`getHostPrefix`: no parameters (the RPC params map is empty). |
+| **Output** | `setHost` → `Future<void>` that completes after RPC validation and the synchronous native setter invocation; it does not confirm that the native SDK accepted or used the host. RPC or bridge failures are exposed as `AppsFlyerException`. `getHostName()`/`getHostPrefix()` → `Future<String?>` on Android; on any other platform they log a warning and return `null` without dispatching an RPC. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` verifies that `setHost` dispatches the `setHost` RPC with the SDK 7 param names (`hostPrefixName`, `hostName`), and that `setHost` is a no-op when either the prefix or the host is empty.
+`test/appsflyer_sdk_test.dart` → `'maps cross-platform configuration and identity APIs'` verifies that `setHost('prefix', 'example.com')` dispatches RPC method `setHost` with params `{'hostPrefixName': 'prefix', 'hostName': 'example.com'}`. `'maps getters and native return values'` verifies that `getHostName()` and `getHostPrefix()` dispatch their RPC methods with an empty params map and return the mocked native values. `'platform-only value calls return a safe default off-platform'` asserts that `getHostName()` and `getHostPrefix()` return `null` on iOS without dispatching an RPC. `'PlatformException with a numeric RPC code becomes AppsFlyerException'` covers the shared error-conversion path, although it does not invoke `setHost` specifically. There is no plugin test for empty or whitespace-only host values.
 
 ---
 
 ## Known Limitations
-- `getHostName`/`getHostPrefix` are Android-only and resolve to `null` on iOS.
-- Must be called before the SDK establishes its first network connection (before `startSDK()`) to take effect; this ordering is not enforced by the plugin.
+- `getHostName`/`getHostPrefix` are Android-only, because the iOS RPC layer exposes no getter. On iOS each logs a warning and returns `null` without dispatching an RPC, so a `null` result cannot be distinguished from "no host configured".
+- Dart does not guard against empty values. Android RPC rejects an empty `hostName` with an RPC error but accepts an empty `hostPrefixName`; iOS RPC rejects either empty value. On Android, a whitespace-only `hostName` passes RPC validation but is silently ignored by the native SDK, so the `Future` can still complete successfully without changing the host.
+- Must be called before the SDK establishes its first network connection (before `start()`) to take effect; this ordering is not enforced by the plugin.
 
 ---
 

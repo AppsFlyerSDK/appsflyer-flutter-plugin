@@ -1,5 +1,10 @@
 # AppsFlyer Flutter Plugin — Feature Diagrams
 
+> **Verification status:** The initialization, start, and OneLink invite edges
+> were reverified on 2026-08-04. Other edges belong to the archived feature
+> snapshots identified in `INDEX.md` and must be reverified before being used as
+> current implementation documentation.
+
 ## Section 1 — Runtime Flow
 
 Only features with at least one inbound or outbound cross-feature edge are shown. `eventsAndRevenue` and `platformIntegration` have no cross-feature edges in this codebase — every feature in those two categories is a standalone 1:1 native setter, so neither appears below.
@@ -44,7 +49,6 @@ flowchart TD
         F027["F-027<br/>Invite Link Generation"]:::oneLinkAndGrowth
         F028["F-028<br/>App Invite OneLink ID"]:::oneLinkAndGrowth
         F029["F-029<br/>Cross-Promotion Tracking"]:::oneLinkAndGrowth
-        F056["F-056<br/>App Invite OneLink ID (init-time)"]:::oneLinkAndGrowth
     end
 
     F002 --> F001
@@ -75,10 +79,7 @@ flowchart TD
     F037 --> F040
 
     F027 --> F028
-    F027 --> F056
-    F028 --> F056
     F029 --> F027
-    F056 --> F028
 
     classDef sdkCore fill:#4C6EF5,color:#fff
     classDef purchaseValidation fill:#F59F00,color:#fff
@@ -90,30 +91,24 @@ flowchart TD
 
 ## Section 2 — Initialization Flow
 
-Features that configure, register, gate, or boot other features at startup time. `F-001` (SDK Initialization) is the sole boot entry point — every init-time option and startup-gated registration hangs off it directly.
+Features that initialize the SDK or must be applied before the first session. Listener registration and configuration setters are explicit API calls; `init()` does not hide them in an options object.
 
 ```mermaid
 flowchart LR
     F001["F-001 · SDK Initialization"]:::sdkCore
     F002["F-002 · SDK Start"]:::sdkCore
-    F034["F-034 · Ad ID Collection Disable"]:::sdkCore
     F037["F-037 · UDL Callback & Models"]:::deepLinking
     F048["F-048 · Plugin Metadata Reporting"]:::sdkCore
-    F056["F-056 · App Invite OneLink ID (init-time)"]:::oneLinkAndGrowth
     F057["F-057 · ASA Opt-out"]:::sdkCore
-    F058["F-058 · ATT Wait Timeout"]:::sdkCore
     F059["F-059 · Debug Logging Toggle"]:::sdkCore
     F011["F-011 · TCF/DMA Auto Consent"]:::sdkCore
 
-    F001 -->|"init validates options; app calls startSDK() per foreground cycle"| F002
-    F001 -->|"applies init-time disable flag"| F034
-    F001 -->|"sets UDL registration flag"| F037
+    F001 -->|"app calls start() for each session-ready event"| F002
+    F001 -->|"app explicitly registers UDL listener after init"| F037
     F001 -->|"reports plugin type/version inline"| F048
-    F001 -->|"applies init-time OneLink ID"| F056
-    F001 -->|"applies init-time ASA opt-out"| F057
-    F001 -->|"applies init-time ATT wait timeout"| F058
-    F001 -->|"applies init-time debug flag"| F059
-    F002 -->|"app defers startSDK() until CMP consent confirmed"| F011
+    F001 -->|"app applies explicit ASA setter before start"| F057
+    F001 -->|"app applies explicit debug setter before start"| F059
+    F002 -->|"app defers start() until CMP consent confirmed"| F011
 
     classDef sdkCore fill:#4C6EF5,color:#fff
     classDef deepLinking fill:#E64980,color:#fff
@@ -126,22 +121,20 @@ flowchart LR
 
 | Feature | Depends On | Note |
 |---------|-----------|------|
-| F-002 | F-001 | SDK session start only makes sense after init/options have been validated and passed to native |
-| F-011 | F-001 | TCF auto-consent collection is configured as an init-time option |
-| F-011 | F-002 | TCF auto-consent defers the app's `startSDK()` call until CMP consent is confirmed |
+| F-002 | F-001 | SDK session start requires native initialization and a session-ready signal |
+| F-011 | F-001 | TCF auto-consent collection is enabled through an explicit API after initialization |
+| F-011 | F-002 | TCF auto-consent can defer the app's `start()` call until CMP consent is confirmed |
 | F-014 | F-037 | Manual deep-link re-trigger forces the native SDK to re-run the same UDL resolution path |
 | F-022 | F-037 | Push-notification deep-link path config only matters once a payload reaches UDL resolution |
 | F-024 | F-025 | iOS validates against the sandbox/production endpoint set by the receipt-validation toggle |
 | F-027 | F-028 | Invite-link generation needs a base OneLink ID configured at runtime |
-| F-027 | F-056 | Invite-link generation needs a base OneLink ID configured at init time (whichever wrote last wins) |
-| F-028 | F-056 | Both setters write the same native OneLink-ID property — last write wins |
 | F-029 | F-027 | iOS cross-promotion reuses the same invite-URL generator helper as invite-link generation |
 | F-031 | F-022 | Push notification data handling resolves deep links using the registered JSON key-path |
-| F-035 | F-001 | Conversion data delivery is gated by SDK init/start having registered the listener |
-| F-037 | F-001 | UDL listener/delegate registration is gated by the UDL flag set during init |
+| F-035 | F-001 | The app explicitly registers the native conversion listener after initialization |
+| F-037 | F-001 | The app explicitly registers the native UDL listener after initialization |
 | F-037 | F-039 | UDL resolution on iOS is fed by the native URL-scheme/Universal-Link/Scene entry points |
 | F-037 | F-040 | UDL resolution on Android is fed by the new-intent forwarding entry point |
-| F-048 | F-001 | Plugin metadata is reported inline as part of the native `initSdk` call |
+| F-048 | F-001 | Plugin metadata is reported inline as part of the native `init` sequence |
 | F-049 | F-051 | Android `configure()` requires the validation-result listener object as a constructor param |
 | F-049 | F-052 | iOS `configure()` assigns the purchase-revenue delegate that the combined callback depends on |
 | F-049 | F-054 | Purchase Connector only compiles/registers when the build-time opt-in is enabled |
@@ -151,7 +144,5 @@ flowchart LR
 | F-053 | F-049 | Data models are payload shapes exchanged only through the configured connector |
 | F-053 | F-051 | Data models are referenced exclusively from the Android validation-result listener models |
 | F-055 | F-049 | Guard exists specifically to catch use of Purchase Connector APIs before `configure()` runs |
-| F-056 | F-028 | Both setters write the same native OneLink-ID property — last write wins |
-| F-057 | F-001 | ASA opt-out is an init-time option validated/applied inside `initSdk` |
-| F-058 | F-001 | ATT wait timeout is an init-time option validated/applied inside `initSdk` |
-| F-059 | F-001 | Debug logging is an init-time option validated/applied inside `initSdk` |
+| F-057 | F-001 | ASA opt-out is applied through an explicit iOS setter before `start()` |
+| F-059 | F-001 | Debug logging is applied through `enableDebug` before `start()` |

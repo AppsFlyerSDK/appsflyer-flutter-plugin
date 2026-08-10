@@ -4,7 +4,7 @@ name: Android New-Intent Deep-Link Forwarding
 type: deepLinking
 platform: android
 status: active
-last_verified: 2026-07-29
+last_verified: 2026-08-04
 depends_on: []
 ---
 
@@ -54,7 +54,7 @@ No dedicated test found — no native (JUnit/Robolectric) test target under `and
 
 ## Known Limitations
 - **Depends on activity attachment**: `setIntent` is only called `if (activity != null)`; a new intent arriving in a narrow window before `onAttachedToActivity` runs (or after teardown) is not synced.
-- **Relies on SDK-internal onResume resolution**: correctness depends on the SDK's lifecycle subscription (from `init()`) resolving the current intent on `onResume`; if `subscribeForDeepLink` was not called (`registerOnDeepLinkingCallback: false`), no UDL resolution occurs.
+- **Relies on SDK-internal onResume resolution**: correctness depends on the SDK's lifecycle subscription resolving the current intent on `onResume`. Listener registration is explicit in SDK 7, so if the app never called `registerDeepLinkListener()` (Android RPC `subscribeForDeepLink`), no UDL resolution occurs.
 - **No iOS equivalent by nature**: iOS has no `onNewIntent`; the warm-start-equivalent cases are handled by the always-active `application:openURL:...`/`continueUserActivity:...`/`scene:...` delegate methods (F-039).
 - `onNewIntent` always returns `false`, so other registered `NewIntentListener`s (e.g. app-level routing) still run.
 

@@ -4,29 +4,32 @@ name: Minimum Time Between Sessions
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-07-29
+last_verified: 2026-08-04
 depends_on: []
 ---
 
 ## Business Purpose
-By default AppsFlyer starts a new session whenever the app returns to the foreground after being backgrounded, using the SDK's built-in threshold. Apps with unusual foreground/background patterns (quick task-switching, widget-driven relaunches) can get inflated session counts. `setMinTimeBetweenSessions` widens (or narrows) that threshold so relaunches within the configured window fold into the current session instead of counting as a new one.
+By default AppsFlyer starts a new session whenever the app returns to the foreground after being backgrounded, using the SDK's built-in threshold. Apps with unusual foreground/background patterns (quick task-switching, widget-driven relaunches) can get inflated session counts. `setMinTimeBetweenSessions` widens or narrows that threshold so relaunches within the configured window fold into the current session instead of counting as a new one.
 
 ---
 
 ## Trigger
-Called by the host app during startup configuration, before `startSDK()`, when the default session-splitting threshold needs to be overridden.
+Called by the host app during startup configuration, after `init()` and before `start()`, when the default session-splitting threshold needs to be overridden.
 
 ---
 
 ## Call Chain
-Generic RPC on both platforms.
+An ordinary fire-and-forget RPC setter available on both platforms, returning `Future<void>`.
 
 ```
-AppsflyerSdk.setMinTimeBetweenSessions(seconds)                       [lib/src/appsflyer_sdk.dart]
-  → _executeRpc('setMinTimeBetweenSessions', {seconds})
-    → af-api "executeRpc" {method:'setMinTimeBetweenSessions', params}
-      → Android: dispatchRpc → AppsFlyerRpcHandler → AppsFlyerLib.setMinTimeBetweenSessions(seconds)  [android/.../AppsflyerSdkPlugin.java]
-      → iOS: dispatchRpc → AppsFlyerRPCBridge → [AppsFlyerLib shared] ...                              [ios/.../AppsflyerSdkPlugin.m]
+AppsFlyerSdk.setMinTimeBetweenSessions(seconds)                       [lib/src/appsflyer_sdk.dart]
+  → _invokeVoidRpc('setMinTimeBetweenSessions', {'seconds': seconds})
+    → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
+      → Android: AppsflyerSdkPlugin.executeRpc → dispatchRpc → AppsFlyerRpcHandler
+        → AppsFlyerLib.setMinTimeBetweenSessions(seconds)
+      → iOS: AppsflyerSdkPlugin.executeRpc → dispatchRpc → AppsFlyerRPCBridge.executeJson
+        → native minimum-time-between-sessions setter
+  → PlatformException is converted to AppsFlyerException
 ```
 
 ---
@@ -34,27 +37,28 @@ AppsflyerSdk.setMinTimeBetweenSessions(seconds)                       [lib/src/a
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `setMinTimeBetweenSessions(int seconds)` — dispatches the RPC |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | generic `setMinTimeBetweenSessions` dispatch over `AppsFlyerRpcHandler` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | generic `setMinTimeBetweenSessions` dispatch over `AppsFlyerRPCBridge` |
+| `lib/src/appsflyer_sdk.dart` | `setMinTimeBetweenSessions(int seconds)` — dispatches the RPC, returns `Future<void>` |
+| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | Generic `executeRpc` → `dispatchRpc` routing to `AppsFlyerRpcHandler` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | Generic `executeRpc` → `dispatchRpc` forwarding to `AppsFlyerRPCBridge` |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `seconds` (int). RPC param key `seconds`. |
-| **Output** | `void` — fire-and-forget; no confirmation returned to Dart. |
+| **Input** | `seconds` (`int`) sent under the `seconds` param key. |
+| **Output** | `Future<void>` completes once the RPC layer accepts the fire-and-forget native call; native errors throw `AppsFlyerException`. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` verifies that `setMinTimeBetweenSessions` dispatches the `setMinTimeBetweenSessions` RPC with the `seconds` param.
+`test/appsflyer_sdk_test.dart` — `maps cross-platform configuration and identity APIs` asserts that `setMinTimeBetweenSessions(15)` dispatches RPC method `setMinTimeBetweenSessions` with `{'seconds': 15}`.
 
 ---
 
 ## Known Limitations
 - No client-side range validation — the value is forwarded to the native SDK as-is.
+- The native API has no completion callback, so a completed `Future` confirms only that the RPC layer accepted the call.
 
 ---
 

@@ -3,21 +3,36 @@
 <img  src="https://massets.appsflyer.com/wp-content/uploads/2018/06/20092440/static-ziv_1TP.png"  width="400"  >
 
 ## Types
-- [AppsFlyerOptions](#appsflyer-options)
-- [AdRevenueData](#AdRevenueData)
+- [AppsFlyerSdk](#appsflyer-options)
 - [AFMediationNetwork](#AFMediationNetwork)
+- [AFLogLevel](#AFLogLevel)
 - [AFPurchaseDetails](#AFPurchaseDetails)
+- [AFAndroidPurchaseDetails](#AFAndroidPurchaseDetails)
+- [AFIOSPurchaseDetails](#AFIOSPurchaseDetails)
 - [AFPurchaseType](#AFPurchaseType)
+- [AppsFlyerInviteLinkParams](#AppsFlyerInviteLinkParams)
+- [DeepLinkResult](#DeepLinkResult)
+- [DeepLinkStatus](#DeepLinkStatus)
+- [DeepLinkFailure](#DeepLinkFailure)
+- [DeepLink](#DeepLink)
+- [AppsFlyerException](#AppsFlyerException)
 
 ## Methods
-- [initSdk](#initSdk)
-- [startSDK](#startSDK)
+- [init](#init)
+- [enableDebug](#enableDebug)
+- [setLogLevel](#setLogLevel)
+- [start](#start)
+- [registerConversionListener](#registerConversionListener)
+- [unregisterConversionListener](#unregisterConversionListener)
+- [registerDeepLinkListener](#registerDeepLinkListener)
+- [unregisterDeeplinkListener](#unregisterDeeplinkListener)
 - [registerSessionReadyListener](#registerSessionReadyListener)
 - [unregisterSessionReadyListener](#unregisterSessionReadyListener)
 - [isSessionReady](#isSessionReady)
-- [onInstallConversionData](#onInstallConversionData)
-- [unregisterConversionDataListener](#unregisterConversionDataListener)
-- [onDeepLinking](#onDeepLinking)
+- [onSessionReady](#onSessionReady)
+- [onConversionDataSuccess](#onConversionDataSuccess)
+- [onConversionDataFailure](#onConversionDataFailure)
+- [onDeepLinkReceived](#onDeepLinkReceived)
 - [logEvent](#logEvent)
 - [logLocation](#logLocation)
 - [logSession](#logSession)
@@ -28,24 +43,28 @@
 - [setIsUpdate](#setIsUpdate)
 - [setCustomerUserId](#setCustomerUserId)
 - [setAdditionalData](#setAdditionalData)
-- [setCollectAndroidId](#setCollectAndroidId)
+- [setCollectAndroidID](#setCollectAndroidID)
 - [setHost](#setHost)
 - [getHostName](#getHostName)
 - [getHostPrefix](#getHostPrefix)
 - [updateServerUninstallToken](#updateServerUninstallToken)
 - [Validate Purchase](#validatePurchase)
-- [validateAndLogInAppPurchaseV2](#validatePurchaseV2)
+- [validateAndLogInAppPurchase](#validateAndLogInAppPurchase)
+- [setUseReceiptValidationSandbox](#setUseReceiptValidationSandbox)
+- [setUseUninstallSandbox](#setUseUninstallSandbox)
 - [sendPushNotificationData](#sendPushNotificationData)
+- [handlePushNotification](#handlePushNotification)
 - [addPushNotificationDeepLinkPath](#addPushNotificationDeepLinkPath)
 - [User Invite](#userInvite)
+- [setAppInviteOneLink](#setAppInviteOneLink)
+- [generateInviteLink](#generateInviteLink)
 - [enableFacebookDeferredApplinks](#enableFacebookDeferredApplinks)
 - [setFacebookDeferredAppLink](#setFacebookDeferredAppLink)
-- [enableTCFDataCollection](#enableTCFDataCollection)  <!-- New addition -->
-- [setConsentData](#setConsentData) - [DEPRECATED]
-- [setConsentDataV2](#setConsentDataV2)
-- [disableSKAdNetwork](#disableSKAdNetwork)
-- [disableAppleAdsAttribution](#disableAppleAdsAttribution)
-- [disableIDFVCollection](#disableIDFVCollection)
+- [enableTCFDataCollection](#enableTCFDataCollection)
+- [setConsentData](#setConsentData)
+- [setDisableSKAdNetwork](#setDisableSKAdNetwork)
+- [setDisableAppleAdsAttribution](#setDisableAppleAdsAttribution)
+- [setDisableIDFVCollection](#setDisableIDFVCollection)
 - [setShouldCollectDeviceName](#setShouldCollectDeviceName)
 - [isStopped](#isStopped)
 - [getAppsFlyerUID](#getAppsFlyerUID)
@@ -58,6 +77,7 @@
 - [setSharingFilterForPartners](#setSharingFilterForPartners)
 - [setOneLinkCustomDomain](#setOneLinkCustomDomain)
 - [setDisableAdvertisingIdentifiers](#setDisableAdvertisingIdentifiers)
+- [setDisableCollectASA](#setDisableCollectASA)
 - [setPartnerData](#setPartnerData)
 - [setResolveDeepLinkURLs](#setResolveDeepLinkURLs)
 - [setOutOfStore](#setOutOfStore)
@@ -67,112 +87,116 @@
 - [performDeepLinking](#performDeepLinking)
 - [appendParametersToDeepLinkingURL](#appendParametersToDeepLinkingURL)
 - [setDeepLinkTimeout](#setDeepLinkTimeout)
-- [Hashed PII setters](#setUserEmail) (setUserEmail / setUserPhone / setUserFirstName / setUserLastName / setUserFbLoginId / clearUserPii)
-- [logInvite](#userInvite)
-- [logAdRevenue](#logAdRevenue)  - Since 6.15.1
+- [Hashed PII setters](#setUserEmail)
+  - [setUserPhone](#setUserPhone)
+  - [setUserFirstName](#setUserFirstName)
+  - [setUserLastName](#setUserLastName)
+  - [setUserFbLoginId](#setUserFbLoginId)
+  - [clearUserPii](#clearUserPii)
+- [logInvite](#logInvite)
+- [Cross promotion](#crossPromotion)
+- [logCrossPromoteImpression](#logCrossPromoteImpression)
+- [logAndOpenStore](#logAndOpenStore)
+- [logAdRevenue](#logAdRevenue)
+- [getSdkVersion](#getSdkVersion)
+- [pluginVersion](#pluginVersion)
 
 
 ---
 
-##### <a id="appsflyer-options"> **`AppsflyerSdk(Map options)`**
+##### <a id="appsflyer-options"> **`AppsFlyerSdk.instance`**
 
-| parameter | type  | description       |
-| --------- | ----- | ----------------- |
-| `appsFlyerOptions` | `Map` | SDK configuration |
-
-**`options`**
-
-| Setting  | Type   | Description   |
-| -------- | -------- | ------------- |
-| devKey   | String | Your application's [devKey](https://support.appsflyer.com/hc/en-us/articles/207032066-Basic-SDK-integration-guide#retrieving-the-dev-key) provided by AppsFlyer (required)  |
-| appId      | String | Your application's [App ID](https://support.appsflyer.com/hc/en-us/articles/207377436-Adding-a-new-app#available-in-the-app-store-google-play-store-windows-phone-store)  (required for iOS only) that you configured in your AppsFlyer dashboard  |
-| showDebug   | bool | Debug mode - set to `true` for testing only, do not release to production with this parameter set to `true`! |
-| timeToWaitForATTUserAuthorization | double | Delays the SDK start for x seconds until the user either accepts the consent dialog, declines it, or the timer runs out. |
-| appInviteOneLink | String | The [OneLink template ID](https://support.appsflyer.com/hc/en-us/articles/115004480866-User-invite-attribution#parameters) that is used to generate a User Invite, this is not a required field in the `AppsFlyerOptions`, you may choose to set it later via the appropriate API. |
-| disableAdvertisingIdentifier| bool | Opt-out of the collection of Advertising Identifiers, which include OAID, AAID, GAID and IDFA. |
-| disableCollectASA | bool | Opt-out of the Apple Search Ads attributions. |
-
-
-
+`AppsFlyerSdk` is the cross-platform SDK entry point. Use its shared
+`instance`; configuration is exposed through explicit methods.
 
 _Example:_
 
 ```dart
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
-//..
 
-// When passing a Map, the debug key is "isDebug" (the AppsFlyerOptions object uses `showDebug`).
-Map appsFlyerOptions = { "afDevKey": afDevKey,
-                "afAppId": appId,
-                "isDebug": true};
-
-AppsflyerSdk appsflyerSdk = AppsflyerSdk(appsFlyerOptions);
-
+final AppsFlyerSdk appsflyerSdk = AppsFlyerSdk.instance;
 ```
 
-**Or you can use `AppsFlyerOptions` class instead**
+Once the instance is obtained, call `init`.
 
-##### **`AppsflyerSdk(AppsFlyerOptions options)`**
-
-| parameter | type               | description       |
-| --------- | ------------------ | ----------------- |
-| `appsFlyerOptions` | `AppsFlyerOptions` | SDK configuration |
-
-_Example:_
-
-```dart
-import 'package:appsflyer_sdk/appsflyer_sdk.dart';
-//..
-
-final AppsFlyerOptions options = AppsFlyerOptions(afDevKey: "af dev key",
-                                                  showDebug: true,
-                                                  appId: "123456789");
-```
-
-Once `AppsflyerSdk` object is created, you can call `initSdk` method.
-
----
-
-##### <a id="AdRevenueData"> **`AdRevenueData`**
-
-| parameter | type                | description       |
-| --------- | ------------------ | ----------------- |
-| `monetizationNetwork` | `String` |  |    
-| `mediationNetwork` | `String` | value must be taken from `AFMediationNetwork` |    
-| `currencyIso4217Code` | `String` |  |    
-| `revenue` | `double` |  | 
-| `additionalParameters` | `Map<String, dynamic>?` |  |    
-    
 ---
 
 ##### <a id="AFMediationNetwork"> **`AFMediationNetwork`**
 an enumeration that includes the supported mediation networks by AppsFlyer.
 
-
-| networks | 
+| networks |
 | -------- |
-| ironSource
-applovinMax
-googleAdMob
-fyber
-appodeal
-admost
-topon
-tradplus
-yandex
-chartboost
-unity
-toponPte
-customMediation
-directMonetizationNetwork     |
+| ironSource |
+| applovinMax |
+| googleAdMob |
+| fyber |
+| appodeal |
+| admost |
+| topon |
+| tradplus |
+| yandex |
+| chartboost |
+| unity |
+| toponPte |
+| customMediation |
+| directMonetizationNetwork |
+
+---
+
+##### <a id="AFLogLevel"> **`AFLogLevel`**
+
+An enumeration of the Android SDK logging levels: `none`, `error`, `warning`,
+`info`, `debug`, and `verbose`.
+
+---
+
+##### <a id="DeepLinkResult"> **`DeepLinkResult`**
+
+Contains a `DeepLinkStatus`, optional `DeepLink`, and optional
+`DeepLinkFailure`. Android supplies a stable failure type; iOS supplies a
+message.
+
+##### <a id="DeepLinkStatus"> **`DeepLinkStatus`**
+
+The deep-link resolution status: `found`, `notFound`, `error`, or `unknown`.
+
+##### <a id="DeepLinkFailure"> **`DeepLinkFailure`**
+
+Contains an optional Android error `type` or optional iOS error `message`.
+
+##### <a id="DeepLink"> **`DeepLink`**
+
+Provides the full `clickEvent` map, `getStringValue(String key)`, and typed
+getters for common Unified Deep Linking values such as `deepLinkValue`,
+`mediaSource`, `campaign`, `campaignId`, `afSub1` through `afSub5`, and
+`isDeferred`. `isDeferred` is reliable on Android; on iOS the native SDK does
+not forward an `is_deferred` flag on the click event, so it always returns
+`null` there.
+
+##### <a id="AppsFlyerException"> **`AppsFlyerException`**
+
+Contains an optional numeric error code and message. Native failures can use
+HTTP-style codes (`400`, `422`, `500`, …). When the platform supplies a
+non-numeric code, `code` is `null` and `message` carries the failure text.
+
+Calling a platform-only API on the wrong platform does not throw. The plugin
+logs a warning, skips the native call, and returns a safe default — `null` or
+`false` for APIs with a return value, and nothing for `void` APIs. This keeps
+cross-platform call sites free of platform branches without hiding the mistake.
 
 ---
 
 
-##### <a id="initSdk"> **`initSdk({bool registerConversionDataCallback, bool registerOnDeepLinkingCallback}) async` (Changed in 7.0.1)**
+<a id="initSdk"></a>
+##### <a id="init"> **`Future<void> init({required String devKey, String? appId})`**
 
-initialize the SDK, using the options initialized from the constructor|
-Return response object with the field `status`
+Initializes the native SDK without sending a session. `appId` is the Apple App
+ID required by iOS. It is optional and is not sent to the native SDK on Android.
+
+Throws `ArgumentError` for an empty `devKey` on either platform, and on iOS for
+a missing or empty `appId`. Dart validates these values before calling the
+native SDK and names the offending parameter. Invalid values that reach the
+native SDK are reported with error code `422`.
 
 _Example:_
 
@@ -180,50 +204,136 @@ _Example:_
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 //..
 
-AppsflyerSdk _appsflyerSdk = AppsflyerSdk({...});
-
-await _appsflyerSdk.initSdk(   
-  registerConversionDataCallback: true,
-  registerOnDeepLinkingCallback: true)
+final appsflyerSdk = AppsFlyerSdk.instance;
+await appsflyerSdk.init(
+  devKey: '<DEV_KEY>',
+  appId: '<APP_ID>',
+);
 ```
 
-> **Both calls are required for callbacks.** `registerConversionDataCallback` / `registerOnDeepLinkingCallback` only enable the **native** events; they do not register a Dart handler. You must **also** register the paired listener — [`onInstallConversionData`](#onInstallConversionData) and [`onDeepLinking`](#onDeepLinking) respectively — and do so **before** calling `initSdk` so the first event is not missed. A flag without its listener drops events silently; a listener without its flag never fires.
+Register conversion, deep-link, and session-ready listeners explicitly with
+their corresponding registration methods.
 
 ---
-##### <a id="startSDK"> **`void startSDK({RequestSuccessListener? onSuccess, RequestErrorListener? onError})`**
-With AppsFlyer SDK 7 the initialization and start stages are always separate. `initSdk(...)` only initializes the SDK; a session (Launch) is sent only when you call `appsFlyer.startSDK()`.
+**<a id="enableDebug"> `Future<void> enableDebug(bool enabled)`**
 
-Optionally pass `onSuccess` / `onError` to observe the start request result. `startSDK` and [`logEvent`](#logEvent) share the same request/response bridge (the native `AppsFlyerRequestListener`): the result arrives on the per-call reply — `onSuccess()` on a 200 OK, or `onError(errorCode, errorMessage)` with the SDK error otherwise. Passing no callback keeps the call fire-and-forget.
+Enables or disables native SDK debug logging. Enable it only for development
+and troubleshooting. May be called before [`init`](#init); call before
+[`start`](#start) so the first session uses the selected setting.
 
-**`startSDK()` must be called once per foreground cycle.** The native SDK resets its "started" state every time the app is backgrounded, so a single `startSDK()` at launch reports only the first session — subsequent foregrounds send nothing. Call `startSDK()` from inside the [`registerSessionReadyListener`](#registerSessionReadyListener) callback, which fires once per foreground cycle (after any launch deep link has resolved), so every foreground — including background→foreground — reports a session:
+```dart
+await appsflyerSdk.enableDebug(true);
+```
+
+---
+**<a id="setLogLevel"> `Future<void> setLogLevel(AFLogLevel logLevel)`** — **Android only**
+
+Sets the Android SDK logging level. On iOS the call is ignored with a logged
+warning. Use [`enableDebug`](#enableDebug) for a cross-platform debug toggle.
+
+```dart
+await appsflyerSdk.setLogLevel(AFLogLevel.debug);
+```
+
+---
+**<a id="registerConversionListener"> `Future<void> registerConversionListener()`**
+
+Registers the native conversion-data listener. Subscribe to
+`onConversionDataSuccess` and `onConversionDataFailure` first.
+
+```dart
+await appsflyerSdk.registerConversionListener();
+```
+
+---
+<a id="unregisterConversionDataListener"></a>
+**<a id="unregisterConversionListener"> `Future<void> unregisterConversionListener()`** — **Android only**
+
+Unregisters the native Android conversion-data listener. Call
+`registerConversionListener()` again to resume receiving conversion-data
+events. On iOS the call is ignored with a logged warning.
+
+```dart
+await appsflyerSdk.unregisterConversionListener();
+```
+
+---
+**<a id="registerDeepLinkListener"> `Future<void> registerDeepLinkListener()`**
+
+Registers the native Unified Deep Linking listener. Subscribe to
+`onDeepLinkReceived` first.
+
+```dart
+await appsflyerSdk.registerDeepLinkListener();
+```
+
+---
+**<a id="unregisterDeeplinkListener"> `Future<void> unregisterDeeplinkListener()`** — **Android only**
+
+Requests that Android stop forwarding Unified Deep Linking events. In the
+current Android integration, subsequent events may still be delivered; do not
+rely on this method to disable deep-link handling. On iOS the call is ignored
+with a logged warning.
+
+```dart
+await appsflyerSdk.unregisterDeeplinkListener();
+```
+
+---
+<a id="startSDK"></a>
+##### <a id="start"> **`Future<void> start({bool awaitResponse = false})`**
+In SDK 7, `init(...)` only initializes the SDK; it does not send a session
+(Launch). Call `start()` to report one. Unlike SDK 6, there is no `manualStart`
+option — initialization never triggers a session automatically.
+
+When `awaitResponse` is `true`, the Future completes when the native request
+succeeds and throws `AppsFlyerException` when it fails. A timeout does not
+cancel the native request, which may still succeed later.
+
+When `awaitResponse` is `false` (default), the Future completes when the
+native SDK accepts the request. Delivery success or failure is not reported.
+
+| parameter       | type   | description |
+| --------------- | ------ | ----------- |
+| `awaitResponse` | `bool` | Optional. Defaults to `false`. When `true`, wait for the native request callback. When `false`, return when the native SDK accepts the request. |
+
+**`start()` must be called once per foreground cycle.** The native SDK resets its "started" state every time the app is backgrounded, so a single `start()` at launch reports only the first session — subsequent foregrounds send nothing. Subscribe to `onSessionReady`, which fires once per foreground cycle when the native SDK's session-readiness conditions are satisfied:
 ```dart
 // Recommended SDK 7 pattern: start on every session-ready signal.
-_appsflyerSdk.registerSessionReadyListener((_) => _appsflyerSdk.startSDK());
-await _appsflyerSdk.initSdk(...);
+appsflyerSdk.onSessionReady.listen((_) async {
+  await appsflyerSdk.start();
+});
+await appsflyerSdk.registerSessionReadyListener();
 ```
-Gate the first session (e.g. on user consent or the Customer User ID) by deferring the `startSDK()` call inside the callback. Calling `startSDK()` more than once within the same foreground cycle is a no-op — the native SDK ignores the duplicate start.
+Gate the first session by deferring the `start()` call inside the stream
+listener.
 ---
-#### <a id="onInstallConversionData"> **`onInstallConversionData(Func)`
-- Trigger callback when onInstallConversionData is activated on the native side
-- **Requires both calls:** also pass `registerConversionDataCallback: true` to [`initSdk`](#initSdk), and register this callback **before** `initSdk`. The flag alone (without this callback), or this callback alone (without the flag), delivers no data.
-- The callback receives a `Map` (identical on Android and iOS): `status` is `"success"` or `"failure"`, and `payload` holds the conversion data on success (e.g. `af_status`, `media_source`, `campaign`, `is_first_launch`) or the error on failure (`payload` may be `null` when the native payload is empty). Both the success and failure native callbacks arrive here — branch on `status`.
+<a id="onInstallConversionData"></a>
+#### <a id="onConversionDataSuccess"> **`Stream<Map<String, dynamic>> get onConversionDataSuccess`**
+
+Emits successful conversion-data payloads. Subscribe before calling
+`registerConversionListener()`.
 
 _Example:_
 
 ```dart
-    _appsflyerSdk.onInstallConversionData((res) {
-      if (res['status'] == 'success') {
-        final data = res['payload'] as Map?;
-        print("conversion data: $data");
-      } else {
-        print("conversion data failed: ${res['payload']}");
-      }
-    });
+appsflyerSdk.onConversionDataSuccess.listen((data) {
+  print("conversion data: $data");
+});
+await appsflyerSdk.registerConversionListener();
 ```
 
-**<a id="unregisterConversionDataListener"> `void unregisterConversionDataListener()`** — removes the Dart observer registered by `onInstallConversionData`. **Observer-only** (same as [`unregisterSessionReadyListener`](#unregisterSessionReadyListener)): it stops Dart-side routing but does **not** tear down the native SDK listener (that is bound to `initSdk` and iOS has no native conversion-unregister). Rarely needed — GCD is delivered once per install. (Android ✓ · iOS ✓, observer-only on both.)
+**<a id="onConversionDataFailure"> `Stream<Map<String, dynamic>> get onConversionDataFailure`**
+emits the raw conversion-data failure payload reported by the native SDK. This
+event is independent of listener registration — `registerConversionListener()`
+itself already succeeded. The payload shape differs by platform: Android
+reports `{"error": String}` with no error code; iOS reports `{"error":
+String, "code": int}`. Cancel the Dart stream subscription when it is no
+longer needed. Android also exposes
+[`unregisterConversionListener()`](#unregisterConversionListener) to remove its
+native listener; iOS has no corresponding unregister operation.
 
-**<a id="getAttributionId"> `Future<String?> getAttributionId()`** — returns the Facebook (Katana) attribution ID the SDK reads from the installed Facebook app's on-device content provider (also attached to attribution payloads automatically). Most apps never need it directly; exposed for parity with the native SDK. **Android only** — there is no iOS equivalent (no iOS SDK property or RPC), so it resolves to `null` on iOS.
+**<a id="getAttributionId"> `Future<String?> getAttributionId()`** — returns the Facebook (Katana) attribution ID the SDK reads from the installed Facebook app's on-device content provider (also attached to attribution payloads automatically). Most apps never need it directly; exposed for parity with the native SDK. **Android only** — on iOS it logs a warning and returns `null`.
 
 _Example:_
 ```dart
@@ -232,67 +342,84 @@ appsFlyerSdk.getAttributionId().then((id) {
 });
 ```
 
-#### <a id="onDeepLinking"> **`onDeepLinking(Func)`
-- Trigger callback when onDeepLinking is activated on the native side
-- **Requires both calls:** also pass `registerOnDeepLinkingCallback: true` to [`initSdk`](#initSdk), and register this callback **before** `initSdk`. The flag alone (without this callback), or this callback alone (without the flag), delivers no deep links.
+<a id="onDeepLinking"></a>
+#### <a id="onDeepLinkReceived"> **`Stream<DeepLinkResult> get onDeepLinkReceived`**
+
+Emits Unified Deep Linking results. Subscribe before calling
+`registerDeepLinkListener()`.
 
 _Example:_
 
 ```dart
-    _appsflyerSdk.onDeepLinking((res) {
-      print("res: " + res.toString());
-    });
+appsflyerSdk.onDeepLinkReceived.listen((result) {
+  print("result: $result");
+});
+await appsflyerSdk.registerDeepLinkListener();
 ```
 
 ---
-##### <a id="logEvent"> **`void logEvent(String eventName, Map? eventValues, {RequestSuccessListener? onSuccess, RequestErrorListener? onError})`**
+##### <a id="logEvent"> **`Future<void> logEvent(String eventName, {Map<String, dynamic>? eventValues, bool awaitResponse = false})`**
 
 - These in-app events help you to understand how loyal users discover your app, and attribute them to specific
   campaigns/media-sources. Please take the time define the event/s you want to measure to allow you
   to send ROI (Return on Investment) and LTV (Lifetime Value).
 - The `logEvent` method allows you to send in-app events to AppsFlyer analytics. This method allows you to add events dynamically by adding them directly to the application code.
-- Result reporting mirrors [`startSDK`](#startSDK) (both are backed by the native `AppsFlyerRequestListener`).
+- Result reporting mirrors [`start`](#start); both accept `awaitResponse` and default to fire-and-forget acceptance by the native SDK.
 
 | parameter       | type     | description                                                                                                                                                                       |
 | --------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `eventName`     | `String` | Use descriptive, action-based names (e.g., "purchase", "add_to_cart", "level_completed"), keep names concise but meaningful, use lowercase with underscores for consistency and avoid special characters and spaces. See the [recommended event list by business](https://support.appsflyer.com/hc/en-us/articles/115005544169-In-app-events-Overview#recommended-events-by-business-vertical). |
-| `eventValues`   | `Map`    | event details                                                                                                                                                                     |
-| `onSuccess`     | `RequestSuccessListener?` | Optional. When provided, the native side waits for the SDK request result and invokes `onSuccess()` after the server accepts the event (HTTP 200). Passing no callback keeps the call fire-and-forget. |
-| `onError`       | `RequestErrorListener?`   | Optional. Invoked with `(int errorCode, String errorMessage)` when the request fails (e.g. codes 41/42 when logged before the SDK is initialized/started). When a callback is passed the native call blocks until the request completes (up to ~10s). |
+| `eventValues`   | `Map<String, dynamic>?` | Optional named event details |
+| `awaitResponse` | `bool` | Optional named parameter. Defaults to `false`. When `true`, wait for the native request callback. When `false`, return when the native SDK accepts the request. |
 
 _Example:_
 
 ```dart
-// Fire-and-forget.
-appsflyerSdk.logEvent(eventName, eventValues);
+try {
+  await appsflyerSdk.logEvent(
+    eventName,
+    eventValues: eventValues,
+    awaitResponse: true,
+  );
+  print("logEvent success");
+} on AppsFlyerException catch (error) {
+  print("logEvent error: $error");
+}
 
-// Observe the server request result (same pattern as startSDK).
-appsflyerSdk.logEvent(
+// Fire-and-forget:
+await appsflyerSdk.logEvent(
   eventName,
-  eventValues,
-  onSuccess: () => print("logEvent success"),
-  onError: (int code, String message) => print("logEvent error $code: $message"),
+  eventValues: eventValues,
+  awaitResponse: false,
 );
 ```
 
 ---
 
-##### <a id="logLocation"> **`void logLocation(double latitude, double longitude)`**
+##### <a id="logLocation"> **`Future<void> logLocation({required double latitude, required double longitude})`**
 
-Manually logs the device location for the current user. `latitude` must be within −90..90 and `longitude` within −180..180 (values outside the range are rejected by the native bridge). Fire-and-forget — dispatched without awaiting, so errors are not surfaced to Dart. Supported on Android and iOS.
+Manually logs the device location for the current user. The Future completes
+when the native SDK accepts the fire-and-forget call. Supported on Android
+and iOS. `latitude` must be between -90 and 90, and `longitude` must be between
+-180 and 180.
 
 ```dart
-appsflyerSdk.logLocation(32.0853, 34.7818);
+await appsflyerSdk.logLocation(
+  latitude: 32.0853,
+  longitude: 34.7818,
+);
 ```
 
 ---
 
-##### <a id="logSession"> **`void logSession()`**
+##### <a id="logSession"> **`Future<void> logSession()`**
 
-Manually logs a session — intended for utility apps that run in the background and need to report a session explicitly. **Android only**; iOS reports sessions through [`startSDK`](#startSDK) / the SDK 7 session model, so this is a no-op on iOS.
+Manually logs a session on Android. For typical Flutter apps, use
+[`start`](#start) when [`onSessionReady`](#onSessionReady) emits instead.
+**Android only**; on iOS the call is ignored with a logged warning.
 
 ```dart
-appsflyerSdk.logSession();
+await appsflyerSdk.logSession();
 ```
 
 ---
@@ -301,87 +428,95 @@ appsflyerSdk.logSession();
 
 ### Session readiness (SDK 7 session model)
 
-In SDK 7 the plugin initializes on [`initSdk`](#initSdk); a session is sent when
-the app calls [`startSDK`](#startSDK). Because the native SDK requires
-`start()` once per foreground cycle, `registerSessionReadyListener` is the
-recommended place to call `startSDK()`.
+In SDK 7 the plugin initializes on [`init`](#init); a session is sent when
+the app calls [`start`](#start). Because the native SDK requires `start()` once
+per foreground cycle, subscribe to `onSessionReady` before enabling the native
+listener.
 
-**<a id="registerSessionReadyListener"> `void registerSessionReadyListener(Function callback)`**
+**<a id="registerSessionReadyListener"> `Future<void> registerSessionReadyListener()`**
 
-Registers a callback invoked when the SDK reports it is ready to send a new
-session. It fires **once per foreground cycle**, after any launch deep link has
-resolved. Call `startSDK()` inside this callback so every foreground reports a
-session. The callback receives a `{status, payload}` map. Register **before**
-[`initSdk`](#initSdk) so the first signal is not missed; use
-[`isSessionReady`](#isSessionReady) to catch up if you register later.
+Enables the native readiness event. `onSessionReady` emits **once per foreground
+cycle** when the native session-readiness conditions are satisfied. These
+conditions can include bounded launch deep-link processing. Call `start()` from
+the stream listener so every foreground reports a session.
 
 ```dart
-_appsflyerSdk.registerSessionReadyListener((res) {
-  _appsflyerSdk.startSDK();
+appsflyerSdk.onSessionReady.listen((_) async {
+  await appsflyerSdk.start();
 });
+await appsflyerSdk.registerSessionReadyListener();
 ```
 
 Platform support: Android ✓ · iOS ✓.
 
-**<a id="unregisterSessionReadyListener"> `void unregisterSessionReadyListener()`** — removes the callback above (Android ✓ · iOS ✓).
+**<a id="onSessionReady"> `Stream<void> get onSessionReady`** — emits once per
+foreground cycle when the native SDK is ready for `start()`.
+
+**<a id="unregisterSessionReadyListener"> `Future<void> unregisterSessionReadyListener()`** — removes the native readiness listener (Android ✓ · iOS ✓).
 
 **<a id="isSessionReady"> `Future<bool> isSessionReady()`** — returns whether all
 session-readiness conditions are currently satisfied. Supported on both platforms.
 
 ```dart
-appsFlyerSdk.registerSessionReadyListener((res) => print("session ready: $res"));
+appsFlyerSdk.onSessionReady.listen((_) => print("session ready"));
+await appsFlyerSdk.registerSessionReadyListener();
 final ready = await appsFlyerSdk.isSessionReady();
 ```
 
 ### Setter persistence (SDK 7)
 
-In SDK 7 all `AppsFlyerLib` setter values are **runtime-only on both Android and
-iOS**. Android no longer persists setter values across process restarts, aligning
-its behavior with iOS and making the lifecycle predictable across platforms.
+The runtime/session configuration setters listed below are not a substitute for
+persistent application configuration. Re-apply them when the application
+process starts. Individual APIs can have different storage behavior; for
+example, Android persists the custom value supplied through `setInstallId`.
 
 Re-apply your configuration setters on **every cold start, before
-[`startSDK`](#startSDK)**, so they attach to that launch event:
+[`start`](#start)**, so they attach to that launch event:
 
 ```dart
-// Runs on every cold start (e.g. from initState), before the first startSDK().
-appsFlyerSdk.setCustomerUserId("user-42");
-appsFlyerSdk.setCurrencyCode("EUR");
-appsFlyerSdk.setAdditionalData({"tenant": "eu"});
-appsFlyerSdk.setConsentDataV2(isUserSubjectToGDPR: false);
+// Runs on every cold start (e.g. from initState), before the first start().
+await appsFlyerSdk.setCustomerUserId("user-42");
+await appsFlyerSdk.setCurrencyCode("EUR");
+await appsFlyerSdk.setAdditionalData({"tenant": "eu"});
+await appsFlyerSdk.setConsentData(
+  isUserSubjectToGDPR: false,
+);
 ```
 
 Within a running process the values persist across background→foreground, so you
-only re-apply them **once per cold start** — not on every `startSDK()`. Setters
+only re-apply them **once per cold start** — not on every `start()`. Setters
 that follow this rule include [`setCustomerUserId`](#setCustomerUserId),
 [`setCurrencyCode`](#setCurrencyCode), [`setAdditionalData`](#setAdditionalData),
-[`setConsentDataV2`](#setConsentDataV2), [`anonymizeUser`](#anonymizeUser),
+[`setConsentData`](#setConsentData), [`anonymizeUser`](#anonymizeUser),
 [`setSharingFilterForPartners`](#setSharingFilterForPartners),
 [`setHost`](#setHost), and the [hashed-PII](#setUserEmail) setters.
 
 ### Hashed PII
 
-The following setters normalize and hash (SHA-256) the value on-device before it
-is sent to AppsFlyer. Supported on Android and iOS.
+The email, phone, first-name, and last-name setters normalize and hash (SHA-256)
+their values on-device before sending them to AppsFlyer. The Facebook
+App-Scoped ID is numeric and is not hashed. These APIs are supported on Android
+and iOS.
 
 | API | Description |
 | --- | --- |
 | <a id="setUserEmail"></a>`setUserEmail(String email)` | Hash the user's email |
-| `setUserPhone(String countryCode, String phoneNumber)` | Hash the user's phone number |
-| `setUserFirstName(String firstName)` | Hash the user's first name |
-| `setUserLastName(String lastName)` | Hash the user's last name |
-| `setUserFbLoginId(String fbLoginId)` | Set the Facebook App-Scoped ID (numeric string, not hashed; non-numeric ignored; `"0"` clears it) |
-| `clearUserPii()` | Clear all previously set PII (hashed email/phone/name fields + the fb login id) |
+| <a id="setUserPhone"></a>`setUserPhone(String countryCode, String phoneNumber)` | Hash the user's phone number |
+| <a id="setUserFirstName"></a>`setUserFirstName(String firstName)` | Hash the user's first name |
+| <a id="setUserLastName"></a>`setUserLastName(String lastName)` | Hash the user's last name |
+| <a id="setUserFbLoginId"></a>`setUserFbLoginId(int fbLoginId)` | Set the numeric Facebook App-Scoped ID |
+| <a id="clearUserPii"></a>`clearUserPii()` | Clear all previously set PII (hashed email/phone/name fields + the fb login id) |
 
 ```dart
-appsFlyerSdk.setUserEmail("a@a.com");
-appsFlyerSdk.setUserPhone("1", "5551234567");
-appsFlyerSdk.clearUserPii();
+await appsFlyerSdk.setUserEmail("a@a.com");
+await appsFlyerSdk.setUserPhone("1", "5551234567");
+await appsFlyerSdk.clearUserPii();
 ```
 
 ---
 
 ## Other functionalities:
-**<a id="anonymizeUser"> `anonymizeUser(shouldAnonymize)`**
+**<a id="anonymizeUser"> `Future<void> anonymizeUser(bool shouldAnonymize)`**
 
 It is possible to anonymize specific user identifiers within AppsFlyer analytics.</br>
 This complies with both the latest privacy requirements (GDPR, COPPA) and Facebook's data and privacy policies. To anonymize an app user.
@@ -391,186 +526,158 @@ This complies with both the latest privacy requirements (GDPR, COPPA) and Facebo
 
 _Example:_
 ```dart
-appsFlyerSdk.anonymizeUser(true);
+await appsFlyerSdk.anonymizeUser(true);
 ```
 ---
-**<a id="setMinTimeBetweenSessions"> `void setMinTimeBetweenSessions(int seconds)`**
+**<a id="setMinTimeBetweenSessions"> `Future<void> setMinTimeBetweenSessions(int seconds)`**
 You can set the minimum time between session (the default is 5 seconds)
 ```dart
-appsFlyerSdk.setMinTimeBetweenSessions(3)
+await appsFlyerSdk.setMinTimeBetweenSessions(3);
 ```
 ---
-**<a id="stop"> `void stop(bool isStopped)`**
+**<a id="stop"> `Future<void> stop(bool shouldStop)`**
 You can stop sending events to Appsflyer by using this method.
 
 _Example:_
 ```dart
-widget.appsFlyerSdk.stop(true);
+await widget.appsFlyerSdk.stop(true);
 ```
 ---
-**<a id="isStopped"> `Future<bool?> isStopped() async`** — **Android only**
+**<a id="isStopped"> `Future<bool> isStopped()`** — **Android only**
 
-Returns whether the SDK is currently stopped (see `stop`). Returns `null` on iOS — the iOS RPC has no `isStopped` getter.
+Returns whether the SDK is currently stopped (see `stop`). On iOS it logs a
+warning and returns `false`.
 
 _Example:_
 ```dart
 final stopped = await appsFlyerSdk.isStopped();
 ```
 ---
-**<a id="setCurrencyCode"> `void setCurrencyCode(String currencyCode)`**
+**<a id="setCurrencyCode"> `Future<void> setCurrencyCode(String currencyCode)`**
 
 _Example:_
 ```dart
-appsFlyerSdk.setCurrencyCode("currencyCode");
+await appsFlyerSdk.setCurrencyCode("USD");
 ```
 ---
-**<a id="setIsUpdate"> `void setIsUpdate(bool isUpdate)`**
+**<a id="setIsUpdate"> `Future<void> setIsUpdate(bool isUpdate)`** — **Android only**
 
 _Example:_
 ```dart
-appsFlyerSdk.setIsUpdate(true);
+await appsFlyerSdk.setIsUpdate(true);
 ```
 ---
-**<a id="enableTCFDataCollection"> `enableTCFDataCollection(bool shouldCollect)`**
+**<a id="enableTCFDataCollection"> `Future<void> enableTCFDataCollection(bool shouldCollect)`**
 
 The `enableTCFDataCollection` method is employed to control the automatic collection of the Transparency and Consent Framework (TCF) data. By setting this flag to `true`, the system is instructed to automatically collect TCF data. Conversely, setting it to `false` prevents such data collection.
 
 _Example:_
 ```dart
-appsFlyerSdk.enableTCFDataCollection(true);
+await appsFlyerSdk.enableTCFDataCollection(true);
 ```
 ---
-**<a id="setConsentData"> `void setConsentData(AppsFlyerConsent consentData)`** *Deprecated — use [`setConsentDataV2`](#setConsentDataV2)*
+<a id="setConsentDataV2"></a>
+**<a id="setConsentData"> `Future<void> setConsentData({required bool isUserSubjectToGDPR, bool? hasConsentForDataUsage, bool? hasConsentForAdsPersonalization, bool? hasConsentForAdStorage})`**
 
-The `AppsflyerConsent` object helps manage user consent settings. By using the setConsentData we able to manually collect the TCF data. You can create an instance for users subject to GDPR or otherwise:
+### Sets user consent preferences for GDPR and ad personalization
+
+The named parameters provide manual GDPR and DMA consent data. For a complete workflow,
+see the [DMA compliance documentation](consent-dma.md).
 
 1. Users subjected to GDPR:
 
 ```dart
-var forGdpr = AppsFlyerConsent.forGDPRUser(
-    hasConsentForDataUsage: true, 
-    hasConsentForAdsPersonalization: true
+await appsflyerSdk.setConsentData(
+  isUserSubjectToGDPR: true,
+  hasConsentForDataUsage: true,
+  hasConsentForAdsPersonalization: true,
+  hasConsentForAdStorage: true,
 );
-_appsflyerSdk.setConsentData(forGdpr);
 ```
 
 2. Users not subject to GDPR:
 
 ```dart
-var nonGdpr = AppsFlyerConsent.nonGDPRUser();
-_appsflyerSdk.setConsentData(nonGdpr);
-```
-
-The `_appsflyerSdk` handles consent data with `setConsentData` method, where you can pass the desired `AppsflyerConsent` instance.
-
----
-To reflect TCF data in the conversion (first launch) payload, it's crucial to configure `enableTCFDataCollection` **or** [`setConsentDataV2`](#setConsentDataV2) between the SDK initialization and start phase. Follow the example provided:
-
-```dart
-// Set AppsFlyerOption - the SDK is always started explicitly via startSDK()
-final AppsFlyerOptions options = AppsFlyerOptions(
-        afDevKey: dotenv.env["DEV_KEY"]!,
-        appId: dotenv.env["APP_ID"]!,
-        showDebug: true,
-        timeToWaitForATTUserAuthorization: 15);
-_appsflyerSdk = AppsflyerSdk(options);
-
-// Init the AppsFlyer SDK
-_appsflyerSdk.initSdk(
-    registerConversionDataCallback: true,
-    registerOnDeepLinkingCallback: true);
-
-// Set configurations to the SDK
-// Enable TCF Data Collection
-_appsflyerSdk.enableTCFDataCollection(true);
-
-// Set Consent Data (recommended: setConsentDataV2)
-// If user is subject to GDPR
-// _appsflyerSdk.setConsentDataV2(
-//   isUserSubjectToGDPR: true,
-//   consentForDataUsage: true,
-//   consentForAdsPersonalization: true);
-
-// If user is not subject to GDPR
-_appsflyerSdk.setConsentDataV2(isUserSubjectToGDPR: false);
-
-// Here we start a session
-_appsflyerSdk.startSDK(); 
-```
-
-Following this sequence ensures that the consent configurations take effect before the AppsFlyer SDK starts, providing accurate consent data in the first launch payload.
-Note: You need to use either `enableTCFDataCollection` or `setConsentDataV2` — if you use both, our backend prioritizes the consent data provided via `setConsentDataV2`.
-
----
-**<a id="setConsentDataV2"> `setConsentDataV2({required bool isUserSubjectToGDPR, bool? consentForDataUsage, bool? consentForAdsPersonalization, bool? hasConsentForAdStorage})`**
-
-### Sets user consent preferences for GDPR and ad personalization
-
-> ⚠️ This method replaces the deprecated `setConsentData` - for a complete guide, see our [DMA compliance documentation](consent-dma.md).
-
-Use this method to provide the user's consent settings to the AppsFlyer SDK. `isUserSubjectToGDPR` is **required**. When it is `true`, both `consentForDataUsage` and `consentForAdsPersonalization` are **also required** — an `ArgumentError` is thrown if either is omitted. This mirrors the native iOS contract (which rejects a GDPR-subject consent that omits them) and keeps Android and iOS consistent. When it is `false` (non-GDPR user), the consent flags are ignored and may be omitted.
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `isUserSubjectToGDPR` | `bool` (required) | Whether the user is subject to GDPR regulations |
-| `consentForDataUsage` | `bool?` | Whether the user consents to data usage by AppsFlyer (required when `isUserSubjectToGDPR` is `true`) |
-| `consentForAdsPersonalization` | `bool?` | Whether the user consents to personalized advertising (required when `isUserSubjectToGDPR` is `true`) |
-| `hasConsentForAdStorage` | `bool?` | Whether the user consents to ad storage (optional) |
-
-> 📝 **Note:** Provide the user's current consent on every app start, **before** `startSDK()` — the SDK does not persist consent across sessions.
-
-_Example (GDPR user):_
-```dart
-appsflyerSdk.setConsentDataV2(
-  isUserSubjectToGDPR: true,
-  consentForDataUsage: true,
-  consentForAdsPersonalization: false,
-  hasConsentForAdStorage: true,
+await appsflyerSdk.setConsentData(
+  isUserSubjectToGDPR: false,
 );
 ```
 
-_Example (non-GDPR user):_
+When GDPR applies, `hasConsentForDataUsage` and
+`hasConsentForAdsPersonalization` are required. The optional
+`hasConsentForAdStorage` value represents whether the user consented to
+ad-related storage.
+
+To reflect consent in the conversion payload, configure either
+`enableTCFDataCollection` or `setConsentData` after initialization and
+before the first `start()`:
+
 ```dart
-appsflyerSdk.setConsentDataV2(isUserSubjectToGDPR: false);
+final appsflyerSdk = AppsFlyerSdk.instance;
+await appsflyerSdk.init(
+  devKey: '<DEV_KEY>',
+  appId: '<APP_ID>',
+);
+
+await appsflyerSdk.setConsentData(
+  isUserSubjectToGDPR: true,
+  hasConsentForDataUsage: true,
+  hasConsentForAdsPersonalization: true,
+);
+
+appsflyerSdk.onSessionReady.listen((_) async {
+  await appsflyerSdk.start();
+});
+await appsflyerSdk.registerSessionReadyListener();
 ```
+
+If both TCF collection and explicit consent are used, AppsFlyer backend
+prioritizes the explicit data supplied through `setConsentData`.
+
 ---
-**<a id="setCustomerUserId"> `void setCustomerUserId(String userId)`**
+**<a id="setCustomerUserId"> `Future<void> setCustomerUserId(String customerId)`**
 
 [What is customer user id?](https://support.appsflyer.com/hc/en-us/articles/207032016-Customer-User-ID)
 
 _Example:_
 ```dart
-appsFlyerSdk.setCustomerUserId("id");
+await appsFlyerSdk.setCustomerUserId("id");
 ```
 ---
-**<a id="setAdditionalData"> `void setAdditionalData(Map<String, dynamic> customData)`**
+**<a id="setAdditionalData"> `Future<void> setAdditionalData(Map<String, dynamic> customData)`**
 
-`customData` must be non-null (the iOS RPC rejects a missing map, dropping the call there); pass an empty map to clear.
+`customData` must be non-null; pass an empty map to clear the data.
 
 _Example:_
 ```dart
 var data = {"key1": "value1", "key2": "value2"};
-appsFlyerSdk.setAdditionalData(data);
+await appsFlyerSdk.setAdditionalData(data);
 ```
 ---
-**<a id="setCollectAndroidId"> `void setCollectAndroidId(bool isCollect)`**
+<a id="setCollectAndroidId"></a>
+**<a id="setCollectAndroidID"> `Future<void> setCollectAndroidID(bool isCollect)`** — **Android only**
 
 _Example:_
 ```dart
-appsFlyerSdk.setCollectAndroidId(true);
+await appsFlyerSdk.setCollectAndroidID(true);
 ```
 ---
-**<a id="setHost"> `void setHost(String hostPrefix, String hostName)`**
-You can change the default host (appsflyer) by using this function. Both `hostPrefix` and `hostName` must be non-empty — the iOS RPC rejects an empty prefix, so the call is a no-op on both platforms when either value is empty.
+**<a id="setHost"> `Future<void> setHost(String hostPrefixName, String hostName)`**
+
+Changes the default AppsFlyer host. Use this method only when instructed by
+AppsFlyer Support.
+
+- **Android:** `hostName` must be non-empty. `hostPrefixName` may be empty.
+- **iOS:** both `hostPrefixName` and `hostName` must be non-empty.
+
+Invalid arguments are reported as `AppsFlyerException`.
 
 _Example:_
 ```dart
-appsFlyerSdk.setHost("pref", "my-host");
+await appsFlyerSdk.setHost("pref", "my-host");
 ```
 ---
-**<a id="getHostName"> `Future<String> getHostName()`**
+**<a id="getHostName"> `Future<String?> getHostName()`** — **Android only**
 
 _Example:_
 ```dart
@@ -579,7 +686,7 @@ appsFlyerSdk.getHostName().then((name) {
        });
 ```
 ---
-**<a id="getHostPrefix"> `Future<String> getHostPrefix()`**
+**<a id="getHostPrefix"> `Future<String?> getHostPrefix()`** — **Android only**
 
 _Example:_
 ```dart
@@ -588,63 +695,96 @@ appsFlyerSdk.getHostPrefix().then((name) {
        });
 ```
 ---
-**<a id="updateServerUninstallToken"> `void updateServerUninstallToken(String token)`**
+**<a id="updateServerUninstallToken"> `Future<void> updateServerUninstallToken(String token)`**
 
-Token format differs per platform: on **Android** pass the FCM/GCM registration token as-is; on **iOS** pass the APNs device token **hex-encoded** as an even-length string (a non-hex string is rejected natively). On iOS, `getAPNSToken()` already returns the token in hex form.
+Registers a token for uninstall measurement. Pass an FCM registration token on
+Android or a hexadecimal APNs device token on iOS.
+
+Token format differs per platform: on **Android** pass the FCM/GCM registration
+token as-is; on **iOS** pass the APNs device token **hex-encoded** as an
+even-length string (a non-hex string is rejected natively). On iOS,
+`getAPNSToken()` already returns the token in hex form.
 
 _Example:_
 ```dart
-appsFlyerSdk.updateServerUninstallToken("token");
+await appsFlyerSdk.updateServerUninstallToken(token);
 ```
 ---
 **<a id="validatePurchase"> Validate Purchase**
 
-***Cross-Platform V2 API (Recommended - BETA):***
+***Cross-platform API:***
 
-> ⚠️ **BETA Feature**: This API is currently in beta. While it's stable and recommended for new implementations, please test thoroughly in your environment before production use.
+**<a id="validateAndLogInAppPurchase"> `Future<Map<String, dynamic>> validateAndLogInAppPurchase(AFPurchaseDetails purchase, {Map<String, String>? additionalParameters, bool awaitResponse = true})`**
 
-**`Future<Map<String, dynamic>> validateAndLogInAppPurchaseV2(AFPurchaseDetails purchaseDetails, {Map<String, String>? additionalParameters})`**
-
-The new unified purchase validation API that works across both Android and iOS platforms. This is the recommended approach for validating in-app purchases.
+The unified purchase validation API works across Android and iOS. Use the
+purchase-details implementation for the current platform.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `purchaseDetails` | `AFPurchaseDetails` | Purchase details containing type, token, and product ID |
+| `purchase` | `AFPurchaseDetails` | An `AFAndroidPurchaseDetails` or `AFIOSPurchaseDetails` instance |
 | `additionalParameters` | `Map<String, String>?` | Optional additional parameters |
+| `awaitResponse` | `bool` | Optional. Defaults to `true`. Android honors this value; iOS always waits for completion. |
 
-**AFPurchaseDetails:**
+With `awaitResponse: true`, the Future waits for the native validation result.
+On Android, `awaitResponse: false` starts validation without a result callback
+and the Future completes with an empty map. On iOS, validation always waits for
+completion and returns its result.
+
+<a id="AFPurchaseDetails"></a>
+**AFPurchaseDetails interface:**
 | Property | Type | Description |
 |----------|------|-------------|
 | `purchaseType` | `AFPurchaseType` | Type of purchase (oneTimePurchase or subscription) |
-| `purchaseToken` | `String` | Purchase token from the app store |
 | `productId` | `String` | Product identifier |
 
+<a id="AFAndroidPurchaseDetails"></a>
+**AFAndroidPurchaseDetails:**
+| Property | Type | Description |
+|----------|------|-------------|
+| `purchaseType` | `AFPurchaseType` | Type of Google Play purchase |
+| `purchaseToken` | `String` | Google Play purchase token |
+| `productId` | `String` | Product identifier |
+
+<a id="AFIOSPurchaseDetails"></a>
+**AFIOSPurchaseDetails:**
+| Property | Type | Description |
+|----------|------|-------------|
+| `purchaseType` | `AFPurchaseType` | Type of App Store purchase |
+| `transactionId` | `String` | App Store transaction ID |
+| `productId` | `String` | Product identifier |
+
+<a id="AFPurchaseType"></a>
 **AFPurchaseType:**
 - `AFPurchaseType.oneTimePurchase` - For one-time in-app purchases
 - `AFPurchaseType.subscription` - For subscription purchases
 
 _Example:_
 ```dart
-// Create purchase details
-AFPurchaseDetails purchaseDetails = AFPurchaseDetails(
-  purchaseType: AFPurchaseType.oneTimePurchase,
-  purchaseToken: "your_purchase_token",
-  productId: "your_product_id",
-);
+final AFPurchaseDetails purchaseDetails = Platform.isAndroid
+    ? const AFAndroidPurchaseDetails(
+        purchaseType: AFPurchaseType.oneTimePurchase,
+        purchaseToken: "your_purchase_token",
+        productId: "your_product_id",
+      )
+    : const AFIOSPurchaseDetails(
+        purchaseType: AFPurchaseType.oneTimePurchase,
+        transactionId: "your_transaction_id",
+        productId: "your_product_id",
+      );
 
 // Validate purchase
 try {
-  Map<String, dynamic> result = await appsFlyerSdk.validateAndLogInAppPurchaseV2(
+  Map<String, dynamic> result = await appsFlyerSdk.validateAndLogInAppPurchase(
     purchaseDetails,
-    additionalParameters: {"custom_param": "value"}
+    additionalParameters: {"custom_param": "value"},
+    awaitResponse: true,
   );
   print("Validation successful: $result");
-} on PlatformException catch (e) {
-  // Structured error information; on iOS `e.details` may include the NSError
-  // code / domain / user info.
-  print("Validation failed: ${e.code} ${e.message}");
-} catch (e) {
-  print("Validation failed: $e");
+} on AppsFlyerException catch (error) {
+  print("Validation failed: $error");
+} on ArgumentError catch (error) {
+  // A purchase-details object was used on the wrong platform.
+  print("Invalid purchase details: $error");
 }
 ```
 
@@ -653,51 +793,68 @@ try {
 - **Type safety**: Uses structured data classes instead of platform-specific parameters
 - **Enhanced error handling**: Provides detailed error information in structured format (including `NSError` details on iOS)
 - **Future-proof**: Built on AppsFlyer's latest V2 validation infrastructure
-- **Automatic routing**: Automatically routes to the correct validation endpoint based on purchase type
+- **Platform mapping**: Each purchase-details implementation uses the
+  corresponding Android or iOS purchase-validation model
 
 ---
 
 ***Purchase validation sandbox mode for iOS:***
 
-`void useReceiptValidationSandbox(bool isSandboxEnabled)` — **iOS only**
+<a id="setUseReceiptValidationSandbox"></a>
+`Future<void> setUseReceiptValidationSandbox(bool sandbox)` — **iOS only**
 
 Enables sandbox mode for App Store receipt validation.
 
 _Example:_
 ```dart
-appsFlyerSdk.useReceiptValidationSandbox(true);
+await appsFlyerSdk.setUseReceiptValidationSandbox(true);
 ```
 
-`void useUninstallSandbox(bool isSandboxEnabled)` — **iOS only**
+<a id="setUseUninstallSandbox"></a>
+`Future<void> setUseUninstallSandbox(bool sandbox)` — **iOS only**
 
-Enables sandbox mode for uninstall-measurement validation (companion of `useReceiptValidationSandbox`).
+Enables sandbox mode for uninstall-measurement validation (companion of `setUseReceiptValidationSandbox`).
 
 _Example:_
 ```dart
-appsFlyerSdk.useUninstallSandbox(true);
+await appsFlyerSdk.setUseUninstallSandbox(true);
 ```
 
 ---
 
 <a id="validatePurchaseV2"></a>
-##### **validateAndLogInAppPurchaseV2 (Recommended - BETA)**
+##### **validateAndLogInAppPurchase**
 
-See [Validate Purchase](#validatePurchase) above for the full `validateAndLogInAppPurchaseV2` reference — signature, `AFPurchaseDetails` / `AFPurchaseType`, example, key benefits, and the iOS sandbox toggles. This anchor is kept for existing links.
+See [Validate Purchase](#validatePurchase) above for the full `validateAndLogInAppPurchase` reference — signature, `AFPurchaseDetails` / `AFPurchaseType`, example, key benefits, and the iOS sandbox toggles. This anchor is kept for existing links.
 
 ---
-## **<a id="sendPushNotificationData"> `void sendPushNotificationData(Map? userInfo)`**
+## **<a id="sendPushNotificationData"> `Future<void> sendPushNotificationData({required String campaign, required String pid, bool isRetargeting = false, Map<String, dynamic>? additionalParameters})`** _(Android only)_
 
 Push-notification campaigns are used to create re-engagements with existing users → [Learn more here](https://support.appsflyer.com/hc/en-us/articles/207364076-Measuring-Push-Notification-Re-Engagement-Campaigns)
+
+The Android API maps directly to the native `AFPushData` fields.
+Calling it triggers a new Android Launch request even when the SDK already sent
+a Launch in the current session.
+
+## **<a id="handlePushNotification"> `Future<void> handlePushNotification(Map<String, dynamic> pushPayload)`** _(iOS only)_
+
+Passes the push-notification payload to the iOS SDK. Preserve the AppsFlyer
+custom-data structure from the notification; native integrations should pass
+the complete APNs `userInfo` dictionary.
 
 ### Platform-Specific Requirements
 
 🟩 **Android:**  
-The AppsFlyer SDK **requires a valid Activity context** to process the push payload.
-**Do NOT call this method from the background isolate** (e.g., `_firebaseMessagingBackgroundHandler`), as the activity is not yet created.
-Instead, **delay calling this method** until the Flutter app is fully resumed and the activity is alive.
+Call `sendPushNotificationData` with `campaign` and `pid`, plus optional
+`isRetargeting` and `additionalParameters` values.
 
 🍎 **iOS:**  
-This method can be safely called at any point during app launch or when receiving a push notification.
+Call `handlePushNotification` with the complete notification payload.
+
+When using `firebase_messaging`, `RemoteMessage.data` contains only the custom
+data fields, not the complete APNs `userInfo` dictionary. Ensure that every
+AppsFlyer attribution field is present in that custom data. If your provider
+encodes a nested object as a JSON string, decode it before reading its fields.
 
 ---
 
@@ -723,43 +880,52 @@ Use this approach when your push payload contains a custom `af` object with attr
     "alert": "Get 5000 Coins",
     "badge": "37",
     "sound": "default"
-  }
+}
 }
 ```
 
-**Implementation (Android & iOS):**
+**Implementation:**
 
 ```dart
+Future<void> passPushToAppsFlyer(Map<String, dynamic> data) async {
+  if (Platform.isAndroid) {
+    final rawAf = data['af'];
+    final decodedAf = rawAf is String ? jsonDecode(rawAf) : rawAf;
+    final af = Map<String, dynamic>.from(decodedAf as Map);
+    await appsFlyerSdk.sendPushNotificationData(
+      campaign: af['c'] as String,
+      pid: af['pid'] as String,
+      isRetargeting: af['is_retargeting'] == true,
+    );
+  } else if (Platform.isIOS) {
+    await appsFlyerSdk.handlePushNotification(data);
+  }
+}
+
 // 1️⃣ Handle Foreground Messages
-FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-  appsFlyerSdk.sendPushNotificationData(message.data);
+FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+  await passPushToAppsFlyer(message.data);
 });
 
 // 2️⃣ Handle Notification Taps (App in Background)
-FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-  appsFlyerSdk.sendPushNotificationData(message.data);
+FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) async {
+  await passPushToAppsFlyer(message.data);
 });
 
 // 3️⃣ Handle App Launch from Push (Terminated State)
-// Store payload in background handler, then pass to AppsFlyer when app resumes
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('pending_af_push', jsonEncode(message.data));
-}
-
-// In your main() or splash screen after Flutter is initialized:
-void handlePendingPush() async {
-  final prefs = await SharedPreferences.getInstance();
-  final json = prefs.getString('pending_af_push');
-  if (json != null) {
-    final payload = jsonDecode(json);
-    appsFlyerSdk.sendPushNotificationData(payload);
-    await prefs.remove('pending_af_push');
+Future<void> handleInitialPush() async {
+  final message = await FirebaseMessaging.instance.getInitialMessage();
+  if (message != null) {
+    await passPushToAppsFlyer(message.data);
   }
 }
 ```
 
-Call `handlePendingPush()` during app startup (e.g., in your `main()` or inside your splash screen after ensuring Flutter is initialized).
+Call `handleInitialPush()` once during app startup, after Flutter is initialized
+and the AppsFlyer SDK setup has completed. `getInitialMessage()` returns the
+notification that opened an app from the terminated state. A Firebase
+background-message handler is a separate flow and is not required to handle a
+notification tap that launches the app.
 
 ---
 
@@ -771,17 +937,23 @@ Use this approach when your push payload contains a **OneLink URL** for deep lin
 
 #### **Step 1: Configure Deep Link Path (BOTH Platforms)**
 
-Call `addPushNotificationDeepLinkPath` **BEFORE** initializing the SDK to tell AppsFlyer where to find the OneLink URL in your push payload.
+Call `addPushNotificationDeepLinkPath` before `init()` to tell AppsFlyer where
+to find the OneLink URL in your push payload.
 
 ```dart
-// Must be called BEFORE initSdk() or startSDK()
-appsFlyerSdk.addPushNotificationDeepLinkPath(["deeply", "nested", "deep_link"]);
-
-// Then initialize the SDK
-await appsFlyerSdk.initSdk(
-  registerOnDeepLinkingCallback: true  // Enable deep linking callback
+await appsFlyerSdk.addPushNotificationDeepLinkPath(
+  ["deeply", "nested", "deep_link"],
 );
+await appsFlyerSdk.init(
+  devKey: '<DEV_KEY>',
+  appId: '<APP_ID>',
+);
+await appsFlyerSdk.registerDeepLinkListener();
 ```
+
+Push configuration does not replace the SDK 7 session lifecycle. Complete the
+normal [`onSessionReady` → `start()` setup](getting-started.md#6-start-sessions)
+so the initial Launch and every later foreground session are reported.
 
 #### **Step 2: Send Push Payload to SDK**
 
@@ -789,7 +961,7 @@ await appsFlyerSdk.initSdk(
 On Android, calling `addPushNotificationDeepLinkPath` is **sufficient**. The SDK automatically extracts and processes the OneLink URL.
 
 **🍎 iOS:**  
-On iOS, you **MUST also call** `sendPushNotificationData(userInfo)` to pass the push payload to the SDK. The SDK then internally calls `handlePushNotification` to extract and process the OneLink URL.
+On iOS, you **MUST also call** `handlePushNotification(pushPayload)` to pass the push payload to the SDK so it can extract and process the OneLink URL.
 
 📦 **Example Push Payload with OneLink URL:**
 ```json
@@ -813,95 +985,116 @@ On iOS, you **MUST also call** `sendPushNotificationData(userInfo)` to pass the 
 // ========================================
 // 1. Configure SDK (in main.dart or app initialization)
 // ========================================
-void initializeAppsFlyer() async {
-  // STEP 1: Configure the deep link path BEFORE starting SDK
-  appsFlyerSdk.addPushNotificationDeepLinkPath(["deeply", "nested", "deep_link"]);
-  
-  // STEP 2: Initialize SDK with deep linking callback
-  await appsFlyerSdk.initSdk(
-    registerOnDeepLinkingCallback: true
-  );
-  
-  // STEP 3: Set up deep linking callback to handle the OneLink URL
-  appsFlyerSdk.onDeepLinking((DeepLinkResult result) {
-    if (result.status == Status.FOUND) {
+Future<void> initializeAppsFlyer() async {
+  // STEP 1: Subscribe before registering the corresponding native listeners.
+  appsFlyerSdk.onDeepLinkReceived.listen((DeepLinkResult result) {
+    if (result.status == DeepLinkStatus.found) {
       print("Deep link found: ${result.deepLink?.deepLinkValue}");
-      // Handle deep link navigation here
+      // Handle deep-link navigation here.
     }
   });
+
+  // Required: report a session on every foreground cycle.
+  appsFlyerSdk.onSessionReady.listen((_) async {
+    try {
+      await appsFlyerSdk.start(awaitResponse: true);
+      print("AppsFlyer session reported.");
+    } on AppsFlyerException catch (error) {
+      print("AppsFlyer start error: $error");
+    }
+  });
+
+  // STEP 2: Configure the deep-link path before init().
+  await appsFlyerSdk.addPushNotificationDeepLinkPath(
+    ["deeply", "nested", "deep_link"],
+  );
+
+  // STEP 3: Initialize the SDK.
+  await appsFlyerSdk.init(
+    devKey: '<DEV_KEY>',
+    appId: '<APP_ID>',
+  );
+
+  // STEP 4: Enable native deep-link events.
+  await appsFlyerSdk.registerDeepLinkListener();
+
+  // STEP 5: Register last because this can emit onSessionReady immediately.
+  await appsFlyerSdk.registerSessionReadyListener();
 }
 
 // ========================================
 // 2. Handle Push Notifications
 // ========================================
 
-// 🍎 iOS: MUST call sendPushNotificationData
-// 🟩 Android: Optional (SDK auto-handles), but recommended for consistency
+// 🍎 iOS: MUST call handlePushNotification
+// 🟩 Android: addPushNotificationDeepLinkPath is sufficient
 
 // 1️⃣ Foreground Messages
-FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
   // iOS: Required to process OneLink URL
-  // Android: SDK processes automatically, but calling doesn't hurt
-  appsFlyerSdk.sendPushNotificationData(message.data);
+  if (Platform.isIOS) {
+    await appsFlyerSdk.handlePushNotification(message.data);
+  }
 });
 
 // 2️⃣ Background Notification Taps (App in Background)
-FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) async {
   // iOS: Required to process OneLink URL
-  appsFlyerSdk.sendPushNotificationData(message.data);
+  if (Platform.isIOS) {
+    await appsFlyerSdk.handlePushNotification(message.data);
+  }
 });
 
 // 3️⃣ App Launch from Push (Terminated State)
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('pending_af_push', jsonEncode(message.data));
-}
-
-// In main() or splash screen:
-void handlePendingPush() async {
-  final prefs = await SharedPreferences.getInstance();
-  final json = prefs.getString('pending_af_push');
-  if (json != null) {
-    final payload = jsonDecode(json);
+Future<void> handleInitialPush() async {
+  final message = await FirebaseMessaging.instance.getInitialMessage();
+  if (message != null) {
     // iOS: Required to process OneLink URL from terminated state
-    appsFlyerSdk.sendPushNotificationData(payload);
-    await prefs.remove('pending_af_push');
+    if (Platform.isIOS) {
+      await appsFlyerSdk.handlePushNotification(message.data);
+    }
   }
 }
 ```
+
+Call `handleInitialPush()` once after `initializeAppsFlyer()` completes. On
+Android, `addPushNotificationDeepLinkPath()` handles the configured OneLink path;
+the explicit terminated-state forwarding above is required only on iOS.
 
 #### **Key Differences Between Approaches:**
 
 || Traditional `af` Object | OneLink URL (Recommended) |
 |---|---|---|
-| **Android** | `sendPushNotificationData(data)` | `addPushNotificationDeepLinkPath()` (auto-handles) |
-| **iOS** | `sendPushNotificationData(data)` | `addPushNotificationDeepLinkPath()` **+** `sendPushNotificationData(data)` |
-| **Deep Linking** | Basic attribution only | Full deep linking with `onDeepLinking` callback |
+| **Android** | `sendPushNotificationData(...)` | `addPushNotificationDeepLinkPath()` (auto-handles) |
+| **iOS** | `handlePushNotification(pushPayload)` | `addPushNotificationDeepLinkPath()` **+** `handlePushNotification(pushPayload)` |
+| **Deep Linking** | Basic attribution only | Full deep linking with `onDeepLinkReceived` callback |
 | **Use Case** | Simple re-engagement | Re-engagement + in-app navigation |
 
 ---
 
 ### Summary
 
-- **Traditional approach**: Always call `sendPushNotificationData(payload)` on both platforms
+- **Traditional approach**: Call Android `sendPushNotificationData(...)` or iOS `handlePushNotification(pushPayload)`
 - **OneLink approach (Recommended)**:
   - ✅ **Both platforms**: Call `addPushNotificationDeepLinkPath()` before SDK init
-  - ✅ **iOS only**: Also call `sendPushNotificationData(payload)` when push is received
-  - ✅ **Both platforms**: Handle deep links in `onDeepLinking` callback
+  - ✅ **iOS only**: Also call `handlePushNotification(pushPayload)` when push is received
+  - ✅ **Both platforms**: Handle deep links in `onDeepLinkReceived` callback
 
     
 ---
-## **<a id="addPushNotificationDeepLinkPath"> `void addPushNotificationDeepLinkPath(List<String> deeplinkPath)`**
+## **<a id="addPushNotificationDeepLinkPath"> `Future<void> addPushNotificationDeepLinkPath(List<String> deepLinkPath)`**
     
 Registers a **custom key path** for resolving deep links inside **custom JSON payloads** in push notifications.
 
 This is the recommended method of integrating AppsFlyer with push notifications. [Learn more here.](https://support.appsflyer.com/hc/en-us/articles/207364076-Measuring-Push-Notification-Re-Engagement-Campaigns) </br>
-> ⚠️ This method must be called BEFORE the AppsFlyer SDK is started — ideally before `appsFlyerSdk.initSdk()`, and at the latest before `appsFlyerSdk.startSDK()`. ⚠️ 
+> ⚠️ Call this method before `init()`. `deepLinkPath` must not be empty. ⚠️
 
 
 _Example:_
 ```dart
-appsFlyerSdk.addPushNotificationDeepLinkPath(["deeply", "nested", "deep_link"]);
+await appsFlyerSdk.addPushNotificationDeepLinkPath(
+  ["deeply", "nested", "deep_link"],
+);
 ```
 
 With this configuration, the SDK will extract the URL from the following push payload:
@@ -921,135 +1114,189 @@ With this configuration, the SDK will extract the URL from the following push pa
 
 1. First define the Onelink ID (find it in the AppsFlyer dashboard in the onelink section:
 
-**`Future<void> setAppInviteOneLinkID(String oneLinkID, [Function? callback])`**
+**<a id="setAppInviteOneLink"> `Future<void> setAppInviteOneLink(String oneLinkId)`**
 
-The `callback` is optional — `setAppInviteOneLink` is a plain native setter, so it only signals a static `"success"` (no payload). Omit it if you don't need the acknowledgement.
+2. Set the `AppsFlyerInviteLinkParams` class to set the query params in the user invite link:
 
-2. Set the AppsFlyerInviteLinkParams class to set the query params in the user invite link:
+<a id="AppsFlyerInviteLinkParams"></a>
 
 ```dart
 class AppsFlyerInviteLinkParams {
-  final String channel;
-  final String campaign;
-  final String referrerName;
-  final String referrerImageUrl;
-  final String customerID;
-  final String baseDeepLink;
-  final String brandDomain;
+  final String? channel;
+  final String? campaign;
+  final String? referrerName;
+  final String? referrerImageUrl;
+  final String? referrerCustomerId;
+  final String? baseDeepLink;
+  final String? brandDomain;
+  final Map<String, String>? userParams;
 }
 ```
 
-3. Call the generateInviteLink API to generate the user invite link. Use the success and error callbacks for handling.
+3. Call the generateInviteLink API to generate the user invite link.
 
-**`void generateInviteLink(AppsFlyerInviteLinkParams parameters, Function success, Function error)`**
+**<a id="generateInviteLink"> `Future<String> generateInviteLink({AppsFlyerInviteLinkParams? parameters, bool awaitResponse = true})`**
 
-`success` receives an envelope map `{"status": "success", "payload": {"userInviteURL": "<url>"}}` — read the link via `result["payload"]["userInviteURL"]`. `error` receives a plain `String` message (on iOS a static `"The URL wasn't generated!"`; on Android the underlying error).
+The Future completes with the generated URL. Native generation failures are
+reported as `AppsFlyerException`. On Android, `awaitResponse: true` waits for
+asynchronous short-link generation and `false` returns the synchronously
+generated long link. On iOS, link generation always waits for the asynchronous
+result.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `parameters` | `AppsFlyerInviteLinkParams?` | Optional OneLink generation parameters |
+| `awaitResponse` | `bool` | Optional. Defaults to `true`. Android honors this value; iOS always waits for completion. |
 
 _Example:_
 ```dart
-appsFlyerSdk.setAppInviteOneLinkID('OnelinkID', 
-(res){ 
-  print("setAppInviteOneLinkID callback: $res"); 
-});
+await appsFlyerSdk.setAppInviteOneLink('OnelinkID');
 
-AppsFlyerInviteLinkParams inviteLinkParams = new AppsFlyerInviteLinkParams(
+const AppsFlyerInviteLinkParams inviteLinkParams = AppsFlyerInviteLinkParams(
       channel: "",
       referrerName: "",
       baseDeepLink: "",
       brandDomain: "",
-      customerID: "",
+      referrerCustomerId: "",
       referrerImageUrl: "",
       campaign: "",
-      customParams: {"key":"value"}
+      userParams: {"key":"value"}
 );
 
-appsFlyerSdk.generateInviteLink(inviteLinkParams, 
-  (result){ 
-    print(result); 
-  }, 
-  (error){ 
-    print(error);
-  }
+final url = await appsFlyerSdk.generateInviteLink(
+  parameters: inviteLinkParams,
+  awaitResponse: true,
 );
+print(url);
 ```
 
 4. Log the `af_invite` event when the user actually shares the invite:
 
-**`void logInvite(String channel, [Map? eventParameters])`**
+**<a id="logInvite"> `Future<void> logInvite(String channel, [Map<String, String>? eventParameters])`**
 
-Logs the `af_invite` in-app event so AppsFlyer can attribute the invite and any downstream installs to the referring user. Fire-and-forget; supported on Android and iOS.
+Logs the `af_invite` in-app event so AppsFlyer can attribute the invite and any
+downstream installs to the referring user. The returned `Future<void>` completes
+after the native SDK accepts the logging call. The native API does not
+provide a network-completion callback. Supported on Android and iOS.
 
 _Example:_
 ```dart
-appsFlyerSdk.logInvite("facebook", {"referrerId": "user-123"});
+await appsFlyerSdk.logInvite("facebook", {"referrerId": "user-123"});
 ```
 ---
-**<a id="enableFacebookDeferredApplinks"> `void enableFacebookDeferredApplinks(bool isEnabled)`**
+**<a id="crossPromotion"> Cross promotion**
+
+**<a id="logCrossPromoteImpression"> `Future<void> logCrossPromoteImpression(String appId, {String campaign = '', Map<String, String>? userParams})`**
+
+Records an impression for a promoted app:
+
+```dart
+await appsFlyerSdk.logCrossPromoteImpression(
+  "promoted.app.id",
+  campaign: "summer",
+  userParams: {"source": "banner"},
+);
+```
+
+**<a id="logAndOpenStore"> `Future<void> logAndOpenStore(String promotedAppId, {String campaign = '', Map<String, String>? userParams})`**
+
+Records the promotion and asks the native SDK to open the promoted app's store
+page:
+
+```dart
+await appsFlyerSdk.logAndOpenStore(
+  "promoted.app.id",
+  campaign: "summer",
+  userParams: {"source": "banner"},
+);
+```
+
+Both APIs are supported on Android and iOS.
+
+---
+**<a id="enableFacebookDeferredApplinks"> `Future<void> enableFacebookDeferredApplinks(bool isEnabled)`**
 
 Please make sure the relevant Facebook dependecies are added to the project!
+Call this method before `init()`.
 
 For more information check the following article:
 https://support.appsflyer.com/hc/en-us/articles/207033826-Facebook-Ads-setup-guide#advanced-using-facebook-ads-appsflyer-sdks-for-deferred-deep-linking
 
 _Example:_
 ```dart
-appsFlyerSdk.enableFacebookDeferredApplinks(true);
+await appsFlyerSdk.enableFacebookDeferredApplinks(true);
 ```
 ---
-**<a id="setFacebookDeferredAppLink"> `void setFacebookDeferredAppLink(String? url)`** _(iOS only)_
+**<a id="setFacebookDeferredAppLink"> `Future<void> setFacebookDeferredAppLink(String? url)`** _(iOS only)_
 
-Manually sets — or, with `null`, clears — the Facebook deferred app-link URL. When a URL is set, the SDK injects it directly as the Facebook deferred deep link (`fb_ddl.link`) on the first launch, bypassing the Facebook SDK fetch. Passing `null` clears the override so the SDK falls back to fetching via the Facebook SDK when [`enableFacebookDeferredApplinks`](#enableFacebookDeferredApplinks) is enabled. The native RPC rejects unsafe URL schemes (e.g. `javascript:`). No-op on Android (no native equivalent).
+Manually sets — or, with `null`, clears — the Facebook deferred app-link URL.
+On Android the call is ignored with a logged warning.
 
 Use this only when you already hold the deferred link and want to skip the Facebook SDK lookup; otherwise prefer `enableFacebookDeferredApplinks(true)`.
 
 _Example:_
 ```dart
-appsFlyerSdk.setFacebookDeferredAppLink("https://myapp.onelink.me/abc123");
+await appsFlyerSdk.setFacebookDeferredAppLink(
+  "https://myapp.onelink.me/abc123",
+);
 ```
 ---
-**<a id="disableSKAdNetwork"> `void disableSKAdNetwork(bool isEnabled)`**
+<a id="disableSKAdNetwork"></a>
+**<a id="setDisableSKAdNetwork"> `Future<void> setDisableSKAdNetwork(bool disable)`** — **iOS only**
 
-Use this API in order to disable the SK Ad network (request will be sent but the rules won't be returned).
+Use this API in order to disable the SK Ad network (request will be sent but
+the rules won't be returned). On Android the call is ignored with a logged
+warning.
 
 _Example:_
 ```dart
-appsFlyerSdk.disableSKAdNetwork(true);
+await appsFlyerSdk.setDisableSKAdNetwork(true);
 ```
 ---
-**<a id="disableAppleAdsAttribution"> `void disableAppleAdsAttribution(bool disable)`** — **iOS only**
+<a id="disableAppleAdsAttribution"></a>
+**<a id="setDisableAppleAdsAttribution"> `Future<void> setDisableAppleAdsAttribution(bool disable)`** — **iOS only**
 
-Disables Apple Ads (Apple Search Ads) attribution via the AdServices framework — pass `true` to stop the SDK from calling `AAAttribution.attributionToken` (iOS 14.3+). This is the AdServices companion of the `disableCollectASA` init option (the legacy iAd path); the iOS SDK requires **both** to be set to fully suppress Apple Search Ads attribution. Set it before `startSDK()`. No-op on Android (AdServices is Apple-only).
-
-_Example:_
-```dart
-if (Platform.isIOS) {
-  appsFlyerSdk.disableAppleAdsAttribution(true);
-}
-```
----
-**<a id="disableIDFVCollection"> `void disableIDFVCollection(bool disable)`** — **iOS only**
-
-Disables collection of the IDFV (Identifier for Vendor) — pass `true` to stop the SDK from collecting it. Set it before `startSDK()`. No-op on Android (IDFV is Apple-only).
-
-_Example:_
-```dart
-if (Platform.isIOS) {
-  appsFlyerSdk.disableIDFVCollection(true);
-}
-```
----
-**<a id="setShouldCollectDeviceName"> `void setShouldCollectDeviceName(bool collect)`** — **iOS only**
-
-Enables collection of the device name (e.g. `"John's iPhone"`). This is an **opt-in** — collection is **off by default** and the device name is personal data (PII), so only enable it if your privacy policy covers it. Pass `true` to start collecting it. Set it before `startSDK()`. No-op on Android (Apple-only).
+Disables Apple Ads (Apple Search Ads) attribution via the AdServices framework
+— pass `true` to stop the SDK from calling
+`AAAttribution.attributionToken` (iOS 14.3+). On Android the call is ignored
+with a logged warning.
 
 _Example:_
 ```dart
 if (Platform.isIOS) {
-  appsFlyerSdk.setShouldCollectDeviceName(true);
+  await appsFlyerSdk.setDisableAppleAdsAttribution(true);
 }
 ```
 ---
-**<a id="getAppsFlyerUID"> `Future<String?> getAppsFlyerUID() async`**
+<a id="disableIDFVCollection"></a>
+**<a id="setDisableIDFVCollection"> `Future<void> setDisableIDFVCollection(bool disable)`** — **iOS only**
+
+Disables collection of the IDFV (Identifier for Vendor) — pass `true` to stop
+the SDK from collecting it. Set it before `start()`. On Android the call is
+ignored with a logged warning.
+
+_Example:_
+```dart
+if (Platform.isIOS) {
+  await appsFlyerSdk.setDisableIDFVCollection(true);
+}
+```
+---
+**<a id="setShouldCollectDeviceName"> `Future<void> setShouldCollectDeviceName(bool collect)`** — **iOS only**
+
+Enables collection of the device name (e.g. `"John's iPhone"`). This is an
+**opt-in** — collection is **off by default** and the device name is personal
+data (PII), so only enable it if your privacy policy covers it. Pass `true` to
+start collecting it. On Android the call is ignored with a logged warning.
+
+_Example:_
+```dart
+if (Platform.isIOS) {
+  await appsFlyerSdk.setShouldCollectDeviceName(true);
+}
+```
+---
+**<a id="getAppsFlyerUID"> `Future<String?> getAppsFlyerUID()`**
 
 Use this API in order to get the AppsFlyer ID.
 
@@ -1060,130 +1307,180 @@ appsFlyerSdk.getAppsFlyerUID().then((AppsFlyerId) {
 });
 ```
 ---
-**<a id="isPreInstalledApp"> `Future<bool?> isPreInstalledApp()`** — **Android only**
+**<a id="getSdkVersion"> `Future<String> getSdkVersion()`**
 
-Returns whether the app install was a device preinstall (OEM/manufacturer). Returns `null` on iOS (preinstall attribution relies on the Android install-referrer mechanism). See also `setPreinstallAttribution`.
+Returns the native AppsFlyer SDK version.
+
+```dart
+final sdkVersion = await appsFlyerSdk.getSdkVersion();
+```
+
+---
+**<a id="pluginVersion"> `String get pluginVersion`**
+
+Returns the Flutter plugin version without invoking a native method.
+
+```dart
+print(appsFlyerSdk.pluginVersion);
+```
+
+---
+**<a id="isPreInstalledApp"> `Future<bool> isPreInstalledApp()`** — **Android only**
+
+Returns whether the app install was a device preinstall (OEM/manufacturer). On
+iOS it logs a warning and returns `false`. See also `setPreinstallAttribution`.
 
 _Example:_
 ```dart
-final bool? preinstalled = await appsFlyerSdk.isPreInstalledApp();
+final bool preinstalled = await appsFlyerSdk.isPreInstalledApp();
 ```
 ---
-**<a id="setCurrentDeviceLanguage"> `void setCurrentDeviceLanguage(string language)`**
+**<a id="setCurrentDeviceLanguage"> `Future<void> setCurrentDeviceLanguage(String language)`** — **iOS only**
 
 Use this API in order to set the language
 
 _Example:_
 ```dart
-appsFlyerSdk.setCurrentDeviceLanguage("en");
+await appsFlyerSdk.setCurrentDeviceLanguage("en");
 ```
 ---
-**<a id="setInstallId"> `void setInstallId(String installId)`**
+**<a id="setInstallId"> `Future<void> setInstallId(String installId)`**
 
-Sets a unique install id for the app installation, letting you correlate the AppsFlyer install with an id you generate yourself (e.g. for server-side reconciliation). Call it before `startSDK()`. Supported on both platforms.
+Sets a unique install id for the app installation, letting you correlate the AppsFlyer install with an id you generate yourself (e.g. for server-side reconciliation). Supported on both platforms, but the call order and setup requirements differ:
+
+- **iOS**: call this *before* `init()` (before the dev key is set). Requires `AppsFlyerAllowCustomInstallId` set to `YES` in `Info.plist`.
+- **Android**: call this *after* `init()`. Requires the `<meta-data>` flag `APPSFLYER_ALLOW_CUSTOM_INSTALL_ID` set to `true` in `AndroidManifest.xml`.
+
+On both platforms, the call is silently ignored — no error is returned — if the corresponding manifest/plist flag is missing.
 
 _Example:_
 ```dart
-appsFlyerSdk.setInstallId("install-123");
+await appsFlyerSdk.setInstallId("install-123");
 ```
 ---
-**<a id="setPreinstallAttribution"> `void setPreinstallAttribution(String mediaSource, String campaign, String siteId)`**
+**<a id="setPreinstallAttribution"> `Future<void> setPreinstallAttribution(String mediaSource, {String campaign = '', String siteId = ''})`**
 
-Attributes the install to a device preinstall (OEM / manufacturer) deal, declaring that the app shipped preinstalled and attributing the install to the given `mediaSource`, `campaign`, and `siteId`. Call it **before** `startSDK()`.
+Attributes the install to a device preinstall (OEM / manufacturer) deal, declaring that the app shipped preinstalled and attributing the install to the given `mediaSource`, `campaign`, and `siteId`. Call it **before** `start()`.
 
-**Android only** — preinstall attribution relies on the Android install referrer mechanism; iOS has no equivalent, so this is a no-op on iOS.
+**Android only** — the iOS SDK does not provide this programmatic
+preinstall-attribution API. On iOS the call is ignored with a logged warning.
 
 _Example:_
 ```dart
-appsFlyerSdk.setPreinstallAttribution("media_source", "campaign", "site_id");
+await appsFlyerSdk.setPreinstallAttribution(
+  "media_source",
+  campaign: "campaign",
+  siteId: "site_id",
+);
 ```
 ---
-**<a id="setAppId"> `void setAppId(String appId)`**
+**<a id="setAppId"> `Future<void> setAppId(String appId)`**
 
-Overrides the app ID reported to AppsFlyer. Call it **before** `startSDK()`. An empty `appId` is ignored.
+Overrides the app ID reported to AppsFlyer. Call it **before** `start()`. The
+Android SDK rejects an empty `appId`, and the returned Future throws
+`AppsFlyerException`.
 
-**Android only** — on iOS the app ID (`appleAppID`) is provided at init via `AppsFlyerOptions` and the iOS RPC has no `setAppId`, so this is a no-op on iOS.
+**Android only** — on iOS the app ID is provided through `init()` and the
+iOS SDK has no `setAppId`, so the call is ignored with a logged warning.
 
 _Example:_
 ```dart
-appsFlyerSdk.setAppId("com.example.app");
+await appsFlyerSdk.setAppId("com.example.app");
 ```
 ---
-**<a id="setSharingFilterForPartners"> `void setSharingFilterForPartners(List<String> partners)`**
-
-`setSharingFilter` & `setSharingFilterForAllPartners` APIs were deprecated!
-
-Use `setSharingFilterForPartners` instead.
+**<a id="setSharingFilterForPartners"> `Future<void> setSharingFilterForPartners(List<String>? partners)`**
 
 Used by advertisers to exclude specified networks/integrated partners from getting data. [Learn more here](https://support.appsflyer.com/hc/en-us/articles/207032126#additional-apis-exclude-partners-from-getting-data)
 
 _Example:_
 ```dart
-appsFlyerSdk.setSharingFilterForPartners([]);                                        // Reset list (default)
-appsFlyerSdk.setSharingFilterForPartners(null);                                      // Reset list (default)
-appsFlyerSdk.setSharingFilterForPartners(['facebook_int']);                          // Single partner
-appsFlyerSdk.setSharingFilterForPartners(['facebook_int', 'googleadwords_int']);     // Multiple partners
-appsFlyerSdk.setSharingFilterForPartners(['all']);                                   // All partners
-appsFlyerSdk.setSharingFilterForPartners(['googleadwords_int', 'all']);              // All partners
+await appsFlyerSdk.setSharingFilterForPartners(['facebook_int']);
+await appsFlyerSdk.setSharingFilterForPartners(
+  ['facebook_int', 'googleadwords_int'],
+);
 ```
 
----
-**<a id="setOneLinkCustomDomain"> `void setOneLinkCustomDomain(List<String> brandDomains)`**
+Passing `null` or an empty list clears the filter on iOS; the plugin normalizes
+both to the same native request, so the two are interchangeable.
 
-Use this API in order to set branded domains.
+Android does not support clearing the filter. A clear request is ignored with a
+logged warning and **leaves the existing filter in place**. If you need the
+filter gone on Android, you must avoid setting it in the first place.
+
+---
+**<a id="setOneLinkCustomDomain"> `Future<void> setOneLinkCustomDomain(List<String> domains)`**
+
+Use this API in order to set branded domains. `domains` must not be empty.
 
 Find more information in the [following article on branded domains](https://support.appsflyer.com/hc/en-us/articles/360002329137-Implementing-Branded-Links).
 
 _Example:_
 ```dart
-  appsFlyerSdk.setOneLinkCustomDomain(["promotion.greatapp.com","click.greatapp.com","deals.greatapp.com"]);
+await appsFlyerSdk.setOneLinkCustomDomain(
+  ["promotion.greatapp.com", "click.greatapp.com", "deals.greatapp.com"],
+);
 ```
 ---
-**<a id="setDisableAdvertisingIdentifiers"> `void setDisableAdvertisingIdentifiers(bool disable)`**
+**<a id="setDisableAdvertisingIdentifiers"> `Future<void> setDisableAdvertisingIdentifiers(bool disable)`**
 
 Disables collection of advertising identifiers (GAID / IDFA / OAID). Pass `true` to **disable** collection (enabled by default).
 
 _Example:_
 ```dart
-  appsFlyerSdk.setDisableAdvertisingIdentifiers(true);
+await appsFlyerSdk.setDisableAdvertisingIdentifiers(true);
 ```
 ---
-**<a id="setPartnerData"> `void setPartnerData(String partnerId, Map<String, Object> partnerData)`**
+**<a id="setDisableCollectASA"> `Future<void> setDisableCollectASA(bool disable)`** — **iOS only**
+
+Controls collection of Apple Search Ads attribution data. On Android the call is
+ignored with a logged warning.
+
+```dart
+if (Platform.isIOS) {
+  await appsFlyerSdk.setDisableCollectASA(true);
+}
+```
+
+---
+**<a id="setPartnerData"> `Future<void> setPartnerData(String partnerId, Map<String, dynamic> data)`**
 
 Allows sending custom data for partner integration purposes.
 
 _Example:_
 ```dart
-  Map<String, Object> partnerData = {"puid": "1234", "puid": '5678'};
-  appsflyerSdk.setPartnerData("partnerId", partnerData);
+final partnerData = <String, dynamic>{"puid": "1234", "region": "eu"};
+await appsFlyerSdk.setPartnerData("partnerId", partnerData);
 ```
 ---
-**<a id="setResolveDeepLinkURLs"> `void setResolveDeepLinkURLs(List<String> urls)`**
+**<a id="setResolveDeepLinkURLs"> `Future<void> setResolveDeepLinkURLs(List<String> urls)`**
 
 Advertisers can wrap an AppsFlyer OneLink within another Universal Link. This Universal Link will invoke the app but any deep linking data will not propagate to AppsFlyer.
 
 setResolveDeepLinkURLs enables you to configure the SDK to resolve the wrapped OneLink URLs, so that deep linking can occur correctly.
 
+`urls` must not be empty.
+
 _Example:_
 ```dart
-  appsflyerSdk.setResolveDeepLinkURLs(["clickdomain.com", "myclickdomain.com", "anotherclickdomain.com"]);
+await appsFlyerSdk.setResolveDeepLinkURLs(
+  ["clickdomain.com", "myclickdomain.com", "anotherclickdomain.com"],
+);
 ```
 ---
-**<a id="setOutOfStore"> `void setOutOfStore(String sourceName)`**
+**<a id="setOutOfStore"> `Future<void> setOutOfStore(String sourceName)`**
 
 **Android Only!**
 
 Specify the alternative app store that the app is downloaded from (out-of-store
 attribution). Re-apply on every cold start — SDK 7 does not persist setter values.
 
-This API does **not** register manifest receivers. SDK 7 uses the Google Play Install
-Referrer library instead of legacy `INSTALL_REFERRER` broadcast receivers. See
+This API does **not** register manifest receivers. See
 [Advanced features — Android Out of Store](advanced-features.md#out-of-store).
 
 _Example:_
 ```dart
-  if(Platform.isAndroid){
-    appsflyerSdk.setOutOfStore("facebook_int");
+  if (Platform.isAndroid) {
+    await appsFlyerSdk.setOutOfStore("amazon");
   }
 ```
 ---
@@ -1191,19 +1488,18 @@ _Example:_
 
 **Android Only!**
 
-Get the third-party app store referrer value.
+Gets the configured alternative app-store value. If no runtime value was set,
+the Android SDK may return the `AF_STORE` manifest value.
 
 _Example:_
 ```dart
-  if(Platform.isAndroid){
-    Future<String> store = appsflyerSdk.getOutOfStore();
-    store.then((store) {
-      print(store);
-    });
+  if (Platform.isAndroid) {
+    final store = await appsFlyerSdk.getOutOfStore();
+    print(store);
   }
 ```
 ---
-**<a id="setDisableNetworkData"> `void setDisableNetworkData(bool disable)`**
+**<a id="setDisableNetworkData"> `Future<void> setDisableNetworkData(bool isDisable)`**
 
 **Android Only!**
 
@@ -1211,121 +1507,121 @@ Use to opt-out of collecting the network operator name (carrier) and sim operato
 
 _Example:_
 ```dart
-  if(Platform.isAndroid){
-    appsflyerSdk.setDisableNetworkData(true);
+  if (Platform.isAndroid) {
+    await appsFlyerSdk.setDisableNetworkData(true);
   }
 ```
 ---
-**<a id="disableAppSetId"> `void disableAppSetId()`**
+**<a id="disableAppSetId"> `Future<void> disableAppSetId()`**
 
 **Android Only!**
 
-Disables AppSet ID collection. Starting with v6.17.0, the SDK can automatically collect the AppSet ID. Use this method to opt-out of AppSet ID collection for privacy compliance.
+Disables the native Android SDK's automatic AppSet ID collection. Use this
+method to opt out of AppSet ID collection for privacy compliance.
 
 _Example:_
 ```dart
-  if(Platform.isAndroid){
-    appsflyerSdk.disableAppSetId();
+  if (Platform.isAndroid) {
+    await appsFlyerSdk.disableAppSetId();
   }
 ```
 ---
 
-**<a id="performDeepLinking"> `void performDeepLinking(String url, {bool shouldTriggerSession = false})`**
+**<a id="performDeepLinking"> `Future<void> performDeepLinking(String url, {bool shouldTriggerSession = false})`**
 
-Manually triggers deep link resolution for a given `url` (full URL, OneLink, or intent-data string). Use it to resolve a deep link before the SDK starts (e.g. when delaying `startSDK()`), or for links that don't arrive through the standard intent / Universal Link flow (e.g. Firebase Messaging).
+Manually triggers deep link resolution for a given `url` (full URL, OneLink, or intent-data string). Use it to resolve a deep link before the SDK starts (e.g. when delaying `start()`), or for links that don't arrive through the standard intent / Universal Link flow (e.g. Firebase Messaging).
 
-The resolved link is delivered to the [`onDeepLinking`](#onDeepLinking) (UDL) callback on both platforms. `shouldTriggerSession` defaults to `false`, so a bare `performDeepLinking(url)` resolves the link without an extra Launch and behaves identically on Android and iOS. The flag is Android-only: pass `true` to also enqueue a Launch for re-engagement; on iOS it has no effect (the link is always resolved without an extra managed session). This is the SDK 7 replacement for the removed `performOnDeepLinking()`.
+The resolved link is delivered through the [`onDeepLinkReceived`](#onDeepLinkReceived)
+UDL stream on both platforms. `shouldTriggerSession` defaults to `false`, so a
+bare `performDeepLinking(url)` resolves the link without an extra Launch and
+behaves identically on Android and iOS. The flag is Android-only: pass `true` to
+also enqueue a Launch for re-engagement; on iOS it has no effect because the
+link is always resolved without an extra managed session.
 
 ```dart
-  void afStart() async {
-    // SDK Options
-    final AppsFlyerOptions options = AppsFlyerOptions(
-        afDevKey: dotenv.env["DEV_KEY"]!,
-        appId: dotenv.env["APP_ID"]!,
-        showDebug: true,
-        timeToWaitForATTUserAuthorization: 15);
-    _appsflyerSdk = AppsflyerSdk(options);
-    
-    // Init of AppsFlyer SDK
-    await _appsflyerSdk.initSdk(
-        registerConversionDataCallback: true,
-        registerOnDeepLinkingCallback: true);
+Future<void> configureAppsFlyer() async {
+  final appsflyerSdk = AppsFlyerSdk.instance;
 
-    // Conversion data callback
-    _appsflyerSdk.onInstallConversionData((res) {
-      print("onInstallConversionData res: " + res.toString());
-      setState(() {
-        _gcd = res;
-      });
-    });
+  appsflyerSdk.onConversionDataSuccess.listen((data) {
+    print("conversion data: $data");
+  });
 
-    // Deep linking callback
-    _appsflyerSdk.onDeepLinking((DeepLinkResult dp) {
-      switch (dp.status) {
-        case Status.FOUND:
-          print(dp.deepLink?.toString());
-          print("deep link value: ${dp.deepLink?.deepLinkValue}");
-          break;
-        case Status.NOT_FOUND:
-          print("deep link not found");
-          break;
-        case Status.ERROR:
-          print("deep link error: ${dp.error}");
-          break;
-        case Status.PARSE_ERROR:
-          print("deep link status parsing error");
-          break;
-      }
-      print("onDeepLinking res: " + dp.toString());
-      setState(() {
-        _deepLinkData = dp.toJson();
-      });
-    });
+  appsflyerSdk.onDeepLinkReceived.listen((DeepLinkResult result) {
+    switch (result.status) {
+      case DeepLinkStatus.found:
+        print(result.deepLink);
+        print("deep link value: ${result.deepLink?.deepLinkValue}");
+        break;
+      case DeepLinkStatus.notFound:
+        print("deep link not found");
+        break;
+      case DeepLinkStatus.error:
+        print("deep link error: ${result.error}");
+        break;
+      case DeepLinkStatus.unknown:
+        print("unknown deep link status");
+        break;
+    }
+  });
 
-    // Resolve a deep link manually (both platforms surface it via onDeepLinking)
-    _appsflyerSdk.performDeepLinking("https://yourapp.onelink.me/abc123");
+  await appsflyerSdk.init(
+    devKey: '<DEV_KEY>',
+    appId: '<APP_ID>',
+  );
+  await appsflyerSdk.registerConversionListener();
+  await appsflyerSdk.registerDeepLinkListener();
 
-    _appsflyerSdk.registerSessionReadyListener((_) => _appsflyerSdk.startSDK());
-  }
+  // Resolve a deep link manually.
+  await appsflyerSdk.performDeepLinking(
+    "https://yourapp.onelink.me/abc123",
+  );
+}
 ```
 
 ---
 
-**<a id="appendParametersToDeepLinkingURL"> `void appendParametersToDeepLinkingURL(String contains, Map<String, String> parameters)`**
+**<a id="appendParametersToDeepLinkingURL"> `Future<void> appendParametersToDeepLinkingURL(String contains, Map<String, String> parameters)`**
 
 Appends `parameters` to any deep-link URL that contains the `contains` substring, before the SDK resolves / attributes it. Useful for enriching wrapped OneLinks with extra query parameters. Implemented on both Android and iOS.
 
-Pass a non-empty `contains` and at least one entry in `parameters`: both native RPC bridges reject an empty `contains`, and iOS additionally rejects an empty `parameters` map (Android tolerates it).
+Pass a non-empty `contains` and at least one entry in `parameters`. An empty
+`contains` is invalid on both platforms, and an empty `parameters` map is
+invalid on iOS.
 
 ```dart
-  appsFlyerSdk.appendParametersToDeepLinkingURL(
-      "deeplink", {"deep_link_sub1": "cat123", "deep_link_value": "shoes"});
+await appsFlyerSdk.appendParametersToDeepLinkingURL(
+  "deeplink",
+  {"deep_link_sub1": "cat123", "deep_link_value": "shoes"},
+);
 ```
 
 ---
 
-**<a id="setDeepLinkTimeout"> `void setDeepLinkTimeout(int timeoutMs)`**
+**<a id="setDeepLinkTimeout"> `Future<void> setDeepLinkTimeout(int timeout)`**
 
-Sets the deep-link resolution timeout, in **milliseconds**. Call it **before** `initSdk()`. The default when unset differs by platform: **3000 ms on Android, 60000 ms on iOS**.
+Sets the deep-link resolution timeout, in **milliseconds**. Configure it before
+`init()`. Use a positive value for a cross-platform configuration. The default
+when unset differs by platform: **3000 ms on Android, 60000 ms on iOS**.
 
 ```dart
-  appsFlyerSdk.setDeepLinkTimeout(3000);
+  await appsFlyerSdk.setDeepLinkTimeout(3000);
 ```
 
 ---
 
-### **<a id="logAdRevenue"> `void logAdRevenue(AdRevenueData adRevenueData)`**
+### **<a id="logAdRevenue"> `Future<void> logAdRevenue({required String monetizationNetwork, required AFMediationNetwork mediationNetwork, required String currencyIso4217Code, required double revenue, Map<String, dynamic>? additionalParameters})`**
 
 The logAdRevenue API is designed to simplify the process of logging ad revenue events to AppsFlyer from your Flutter application. This API tracks revenue generated from advertisements, enriching your monetization analytics. Below you will find instructions on how to use this API correctly, along with detailed descriptions and examples for various input scenarios.
 
 ### **Usage:**
 To use the logAdRevenue method, you must:
 
-1. Prepare an instance of `AdRevenueData` with the required information about the ad revenue event.
-1. Call `logAdRevenue` with the `AdRevenueData` instance.
+1. Prepare the required information about the ad revenue event.
+1. Pass the values to `logAdRevenue`.
 
-**AdRevenueData Class**
-[AdRevenueData](#AdRevenueData) is a data class representing all the relevant information about an ad revenue event:
+<a id="AdRevenueData"></a>
+**Parameters**
+The method accepts the following ad revenue values:
 
 * `monetizationNetwork`: The source network from which the revenue was generated (e.g., AdMob, Unity Ads).
 * `mediationNetwork`: The mediation platform managing the ad (use AFMediationNetwork enum for supported networks).
@@ -1337,16 +1633,23 @@ To use the logAdRevenue method, you must:
 **AFMediationNetwork Enum**
 [AFMediationNetwork](#AFMediationNetwork) is an enumeration that includes the supported mediation networks by AppsFlyer. It's important to use this enum to ensure you provide a valid network identifier to the logAdRevenue API.
 
-> **Note (behavior):** `logAdRevenue` is fire-and-forget — the native SDK logs ad revenue without a completion callback, so validation errors are not surfaced to Dart. An **unknown** `mediationNetwork` is rejected by both native bridges and the event is silently dropped, so always pass a value from the enum.
+> **Note (behavior):** The returned Future completes after the plugin validates
+> the request and invokes the native logging API. Validation and native call
+> failures are surfaced as `AppsFlyerException`. The native API has no delivery
+> callback, so completion does not confirm that the event was uploaded.
 >
-> **Cross-platform note:** `AFMediationNetwork.customMediation` and `AFMediationNetwork.directMonetizationNetwork` serialize to identifiers Android accepts but the iOS SDK rejects. The plugin remaps just those two to the iOS `custom` / `directmonetization` identifiers automatically, so all enum values work on both platforms — no caller action needed.
+> **Cross-platform note:** The plugin maps
+> `AFMediationNetwork.customMediation` and
+> `AFMediationNetwork.directMonetizationNetwork` to the correct platform value
+> automatically. All public enum values work on both platforms; no caller
+> action is needed.
 
 ### Example:
 ```dart
-// Instantiate AdRevenueData with the ad revenue details.
-AdRevenueData adRevenueData = AdRevenueData(
+// Log the ad revenue event.
+await appsFlyerSdk.logAdRevenue(
   monetizationNetwork: "GoogleAdMob", // Replace with your actual monetization network.
-  mediationNetwork: AFMediationNetwork.applovinMax.value, // Use the value from the enum.
+  mediationNetwork: AFMediationNetwork.applovinMax, // Use the value from the enum.
   currencyIso4217Code: "USD", 
   revenue: 1.23,
   additionalParameters: {
@@ -1355,13 +1658,11 @@ AdRevenueData adRevenueData = AdRevenueData(
     'ad_network_click_id': '12345'
   }
 );
-
-// Log the ad revenue event.
-logAdRevenue(adRevenueData);
 ```
 
 **Additional Points**
 * Mediation network input must be from the provided [AFMediationNetwork](#AFMediationNetwork)
-  enum to ensure proper processing by AppsFlyer. For instance, use `AFMediationNetwork.googleAdMob.value` to denote Google AdMob as the Mediation Network.
+  enum to ensure proper processing by AppsFlyer. For instance, use
+  `AFMediationNetwork.googleAdMob` to denote Google AdMob as the Mediation Network.
 * The `additionalParameters` map is optional. Use it to pass any extra information you have regarding the ad revenue event; this information could be useful for more refined analytics.
-* Make sure the `currencyIso4217Code` adheres to the appropriate standard. Misconfigured currency code may result in incorrect revenue tracking.  
+* Make sure the `currencyIso4217Code` adheres to the appropriate standard. Misconfigured currency code may result in incorrect revenue tracking.

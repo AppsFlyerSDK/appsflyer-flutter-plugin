@@ -1,947 +1,1124 @@
 part of appsflyer_sdk;
 
-class AppsflyerSdk {
-  static AppsflyerSdk? _instance;
-  final MethodChannel _methodChannel;
-
-  final AppsFlyerOptions? _afOptions;
-  final Map? _mapOptions;
-
-  /// Returns the singleton [AppsflyerSdk] instance, configured with [options].
-  ///
-  /// [options] must be an [AppsFlyerOptions] or a configuration [Map] (see
-  /// `doc/api-reference.md`); any other type throws an [ArgumentError]. The instance is a
-  /// singleton — [options] passed to later calls are ignored.
-  factory AppsflyerSdk(dynamic options) {
-    if (_instance == null) {
-      MethodChannel methodChannel =
-          const MethodChannel(AppsflyerConstants.AF_METHOD_CHANNEL);
-
-      if (options is AppsFlyerOptions) {
-        _instance = AppsflyerSdk.private(methodChannel, afOptions: options);
-      } else if (options is Map) {
-        _instance = AppsflyerSdk.private(methodChannel, mapOptions: options);
-      } else {
-        throw ArgumentError.value(options, 'options',
-            'Must be an AppsFlyerOptions instance or a Map of configuration values');
-      }
-    }
-    return _instance!;
-  }
+/// The AppsFlyer SDK entry point.
+///
+/// Use the shared [instance] to configure and initialize the SDK. Subscribe to
+/// the required event streams before registering their native listeners.
+///
+/// Initialization does not send a session. Register the session-ready
+/// listener and call [start] when [onSessionReady] emits:
+///
+/// ```dart
+/// final appsFlyer = AppsFlyerSdk.instance;
+///
+/// appsFlyer.onSessionReady.listen((_) async {
+///   await appsFlyer.start();
+/// });
+///
+/// await appsFlyer.init(
+///   devKey: 'YOUR_DEV_KEY',
+///   appId: 'YOUR_APP_ID',
+/// );
+/// await appsFlyer.registerSessionReadyListener();
+/// ```
+class AppsFlyerSdk {
+  /// Returns the shared [AppsFlyerSdk] instance.
+  static final AppsFlyerSdk instance = AppsFlyerSdk.private(
+    const MethodChannel(_AppsFlyerConstants.AF_METHOD_CHANNEL),
+    const EventChannel(_AppsFlyerConstants.AF_EVENTS_CHANNEL),
+  );
 
   @visibleForTesting
-  AppsflyerSdk.private(this._methodChannel,
-      {AppsFlyerOptions? afOptions, Map? mapOptions})
-      : _afOptions = afOptions,
-        _mapOptions = mapOptions;
+  AppsFlyerSdk.private(
+    this._methodChannel,
+    EventChannel eventChannel, {
+    TargetPlatform? platform,
+  }) : _platform = platform ?? defaultTargetPlatform {
+    _events = eventChannel.receiveBroadcastStream().transform(
+      StreamTransformer<dynamic, _AppsFlyerEvent>.fromHandlers(
+        handleData: (dynamic value, EventSink<_AppsFlyerEvent> sink) {
+          try {
+            if (value is! String) {
+              throw FormatException(
+                'AppsFlyer event must be a JSON string, got ${value.runtimeType}',
+              );
+            }
+            sink.add(_AppsFlyerEvent.fromNative(value));
+          } catch (error) {
+            debugPrint('AppsFlyer: dropped malformed native event: $error');
+          }
+        },
+      ),
+    ).asBroadcastStream();
+  }
 
-  /// Sends a single `{method, params}` RPC to the native bridge.
-  Future<T?> _executeRpc<T>(String method, [Map<String, dynamic>? params]) {
-    return _methodChannel.invokeMethod<T>(
-      'executeRpc',
-      <String, dynamic>{
-        'method': method,
-        'params': params ?? <String, dynamic>{}
-      },
+  final TargetPlatform _platform;
+
+  bool get _isIOS => _platform == TargetPlatform.iOS;
+
+  bool get _isAndroid => _platform == TargetPlatform.android;
+
+  /// Returns the Flutter plugin version.
+  String get pluginVersion => _AppsFlyerConstants.PLUGIN_VERSION;
+
+  final MethodChannel _methodChannel;
+  late final Stream<_AppsFlyerEvent> _events;
+
+  /// Listens for successful install and attribution conversion data.
+  ///
+  /// Subscribe before [registerConversionListener] so the first result is not
+  /// missed.
+  Stream<Map<String, dynamic>> get onConversionDataSuccess => _events
+      .where((event) => event.name == 'onConversionDataSuccess')
+      .map((event) => event.data);
+
+  /// Listens for conversion-data failures reported by the native SDK.
+  ///
+  /// The [registerConversionListener] call can succeed while conversion data
+  /// retrieval still fails. The payload shape differs by platform: Android
+  /// reports `{"error": String}` with no error code; iOS reports
+  /// `{"error": String, "code": int}`.
+  ///
+  /// Subscribe before [registerConversionListener] so the first result is not
+  /// missed.
+  Stream<Map<String, dynamic>> get onConversionDataFailure => _events
+      .where((event) => event.name == 'onConversionDataFail')
+      .map((event) => event.data);
+
+  /// Listens for Unified Deep Linking results.
+  ///
+  /// Subscribe before [registerDeepLinkListener] so a launch deep link is not
+  /// missed.
+  Stream<DeepLinkResult> get onDeepLinkReceived => _events
+      .where(
+        (event) =>
+            event.name == 'onDeepLinking' || event.name == 'onDeepLinkReceived',
+      )
+      .map((event) => DeepLinkResult._fromEvent(event, platform: _platform));
+
+  /// Emits once per foreground cycle when the SDK is ready to send a session.
+  ///
+  /// Subscribe before [registerSessionReadyListener], then call [start] from
+  /// the listener.
+  Stream<void> get onSessionReady => _events
+      .where((event) => event.name == 'onSessionReady')
+      .map<void>((_) {});
+
+  /// Initializes the SDK with [devKey] and, on iOS, [appId].
+  ///
+  /// Does not send a session.
+  ///
+  /// [appId] is required on iOS and is not sent to Android.
+  ///
+  /// Throws [ArgumentError] if [devKey] is empty or [appId] is missing on iOS.
+  Future<void> init({
+    required String devKey,
+    String? appId,
+  }) {
+    if (devKey.isEmpty) {
+      throw ArgumentError.value(
+        devKey,
+        'devKey',
+        'devKey must not be empty',
+      );
+    }
+    if (_isIOS && (appId == null || appId.isEmpty)) {
+      throw ArgumentError.value(
+        appId,
+        'appId',
+        'appId is required on iOS',
+      );
+    }
+    return _invokeVoidRpc(
+      'init',
+      _isIOS ? {'devKey': devKey, 'appId': appId} : {'devKey': devKey},
     );
   }
 
-  /// Runs an RPC whose result is reported through optional [onSuccess] /
-  /// [onError] callbacks. With no callback the call is fire-and-forget.
-  void _executeRequest(
-    String method,
-    Map<String, dynamic>? params, {
-    RequestSuccessListener? onSuccess,
-    RequestErrorListener? onError,
-  }) {
-    final bool wantsResult = onSuccess != null || onError != null;
-    final Future<dynamic> future = _executeRpc(method, <String, dynamic>{
-      ...?params,
-      'awaitResponse': wantsResult,
-    });
-    if (!wantsResult) {
+  /// Registers the install and attribution conversion-data listener.
+  ///
+  /// Subscribe to [onConversionDataSuccess] and [onConversionDataFailure]
+  /// before calling this method so the first result is not missed.
+  Future<void> registerConversionListener() {
+    return _invokeVoidRpc('registerConversionListener');
+  }
+
+  /// Unregisters the native Android conversion-data listener.
+  ///
+  /// This API is available only on Android. Call [registerConversionListener]
+  /// again to resume receiving conversion-data events.
+  Future<void> unregisterConversionListener() async {
+    if (!_isAndroid) {
+      _logUnsupportedPlatform('unregisterConversionListener', 'Android');
       return;
     }
-    future.then((dynamic _) => onSuccess?.call()).catchError((Object e) {
-      int errorCode = 0;
-      String errorMessage = e.toString();
-      if (e is PlatformException) {
-        errorCode = int.tryParse(e.code) ?? 0;
-        errorMessage = e.message ?? '';
-      }
-      onError?.call(errorCode, errorMessage);
-    });
+    return _invokeVoidRpc('unregisterConversionListener');
   }
 
-  /// Validates [AppsFlyerOptions] and converts them to a map acceptable for the AppsFlyer SDK.
-  Map<String, dynamic> _validateAFOptions(AppsFlyerOptions options) {
-    Map<String, dynamic> validatedOptions = {};
-
-    dynamic devKey = options.afDevKey;
-    assert(devKey != null);
-    assert(devKey is String);
-
-    validatedOptions[AppsflyerConstants.AF_DEV_KEY] = devKey;
-
-    dynamic appInviteOneLink = options.appInviteOneLink;
-    if (appInviteOneLink != null) {
-      assert(appInviteOneLink is String);
-    }
-
-    validatedOptions[AppsflyerConstants.APP_INVITE_ONE_LINK] = appInviteOneLink;
-
-    if (options.disableCollectASA != null) {
-      validatedOptions[AppsflyerConstants.DISABLE_COLLECT_ASA] =
-          options.disableCollectASA;
-    }
-
-    if (options.disableAdvertisingIdentifier != null) {
-      validatedOptions[AppsflyerConstants.DISABLE_ADVERTISING_IDENTIFIER] =
-          options.disableAdvertisingIdentifier;
-    } else {
-      validatedOptions[AppsflyerConstants.DISABLE_ADVERTISING_IDENTIFIER] =
-          false;
-    }
-
-    if (Platform.isIOS) {
-      if (options.timeToWaitForATTUserAuthorization != null) {
-        dynamic timeToWaitForATTUserAuthorization =
-            options.timeToWaitForATTUserAuthorization;
-        assert(timeToWaitForATTUserAuthorization is double);
-
-        validatedOptions[
-                AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION] =
-            timeToWaitForATTUserAuthorization;
-      }
-      dynamic appID = options.appId;
-      assert(appID != null, "appleAppId is required for iOS apps");
-      assert(appID is String);
-      RegExp exp = RegExp(r'^\d{8,11}$');
-      assert(exp.hasMatch(appID));
-      validatedOptions[AppsflyerConstants.AF_APP_Id] = appID;
-    }
-
-    validatedOptions[AppsflyerConstants.AF_IS_DEBUG] =
-        // ignore: unnecessary_null_comparison
-        (options.showDebug != null) ? options.showDebug : false;
-
-    return validatedOptions;
-  }
-
-  /// Validates a map of option values, checking their types and presence.
-  Map<String, dynamic> _validateMapOptions(Map options) {
-    Map<String, dynamic> afOptions = {};
-    dynamic devKey = options[AppsflyerConstants.AF_DEV_KEY];
-    assert(devKey != null);
-    assert(devKey is String);
-
-    afOptions[AppsflyerConstants.AF_DEV_KEY] = devKey;
-
-    dynamic appInviteOneLink = options[AppsflyerConstants.APP_INVITE_ONE_LINK];
-    if (appInviteOneLink != null) {
-      assert(appInviteOneLink is String);
-    }
-
-    afOptions[AppsflyerConstants.APP_INVITE_ONE_LINK] = appInviteOneLink;
-
-    if (options[AppsflyerConstants.DISABLE_COLLECT_ASA] != null) {
-      afOptions[AppsflyerConstants.DISABLE_COLLECT_ASA] =
-          options[AppsflyerConstants.DISABLE_COLLECT_ASA];
-    }
-
-    if (options[AppsflyerConstants.DISABLE_ADVERTISING_IDENTIFIER] != null) {
-      afOptions[AppsflyerConstants.DISABLE_ADVERTISING_IDENTIFIER] =
-          options[AppsflyerConstants.DISABLE_ADVERTISING_IDENTIFIER];
-    } else {
-      afOptions[AppsflyerConstants.DISABLE_ADVERTISING_IDENTIFIER] = false;
-    }
-
-    if (Platform.isIOS) {
-      if (options[
-              AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION] !=
-          null) {
-        dynamic timeToWaitForATTUserAuthorization = options[
-            AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION];
-        assert(timeToWaitForATTUserAuthorization is double);
-
-        afOptions[
-                AppsflyerConstants.AF_TIME_TO_WAIT_FOR_ATT_USER_AUTHORIZATION] =
-            timeToWaitForATTUserAuthorization;
-      }
-
-      dynamic appID = options[AppsflyerConstants.AF_APP_Id];
-      assert(appID != null, "appleAppId is required for iOS apps");
-      assert(appID is String);
-      RegExp exp = RegExp(r'^\d{8,11}$');
-      assert(exp.hasMatch(appID));
-      afOptions[AppsflyerConstants.AF_APP_Id] = appID;
-    }
-
-    afOptions[AppsflyerConstants.AF_IS_DEBUG] =
-        options.containsKey(AppsflyerConstants.AF_IS_DEBUG)
-            ? options[AppsflyerConstants.AF_IS_DEBUG]
-            : false;
-
-    return afOptions;
-  }
-
-  // ---------------------------------------------------------------------------
-  // Lifecycle & session
-  // ---------------------------------------------------------------------------
-
-  /// Initializes the SDK with the constructor options.
+  /// Registers the Unified Deep Linking listener.
   ///
-  /// Initialization alone does not send a session — call [startSDK] for that.
-  ///
-  /// To receive conversion data or deep links you must do **both**: pass the
-  /// flag here *and* register the paired listener before calling [initSdk] —
-  /// [registerConversionDataCallback] with [onInstallConversionData], and
-  /// [registerOnDeepLinkingCallback] with [onDeepLinking]. A flag without its
-  /// listener (or vice versa) delivers nothing.
-  Future<dynamic> initSdk(
-      {bool registerConversionDataCallback = false,
-      bool registerOnDeepLinkingCallback = false}) async {
-    Map<String, dynamic>? validatedOptions;
-    if (_mapOptions != null) {
-      validatedOptions = _validateMapOptions(_mapOptions!);
-    } else if (_afOptions != null) {
-      validatedOptions = _validateAFOptions(_afOptions!);
-    }
-
-    if (validatedOptions == null) {
-      throw StateError(
-          'AppsflyerSdk was constructed without valid options; cannot initialize the SDK.');
-    }
-
-    validatedOptions[AppsflyerConstants.AF_GCD] =
-        registerConversionDataCallback;
-    validatedOptions[AppsflyerConstants.AF_UDL] = registerOnDeepLinkingCallback;
-
-    return _executeRpc('init', validatedOptions);
+  /// Subscribe to [onDeepLinkReceived] before calling this method so a launch
+  /// deep link is not missed.
+  Future<void> registerDeepLinkListener() {
+    return _invokeVoidRpc(
+      _isAndroid ? 'subscribeForDeepLink' : 'registerDeeplinkListener',
+    );
   }
 
-  /// Sends a session ("Launch").
-  ///
-  /// Must be called once per foreground cycle — the SDK resets its started flag
-  /// whenever the app is backgrounded — typically from the
-  /// [registerSessionReadyListener] callback. Defer the call to gate the first
-  /// session (e.g. on consent). Calling it again within the same foreground
-  /// cycle is a no-op.
-  ///
-  /// Optionally pass [onSuccess] / [onError] to observe the request result;
-  /// without them the call is fire-and-forget.
-  void startSDK({
-    RequestSuccessListener? onSuccess,
-    RequestErrorListener? onError,
-  }) {
-    _executeRequest('start', null, onSuccess: onSuccess, onError: onError);
+  /// Requests removal of the Unified Deep Linking listener on Android.
+  Future<void> unregisterDeeplinkListener() async {
+    if (!_isAndroid) {
+      _logUnsupportedPlatform('unregisterDeeplinkListener', 'Android');
+      return;
+    }
+    return _invokeVoidRpc('unsubscribeForDeepLink');
   }
 
-  /// Registers a callback invoked, once per foreground cycle, when the SDK is
-  /// ready to send a session. Call [startSDK] from inside it:
+  /// Registers the session-ready listener.
+  ///
+  /// The SDK emits [onSessionReady] once per foreground cycle when it is ready
+  /// to send a session. Subscribe before registering, and call [start] from the
+  /// stream listener:
   ///
   /// ```dart
-  /// appsflyer.registerSessionReadyListener((_) => appsflyer.startSDK());
+  /// appsFlyer.onSessionReady.listen((_) => appsFlyer.start());
+  /// await appsFlyer.registerSessionReadyListener();
   /// ```
-  ///
-  /// Register before [initSdk] so the first signal is not missed; use
-  /// [isSessionReady] if you register later. The callback receives a
-  /// `{status, payload}` map.
-  void registerSessionReadyListener(MultiUseCallback callback) {
-    _startListening(callback, "onSessionReady");
+  Future<void> registerSessionReadyListener() {
+    return _invokeVoidRpc('registerSessionReadyListener');
   }
 
-  /// Removes the Dart observer added by [registerSessionReadyListener].
-  ///
-  /// Observer-only: stops Dart-side routing but leaves the SDK's session-ready
-  /// listener active, so you can re-register later.
-  void unregisterSessionReadyListener() {
-    _stopListening("onSessionReady");
+  /// Removes the listener registered by [registerSessionReadyListener].
+  Future<void> unregisterSessionReadyListener() {
+    return _invokeVoidRpc('unregisterSessionReadyListener');
   }
 
   /// Whether all session-readiness conditions are currently met.
   ///
-  /// Useful when [registerSessionReadyListener] was attached late. Never throws
-  /// — a bridge failure resolves to `false`.
+  /// Use this when [registerSessionReadyListener] was registered after the SDK
+  /// became ready.
   Future<bool> isSessionReady() async {
-    try {
-      final bool? result = await _executeRpc<bool>('isSessionReady');
-      return result ?? false;
-    } on PlatformException {
-      // A readiness probe should never throw; treat a bridge/RPC failure as "not ready".
-      return false;
+    return await _invokeRpc<bool>('isSessionReady') ?? false;
+  }
+
+  /// Sends a session ("Launch").
+  ///
+  /// Call once for each [onSessionReady] emission. Defer this call when the
+  /// first session must wait for consent or another application condition.
+  ///
+  /// When [awaitResponse] is `false` (the default), the returned [Future]
+  /// completes when the native SDK accepts the request. Delivery success or
+  /// failure is not reported.
+  ///
+  /// When [awaitResponse] is `true`, the [Future] completes when the native
+  /// request succeeds and throws [AppsFlyerException] when it fails. A timeout
+  /// does not cancel the native request, which may still succeed later.
+  Future<void> start({bool awaitResponse = false}) {
+    return _invokeVoidRpc('start', {'awaitResponse': awaitResponse});
+  }
+
+  /// Enables or disables SDK debug logging.
+  ///
+  /// May be called before [init]. Call before [start] so the first session
+  /// uses the selected setting.
+  Future<void> enableDebug(bool enabled) {
+    return _invokeVoidRpc('isDebug', {'isDebug': enabled});
+  }
+
+  /// Sets the Android SDK logging level.
+  ///
+  /// This API is available only on Android. Use [enableDebug] to enable or
+  /// disable debug logging on both Android and iOS.
+  ///
+  /// ```dart
+  /// await AppsFlyerSdk.instance.setLogLevel(AFLogLevel.debug);
+  /// ```
+  Future<void> setLogLevel(AFLogLevel logLevel) async {
+    if (!_isAndroid) {
+      _logUnsupportedPlatform('setLogLevel', 'Android');
+      return;
     }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Attribution & conversion
-  // ---------------------------------------------------------------------------
-
-  /// Listens for install / attribution conversion data (GCD).
-  ///
-  /// Requires **both** this callback and `registerConversionDataCallback: true`
-  /// in [initSdk]; register before [initSdk] so the first result is not missed.
-  ///
-  /// The callback receives a `{status, payload}` map (identical on both
-  /// platforms): `status` is `"success"` or `"failure"`; `payload` is the
-  /// conversion-data map on success or an error map on failure (may be `null`).
-  /// Call [unregisterConversionDataListener] to stop receiving it.
-  void onInstallConversionData(MultiUseCallback callback) {
-    _startListening(callback, "onInstallConversionData");
-  }
-
-  /// Removes the Dart observer added by [onInstallConversionData].
-  ///
-  /// Observer-only: stops Dart-side routing but leaves the native SDK listener
-  /// in place. Rarely needed — GCD is delivered once per install.
-  void unregisterConversionDataListener() {
-    _stopListening("onInstallConversionData");
-  }
-
-  /// Returns the Facebook (Katana) attribution ID, if any.
-  ///
-  /// Android only — resolves to `null` on iOS.
-  Future<String?> getAttributionId() async {
-    if (Platform.isAndroid) {
-      return _executeRpc<String>('getAttributionId');
-    }
-    return null;
-  }
-
-  // ---------------------------------------------------------------------------
-  // Deep linking (UDL / OneLink)
-  // ---------------------------------------------------------------------------
-
-  /// Handles Unified Deep Linking (UDL) results.
-  ///
-  /// Requires **both** this callback and `registerOnDeepLinkingCallback: true`
-  /// in [initSdk]; register before [initSdk] so a launch deep link is not missed.
-  void onDeepLinking(UDLCallback callback) {
-    _startListeningToUDL(callback, "onDeepLinking");
-  }
-
-  /// Resolves [url] (full URL, OneLink, or intent-data string) and routes the
-  /// result to the [onDeepLinking] listener. Works for intent and non-intent
-  /// sources (e.g. Firebase Messaging).
-  ///
-  /// [shouldTriggerSession] (default `false`): when `true`, also enqueues a
-  /// Launch for re-engagement. Android only — ignored on iOS.
-  void performDeepLinking(String url, {bool shouldTriggerSession = false}) {
-    if (Platform.isAndroid) {
-      _executeRpc('performDeepLinking',
-          {'url': url, 'shouldTriggerSession': shouldTriggerSession});
-    } else {
-      _executeRpc('performOnAppAttributionWithURL', {'url': url});
-    }
-  }
-
-  /// Resolves OneLink URLs wrapped inside another Universal Link / App Link
-  /// domain you own (e.g. `"click.example.com"`).
-  ///
-  /// [urls] must be non-empty.
-  void setResolveDeepLinkURLs(List<String> urls) {
-    _executeRpc('setResolveDeepLinkURLs', {'urls': urls});
-  }
-
-  /// Registers custom / branded OneLink domains (e.g. `"click.greatapp.com"`) so
-  /// the SDK resolves links served from them.
-  ///
-  /// [brandDomains] must be non-empty.
-  void setOneLinkCustomDomain(List<String> brandDomains) {
-    _executeRpc('setOneLinkCustomDomain', {'domains': brandDomains});
-  }
-
-  /// Sets the deep-link resolution timeout, in milliseconds. Call before
-  /// [initSdk].
-  ///
-  /// Default when unset differs by platform: 3000 ms on Android, 60000 ms on iOS.
-  void setDeepLinkTimeout(int timeoutMs) {
-    _executeRpc('setDeepLinkTimeout', {'timeout': timeoutMs});
-  }
-
-  /// Registers the ordered JSON key-path of a OneLink nested in a push payload
-  /// (e.g. `["deeply", "nested", "link"]`), resolved via [onDeepLinking].
-  ///
-  /// Call before [initSdk]. [deeplinkPath] must be non-empty. On iOS you must
-  /// also forward the payload via [sendPushNotificationData].
-  void addPushNotificationDeepLinkPath(List<String> deeplinkPath) {
-    _executeRpc(
-        'addPushNotificationDeepLinkPath', {'deepLinkPath': deeplinkPath});
-  }
-
-  /// Enables/disables interop with Facebook's deferred app-link resolution.
-  ///
-  /// On iOS requires the Facebook SDK to be linked, otherwise enabling is a
-  /// no-op.
-  void enableFacebookDeferredApplinks(bool isEnabled) {
-    _executeRpc('enableFacebookDeferredApplinks', {'isEnabled': isEnabled});
-  }
-
-  /// Appends [parameters] to any deep-link URL containing [contains], before the
-  /// SDK resolves it.
-  ///
-  /// [contains] must be non-empty; iOS also requires a non-empty [parameters].
-  void appendParametersToDeepLinkingURL(
-      String contains, Map<String, String> parameters) {
-    _executeRpc('appendParametersToDeepLinkingURL',
-        {'contains': contains, 'parameters': parameters});
-  }
-
-  /// Sets (or clears, with `null`) the Facebook deferred app-link URL directly,
-  /// bypassing the Facebook SDK fetch. iOS only.
-  ///
-  /// Unsafe URL schemes (e.g. `javascript:`) are rejected. Complements
-  /// [enableFacebookDeferredApplinks] — use this only when you already hold the
-  /// deferred link.
-  void setFacebookDeferredAppLink(String? url) {
-    if (Platform.isIOS) {
-      _executeRpc('setFacebookDeferredAppLink', {'url': url});
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // In-app events & revenue
-  // ---------------------------------------------------------------------------
-
-  /// Sends an in-app event.
-  ///
-  /// Without a callback the call is fire-and-forget. Passing [onSuccess] /
-  /// [onError] reports the SDK request result (e.g. error codes 41/42 when
-  /// logged before the SDK is initialized/started) and makes the native call
-  /// block until it completes (up to ~10s).
-  void logEvent(
-    String eventName,
-    Map? eventValues, {
-    RequestSuccessListener? onSuccess,
-    RequestErrorListener? onError,
-  }) {
-    _executeRequest(
-      'logEvent',
-      {'eventName': eventName, 'eventValues': eventValues},
-      onSuccess: onSuccess,
-      onError: onError,
+    return _invokeVoidRpc(
+      'setLogLevel',
+      {'logLevel': logLevel.rpcValue},
     );
   }
 
-  /// Logs ad revenue for a monetization / mediation network.
+  /// Sends an in-app event.
   ///
-  /// Required [AdRevenueData] fields: `monetizationNetwork`, `mediationNetwork`,
-  /// `currencyIso4217Code` (ISO 4217), `revenue`. Prefer the [AFMediationNetwork]
-  /// enum for `mediationNetwork`; an unknown value is rejected natively.
+  /// [eventName] identifies the event. [eventValues] contains optional event
+  /// parameters.
   ///
-  /// Fire-and-forget: errors (including a rejected `mediationNetwork`) are not
-  /// surfaced to Dart, so always pass a known value.
-  void logAdRevenue(AdRevenueData adRevenueData) {
-    _executeRpc('logAdRevenue', adRevenueData.toMap());
+  /// When [awaitResponse] is `false` (the default), the returned [Future]
+  /// completes when the native SDK accepts the request. Delivery success or
+  /// failure is not reported.
+  ///
+  /// When [awaitResponse] is `true`, the [Future] completes when the native
+  /// request succeeds and throws [AppsFlyerException] when it fails. A timeout
+  /// does not cancel the native request, which may still succeed later.
+  ///
+  /// ```dart
+  /// await AppsFlyerSdk.instance.logEvent(
+  ///   'af_purchase',
+  ///   eventValues: {'af_revenue': 9.99, 'af_currency': 'USD'},
+  /// );
+  /// ```
+  Future<void> logEvent(
+    String eventName, {
+    Map<String, dynamic>? eventValues,
+    bool awaitResponse = false,
+  }) {
+    return _invokeVoidRpc('logEvent', {
+      'eventName': eventName,
+      'eventValues': eventValues,
+      'awaitResponse': awaitResponse,
+    });
+  }
+
+  /// Logs ad revenue for a monetization or mediation network.
+  ///
+  /// [monetizationNetwork] identifies the source network.
+  /// [mediationNetwork] identifies the mediation platform.
+  /// [currencyIso4217Code] is the ISO 4217 currency code.
+  /// [revenue] is the ad-revenue amount.
+  /// [additionalParameters] contains optional ad-revenue values.
+  ///
+  /// The returned [Future] completes when the native SDK accepts the request.
+  /// Throws [AppsFlyerException] on failure.
+  Future<void> logAdRevenue({
+    required String monetizationNetwork,
+    required AFMediationNetwork mediationNetwork,
+    required String currencyIso4217Code,
+    required double revenue,
+    Map<String, dynamic>? additionalParameters,
+  }) {
+    return _invokeVoidRpc('logAdRevenue', {
+      'monetizationNetwork': monetizationNetwork,
+      'mediationNetwork': mediationNetwork.rpcValue(isIOS: _isIOS),
+      'currencyIso4217Code': currencyIso4217Code,
+      'revenue': revenue,
+      'additionalParameters': additionalParameters,
+    });
   }
 
   /// Manually logs the user's location.
   ///
-  /// [latitude] must be in −90..90 and [longitude] in −180..180 (out-of-range is
-  /// rejected natively). Fire-and-forget.
-  void logLocation(double latitude, double longitude) {
-    _executeRpc('logLocation', {'latitude': latitude, 'longitude': longitude});
+  /// [latitude] must be in the range -90 through 90 and [longitude] in the
+  /// range -180 through 180. Values outside these ranges are rejected with an
+  /// [AppsFlyerException].
+  Future<void> logLocation({
+    required double latitude,
+    required double longitude,
+  }) {
+    return _invokeVoidRpc('logLocation', {
+      'latitude': latitude,
+      'longitude': longitude,
+    });
   }
 
-  /// Manually logs a session (for background utility apps). Android only — on
-  /// iOS use [startSDK].
-  void logSession() {
-    if (Platform.isAndroid) {
-      _executeRpc('logSession', {});
+  /// Manually logs a session on Android.
+  ///
+  /// Android only. For typical Flutter apps, use [start] when [onSessionReady]
+  /// emits instead.
+  Future<void> logSession() async {
+    if (!_isAndroid) {
+      _logUnsupportedPlatform('logSession', 'Android');
+      return;
     }
+    return _invokeVoidRpc('logSession');
   }
-
-  // ---------------------------------------------------------------------------
-  // User identity & hashed PII
-  // ---------------------------------------------------------------------------
 
   /// Sets your own customer user ID to cross-reference with the AppsFlyer ID.
-  void setCustomerUserId(String id) {
-    _executeRpc('setCustomerUserId', {'customerId': id});
+  Future<void> setCustomerUserId(String customerId) {
+    return _invokeVoidRpc('setCustomerUserId', {'customerId': customerId});
   }
 
-  /// Sets the user's email. The SDK hashes the value (SHA-256) before sending it.
-  void setUserEmail(String email) {
-    _executeRpc('setUserEmail', {'email': email});
-  }
-
-  /// Sets the user's phone number. The SDK hashes the value (SHA-256) before sending it.
-  void setUserPhone(String countryCode, String phoneNumber) {
-    _executeRpc('setUserPhone',
-        {'countryCode': countryCode, 'phoneNumber': phoneNumber});
-  }
-
-  /// Sets the user's first name. The SDK hashes the value (SHA-256) before sending it.
-  void setUserFirstName(String firstName) {
-    _executeRpc('setUserFirstName', {'firstName': firstName});
-  }
-
-  /// Sets the user's last name. The SDK hashes the value (SHA-256) before sending it.
-  void setUserLastName(String lastName) {
-    _executeRpc('setUserLastName', {'lastName': lastName});
-  }
-
-  /// Sets the user's Facebook login id (App-Scoped ID) for network sharing.
+  /// Sets the user's email.
   ///
-  /// Passed as a `String` to preserve 64-bit precision; a non-numeric value is
-  /// ignored (no call). Unlike the other `setUser*` setters it is **not hashed**.
-  /// `"0"` is the unset sentinel (clears the id).
-  void setUserFbLoginId(String fbLoginId) {
-    final int? numericId = int.tryParse(fbLoginId);
-    if (numericId == null) {
-      return;
-    }
-    _executeRpc('setUserFbLoginId', {'fbLoginId': numericId});
+  /// The SDK hashes the value with SHA-256 before sending it.
+  Future<void> setUserEmail(String email) {
+    return _invokeVoidRpc('setUserEmail', {'email': email});
   }
 
-  /// Clears all PII set via the `setUser*` setters.
-  void clearUserPii() {
-    _executeRpc('clearUserPii');
-  }
-
-  // ---------------------------------------------------------------------------
-  // Configuration
-  // ---------------------------------------------------------------------------
-
-  /// Sets the currency code for in-app purchase revenue (3-letter ISO 4217;
-  /// default USD).
-  void setCurrencyCode(String currencyCode) {
-    _executeRpc('setCurrencyCode', {'currencyCode': currencyCode});
-  }
-
-  /// Sets the minimum time (seconds) between two launches for them to count as
-  /// separate sessions.
-  void setMinTimeBetweenSessions(int seconds) {
-    _executeRpc('setMinTimeBetweenSessions', {'seconds': seconds});
-  }
-
-  /// Sets a custom host name and prefix (for switching HTTPS environments).
+  /// Sets the user's phone number.
   ///
-  /// No-op if either value is empty.
-  void setHost(String hostPrefix, String hostName) {
-    if (hostPrefix.isEmpty || hostName.isEmpty) {
-      return;
-    }
-    _executeRpc(
-        'setHost', {'hostPrefixName': hostPrefix, 'hostName': hostName});
+  /// [countryCode] is the dialing country code and [phoneNumber] is the local
+  /// number. The SDK hashes the value with SHA-256 before sending it.
+  Future<void> setUserPhone(String countryCode, String phoneNumber) {
+    return _invokeVoidRpc('setUserPhone', {
+      'countryCode': countryCode,
+      'phoneNumber': phoneNumber,
+    });
   }
 
-  /// Returns the host name. Android only (`null` on iOS).
+  /// Sets the user's first name.
+  ///
+  /// The SDK hashes the value with SHA-256 before sending it.
+  Future<void> setUserFirstName(String firstName) {
+    return _invokeVoidRpc('setUserFirstName', {'firstName': firstName});
+  }
+
+  /// Sets the user's last name.
+  ///
+  /// The SDK hashes the value with SHA-256 before sending it.
+  Future<void> setUserLastName(String lastName) {
+    return _invokeVoidRpc('setUserLastName', {'lastName': lastName});
+  }
+
+  /// Sets the user's Facebook login ID (App-Scoped ID) for network sharing.
+  ///
+  /// Unlike the other `setUser*` methods, this value is not hashed. Pass `0`
+  /// to clear the ID.
+  Future<void> setUserFbLoginId(int fbLoginId) {
+    return _invokeVoidRpc('setUserFbLoginId', {'fbLoginId': fbLoginId});
+  }
+
+  /// Clears all PII set through the `setUser*` methods.
+  Future<void> clearUserPii() {
+    return _invokeVoidRpc('clearUserPii');
+  }
+
+  /// Sets the currency used for in-app purchase revenue.
+  ///
+  /// Use a three-letter ISO 4217 currency code. The default is USD.
+  Future<void> setCurrencyCode(String currencyCode) {
+    return _invokeVoidRpc(
+      'setCurrencyCode',
+      {'currencyCode': currencyCode},
+    );
+  }
+
+  /// Sets the minimum time between two launches for them to count as separate
+  /// sessions.
+  ///
+  /// [seconds] is the minimum interval in seconds.
+  Future<void> setMinTimeBetweenSessions(int seconds) {
+    return _invokeVoidRpc(
+      'setMinTimeBetweenSessions',
+      {'seconds': seconds},
+    );
+  }
+
+  /// Sets a custom host name and prefix.
+  ///
+  /// Use this only when instructed by AppsFlyer support.
+  /// iOS requires both values to be non-empty. Android requires a non-empty
+  /// [hostName] and permits an empty [hostPrefixName].
+  Future<void> setHost(String hostPrefixName, String hostName) {
+    return _invokeVoidRpc('setHost', {
+      'hostPrefixName': hostPrefixName,
+      'hostName': hostName,
+    });
+  }
+
+  /// Returns the configured host name.
+  ///
+  /// Android only. On another platform the call is logged and ignored, and this
+  /// method returns `null`.
   Future<String?> getHostName() async {
-    if (Platform.isAndroid) {
-      return _executeRpc<String>('getHostName');
+    if (!_isAndroid) {
+      _logUnsupportedPlatform('getHostName', 'Android');
+      return null;
     }
-    return null;
+    return _invokeRpc<String>('getHostName');
   }
 
-  /// Returns the host prefix. Android only (`null` on iOS).
+  /// Returns the configured host prefix.
+  ///
+  /// Android only. On another platform the call is logged and ignored, and this
+  /// method returns `null`.
   Future<String?> getHostPrefix() async {
-    if (Platform.isAndroid) {
-      return _executeRpc<String>('getHostPrefix');
+    if (!_isAndroid) {
+      _logUnsupportedPlatform('getHostPrefix', 'Android');
+      return null;
     }
-    return null;
+    return _invokeRpc<String>('getHostPrefix');
   }
 
-  /// Sets additional custom data sent to AppsFlyer. Pass an empty map to clear.
-  void setAdditionalData(Map<String, dynamic> customData) {
-    _executeRpc('setAdditionalData', {'customData': customData});
+  /// Sets additional custom data sent to AppsFlyer.
+  ///
+  /// Pass an empty map to clear previously supplied data.
+  Future<void> setAdditionalData(Map<String, dynamic> customData) {
+    return _invokeVoidRpc(
+      'setAdditionalData',
+      {'customData': customData},
+    );
   }
 
   /// Sets the OneLink ID used as the base for links from [generateInviteLink].
+  Future<void> setAppInviteOneLink(String oneLinkId) {
+    return _invokeVoidRpc(
+      'setAppInviteOneLink',
+      {'oneLinkId': oneLinkId},
+    );
+  }
+
+  /// Sets partner-specific data.
   ///
-  /// [callback] is optional and only signals that the setter ran (static
-  /// `"success"`, no payload).
-  Future<void> setAppInviteOneLinkID(String oneLinkID,
-      [MultiUseCallback? callback]) async {
-    if (callback != null) {
-      _startListening(callback, "setAppInviteOneLinkIDCallback");
+  /// [partnerId] identifies the partner and [data] contains the data
+  /// supplied to that partner.
+  Future<void> setPartnerData(
+    String partnerId,
+    Map<String, dynamic> data,
+  ) {
+    return _invokeVoidRpc('setPartnerData', {
+      'partnerId': partnerId,
+      'data': data,
+    });
+  }
+
+  /// Blocks sharing of S2S events through postback or API with the specified
+  /// partners.
+  ///
+  /// Pass `null` or an empty list to clear the filter on iOS. On Android,
+  /// clearing is not supported — the call is ignored and the existing filter
+  /// stays in place.
+  Future<void> setSharingFilterForPartners(List<String>? partners) async {
+    if (_isAndroid && (partners == null || partners.isEmpty)) {
+      _logIgnoredCall(
+        'setSharingFilterForPartners(clear)',
+        'Android cannot clear the filter; the existing filter is unchanged',
+      );
+      return;
     }
-    await _executeRpc('setAppInviteOneLink', {'oneLinkId': oneLinkID});
+    return _invokeVoidRpc(
+      'setSharingFilterForPartners',
+      {'partners': partners != null && partners.isEmpty ? null : partners},
+    );
   }
 
-  /// Sets the partner-specific data.
-  void setPartnerData(String partnerId, Map<String, Object> partnerData) {
-    _executeRpc(
-        'setPartnerData', {'partnerId': partnerId, 'data': partnerData});
-  }
-
-  /// Blocks sharing of S2S events via postback/API with the given partners
-  /// (e.g. to satisfy GDPR/CCPA or user opt-outs).
-  void setSharingFilterForPartners(List<String> partners) {
-    _executeRpc('setSharingFilterForPartners', {'partners': partners});
-  }
-
-  /// Sets the out-of-store install source. Android only.
-  void setOutOfStore(String sourceName) {
-    if (Platform.isAndroid) {
-      _executeRpc('setOutOfStore', {'sourceName': sourceName});
+  /// Sets the out-of-store install source.
+  ///
+  /// Android only.
+  Future<void> setOutOfStore(String sourceName) async {
+    if (!_isAndroid) {
+      _logUnsupportedPlatform('setOutOfStore', 'Android');
+      return;
     }
+    return _invokeVoidRpc('setOutOfStore', {'sourceName': sourceName});
   }
 
-  /// Returns the out-of-store install source. Android only (`null` on iOS).
+  /// Returns the out-of-store install source.
+  ///
+  /// Android only. On another platform the call is logged and ignored, and this
+  /// method returns `null`.
   Future<String?> getOutOfStore() async {
-    if (Platform.isAndroid) {
-      return _executeRpc<String>('getOutOfStore');
+    if (!_isAndroid) {
+      _logUnsupportedPlatform('getOutOfStore', 'Android');
+      return null;
     }
-    return null;
+    return _invokeRpc<String>('getOutOfStore');
   }
 
-  /// Manually marks the app as updated. Android only.
-  void setIsUpdate(bool isUpdate) {
-    if (Platform.isAndroid) {
-      _executeRpc('setIsUpdate', {'isUpdate': isUpdate});
-    }
-  }
-
-  /// Overrides the device language reported to the SDK. iOS only.
-  void setCurrentDeviceLanguage(String language) {
-    if (Platform.isIOS) {
-      _executeRpc('setCurrentDeviceLanguage', {'language': language});
-    }
-  }
-
-  /// Sets a custom install id to correlate the install with your own id (e.g.
-  /// for server-side reconciliation). Call before [startSDK].
-  void setInstallId(String installId) {
-    _executeRpc('setInstallId', {'installId': installId});
-  }
-
-  /// Attributes the install to an OEM/manufacturer preinstall deal. Call before
-  /// [startSDK]. Android only.
-  void setPreinstallAttribution(
-      String mediaSource, String campaign, String siteId) {
-    if (Platform.isAndroid) {
-      _executeRpc('setPreinstallAttribution', {
-        'mediaSource': mediaSource,
-        'campaign': campaign,
-        'siteId': siteId,
-      });
-    }
-  }
-
-  /// Overrides the app ID reported to AppsFlyer. Android only (on iOS the app ID
-  /// is set at init). An empty [appId] is ignored. Call before [startSDK].
-  void setAppId(String appId) {
-    if (Platform.isAndroid && appId.isNotEmpty) {
-      _executeRpc('setAppId', {'appId': appId});
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Privacy & data collection
-  // ---------------------------------------------------------------------------
-
-  /// Sets GDPR / DMA consent.
+  /// Manually marks the app as updated.
   ///
-  /// [isUserSubjectToGDPR] is required. When `true`, [consentForDataUsage] and
-  /// [consentForAdsPersonalization] are also required and omitting either throws
-  /// an [ArgumentError]; when `false` they are ignored. [hasConsentForAdStorage]
-  /// is always optional.
+  /// Android only.
+  Future<void> setIsUpdate(bool isUpdate) async {
+    if (!_isAndroid) {
+      _logUnsupportedPlatform('setIsUpdate', 'Android');
+      return;
+    }
+    return _invokeVoidRpc('setIsUpdate', {'isUpdate': isUpdate});
+  }
+
+  /// Overrides the device language reported to the SDK.
   ///
-  /// Provide the current consent on every app start (before [startSDK]) — it is
-  /// not persisted across sessions.
-  void setConsentDataV2({
+  /// iOS only.
+  Future<void> setCurrentDeviceLanguage(String language) async {
+    if (!_isIOS) {
+      _logUnsupportedPlatform('setCurrentDeviceLanguage', 'iOS');
+      return;
+    }
+    return _invokeVoidRpc(
+      'setCurrentDeviceLanguage',
+      {'language': language},
+    );
+  }
+
+  /// Sets a custom install ID to correlate the install with your own ID.
+  ///
+  /// On iOS, call before [init]; on Android, call after [init].
+  ///
+  /// Both platforms silently ignore the call unless the opt-in flag is set:
+  /// `AppsFlyerAllowCustomInstallId = YES` in `Info.plist` (iOS) or
+  /// `APPSFLYER_ALLOW_CUSTOM_INSTALL_ID = true` in `AndroidManifest.xml`
+  /// (Android).
+  Future<void> setInstallId(String installId) {
+    return _invokeVoidRpc('setInstallId', {'installId': installId});
+  }
+
+  /// Attributes the install to an OEM or manufacturer preinstall campaign.
+  ///
+  /// Android only. Call before [start]. [mediaSource] is required; [campaign]
+  /// and [siteId] are optional.
+  Future<void> setPreinstallAttribution(
+    String mediaSource, {
+    String campaign = '',
+    String siteId = '',
+  }) async {
+    if (!_isAndroid) {
+      _logUnsupportedPlatform('setPreinstallAttribution', 'Android');
+      return;
+    }
+    return _invokeVoidRpc('setPreinstallAttribution', {
+      'mediaSource': mediaSource,
+      'campaign': campaign,
+      'siteId': siteId,
+    });
+  }
+
+  /// Overrides the app ID reported to AppsFlyer.
+  ///
+  /// Android only. Call before [start]. Throws [AppsFlyerException] when
+  /// [appId] is empty.
+  Future<void> setAppId(String appId) async {
+    if (!_isAndroid) {
+      _logUnsupportedPlatform('setAppId', 'Android');
+      return;
+    }
+    return _invokeVoidRpc('setAppId', {'appId': appId});
+  }
+
+  /// Sets GDPR and DMA consent data.
+  ///
+  /// Provide the current consent on every app start before [start]. Consent
+  /// values are not persisted across sessions.
+  ///
+  /// When [isUserSubjectToGDPR] is `true`, [hasConsentForDataUsage] and
+  /// [hasConsentForAdsPersonalization] are required.
+  /// [hasConsentForAdStorage] is optional.
+  Future<void> setConsentData({
     required bool isUserSubjectToGDPR,
-    bool? consentForDataUsage,
-    bool? consentForAdsPersonalization,
+    bool? hasConsentForDataUsage,
+    bool? hasConsentForAdsPersonalization,
     bool? hasConsentForAdStorage,
   }) {
-    if (isUserSubjectToGDPR &&
-        (consentForDataUsage == null || consentForAdsPersonalization == null)) {
-      throw ArgumentError(
-          'consentForDataUsage and consentForAdsPersonalization are required '
-          'when isUserSubjectToGDPR is true.');
+    if (isUserSubjectToGDPR && hasConsentForDataUsage == null) {
+      throw ArgumentError.notNull('hasConsentForDataUsage');
     }
-    _executeRpc('setConsentData', <String, dynamic>{
+    if (isUserSubjectToGDPR && hasConsentForAdsPersonalization == null) {
+      throw ArgumentError.notNull('hasConsentForAdsPersonalization');
+    }
+    return _invokeVoidRpc('setConsentData', {
       'isUserSubjectToGDPR': isUserSubjectToGDPR,
-      'hasConsentForDataUsage': consentForDataUsage,
-      'hasConsentForAdsPersonalization': consentForAdsPersonalization,
+      'hasConsentForDataUsage': hasConsentForDataUsage,
+      'hasConsentForAdsPersonalization': hasConsentForAdsPersonalization,
       'hasConsentForAdStorage': hasConsentForAdStorage,
     });
   }
 
-  @Deprecated('Use setConsentDataV2 instead')
-  void setConsentData(AppsFlyerConsent consentData) {
-    _executeRpc('setConsentData', consentData.toMap());
+  /// Enables or disables automatic collection of IAB TCF consent data.
+  Future<void> enableTCFDataCollection(bool shouldCollect) {
+    return _invokeVoidRpc(
+      'enableTCFDataCollection',
+      {'shouldCollect': shouldCollect},
+    );
   }
 
-  /// Enables automatic collection of TCF (IAB consent) data.
-  void enableTCFDataCollection(bool shouldCollect) {
-    _executeRpc('enableTCFDataCollection', {'shouldCollect': shouldCollect});
+  /// Anonymizes user data.
+  Future<void> anonymizeUser(bool shouldAnonymize) {
+    return _invokeVoidRpc(
+      'anonymizeUser',
+      {'shouldAnonymize': shouldAnonymize},
+    );
   }
 
-  /// Anonymizes user data (opt-out of logging for a specific user).
-  void anonymizeUser(bool shouldAnonymize) {
-    _executeRpc('anonymizeUser', {'shouldAnonymize': shouldAnonymize});
-  }
-
-  /// Stops all SDK activity and communication with AppsFlyer servers (e.g. for
-  /// legal/privacy compliance). Reversible by calling with `false`.
-  void stop(bool isStopped) {
-    _executeRpc('stop', {'shouldStop': isStopped});
-  }
-
-  /// Whether the SDK is currently stopped (see [stop]). Android only (`null` on
-  /// iOS).
-  Future<bool?> isStopped() async {
-    if (Platform.isAndroid) {
-      return _executeRpc<bool>('isStopped');
-    }
-    return null;
-  }
-
-  /// Disables collection of advertising identifiers (GAID / IDFA / OAID). Pass
-  /// `true` to disable (collection is on by default).
-  void setDisableAdvertisingIdentifiers(bool disable) {
-    _executeRpc('setDisableAdvertisingIdentifiers',
-        Platform.isIOS ? {'disable': disable} : {'isDisable': disable});
-  }
-
-  /// Opts out of Android ID collection. Android only.
+  /// Stops or resumes all SDK activity and communication with AppsFlyer
+  /// servers.
   ///
-  /// Apps with Google Play Services should disable this to comply with Play
-  /// policy.
-  void setCollectAndroidId(bool isCollect) {
-    if (Platform.isAndroid) {
-      _executeRpc('setCollectAndroidID', {'isCollect': isCollect});
-    }
+  /// Pass `true` to stop the SDK and `false` to resume it.
+  Future<void> stop(bool shouldStop) {
+    return _invokeVoidRpc('stop', {'shouldStop': shouldStop});
   }
 
-  /// Disables transfer of user-specific data over the network. Android only.
-  void setDisableNetworkData(bool disable) {
-    if (Platform.isAndroid) {
-      _executeRpc('setDisableNetworkData', {'isDisable': disable});
-    }
-  }
-
-  /// Opts out of AppSet ID collection. Android only.
-  void disableAppSetId() {
-    if (Platform.isAndroid) {
-      _executeRpc('disableAppSetId');
-    }
-  }
-
-  /// Disables SKAdNetwork attribution. iOS only.
+  /// Whether the SDK is currently stopped.
   ///
-  /// Pass `true` to disable — the parameter's semantics are "disable", matching
-  /// the native flag (`true` suppresses SKAdNetwork).
-  void disableSKAdNetwork(bool disable) {
-    if (Platform.isIOS) {
-      _executeRpc('setDisableSKAdNetwork', {'disable': disable});
+  /// Android only.
+  Future<bool> isStopped() async {
+    if (!_isAndroid) {
+      _logUnsupportedPlatform('isStopped', 'Android');
+      return false;
     }
+    return await _invokeRpc<bool>('isStopped') ?? false;
   }
 
-  /// Disables Apple Search Ads (AdServices) attribution. iOS only. Set before
-  /// [startSDK].
+  /// Disables collection of advertising identifiers.
   ///
-  /// The iOS SDK needs **both** this and [AppsFlyerOptions.disableCollectASA] to
-  /// fully suppress Apple Search Ads attribution.
-  void disableAppleAdsAttribution(bool disable) {
-    if (Platform.isIOS) {
-      _executeRpc('setDisableAppleAdsAttribution', {'disable': disable});
-    }
+  /// Pass `true` to disable collection of identifiers such as GAID, IDFA, and
+  /// OAID. Collection is enabled by default.
+  Future<void> setDisableAdvertisingIdentifiers(bool disable) {
+    return _invokeVoidRpc(
+      'setDisableAdvertisingIdentifiers',
+      _isIOS ? {'disable': disable} : {'isDisable': disable},
+    );
   }
 
-  /// Disables IDFV (Identifier for Vendor) collection. iOS only. Set before
-  /// [startSDK].
-  void disableIDFVCollection(bool disable) {
-    if (Platform.isIOS) {
-      _executeRpc('setDisableIDFVCollection', {'disable': disable});
-    }
-  }
-
-  /// Enables device-name collection. iOS only. Set before [startSDK].
+  /// Disables Apple Search Ads attribution collection.
   ///
-  /// Opt-in: off by default and the device name is PII, so enable only if your
-  /// privacy policy covers it.
-  void setShouldCollectDeviceName(bool collect) {
-    if (Platform.isIOS) {
-      _executeRpc('setShouldCollectDeviceName', {'collect': collect});
+  /// iOS only. Call before [start].
+  Future<void> setDisableCollectASA(bool disable) async {
+    if (!_isIOS) {
+      _logUnsupportedPlatform('setDisableCollectASA', 'iOS');
+      return;
     }
+    return _invokeVoidRpc(
+      'setDisableCollectASA',
+      {'disable': disable},
+    );
   }
 
-  // ---------------------------------------------------------------------------
-  // Purchase validation
-  // ---------------------------------------------------------------------------
-
-  /// Validates and logs an in-app purchase (validation API V2).
+  /// Enables or disables Android ID collection.
   ///
-  /// Completes with the validation result, or throws if validation fails.
-  Future<Map<String, dynamic>> validateAndLogInAppPurchaseV2(
-      AFPurchaseDetails purchaseDetails,
-      {Map<String, String>? additionalParameters}) async {
-    final dynamic params = Platform.isIOS
-        ? <String, dynamic>{
-            'product': {'productId': purchaseDetails.productId},
-            'transaction': {
-              'transactionId': purchaseDetails.purchaseToken,
-              'purchaseType':
-                  purchaseDetails.purchaseType == AFPurchaseType.subscription
-                      ? 'subscription'
-                      : 'oneTimePurchase',
-            },
-            'additionalParameters': additionalParameters,
-          }
-        : <String, dynamic>{
-            ...purchaseDetails.toMap(),
-            'additionalParameters': additionalParameters,
-            'awaitResponse': true,
-          };
+  /// Android only. Apps distributed through Google Play should follow Google
+  /// Play policy when configuring this value.
+  Future<void> setCollectAndroidID(bool isCollect) async {
+    if (!_isAndroid) {
+      _logUnsupportedPlatform('setCollectAndroidID', 'Android');
+      return;
+    }
+    return _invokeVoidRpc('setCollectAndroidID', {'isCollect': isCollect});
+  }
 
-    final result = await _executeRpc('validateAndLogInAppPurchase', params);
+  /// Disables collection of the network carrier and SIM operator names.
+  ///
+  /// Android only.
+  Future<void> setDisableNetworkData(bool isDisable) async {
+    if (!_isAndroid) {
+      _logUnsupportedPlatform('setDisableNetworkData', 'Android');
+      return;
+    }
+    return _invokeVoidRpc(
+      'setDisableNetworkData',
+      {'isDisable': isDisable},
+    );
+  }
+
+  /// Disables App Set ID collection.
+  ///
+  /// Android only.
+  Future<void> disableAppSetId() async {
+    if (!_isAndroid) {
+      _logUnsupportedPlatform('disableAppSetId', 'Android');
+      return;
+    }
+    return _invokeVoidRpc('disableAppSetId');
+  }
+
+  /// Disables SKAdNetwork attribution.
+  ///
+  /// iOS only. Pass `true` to disable SKAdNetwork.
+  Future<void> setDisableSKAdNetwork(bool disable) async {
+    if (!_isIOS) {
+      _logUnsupportedPlatform('setDisableSKAdNetwork', 'iOS');
+      return;
+    }
+    return _invokeVoidRpc(
+      'setDisableSKAdNetwork',
+      {'disable': disable},
+    );
+  }
+
+  /// Disables Apple Ads attribution.
+  ///
+  /// iOS only. Call before [start].
+  Future<void> setDisableAppleAdsAttribution(bool disable) async {
+    if (!_isIOS) {
+      _logUnsupportedPlatform('setDisableAppleAdsAttribution', 'iOS');
+      return;
+    }
+    return _invokeVoidRpc(
+      'setDisableAppleAdsAttribution',
+      {'disable': disable},
+    );
+  }
+
+  /// Disables collection of the Identifier for Vendor (IDFV).
+  ///
+  /// iOS only. Call before [start].
+  Future<void> setDisableIDFVCollection(bool disable) async {
+    if (!_isIOS) {
+      _logUnsupportedPlatform('setDisableIDFVCollection', 'iOS');
+      return;
+    }
+    return _invokeVoidRpc(
+      'setDisableIDFVCollection',
+      {'disable': disable},
+    );
+  }
+
+  /// Enables device-name collection.
+  ///
+  /// iOS only. Collection is disabled by default. Call before [start], and
+  /// enable it only when your privacy policy covers collection of the device
+  /// name.
+  Future<void> setShouldCollectDeviceName(bool collect) async {
+    if (!_isIOS) {
+      _logUnsupportedPlatform('setShouldCollectDeviceName', 'iOS');
+      return;
+    }
+    return _invokeVoidRpc(
+      'setShouldCollectDeviceName',
+      {'collect': collect},
+    );
+  }
+
+  /// Validates and logs an in-app purchase.
+  ///
+  /// [purchase] is an [AFAndroidPurchaseDetails] or [AFIOSPurchaseDetails]
+  /// instance for the current platform.
+  /// [additionalParameters] contains optional values to include with the
+  /// validation request.
+  /// By default, Android waits for the native validation result. Set
+  /// [awaitResponse] to `false` to start validation without a result callback
+  /// and return an empty map. On iOS, [awaitResponse] is ignored and validation
+  /// always completes before the [Future] resolves.
+  ///
+  /// When the native result is awaited, completes with the validation result
+  /// or throws [AppsFlyerException] when validation fails. On Android with
+  /// `awaitResponse: false`, native validation failures are not reported.
+  Future<Map<String, dynamic>> validateAndLogInAppPurchase(
+    AFPurchaseDetails purchase, {
+    Map<String, String>? additionalParameters,
+    bool awaitResponse = true,
+  }) async {
+    final params = purchase.toRpcMap(
+      platform: _platform,
+      additionalParameters: additionalParameters,
+    );
+    if (_isAndroid) {
+      params['awaitResponse'] = awaitResponse;
+    }
+    final result = await _invokeRpc<Map<Object?, Object?>>(
+      'validateAndLogInAppPurchase',
+      params,
+    );
     return result == null
         ? <String, dynamic>{}
-        : Map<String, dynamic>.from(result as Map);
+        : Map<String, dynamic>.from(result);
   }
 
-  /// Enables sandbox mode for App Store receipt validation. iOS only.
-  void useReceiptValidationSandbox(bool isSandboxEnabled) {
-    if (Platform.isIOS) {
-      _executeRpc(
-          'setUseReceiptValidationSandbox', {'sandbox': isSandboxEnabled});
+  /// Enables sandbox mode for App Store receipt validation.
+  ///
+  /// iOS only.
+  Future<void> setUseReceiptValidationSandbox(bool sandbox) async {
+    if (!_isIOS) {
+      _logUnsupportedPlatform('setUseReceiptValidationSandbox', 'iOS');
+      return;
     }
+    return _invokeVoidRpc(
+      'setUseReceiptValidationSandbox',
+      {'sandbox': sandbox},
+    );
   }
 
-  /// Enables sandbox mode for uninstall-measurement validation. iOS only.
-  /// Companion of [useReceiptValidationSandbox].
-  void useUninstallSandbox(bool isSandboxEnabled) {
-    if (Platform.isIOS) {
-      _executeRpc('setUseUninstallSandbox', {'sandbox': isSandboxEnabled});
+  /// Enables sandbox mode for uninstall-measurement validation.
+  ///
+  /// iOS only. This is the uninstall-measurement companion to
+  /// [setUseReceiptValidationSandbox].
+  Future<void> setUseUninstallSandbox(bool sandbox) async {
+    if (!_isIOS) {
+      _logUnsupportedPlatform('setUseUninstallSandbox', 'iOS');
+      return;
     }
+    return _invokeVoidRpc(
+      'setUseUninstallSandbox',
+      {'sandbox': sandbox},
+    );
   }
 
-  // ---------------------------------------------------------------------------
-  // Cross-promotion & invite
-  // ---------------------------------------------------------------------------
-
-  /// Logs a cross-promotion impression. Use the promoted app ID as shown in the
-  /// AppsFlyer dashboard.
-  void logCrossPromotionImpression(String appId, String campaign, Map? data) {
-    _executeRpc('logCrossPromoteImpression',
-        {'appId': appId, 'campaign': campaign, 'userParams': data});
-  }
-
-  /// Logs a cross-promotion click and opens the promoted app's store page.
-  void logCrossPromotionAndOpenStore(
-      String appId, String campaign, Map? params) {
-    _executeRpc('logAndOpenStore', {
-      'promotedAppId': appId,
+  /// Logs a cross-promotion impression.
+  ///
+  /// Use the promoted app ID as shown in the AppsFlyer dashboard.
+  /// [campaign] and [userParams] are optional.
+  Future<void> logCrossPromoteImpression(
+    String appId, {
+    String campaign = '',
+    Map<String, String>? userParams,
+  }) {
+    return _invokeVoidRpc('logCrossPromoteImpression', {
+      'appId': appId,
       'campaign': campaign,
-      'userParams': params,
+      'userParams': userParams,
     });
   }
 
-  /// Generates a OneLink invite URL (User Invite).
+  /// Logs a cross-promotion click and opens the promoted app's store page.
   ///
-  /// The result is delivered to the callbacks (not the `void` return): [success]
-  /// gets `{"status": "success", "payload": {"userInviteURL": "<url>"}}`;
-  /// [error] gets a plain `String` message. Only the most recent [success] /
-  /// [error] pair is retained.
-  void generateInviteLink(
+  /// [promotedAppId] is the app ID shown in the AppsFlyer dashboard.
+  /// [campaign] and [userParams] are optional.
+  Future<void> logAndOpenStore(
+    String promotedAppId, {
+    String campaign = '',
+    Map<String, String>? userParams,
+  }) {
+    return _invokeVoidRpc('logAndOpenStore', {
+      'promotedAppId': promotedAppId,
+      'campaign': campaign,
+      'userParams': userParams,
+    });
+  }
+
+  /// Generates a OneLink user-invite URL.
+  ///
+  /// Configure the OneLink template with [setAppInviteOneLink] before
+  /// generating a link. [parameters] contains optional channel, campaign,
+  /// referrer, deep-link, branded-domain, and custom values.
+  /// By default, Android waits for its asynchronous link-generation callback.
+  /// Set [awaitResponse] to `false` to return the synchronously generated long
+  /// link instead. On iOS, [awaitResponse] is ignored and link generation is
+  /// always asynchronous.
+  ///
+  /// Completes with the generated URL, or throws [AppsFlyerException] on
+  /// failure.
+  ///
+  /// ```dart
+  /// final url = await AppsFlyerSdk.instance.generateInviteLink(
+  ///   parameters: AppsFlyerInviteLinkParams(channel: 'whatsapp'),
+  /// );
+  /// ```
+  Future<String> generateInviteLink({
     AppsFlyerInviteLinkParams? parameters,
-    MultiUseCallback success,
-    MultiUseCallback error,
-  ) {
-    _startListening(success, "generateInviteLinkSuccess");
-    _startListening(error, "generateInviteLinkFailure");
-
-    _executeRpc(
-        'generateInviteLink', _translateInviteLinkParamsToRpc(parameters));
-  }
-
-  /// Maps [AppsFlyerInviteLinkParams] to the RPC param shape.
-  Map<String, dynamic> _translateInviteLinkParamsToRpc(
-      AppsFlyerInviteLinkParams? params) {
-    if (params == null) {
-      return <String, dynamic>{};
+    bool awaitResponse = true,
+  }) async {
+    final params = (parameters ?? const AppsFlyerInviteLinkParams()).toRpcMap(
+      isIOS: _isIOS,
+    );
+    if (_isAndroid) {
+      params['awaitResponse'] = awaitResponse;
     }
-    final String customerIdKey =
-        Platform.isIOS ? 'referrerCustomerId' : 'customerId';
-    return <String, dynamic>{
-      'channel': params.channel,
-      'campaign': params.campaign,
-      'referrerName': params.referrerName,
-      'referrerImageUrl': params.referrerImageUrl,
-      customerIdKey: params.customerID,
-      'baseDeepLink': params.baseDeepLink,
-      'brandDomain': params.brandDomain,
-      'userParams': params.customParams,
-    };
+    return (await _invokeRpc<String>(
+      'generateInviteLink',
+      params,
+    ))!;
   }
 
-  /// Logs the `af_invite` event when a user shares an invite (typically the link
-  /// from [generateInviteLink]).
+  /// Logs the `af_invite` event when a user shares an invite.
   ///
-  /// [channel] is the sharing channel (e.g. `"facebook"`); [eventParameters] are
-  /// optional extra parameters. Fire-and-forget.
-  void logInvite(String channel, [Map? eventParameters]) {
-    _executeRpc('logInvite', <String, dynamic>{
+  /// [channel] is the sharing channel, such as `"facebook"`.
+  /// [eventParameters] contains optional additional event values.
+  Future<void> logInvite(
+    String channel, [
+    Map<String, String>? eventParameters,
+  ]) {
+    return _invokeVoidRpc('logInvite', {
       'channel': channel,
       'eventParameters': eventParameters,
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // Push & uninstall
-  // ---------------------------------------------------------------------------
-
-  /// Measures push-notification campaigns.
+  /// Resolves [url] and delivers the result through [onDeepLinkReceived].
   ///
-  /// [userInfo] shape differs per platform: on Android, a map with `campaign`
-  /// and `pid` (required) plus optional `isRetargeting` / `additionalParameters`;
-  /// on iOS, the raw APNs `userInfo` dictionary (a null/empty payload is
-  /// rejected).
-  void sendPushNotificationData(Map? userInfo) {
-    if (Platform.isAndroid) {
-      _executeRpc('sendPushNotificationData', <String, dynamic>{
-        'campaign': userInfo?['campaign']?.toString() ?? '',
-        'pid': userInfo?['pid']?.toString() ?? '',
-        'isRetargeting': userInfo?['isRetargeting'] == true,
-        'additionalParameters': userInfo?['additionalParameters'],
-      });
-    } else {
-      _executeRpc('handlePushNotification', {'pushPayload': userInfo});
-    }
+  /// The URL can be a full URL, OneLink, or Android intent-data string.
+  /// On Android, set [shouldTriggerSession] to `true` to also enqueue a Launch
+  /// for re-engagement. iOS ignores [shouldTriggerSession].
+  Future<void> performDeepLinking(
+    String url, {
+    bool shouldTriggerSession = false,
+  }) {
+    return _invokeVoidRpc(
+      _isAndroid ? 'performDeepLinking' : 'performOnAppAttributionWithURL',
+      _isAndroid
+          ? {
+              'url': url,
+              'shouldTriggerSession': shouldTriggerSession,
+            }
+          : {'url': url},
+    );
   }
 
-  /// Passes the device token for uninstall measurement.
+  /// Resolves OneLink URLs wrapped inside another Universal Link or App Link
+  /// domain that you own.
   ///
-  /// Token format differs per platform: on Android, the FCM registration token
-  /// as-is; on iOS, the APNs token **hex-encoded** (even-length) — a non-hex
-  /// string is rejected silently.
-  void updateServerUninstallToken(String token) {
-    if (Platform.isAndroid) {
-      _executeRpc('updateServerUninstallToken', {'token': token});
-    } else {
-      _executeRpc('registerUninstall', {'deviceToken': token});
-    }
+  /// For example, pass `["click.example.com"]`. [urls] must be non-empty.
+  Future<void> setResolveDeepLinkURLs(List<String> urls) {
+    return _invokeVoidRpc('setResolveDeepLinkURLs', {'urls': urls});
   }
 
-  // ---------------------------------------------------------------------------
-  // Getters & utilities
-  // ---------------------------------------------------------------------------
+  /// Registers custom or branded OneLink domains.
+  ///
+  /// For example, pass `["click.greatapp.com"]`. [domains] must be non-empty.
+  Future<void> setOneLinkCustomDomain(List<String> domains) {
+    return _invokeVoidRpc(
+      'setOneLinkCustomDomain',
+      {'domains': domains},
+    );
+  }
+
+  /// Sets the deep-link resolution timeout in milliseconds.
+  ///
+  /// Call before [init]. When this method is not called, the default is 3000 ms
+  /// on Android and 60000 ms on iOS. Android requires a positive value; iOS
+  /// accepts zero, but use a positive value for consistent behavior.
+  Future<void> setDeepLinkTimeout(int timeout) {
+    return _invokeVoidRpc(
+      'setDeepLinkTimeout',
+      {'timeout': timeout},
+    );
+  }
+
+  /// Registers the ordered JSON key path of a OneLink nested in a push payload.
+  ///
+  /// For example, `["deeply", "nested", "link"]`. [deepLinkPath] must be
+  /// non-empty. Call before [init].
+  /// On iOS, also forward the notification payload with
+  /// [handlePushNotification].
+  Future<void> addPushNotificationDeepLinkPath(List<String> deepLinkPath) {
+    return _invokeVoidRpc(
+      'addPushNotificationDeepLinkPath',
+      {'deepLinkPath': deepLinkPath},
+    );
+  }
+
+  /// Enables or disables Facebook deferred app-link resolution.
+  ///
+  /// On iOS, the Facebook SDK must be linked for this integration.
+  Future<void> enableFacebookDeferredApplinks(bool isEnabled) {
+    return _invokeVoidRpc(
+      'enableFacebookDeferredApplinks',
+      {'isEnabled': isEnabled},
+    );
+  }
+
+  /// Appends [parameters] to deep-link URLs containing [contains] before the SDK
+  /// resolves them.
+  ///
+  /// [contains] must be non-empty. iOS also requires [parameters] to be
+  /// non-empty.
+  Future<void> appendParametersToDeepLinkingURL(
+    String contains,
+    Map<String, String> parameters,
+  ) {
+    return _invokeVoidRpc('appendParametersToDeepLinkingURL', {
+      'contains': contains,
+      'parameters': parameters,
+    });
+  }
+
+  /// Sets or clears the Facebook deferred app-link URL directly.
+  ///
+  /// iOS only. Pass `null` to clear the current URL. Use this when the
+  /// application already holds the deferred link. Invalid URLs and dangerous
+  /// schemes such as `javascript:` are rejected with an
+  /// [AppsFlyerException].
+  Future<void> setFacebookDeferredAppLink(String? url) async {
+    if (!_isIOS) {
+      _logUnsupportedPlatform('setFacebookDeferredAppLink', 'iOS');
+      return;
+    }
+    return _invokeVoidRpc('setFacebookDeferredAppLink', {'url': url});
+  }
+
+  /// Measures an Android push-notification campaign.
+  ///
+  /// Android only. [campaign] and [pid] are required by the native SDK.
+  Future<void> sendPushNotificationData({
+    required String campaign,
+    required String pid,
+    bool isRetargeting = false,
+    Map<String, dynamic>? additionalParameters,
+  }) async {
+    if (!_isAndroid) {
+      _logUnsupportedPlatform('sendPushNotificationData', 'Android');
+      return;
+    }
+    return _invokeVoidRpc('sendPushNotificationData', {
+      'campaign': campaign,
+      'pid': pid,
+      'isRetargeting': isRetargeting,
+      'additionalParameters': additionalParameters,
+    });
+  }
+
+  /// Passes an APNs push-notification payload to the iOS SDK.
+  ///
+  /// iOS only. Pass the complete notification `userInfo` dictionary.
+  Future<void> handlePushNotification(
+    Map<String, dynamic> pushPayload,
+  ) async {
+    if (!_isIOS) {
+      _logUnsupportedPlatform('handlePushNotification', 'iOS');
+      return;
+    }
+    return _invokeVoidRpc(
+      'handlePushNotification',
+      {'pushPayload': pushPayload},
+    );
+  }
+
+  /// Passes the device token to AppsFlyer for uninstall measurement.
+  ///
+  /// On Android, pass the FCM registration token. On iOS, pass the APNs device
+  /// token as an even-length hexadecimal string. The same [token] parameter is
+  /// used on both platforms.
+  Future<void> updateServerUninstallToken(String token) {
+    return _isAndroid
+        ? _invokeVoidRpc('updateServerUninstallToken', {'token': token})
+        : _invokeVoidRpc('registerUninstall', {'deviceToken': token});
+  }
 
   /// Returns the native AppsFlyer SDK version.
-  Future<String?> getSDKVersion() async {
-    return _executeRpc<String>('getSdkVersion');
+  Future<String> getSdkVersion() async {
+    return (await _invokeRpc<String>('getSdkVersion'))!;
   }
 
-  /// Returns the AppsFlyer unique device ID (created per install).
-  Future<String?> getAppsFlyerUID() async {
-    return _executeRpc<String>('getAppsFlyerUID');
+  /// Returns the AppsFlyer unique device ID created for this install.
+  Future<String?> getAppsFlyerUID() {
+    return _invokeRpc<String>('getAppsFlyerUID');
   }
 
-  /// Whether the install was an OEM/manufacturer preinstall. Android only
-  /// (`null` on iOS). See [setPreinstallAttribution].
-  Future<bool?> isPreInstalledApp() async {
-    if (Platform.isAndroid) {
-      return _executeRpc<bool>('isPreInstalledApp');
+  /// Whether the app was installed as an OEM or manufacturer preinstall.
+  ///
+  /// Android only. On another platform the call is logged and ignored, and this
+  /// method returns `false`.
+  Future<bool> isPreInstalledApp() async {
+    if (!_isAndroid) {
+      _logUnsupportedPlatform('isPreInstalledApp', 'Android');
+      return false;
     }
-    return null;
+    return await _invokeRpc<bool>('isPreInstalledApp') ?? false;
   }
 
-  /// Returns the Flutter plugin version.
-  String getVersionNumber() {
-    return AppsflyerConstants.PLUGIN_VERSION;
+  /// Returns the Facebook attribution ID, if available.
+  ///
+  /// Android only. On another platform the call is logged and ignored, and this
+  /// method returns `null`.
+  Future<String?> getAttributionId() async {
+    if (!_isAndroid) {
+      _logUnsupportedPlatform('getAttributionId', 'Android');
+      return null;
+    }
+    return _invokeRpc<String>('getAttributionId');
+  }
+
+  Future<void> _invokeVoidRpc(
+    String method, [
+    Map<String, dynamic>? params,
+  ]) async {
+    await _invokeRpc<Object?>(method, params);
+  }
+
+  Future<T?> _invokeRpc<T>(
+    String method, [
+    Map<String, dynamic>? params,
+  ]) async {
+    try {
+      return await _methodChannel.invokeMethod<T>(
+        'executeRpc',
+        <String, dynamic>{
+          'method': method,
+          'params': params ?? <String, dynamic>{},
+        },
+      );
+    } on PlatformException catch (error) {
+      throw AppsFlyerException.fromPlatformException(error);
+    }
+  }
+
+  void _logIgnoredCall(String method, String reason) {
+    debugPrint('AppsFlyer: $method ignored — $reason.');
+  }
+
+  void _logUnsupportedPlatform(String method, String supportedPlatform) {
+    _logIgnoredCall(method, 'supported only on $supportedPlatform');
   }
 }

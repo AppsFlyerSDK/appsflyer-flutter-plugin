@@ -1,532 +1,1216 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// SDK 7 migration: the plugin now speaks a single `executeRpc` verb to native on both platforms,
-/// carrying `{method, params}`. These tests assert the RPC method name and params the Dart layer
-/// emits, rather than the legacy per-method channel calls.
-///
-/// Note: `flutter test` runs on the host (neither `Platform.isAndroid` nor `Platform.isIOS`), so
-/// platform-gated setters (e.g. Android-only `setCollectAndroidId`, iOS-only `disableSKAdNetwork`)
-/// are no-ops here and are asserted as such; unconditional methods always dispatch `executeRpc`.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  late AppsflyerSdk instance;
+  const methodChannel = MethodChannel('af-api');
+  const eventChannel = EventChannel('af-events');
+  const eventMethodChannel = MethodChannel('af-events');
 
-  // Last executeRpc call captured from the af-api channel.
-  String? rpcMethod;
-  Map? rpcParams;
-  bool executeRpcCalled = false;
-
-  const MethodChannel methodChannel = MethodChannel('af-api');
-  const MethodChannel eventMethodChannel = MethodChannel('af-events');
-
-  void resetCapture() {
-    rpcMethod = null;
-    rpcParams = null;
-    executeRpcCalled = false;
-  }
+  late String? rpcMethod;
+  late Map<String, dynamic>? rpcParams;
+  late Object? rpcResult;
+  late AppsFlyerSdk androidSdk;
+  late AppsFlyerSdk iosSdk;
 
   setUp(() {
-    resetCapture();
-    instance = AppsflyerSdk.private(methodChannel,
-        mapOptions: {'afDevKey': 'sdfhj2342cx'});
+    rpcMethod = null;
+    rpcParams = null;
+    rpcResult = null;
 
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(methodChannel, (methodCall) async {
-      if (methodCall.method != 'executeRpc') {
-        return null;
-      }
-      executeRpcCalled = true;
-      final args = methodCall.arguments as Map;
-      rpcMethod = args['method'] as String?;
-      rpcParams = args['params'] as Map?;
-
-      // Return values for getter-style RPCs so the Dart await path is exercised.
-      switch (rpcMethod) {
-        case 'getSdkVersion':
-          return '7.0.1';
-        case 'getAppsFlyerUID':
-          return 'af-uid-123';
-        case 'isSessionReady':
-          return true;
-        case 'validateAndLogInAppPurchase':
-          return {'status': 'success'};
-      }
-      return null;
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(methodChannel, (call) async {
+      expect(call.method, 'executeRpc');
+      final args = Map<String, dynamic>.from(call.arguments as Map);
+      rpcMethod = args['method'] as String;
+      rpcParams = Map<String, dynamic>.from(args['params'] as Map);
+      return rpcResult;
     });
+    messenger.setMockMethodCallHandler(eventMethodChannel, (_) async => null);
 
-    // The unified event path subscribes to the af-events EventChannel on both platforms.
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-            eventMethodChannel, (methodCall) async => null);
+    androidSdk = AppsFlyerSdk.private(
+      methodChannel,
+      eventChannel,
+      platform: TargetPlatform.android,
+    );
+    iosSdk = AppsFlyerSdk.private(
+      methodChannel,
+      eventChannel,
+      platform: TargetPlatform.iOS,
+    );
   });
 
   tearDown(() {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(methodChannel, null);
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(eventMethodChannel, null);
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(methodChannel, null);
+    messenger.setMockMethodCallHandler(eventMethodChannel, null);
   });
 
-  test('initSdk dispatches the init RPC', () async {
-    await instance.initSdk(
-        registerConversionDataCallback: true,
-        registerOnDeepLinkingCallback: false);
+  group('lifecycle', () {
+    test('init sends the iOS initialization parameters', () async {
+      await iosSdk.init(
+        devKey: 'ios-dev-key',
+        appId: '123456789',
+      );
 
-    expect(rpcMethod, 'init');
-    expect(rpcParams?['afDevKey'], 'sdfhj2342cx');
-    expect(rpcParams?[AppsflyerConstants.AF_GCD], true);
-    expect(rpcParams?[AppsflyerConstants.AF_UDL], false);
-  });
-
-  test('startSDK dispatches the start RPC (fire and forget)', () async {
-    instance.startSDK();
-    expect(rpcMethod, 'start');
-    expect(rpcParams?['awaitResponse'], false);
-  });
-
-  test(
-      'startSDK forwards awaitResponse and invokes onSuccess when a callback is passed',
-      () async {
-    var ok = false;
-    instance.startSDK(onSuccess: () => ok = true);
-    expect(rpcMethod, 'start');
-    expect(rpcParams?['awaitResponse'], true);
-    await pumpEventQueue();
-    expect(ok, true);
-  });
-
-  group('cross-platform methods dispatch executeRpc', () {
-    test('logEvent (fire and forget)', () {
-      instance.logEvent('eventName', {'key': 'val'});
-      expect(rpcMethod, 'logEvent');
-      expect(rpcParams?['eventName'], 'eventName');
-      expect(rpcParams?['eventValues'], {'key': 'val'});
-      expect(rpcParams?['awaitResponse'], false);
+      expect(rpcMethod, 'init');
+      expect(rpcParams, {
+        'devKey': 'ios-dev-key',
+        'appId': '123456789',
+      });
     });
 
-    test('logEvent forwards awaitResponse and invokes onSuccess on a 200 OK',
-        () async {
-      var ok = false;
-      instance.logEvent('e', null, onSuccess: () => ok = true);
-      expect(rpcMethod, 'logEvent');
-      expect(rpcParams?['awaitResponse'], true);
-      await pumpEventQueue();
-      expect(ok, true);
+    test('init does not send appId to Android', () async {
+      await androidSdk.init(
+        devKey: 'android-dev-key',
+        appId: 'ignored-on-android',
+      );
+
+      expect(rpcMethod, 'init');
+      expect(rpcParams, {'devKey': 'android-dev-key'});
     });
 
-    test('logEvent invokes onError with the SDK code/message on failure',
+    test('init allows Android without appId', () async {
+      await androidSdk.init(devKey: 'android-dev-key');
+
+      expect(rpcMethod, 'init');
+      expect(rpcParams, {'devKey': 'android-dev-key'});
+    });
+
+    test('init requires a non-empty appId on iOS', () {
+      expect(
+        () => iosSdk.init(devKey: 'ios-dev-key'),
+        throwsArgumentError,
+      );
+      expect(
+        () => iosSdk.init(devKey: 'ios-dev-key', appId: ''),
+        throwsArgumentError,
+      );
+      expect(rpcMethod, isNull);
+    });
+
+    test('init requires a non-empty devKey on both platforms', () {
+      expect(
+        () => androidSdk.init(devKey: ''),
+        throwsArgumentError,
+      );
+      expect(
+        () => iosSdk.init(devKey: '', appId: '123456789'),
+        throwsArgumentError,
+      );
+      expect(rpcMethod, isNull);
+    });
+
+    test('the public SDK entry point is a singleton', () {
+      expect(AppsFlyerSdk.instance, same(AppsFlyerSdk.instance));
+    });
+
+    test('listeners are registered explicitly', () async {
+      await androidSdk.registerConversionListener();
+      expect(rpcMethod, 'registerConversionListener');
+
+      await androidSdk.registerDeepLinkListener();
+      expect(rpcMethod, 'subscribeForDeepLink');
+
+      await iosSdk.registerDeepLinkListener();
+      expect(rpcMethod, 'registerDeeplinkListener');
+
+      await iosSdk.registerSessionReadyListener();
+      expect(rpcMethod, 'registerSessionReadyListener');
+    });
+
+    test('start is fire-and-forget by default', () async {
+      await androidSdk.start();
+      expect(rpcMethod, 'start');
+      expect(rpcParams, {'awaitResponse': false});
+    });
+
+    test('start can wait for the native request callback', () async {
+      await androidSdk.start(awaitResponse: true);
+      expect(rpcMethod, 'start');
+      expect(rpcParams, {'awaitResponse': true});
+    });
+
+    test('start with awaitResponse throws AppsFlyerException on RPC failure',
         () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(methodChannel, (methodCall) async {
-        throw PlatformException(code: '42', message: 'event before start');
+          .setMockMethodCallHandler(methodChannel, (_) async {
+        throw PlatformException(
+          code: '500',
+          message: 'Session launch failed',
+        );
       });
-      int? code;
-      String? message;
-      instance.logEvent('e', null, onError: (c, m) {
-        code = c;
-        message = m;
-      });
-      await pumpEventQueue();
-      expect(code, 42);
-      expect(message, 'event before start');
+
+      await expectLater(
+        androidSdk.start(awaitResponse: true),
+        throwsA(
+          isA<AppsFlyerException>()
+              .having((error) => error.code, 'code', 500)
+              .having(
+                (error) => error.message,
+                'message',
+                'Session launch failed',
+              ),
+        ),
+      );
     });
 
-    test('logLocation maps to latitude + longitude', () {
-      instance.logLocation(32.0853, 34.7818);
-      expect(rpcMethod, 'logLocation');
-      expect(rpcParams?['latitude'], 32.0853);
-      expect(rpcParams?['longitude'], 34.7818);
+    test('enableDebug maps to the isDebug RPC method', () async {
+      await iosSdk.enableDebug(true);
+      expect(rpcMethod, 'isDebug');
+      expect(rpcParams, {'isDebug': true});
     });
 
-    group('AdRevenueData.mediationNetworkForPlatform (CR-055)', () {
-      test('remaps the two divergent values for iOS', () {
-        expect(
-            AdRevenueData.mediationNetworkForPlatform(
-                AFMediationNetwork.customMediation.value,
-                isIOS: true),
-            'custom');
-        expect(
-            AdRevenueData.mediationNetworkForPlatform(
-                AFMediationNetwork.directMonetizationNetwork.value,
-                isIOS: true),
-            'directmonetization');
-      });
+    test('isSessionReady returns the native result', () async {
+      rpcResult = true;
+      expect(await iosSdk.isSessionReady(), isTrue);
+      expect(rpcMethod, 'isSessionReady');
+    });
+  });
 
-      test('passes the divergent values through unchanged off iOS (Android)',
-          () {
-        expect(
-            AdRevenueData.mediationNetworkForPlatform(
-                AFMediationNetwork.customMediation.value,
-                isIOS: false),
-            'custom_mediation');
-        expect(
-            AdRevenueData.mediationNetworkForPlatform(
-                AFMediationNetwork.directMonetizationNetwork.value,
-                isIOS: false),
-            'direct_monetization_network');
-      });
+  group('requests and errors', () {
+    test('logEvent is fire-and-forget by default', () async {
+      await androidSdk.logEvent(
+        'af_purchase',
+        eventValues: {'revenue': 4.2},
+      );
 
-      test('leaves other networks unchanged on both platforms', () {
-        for (final iOS in [true, false]) {
-          expect(
-              AdRevenueData.mediationNetworkForPlatform(
-                  AFMediationNetwork.googleAdMob.value,
-                  isIOS: iOS),
-              'google_admob');
-          expect(
-              AdRevenueData.mediationNetworkForPlatform(
-                  AFMediationNetwork.ironSource.value,
-                  isIOS: iOS),
-              'ironsource');
-        }
+      expect(rpcMethod, 'logEvent');
+      expect(rpcParams, {
+        'eventName': 'af_purchase',
+        'eventValues': {'revenue': 4.2},
+        'awaitResponse': false,
       });
     });
 
-    test('setHost uses SDK 7 param names', () {
-      instance.setHost('prefix', 'hostname');
-      expect(rpcMethod, 'setHost');
-      expect(rpcParams?['hostPrefixName'], 'prefix');
-      expect(rpcParams?['hostName'], 'hostname');
-    });
+    test('logEvent can wait for the native request callback', () async {
+      await androidSdk.logEvent(
+        'af_purchase',
+        eventValues: {'revenue': 4.2},
+        awaitResponse: true,
+      );
 
-    test('setHost is a no-op when the prefix or host is empty', () {
-      instance.setHost('', 'hostname');
-      expect(executeRpcCalled, false);
-      instance.setHost('prefix', '');
-      expect(executeRpcCalled, false);
-    });
-
-    test('setCurrencyCode', () {
-      instance.setCurrencyCode('USD');
-      expect(rpcMethod, 'setCurrencyCode');
-      expect(rpcParams?['currencyCode'], 'USD');
-    });
-
-    test('stop maps to shouldStop', () {
-      instance.stop(true);
-      expect(rpcMethod, 'stop');
-      expect(rpcParams?['shouldStop'], true);
-    });
-
-    test('setCustomerUserId maps to customerId', () {
-      instance.setCustomerUserId('id');
-      expect(rpcMethod, 'setCustomerUserId');
-      expect(rpcParams?['customerId'], 'id');
-    });
-
-    test('setMinTimeBetweenSessions', () {
-      instance.setMinTimeBetweenSessions(5);
-      expect(rpcMethod, 'setMinTimeBetweenSessions');
-      expect(rpcParams?['seconds'], 5);
-    });
-
-    test('setAdditionalData', () {
-      instance.setAdditionalData({'k': 'v'});
-      expect(rpcMethod, 'setAdditionalData');
-      expect(rpcParams?['customData'], {'k': 'v'});
-    });
-
-    test('setSharingFilterForPartners', () {
-      instance.setSharingFilterForPartners(['facebook_int']);
-      expect(rpcMethod, 'setSharingFilterForPartners');
-      expect(rpcParams?['partners'], contains('facebook_int'));
-    });
-
-    test('setPartnerData uses SDK 7 data key', () {
-      instance.setPartnerData('partnerId', {'key': 'value'});
-      expect(rpcMethod, 'setPartnerData');
-      expect(rpcParams?['partnerId'], 'partnerId');
-      expect((rpcParams?['data'] as Map)['key'], 'value');
-    });
-
-    test('setResolveDeepLinkURLs maps to urls', () {
-      instance.setResolveDeepLinkURLs(['https://example.com']);
-      expect(rpcMethod, 'setResolveDeepLinkURLs');
-      expect(rpcParams?['urls'], contains('https://example.com'));
-    });
-
-    test('setOneLinkCustomDomain maps to domains', () {
-      instance.setOneLinkCustomDomain(['brand.onelink.me']);
-      expect(rpcMethod, 'setOneLinkCustomDomain');
-      expect(rpcParams?['domains'], contains('brand.onelink.me'));
-    });
-
-    test('setDeepLinkTimeout maps to timeout', () {
-      instance.setDeepLinkTimeout(3000);
-      expect(rpcMethod, 'setDeepLinkTimeout');
-      expect(rpcParams?['timeout'], 3000);
-    });
-
-    test('addPushNotificationDeepLinkPath maps to deepLinkPath', () {
-      instance.addPushNotificationDeepLinkPath(['af_dp']);
-      expect(rpcMethod, 'addPushNotificationDeepLinkPath');
-      expect(rpcParams?['deepLinkPath'], contains('af_dp'));
-    });
-
-    test('appendParametersToDeepLinkingURL maps to contains + parameters', () {
-      instance
-          .appendParametersToDeepLinkingURL('https://example.com', {'k': 'v'});
-      expect(rpcMethod, 'appendParametersToDeepLinkingURL');
-      expect(rpcParams?['contains'], 'https://example.com');
-      expect((rpcParams?['parameters'] as Map)['k'], 'v');
-    });
-
-    test('enableTCFDataCollection', () {
-      instance.enableTCFDataCollection(true);
-      expect(rpcMethod, 'enableTCFDataCollection');
-      expect(rpcParams?['shouldCollect'], true);
-    });
-
-    test('enableFacebookDeferredApplinks maps to isEnabled', () {
-      instance.enableFacebookDeferredApplinks(true);
-      expect(rpcMethod, 'enableFacebookDeferredApplinks');
-      expect(rpcParams?['isEnabled'], true);
-    });
-
-    test('anonymizeUser', () {
-      instance.anonymizeUser(true);
-      expect(rpcMethod, 'anonymizeUser');
-      expect(rpcParams?['shouldAnonymize'], true);
-    });
-
-    test('setConsentDataV2 maps to setConsentData', () {
-      instance.setConsentDataV2(
-          isUserSubjectToGDPR: true,
-          consentForDataUsage: true,
-          consentForAdsPersonalization: false);
-      expect(rpcMethod, 'setConsentData');
-      expect(rpcParams?['isUserSubjectToGDPR'], true);
-      expect(rpcParams?['hasConsentForDataUsage'], true);
-      expect(rpcParams?['hasConsentForAdsPersonalization'], false);
-    });
-
-    test('setConsentDataV2 (non-GDPR) dispatches without consent flags', () {
-      instance.setConsentDataV2(isUserSubjectToGDPR: false);
-      expect(rpcMethod, 'setConsentData');
-      expect(rpcParams?['isUserSubjectToGDPR'], false);
-    });
-
-    test('setConsentDataV2 throws when GDPR is true but consents are missing',
-        () {
-      expect(() => instance.setConsentDataV2(isUserSubjectToGDPR: true),
-          throwsArgumentError);
-      expect(executeRpcCalled, false);
-    });
-
-    test('setAppInviteOneLinkID maps to setAppInviteOneLink', () async {
-      await instance.setAppInviteOneLinkID('oneLinkID', (msg) {});
-      expect(rpcMethod, 'setAppInviteOneLink');
-      expect(rpcParams?['oneLinkId'], 'oneLinkID');
-    });
-
-    test('setAppInviteOneLinkID dispatches without a callback', () async {
-      await instance.setAppInviteOneLinkID('oneLinkID');
-      expect(rpcMethod, 'setAppInviteOneLink');
-      expect(rpcParams?['oneLinkId'], 'oneLinkID');
-    });
-
-    test('generateInviteLink', () {
-      instance.generateInviteLink(null, (msg) {}, (err) {});
-      expect(rpcMethod, 'generateInviteLink');
-    });
-
-    test('logCrossPromotionImpression maps to logCrossPromoteImpression', () {
-      instance.logCrossPromotionImpression('appId', 'campaign', null);
-      expect(rpcMethod, 'logCrossPromoteImpression');
-      expect(rpcParams?['appId'], 'appId');
-      expect(rpcParams?['campaign'], 'campaign');
-    });
-
-    test('logCrossPromotionAndOpenStore maps to logAndOpenStore', () {
-      instance.logCrossPromotionAndOpenStore('appId', 'campaign', null);
-      expect(rpcMethod, 'logAndOpenStore');
-      expect(rpcParams?['promotedAppId'], 'appId');
-      expect(rpcParams?['campaign'], 'campaign');
-    });
-
-    test('setDisableAdvertisingIdentifiers (host uses Android param isDisable)',
-        () {
-      instance.setDisableAdvertisingIdentifiers(true);
-      expect(rpcMethod, 'setDisableAdvertisingIdentifiers');
-      expect(rpcParams?['isDisable'], true);
-    });
-
-    test('logAdRevenue forwards the flat ad-revenue map', () {
-      final adRevenueData = AdRevenueData(
-          monetizationNetwork: 'Applovin',
-          mediationNetwork: AFMediationNetwork.applovinMax.value,
-          currencyIso4217Code: 'USD',
-          revenue: 0.99);
-      instance.logAdRevenue(adRevenueData);
-      expect(rpcMethod, 'logAdRevenue');
-      expect(rpcParams?['mediationNetwork'], 'applovin_max');
-      expect(rpcParams?['currencyIso4217Code'], 'USD');
-    });
-
-    test('setUserEmail (hashed PII) dispatches on both platforms', () {
-      instance.setUserEmail('user@example.com');
-      expect(rpcMethod, 'setUserEmail');
-      expect(rpcParams?['email'], 'user@example.com');
-    });
-
-    test('clearUserPii', () {
-      instance.clearUserPii();
-      expect(rpcMethod, 'clearUserPii');
+      expect(rpcMethod, 'logEvent');
+      expect(rpcParams, {
+        'eventName': 'af_purchase',
+        'eventValues': {'revenue': 4.2},
+        'awaitResponse': true,
+      });
     });
 
     test(
-        'setUserFbLoginId parses to a numeric id (dispatched on both platforms)',
-        () {
-      instance.setUserFbLoginId('1234567890123456');
-      expect(rpcMethod, 'setUserFbLoginId');
-      expect(rpcParams?['fbLoginId'], 1234567890123456);
-    });
+        'PlatformException with a numeric RPC code becomes '
+        'AppsFlyerException', () async {
+      // Matches the real native shape: RpcResponse.Error/AFRPCError report a
+      // numeric, HTTP-style code as a string, with no details map.
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(methodChannel, (_) async {
+        throw PlatformException(
+          code: '422',
+          message: 'devKey cannot be empty',
+        );
+      });
 
-    test('setUserFbLoginId drops a non-numeric id (no RPC)', () {
-      instance.setUserFbLoginId('not-a-number');
-      expect(executeRpcCalled, false);
-    });
-
-    test('setInstallId dispatches on both platforms', () {
-      instance.setInstallId('install-123');
-      expect(rpcMethod, 'setInstallId');
-      expect(rpcParams?['installId'], 'install-123');
-    });
-  });
-
-  group('getter RPCs return unwrapped values', () {
-    test('getSDKVersion', () async {
-      final v = await instance.getSDKVersion();
-      expect(rpcMethod, 'getSdkVersion');
-      expect(v, '7.0.1');
-    });
-
-    test('getAppsFlyerUID', () async {
-      final uid = await instance.getAppsFlyerUID();
-      expect(rpcMethod, 'getAppsFlyerUID');
-      expect(uid, 'af-uid-123');
-    });
-
-    test('isSessionReady', () async {
-      final ready = await instance.isSessionReady();
-      expect(rpcMethod, 'isSessionReady');
-      expect(ready, true);
-    });
-
-    test('validateAndLogInAppPurchaseV2 returns the result map', () async {
-      final details = AFPurchaseDetails(
-        purchaseType: AFPurchaseType.oneTimePurchase,
-        purchaseToken: 'token',
-        productId: 'com.app.product',
+      await expectLater(
+        androidSdk.logEvent('', eventValues: null),
+        throwsA(
+          isA<AppsFlyerException>()
+              .having((error) => error.code, 'code', 422)
+              .having((error) => error.message, 'message', 'devKey cannot be empty'),
+        ),
       );
-      final result = await instance.validateAndLogInAppPurchaseV2(details);
-      expect(rpcMethod, 'validateAndLogInAppPurchase');
-      expect(result['status'], 'success');
     });
 
-    test('logInvite dispatches with channel + eventParameters', () {
-      instance.logInvite('facebook', {'foo': 'bar'});
-      expect(rpcMethod, 'logInvite');
-      expect(rpcParams?['channel'], 'facebook');
-      expect((rpcParams?['eventParameters'] as Map?)?['foo'], 'bar');
-    });
-  });
+    test(
+        'PlatformException with a non-numeric plugin-guard code leaves '
+        'code null', () async {
+      // Matches guards that fail before reaching the RPC layer (a malformed
+      // channel call, a JSON parse failure) — these report a non-numeric
+      // code, e.g. "INVALID_PARAMETERS", which has no HTTP-style equivalent.
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(methodChannel, (_) async {
+        throw PlatformException(
+          code: 'INVALID_PARAMETERS',
+          message: "executeRpc requires a 'method'",
+        );
+      });
 
-  group('platform-gated methods are no-ops on the test host', () {
-    // On the host, neither Platform.isAndroid nor Platform.isIOS is true, so these must not
-    // dispatch any executeRpc call (and must not throw).
-    test('setCollectAndroidId (Android-only) is a no-op', () {
-      instance.setCollectAndroidId(true);
-      expect(executeRpcCalled, false);
-    });
-
-    test('disableSKAdNetwork (iOS-only) is a no-op', () {
-      instance.disableSKAdNetwork(true);
-      expect(executeRpcCalled, false);
-    });
-
-    test('disableAppleAdsAttribution (iOS-only) is a no-op', () {
-      instance.disableAppleAdsAttribution(true);
-      expect(executeRpcCalled, false);
-    });
-
-    test('disableAppSetId (Android-only) is a no-op', () {
-      instance.disableAppSetId();
-      expect(executeRpcCalled, false);
+      await expectLater(
+        androidSdk.logEvent('', eventValues: null),
+        throwsA(
+          isA<AppsFlyerException>()
+              .having((error) => error.code, 'code', isNull)
+              .having(
+                (error) => error.message,
+                'message',
+                "executeRpc requires a 'method'",
+              ),
+        ),
+      );
     });
 
-    test('setFacebookDeferredAppLink (iOS-only) is a no-op', () {
-      instance.setFacebookDeferredAppLink('https://fb.link');
-      expect(executeRpcCalled, false);
+    test('MissingPluginException is not converted to AppsFlyerException', () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(methodChannel, (_) async {
+        throw MissingPluginException('No implementation found');
+      });
+
+      await expectLater(
+        androidSdk.logEvent('', eventValues: null),
+        throwsA(isA<MissingPluginException>()),
+      );
     });
 
-    test('getAttributionId (Android-only) returns null without dispatching',
+    test('platform-only void calls are ignored without reaching the native RPC',
         () async {
-      final id = await instance.getAttributionId();
-      expect(executeRpcCalled, false);
-      expect(id, isNull);
+      await iosSdk.setCollectAndroidID(true);
+      await iosSdk.setLogLevel(AFLogLevel.debug);
+      await iosSdk.unregisterDeeplinkListener();
+      await iosSdk.unregisterConversionListener();
+      await iosSdk.logSession();
+      await iosSdk.setOutOfStore('source');
+      await iosSdk.setIsUpdate(true);
+      await iosSdk.setPreinstallAttribution('media-source');
+      await iosSdk.setAppId('123');
+      await iosSdk.setDisableNetworkData(true);
+      await iosSdk.disableAppSetId();
+      await iosSdk.sendPushNotificationData(
+        campaign: 'campaign',
+        pid: 'media-source',
+      );
+
+      await androidSdk.setDisableSKAdNetwork(true);
+      await androidSdk.setDisableCollectASA(true);
+      await androidSdk.setDisableAppleAdsAttribution(true);
+      await androidSdk.setDisableIDFVCollection(true);
+      await androidSdk.setShouldCollectDeviceName(true);
+      await androidSdk.setCurrentDeviceLanguage('en');
+      await androidSdk.setUseReceiptValidationSandbox(true);
+      await androidSdk.setUseUninstallSandbox(true);
+      await androidSdk.setFacebookDeferredAppLink('https://example.com');
+      await androidSdk.handlePushNotification({'aps': {}});
+
+      expect(rpcMethod, isNull);
     });
 
-    test('logSession (Android-only) is a no-op', () {
-      instance.logSession();
-      expect(executeRpcCalled, false);
-    });
-
-    test('setPreinstallAttribution (Android-only) is a no-op', () {
-      instance.setPreinstallAttribution('media_source', 'campaign', 'site_id');
-      expect(executeRpcCalled, false);
-    });
-
-    test('setAppId (Android-only) is a no-op', () {
-      instance.setAppId('com.example.app');
-      expect(executeRpcCalled, false);
-    });
-
-    test('disableIDFVCollection (iOS-only) is a no-op', () {
-      instance.disableIDFVCollection(true);
-      expect(executeRpcCalled, false);
-    });
-
-    test('setShouldCollectDeviceName (iOS-only) is a no-op', () {
-      instance.setShouldCollectDeviceName(true);
-      expect(executeRpcCalled, false);
-    });
-
-    test('useUninstallSandbox (iOS-only) is a no-op', () {
-      instance.useUninstallSandbox(true);
-      expect(executeRpcCalled, false);
-    });
-
-    test('isStopped (Android-only) returns null without dispatching', () async {
-      final stopped = await instance.isStopped();
-      expect(executeRpcCalled, false);
-      expect(stopped, isNull);
-    });
-
-    test('isPreInstalledApp (Android-only) returns null without dispatching',
+    test('platform-only value calls return a safe default off-platform',
         () async {
-      final pre = await instance.isPreInstalledApp();
-      expect(executeRpcCalled, false);
-      expect(pre, isNull);
+      expect(await iosSdk.getHostName(), isNull);
+      expect(await iosSdk.getHostPrefix(), isNull);
+      expect(await iosSdk.getOutOfStore(), isNull);
+      expect(await iosSdk.getAttributionId(), isNull);
+      expect(await iosSdk.isStopped(), isFalse);
+      expect(await iosSdk.isPreInstalledApp(), isFalse);
+
+      expect(rpcMethod, isNull);
+    });
+
+    test('iOS ASA collection is configured through an explicit setter',
+        () async {
+      await iosSdk.setDisableCollectASA(true);
+      expect(rpcMethod, 'setDisableCollectASA');
+      expect(rpcParams, {'disable': true});
+    });
+
+    test('Android cannot clear the sharing filter through RPC 7.0.1', () async {
+      await androidSdk.setSharingFilterForPartners(null);
+      expect(rpcMethod, isNull);
+
+      await androidSdk.setSharingFilterForPartners([]);
+      expect(rpcMethod, isNull);
     });
   });
 
-  group('observer-only listeners do not dispatch RPC', () {
-    // register/unregister for session-ready and conversion data are Dart-side observers only:
-    // the native SDK listeners are registered during initSdk, so these must never dispatch RPC.
-    test('unregisterConversionDataListener is observer-only (no RPC)', () {
-      instance.onInstallConversionData((_) {});
-      instance.unregisterConversionDataListener();
-      expect(executeRpcCalled, false);
+  group('models and platform payloads', () {
+    test('consent validates GDPR-required fields in release behavior', () {
+      expect(
+        () => androidSdk.setConsentData(isUserSubjectToGDPR: true),
+        throwsArgumentError,
+      );
+      expect(
+        () => androidSdk.setConsentData(
+          isUserSubjectToGDPR: true,
+          hasConsentForDataUsage: true,
+        ),
+        throwsArgumentError,
+      );
+      expect(rpcMethod, isNull);
     });
 
-    test('unregisterSessionReadyListener is observer-only (no RPC)', () {
-      instance.registerSessionReadyListener((_) {});
-      instance.unregisterSessionReadyListener();
-      expect(executeRpcCalled, false);
+    test('ad mediation values preserve native platform naming', () async {
+      await androidSdk.logAdRevenue(
+        monetizationNetwork: 'network',
+        mediationNetwork: AFMediationNetwork.customMediation,
+        currencyIso4217Code: 'USD',
+        revenue: 1.5,
+        additionalParameters: {'placement': 'banner'},
+      );
+      expect(rpcParams, {
+        'monetizationNetwork': 'network',
+        'mediationNetwork': 'custom_mediation',
+        'currencyIso4217Code': 'USD',
+        'revenue': 1.5,
+        'additionalParameters': {'placement': 'banner'},
+      });
+
+      await iosSdk.logAdRevenue(
+        monetizationNetwork: 'network',
+        mediationNetwork: AFMediationNetwork.customMediation,
+        currencyIso4217Code: 'USD',
+        revenue: 1.5,
+        additionalParameters: {'placement': 'banner'},
+      );
+      expect(rpcParams, {
+        'monetizationNetwork': 'network',
+        'mediationNetwork': 'custom',
+        'currencyIso4217Code': 'USD',
+        'revenue': 1.5,
+        'additionalParameters': {'placement': 'banner'},
+      });
+    });
+
+    test(
+        'direct monetization network preserves native platform naming',
+        () async {
+      await androidSdk.logAdRevenue(
+        monetizationNetwork: 'network',
+        mediationNetwork: AFMediationNetwork.directMonetizationNetwork,
+        currencyIso4217Code: 'USD',
+        revenue: 2.0,
+      );
+      expect(rpcParams!['mediationNetwork'], 'direct_monetization_network');
+
+      await iosSdk.logAdRevenue(
+        monetizationNetwork: 'network',
+        mediationNetwork: AFMediationNetwork.directMonetizationNetwork,
+        currencyIso4217Code: 'USD',
+        revenue: 2.0,
+      );
+      expect(rpcParams!['mediationNetwork'], 'directmonetization');
+    });
+
+    test('purchase validation sends the Android contract', () async {
+      rpcResult = {'status': 'verified'};
+      const purchase = AFAndroidPurchaseDetails(
+        purchaseType: AFPurchaseType.oneTimePurchase,
+        productId: 'sku',
+        purchaseToken: 'token',
+      );
+
+      expect(
+        await androidSdk.validateAndLogInAppPurchase(purchase),
+        {'status': 'verified'},
+      );
+      expect(rpcParams, {
+        'purchaseType': 'one_time_purchase',
+        'purchaseToken': 'token',
+        'productId': 'sku',
+        'additionalParameters': null,
+        'awaitResponse': true,
+      });
+    });
+
+    test('purchase validation sends the iOS contract', () async {
+      rpcResult = <String, dynamic>{};
+      const purchase = AFIOSPurchaseDetails(
+        purchaseType: AFPurchaseType.subscription,
+        productId: 'sku',
+        transactionId: 'transaction',
+      );
+
+      await iosSdk.validateAndLogInAppPurchase(purchase);
+      expect(rpcParams, {
+        'product': {'productId': 'sku'},
+        'transaction': {
+          'transactionId': 'transaction',
+          'purchaseType': 'subscription',
+        },
+        'additionalParameters': null,
+      });
+    });
+
+    test('purchase validation returns an empty map when native result is null',
+        () async {
+      rpcResult = null;
+      const purchase = AFAndroidPurchaseDetails(
+        purchaseType: AFPurchaseType.oneTimePurchase,
+        productId: 'sku',
+        purchaseToken: 'token',
+      );
+
+      expect(
+        await androidSdk.validateAndLogInAppPurchase(
+          purchase,
+          awaitResponse: false,
+        ),
+        isEmpty,
+      );
+    });
+
+    test('purchase validation forwards awaitResponse only to Android',
+        () async {
+      rpcResult = <String, dynamic>{};
+
+      await androidSdk.validateAndLogInAppPurchase(
+        const AFAndroidPurchaseDetails(
+          purchaseType: AFPurchaseType.oneTimePurchase,
+          productId: 'android-sku',
+          purchaseToken: 'token',
+        ),
+        awaitResponse: false,
+      );
+      expect(rpcParams!['awaitResponse'], isFalse);
+
+      await iosSdk.validateAndLogInAppPurchase(
+        const AFIOSPurchaseDetails(
+          purchaseType: AFPurchaseType.subscription,
+          productId: 'ios-sku',
+          transactionId: 'transaction',
+        ),
+        awaitResponse: false,
+      );
+      expect(rpcParams, isNot(contains('awaitResponse')));
+    });
+
+    test('purchase details reject the wrong platform', () async {
+      const androidPurchase = AFAndroidPurchaseDetails(
+        purchaseType: AFPurchaseType.oneTimePurchase,
+        productId: 'android-sku',
+        purchaseToken: 'token',
+      );
+      const iosPurchase = AFIOSPurchaseDetails(
+        purchaseType: AFPurchaseType.subscription,
+        productId: 'ios-sku',
+        transactionId: 'transaction',
+      );
+
+      await expectLater(
+        iosSdk.validateAndLogInAppPurchase(androidPurchase),
+        throwsArgumentError,
+      );
+      await expectLater(
+        androidSdk.validateAndLogInAppPurchase(iosPurchase),
+        throwsArgumentError,
+      );
+
+      // Neither details type is usable on a platform the plugin does not ship
+      // a native bridge for.
+      expect(
+        () => androidPurchase.toRpcMap(platform: TargetPlatform.macOS),
+        throwsArgumentError,
+      );
+      expect(
+        () => iosPurchase.toRpcMap(platform: TargetPlatform.windows),
+        throwsArgumentError,
+      );
+    });
+
+    test('generateInviteLink returns its per-call result', () async {
+      rpcResult = 'https://example.onelink.me/invite';
+
+      final link = await androidSdk.generateInviteLink(
+        parameters: const AppsFlyerInviteLinkParams(
+          referrerCustomerId: 'customer',
+          userParams: {'source': 'share'},
+        ),
+      );
+
+      expect(link, 'https://example.onelink.me/invite');
+      expect(rpcMethod, 'generateInviteLink');
+      expect(rpcParams!['customerId'], 'customer');
+      expect(rpcParams!['userParams'], {'source': 'share'});
+      expect(rpcParams!['awaitResponse'], isTrue);
+    });
+
+    test('generateInviteLink forwards awaitResponse only to Android', () async {
+      rpcResult = 'https://example.onelink.me/invite';
+
+      await androidSdk.generateInviteLink(awaitResponse: false);
+      expect(rpcParams!['awaitResponse'], isFalse);
+
+      await iosSdk.generateInviteLink(awaitResponse: false);
+      expect(rpcParams, isNot(contains('awaitResponse')));
     });
   });
+
+  group('complete RPC mapping', () {
+    Future<void> expectVoidRpc(
+      Future<void> Function() invoke,
+      String method,
+      Map<String, dynamic> params,
+    ) async {
+      rpcMethod = null;
+      rpcParams = null;
+      await invoke();
+      expect(rpcMethod, method);
+      expect(rpcParams, params);
+    }
+
+    test('maps cross-platform configuration and identity APIs', () async {
+      await expectVoidRpc(
+        () => androidSdk.setCustomerUserId('customer'),
+        'setCustomerUserId',
+        {'customerId': 'customer'},
+      );
+      await expectVoidRpc(
+        () => androidSdk.setUserEmail('hash-me@example.com'),
+        'setUserEmail',
+        {'email': 'hash-me@example.com'},
+      );
+      await expectVoidRpc(
+        () => androidSdk.setUserPhone('+1', '5551234'),
+        'setUserPhone',
+        {'countryCode': '+1', 'phoneNumber': '5551234'},
+      );
+      await expectVoidRpc(
+        () => androidSdk.setUserFirstName('Ada'),
+        'setUserFirstName',
+        {'firstName': 'Ada'},
+      );
+      await expectVoidRpc(
+        () => androidSdk.setUserLastName('Lovelace'),
+        'setUserLastName',
+        {'lastName': 'Lovelace'},
+      );
+      await expectVoidRpc(
+        () => androidSdk.setUserFbLoginId(42),
+        'setUserFbLoginId',
+        {'fbLoginId': 42},
+      );
+      await expectVoidRpc(
+        androidSdk.clearUserPii,
+        'clearUserPii',
+        {},
+      );
+      await expectVoidRpc(
+        () => androidSdk.setCurrencyCode('USD'),
+        'setCurrencyCode',
+        {'currencyCode': 'USD'},
+      );
+      await expectVoidRpc(
+        () => androidSdk.setMinTimeBetweenSessions(15),
+        'setMinTimeBetweenSessions',
+        {'seconds': 15},
+      );
+      await expectVoidRpc(
+        () => androidSdk.setHost('prefix', 'example.com'),
+        'setHost',
+        {'hostPrefixName': 'prefix', 'hostName': 'example.com'},
+      );
+      await expectVoidRpc(
+        () => androidSdk.setAdditionalData({'source': 'flutter'}),
+        'setAdditionalData',
+        {
+          'customData': {'source': 'flutter'},
+        },
+      );
+      await expectVoidRpc(
+        () => androidSdk.setAppInviteOneLink('one-link'),
+        'setAppInviteOneLink',
+        {'oneLinkId': 'one-link'},
+      );
+      await expectVoidRpc(
+        () => androidSdk.setPartnerData('partner', {'key': 'value'}),
+        'setPartnerData',
+        {
+          'partnerId': 'partner',
+          'data': {'key': 'value'},
+        },
+      );
+      await expectVoidRpc(
+        () => androidSdk.setSharingFilterForPartners(['partner']),
+        'setSharingFilterForPartners',
+        {
+          'partners': ['partner'],
+        },
+      );
+      // An empty list means "clear", which the iOS RPC only honors for null.
+      await expectVoidRpc(
+        () => iosSdk.setSharingFilterForPartners([]),
+        'setSharingFilterForPartners',
+        {'partners': null},
+      );
+      await expectVoidRpc(
+        () => iosSdk.setSharingFilterForPartners(null),
+        'setSharingFilterForPartners',
+        {'partners': null},
+      );
+      await expectVoidRpc(
+        () => androidSdk.setInstallId('install-id'),
+        'setInstallId',
+        {'installId': 'install-id'},
+      );
+      await expectVoidRpc(
+        () => androidSdk.setConsentData(
+          isUserSubjectToGDPR: true,
+          hasConsentForDataUsage: true,
+          hasConsentForAdsPersonalization: false,
+          hasConsentForAdStorage: true,
+        ),
+        'setConsentData',
+        {
+          'isUserSubjectToGDPR': true,
+          'hasConsentForDataUsage': true,
+          'hasConsentForAdsPersonalization': false,
+          'hasConsentForAdStorage': true,
+        },
+      );
+      await expectVoidRpc(
+        () => androidSdk.enableTCFDataCollection(true),
+        'enableTCFDataCollection',
+        {'shouldCollect': true},
+      );
+      await expectVoidRpc(
+        () => androidSdk.anonymizeUser(true),
+        'anonymizeUser',
+        {'shouldAnonymize': true},
+      );
+      await expectVoidRpc(
+        () => androidSdk.stop(true),
+        'stop',
+        {'shouldStop': true},
+      );
+      await expectVoidRpc(
+        () => androidSdk.setDisableAdvertisingIdentifiers(true),
+        'setDisableAdvertisingIdentifiers',
+        {'isDisable': true},
+      );
+      await expectVoidRpc(
+        () => iosSdk.setDisableAdvertisingIdentifiers(true),
+        'setDisableAdvertisingIdentifiers',
+        {'disable': true},
+      );
+    });
+
+    test('maps deep-link, sharing, push, and uninstall APIs', () async {
+      await expectVoidRpc(
+        () => androidSdk.logLocation(
+          latitude: 1.5,
+          longitude: -2.5,
+        ),
+        'logLocation',
+        {'latitude': 1.5, 'longitude': -2.5},
+      );
+      await expectVoidRpc(
+        () => androidSdk.logCrossPromoteImpression(
+          'promoted',
+          campaign: 'campaign',
+          userParams: {'key': 'value'},
+        ),
+        'logCrossPromoteImpression',
+        {
+          'appId': 'promoted',
+          'campaign': 'campaign',
+          'userParams': {'key': 'value'},
+        },
+      );
+      await expectVoidRpc(
+        () => iosSdk.logAndOpenStore(
+          'promoted',
+          campaign: 'campaign',
+          userParams: {'key': 'value'},
+        ),
+        'logAndOpenStore',
+        {
+          'promotedAppId': 'promoted',
+          'campaign': 'campaign',
+          'userParams': {'key': 'value'},
+        },
+      );
+      await expectVoidRpc(
+        () => androidSdk.logInvite('email', {'key': 'value'}),
+        'logInvite',
+        {
+          'channel': 'email',
+          'eventParameters': {'key': 'value'},
+        },
+      );
+      await expectVoidRpc(
+        () => androidSdk.performDeepLinking(
+          'https://example.com/path',
+          shouldTriggerSession: true,
+        ),
+        'performDeepLinking',
+        {
+          'url': 'https://example.com/path',
+          'shouldTriggerSession': true,
+        },
+      );
+      await expectVoidRpc(
+        () => iosSdk.performDeepLinking('https://example.com/path'),
+        'performOnAppAttributionWithURL',
+        {'url': 'https://example.com/path'},
+      );
+      await expectVoidRpc(
+        () => androidSdk.setResolveDeepLinkURLs(['example.com']),
+        'setResolveDeepLinkURLs',
+        {
+          'urls': ['example.com'],
+        },
+      );
+      await expectVoidRpc(
+        () => androidSdk.setOneLinkCustomDomain(['links.example.com']),
+        'setOneLinkCustomDomain',
+        {
+          'domains': ['links.example.com'],
+        },
+      );
+      await expectVoidRpc(
+        () => androidSdk.setDeepLinkTimeout(3000),
+        'setDeepLinkTimeout',
+        {'timeout': 3000},
+      );
+      await expectVoidRpc(
+        () => androidSdk.addPushNotificationDeepLinkPath(['data', 'link']),
+        'addPushNotificationDeepLinkPath',
+        {
+          'deepLinkPath': ['data', 'link'],
+        },
+      );
+      await expectVoidRpc(
+        () => androidSdk.enableFacebookDeferredApplinks(true),
+        'enableFacebookDeferredApplinks',
+        {'isEnabled': true},
+      );
+      await expectVoidRpc(
+        () => androidSdk.appendParametersToDeepLinkingURL(
+          'example.com',
+          {'key': 'value'},
+        ),
+        'appendParametersToDeepLinkingURL',
+        {
+          'contains': 'example.com',
+          'parameters': {'key': 'value'},
+        },
+      );
+      await expectVoidRpc(
+        () => iosSdk.setFacebookDeferredAppLink(null),
+        'setFacebookDeferredAppLink',
+        {'url': null},
+      );
+      await expectVoidRpc(
+        () => androidSdk.sendPushNotificationData(
+          campaign: 'campaign',
+          pid: 'media-source',
+          isRetargeting: true,
+          additionalParameters: {'key': 'value'},
+        ),
+        'sendPushNotificationData',
+        {
+          'campaign': 'campaign',
+          'pid': 'media-source',
+          'isRetargeting': true,
+          'additionalParameters': {'key': 'value'},
+        },
+      );
+      await expectVoidRpc(
+        () => iosSdk.handlePushNotification({'aps': {}}),
+        'handlePushNotification',
+        {
+          'pushPayload': {'aps': {}},
+        },
+      );
+      await expectVoidRpc(
+        () => androidSdk.updateServerUninstallToken('fcm-token'),
+        'updateServerUninstallToken',
+        {'token': 'fcm-token'},
+      );
+      await expectVoidRpc(
+        () => iosSdk.updateServerUninstallToken('0123456789abcdef'),
+        'registerUninstall',
+        {'deviceToken': '0123456789abcdef'},
+      );
+    });
+
+    test('maps every Android-only API', () async {
+      const logLevels = {
+        AFLogLevel.none: 'NONE',
+        AFLogLevel.error: 'ERROR',
+        AFLogLevel.warning: 'WARNING',
+        AFLogLevel.info: 'INFO',
+        AFLogLevel.debug: 'DEBUG',
+        AFLogLevel.verbose: 'VERBOSE',
+      };
+
+      for (final entry in logLevels.entries) {
+        await expectVoidRpc(
+          () => androidSdk.setLogLevel(entry.key),
+          'setLogLevel',
+          {'logLevel': entry.value},
+        );
+      }
+
+      await expectVoidRpc(
+        androidSdk.unregisterDeeplinkListener,
+        'unsubscribeForDeepLink',
+        {},
+      );
+      await expectVoidRpc(
+        androidSdk.unregisterConversionListener,
+        'unregisterConversionListener',
+        {},
+      );
+
+      await expectVoidRpc(androidSdk.logSession, 'logSession', {});
+      await expectVoidRpc(
+        () => androidSdk.setOutOfStore('amazon'),
+        'setOutOfStore',
+        {'sourceName': 'amazon'},
+      );
+      await expectVoidRpc(
+        () => androidSdk.setIsUpdate(true),
+        'setIsUpdate',
+        {'isUpdate': true},
+      );
+      await expectVoidRpc(
+        () => androidSdk.setPreinstallAttribution(
+          'media',
+          campaign: 'campaign',
+          siteId: 'site',
+        ),
+        'setPreinstallAttribution',
+        {
+          'mediaSource': 'media',
+          'campaign': 'campaign',
+          'siteId': 'site',
+        },
+      );
+      await expectVoidRpc(
+        () => androidSdk.setAppId('com.example.app'),
+        'setAppId',
+        {'appId': 'com.example.app'},
+      );
+      await expectVoidRpc(
+        () => androidSdk.setCollectAndroidID(true),
+        'setCollectAndroidID',
+        {'isCollect': true},
+      );
+      await expectVoidRpc(
+        () => androidSdk.setDisableNetworkData(true),
+        'setDisableNetworkData',
+        {'isDisable': true},
+      );
+      await expectVoidRpc(
+        androidSdk.disableAppSetId,
+        'disableAppSetId',
+        {},
+      );
+    });
+
+    test('maps every iOS-only API', () async {
+      await expectVoidRpc(
+        () => iosSdk.setCurrentDeviceLanguage('en'),
+        'setCurrentDeviceLanguage',
+        {'language': 'en'},
+      );
+      await expectVoidRpc(
+        () => iosSdk.setDisableCollectASA(true),
+        'setDisableCollectASA',
+        {'disable': true},
+      );
+      await expectVoidRpc(
+        () => iosSdk.setDisableSKAdNetwork(true),
+        'setDisableSKAdNetwork',
+        {'disable': true},
+      );
+      await expectVoidRpc(
+        () => iosSdk.setDisableAppleAdsAttribution(true),
+        'setDisableAppleAdsAttribution',
+        {'disable': true},
+      );
+      await expectVoidRpc(
+        () => iosSdk.setDisableIDFVCollection(true),
+        'setDisableIDFVCollection',
+        {'disable': true},
+      );
+      await expectVoidRpc(
+        () => iosSdk.setShouldCollectDeviceName(true),
+        'setShouldCollectDeviceName',
+        {'collect': true},
+      );
+      await expectVoidRpc(
+        () => iosSdk.setUseReceiptValidationSandbox(true),
+        'setUseReceiptValidationSandbox',
+        {'sandbox': true},
+      );
+      await expectVoidRpc(
+        () => iosSdk.setUseUninstallSandbox(true),
+        'setUseUninstallSandbox',
+        {'sandbox': true},
+      );
+    });
+
+    test('maps getters and native return values', () async {
+      rpcResult = 'host.example.com';
+      expect(await androidSdk.getHostName(), 'host.example.com');
+      expect(rpcMethod, 'getHostName');
+      expect(rpcParams, isEmpty);
+
+      rpcResult = 'prefix';
+      expect(await androidSdk.getHostPrefix(), 'prefix');
+      expect(rpcMethod, 'getHostPrefix');
+
+      rpcResult = 'amazon';
+      expect(await androidSdk.getOutOfStore(), 'amazon');
+      expect(rpcMethod, 'getOutOfStore');
+
+      rpcResult = true;
+      expect(await androidSdk.isStopped(), isTrue);
+      expect(rpcMethod, 'isStopped');
+
+      rpcResult = '7.0.1';
+      expect(await iosSdk.getSdkVersion(), '7.0.1');
+      expect(rpcMethod, 'getSdkVersion');
+      expect(rpcParams, isEmpty);
+
+      rpcResult = 'uid';
+      expect(await iosSdk.getAppsFlyerUID(), 'uid');
+      expect(rpcMethod, 'getAppsFlyerUID');
+
+      rpcResult = true;
+      expect(await androidSdk.isPreInstalledApp(), isTrue);
+      expect(rpcMethod, 'isPreInstalledApp');
+
+      rpcResult = 'attribution';
+      expect(await androidSdk.getAttributionId(), 'attribution');
+      expect(rpcMethod, 'getAttributionId');
+    });
+
+    test('maps listener removal and iOS invite payload/result', () async {
+      await expectVoidRpc(
+        iosSdk.unregisterSessionReadyListener,
+        'unregisterSessionReadyListener',
+        {},
+      );
+
+      rpcResult = 'https://example.onelink.me/invite';
+      final link = await iosSdk.generateInviteLink(
+        parameters: const AppsFlyerInviteLinkParams(
+          referrerCustomerId: 'customer',
+          userParams: {'source': 'share'},
+        ),
+      );
+      expect(link, 'https://example.onelink.me/invite');
+      expect(rpcMethod, 'generateInviteLink');
+      expect(rpcParams!['referrerCustomerId'], 'customer');
+      expect(rpcParams!['userParams'], {'source': 'share'});
+      expect(rpcParams, isNot(contains('awaitResponse')));
+    });
+  });
+
+  group('event routing', () {
+    test('filters conversion events from the raw RPC stream', () async {
+      final result = androidSdk.onConversionDataSuccess.first;
+      await pumpEventQueue();
+      await _emitEvent({
+        'event': 'onConversionDataSuccess',
+        'data': {'media_source': 'organic'},
+        'timestamp': 123,
+        'origin': 'android',
+      });
+
+      expect(await result, {'media_source': 'organic'});
+    });
+
+    test(
+        'onConversionDataFailure passes through the raw native payload '
+        '(no synthesized RPC exception)', () async {
+      final result = androidSdk.onConversionDataFailure.first;
+      await pumpEventQueue();
+      await _emitEvent({
+        'event': 'onConversionDataFail',
+        'data': {'error': 'Network unavailable'},
+        'timestamp': 123,
+        'origin': 'android',
+      });
+
+      // Android never reports a numeric code — the payload is passed through
+      // as-is rather than backfilled with a synthesized default.
+      expect(await result, {'error': 'Network unavailable'});
+    });
+
+    test('ignores transport-only envelope fields on conversion stream', () async {
+      final result = androidSdk.onConversionDataSuccess.first;
+      await pumpEventQueue();
+      await _emitEvent({
+        'event': 'onConversionDataSuccess',
+        'data': {'media_source': 'organic'},
+        'timestamp': 999,
+        'origin': 'android',
+      });
+
+      expect(await result, {'media_source': 'organic'});
+    });
+
+    test('routes onSessionReady without a payload', () async {
+      var readyCount = 0;
+      final subscription = androidSdk.onSessionReady.listen((_) {
+        readyCount++;
+      });
+      await pumpEventQueue();
+      await _emitEvent({
+        'event': 'onSessionReady',
+        'data': <String, dynamic>{},
+        'timestamp': 123.9,
+        'origin': 'ios',
+      });
+      await pumpEventQueue();
+
+      expect(readyCount, 1);
+      await subscription.cancel();
+    });
+
+    test('routes deep-link events with an object data payload', () async {
+      final result = iosSdk.onDeepLinkReceived.first;
+      await pumpEventQueue();
+      await _emitEvent({
+        'event': 'onDeepLinkReceived',
+        'data': {
+          'status': 'found',
+          'deepLink': {'deep_link_value': 'home'},
+        },
+      });
+
+      final deepLinkResult = await result;
+      expect(deepLinkResult.status, DeepLinkStatus.found);
+      expect(deepLinkResult.deepLink!.deepLinkValue, 'home');
+    });
+
+    test('drops events with an empty event name', () async {
+      final received = <Map<String, dynamic>>[];
+      final subscription =
+          androidSdk.onConversionDataSuccess.listen(received.add);
+      await pumpEventQueue();
+      await _emitEvent({
+        'event': null,
+        'data': {'media_source': 'organic'},
+      });
+      await pumpEventQueue();
+
+      expect(received, isEmpty);
+      await subscription.cancel();
+    });
+
+    test('maps every deep-link status to DeepLinkStatus', () async {
+      final cases = <String, DeepLinkStatus>{
+        'found': DeepLinkStatus.found,
+        'FOUND': DeepLinkStatus.found,
+        'not_found': DeepLinkStatus.notFound,
+        'NOT_FOUND': DeepLinkStatus.notFound,
+        'error': DeepLinkStatus.error,
+        'failure': DeepLinkStatus.error,
+        'unexpected': DeepLinkStatus.unknown,
+      };
+
+      for (final entry in cases.entries) {
+        final result = androidSdk.onDeepLinkReceived.first;
+        await pumpEventQueue();
+        await _emitEvent({
+          'event': 'onDeepLinking',
+          'data': {'status': entry.key},
+        });
+        expect((await result).status, entry.value);
+      }
+    });
+
+    test('deep-link errors use platform-specific failure fields', () async {
+      final androidResult = androidSdk.onDeepLinkReceived.first;
+      await pumpEventQueue();
+      await _emitEvent({
+        'event': 'onDeepLinking',
+        'data': {'status': 'error', 'error': 'NETWORK'},
+      });
+      final android = await androidResult;
+      expect(android.status, DeepLinkStatus.error);
+      expect(android.error!.type, 'NETWORK');
+      expect(android.error!.message, isNull);
+
+      final iosResult = iosSdk.onDeepLinkReceived.first;
+      await pumpEventQueue();
+      await _emitEvent({
+        'event': 'onDeepLinkReceived',
+        'data': {'status': 'error', 'error': 'Timed out'},
+      });
+      final ios = await iosResult;
+      expect(ios.status, DeepLinkStatus.error);
+      expect(ios.error!.message, 'Timed out');
+      expect(ios.error!.type, isNull);
+    });
+
+    test('normalizes Android and iOS deep-link status without hiding errors',
+        () async {
+      final androidResult = androidSdk.onDeepLinkReceived.first;
+      await pumpEventQueue();
+      await _emitEvent({
+        'event': 'onDeepLinking',
+        'data': {
+          'status': 'FOUND',
+          'deepLink': '{"deep_link_value":"home","is_deferred":false}',
+        },
+      });
+      final android = await androidResult;
+
+      final iosResult = iosSdk.onDeepLinkReceived.first;
+      await pumpEventQueue();
+      await _emitEvent({
+        'event': 'onDeepLinkReceived',
+        'data': {'status': 'failure', 'error': 'Network unavailable'},
+      });
+      final ios = await iosResult;
+
+      expect(android.status, DeepLinkStatus.found);
+      expect(android.deepLink!.deepLinkValue, 'home');
+      expect(android.deepLink!.isDeferred, isFalse);
+      expect(ios.status, DeepLinkStatus.error);
+      expect(ios.error!.message, 'Network unavailable');
+      expect(ios.error!.type, isNull);
+    });
+
+    test('drops malformed native events instead of surfacing an error',
+        () async {
+      final received = <Map<String, dynamic>>[];
+      final errors = <Object>[];
+      final subscription = androidSdk.onConversionDataSuccess.listen(
+        received.add,
+        onError: errors.add,
+      );
+      await pumpEventQueue();
+
+      await _emitRaw('not-json-at-all');
+      await _emitRaw(jsonEncode(<dynamic>['not', 'an', 'object']));
+      await pumpEventQueue();
+
+      expect(received, isEmpty);
+      expect(errors, isEmpty);
+
+      await _emitEvent({
+        'event': 'onConversionDataSuccess',
+        'data': {'media_source': 'organic'},
+      });
+      await pumpEventQueue();
+
+      expect(received.single, {'media_source': 'organic'});
+      expect(errors, isEmpty);
+
+      await subscription.cancel();
+    });
+  });
+}
+
+Future<void> _emitEvent(Map<String, dynamic> event) =>
+    _emitRaw(jsonEncode(event));
+
+Future<void> _emitRaw(String payload) async {
+  final messenger =
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  final ByteData data =
+      const StandardMethodCodec().encodeSuccessEnvelope(payload);
+  await messenger.handlePlatformMessage('af-events', data, (_) {});
 }

@@ -4,32 +4,35 @@ name: SDK Kill Switch (stop)
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-07-29
+last_verified: 2026-08-05
 depends_on: []
 ---
 
 ## Business Purpose
-Some legal, privacy, or contractual situations (e.g. a "right to be forgotten," a regulator order, a licensing dispute) require the app to fully halt all AppsFlyer network activity immediately, for the whole SDK instance. `stop(true)` tells the native SDK to stop communicating with AppsFlyer's servers entirely, and is reversible with `stop(false)`. This is an "extreme case" API for legal/privacy compliance, distinct from the narrower per-user `anonymizeUser` (F-013). `isStopped()` reads the current state (Android only).
+Some legal, privacy, or contractual situations (e.g. a "right to be forgotten," a regulator order, a licensing dispute) require the app to fully halt all AppsFlyer network activity immediately, for the whole SDK instance. `stop(true)` tells the native SDK to stop communicating with AppsFlyer's servers entirely, and is reversible with `stop(false)`. This is an "extreme case" API for legal/privacy compliance, distinct from the narrower per-user `anonymizeUser` (F-013). `isStopped()` reads the current state and is available only on Android.
 
 ---
 
 ## Trigger
-Called by the host app at any point — typically in response to a privacy/legal requirement (a remote "kill switch" flag, a consent-withdrawal flow, or compliance testing) — to start or stop all SDK network communication.
+The host app awaits `AppsFlyerSdk.instance.stop(...)` at any point — typically in response to a privacy/legal requirement such as a remote "kill switch" flag, a consent-withdrawal flow, or compliance testing — to halt or resume all SDK network communication.
 
 ---
 
 ## Call Chain
-Generic RPC on both platforms.
+`stop` is an awaitable RPC setter on both platforms. `isStopped` is an awaitable Android-only getter guarded by an Android platform check.
 
 ```
-AppsflyerSdk.stop(isStopped)                                          [lib/src/appsflyer_sdk.dart]
-  → _executeRpc('stop', {shouldStop: isStopped})
-    → af-api "executeRpc" {method:'stop', params}
-      → Android: dispatchRpc → AppsFlyerRpcHandler → AppsFlyerLib.stop(...)   [android/.../AppsflyerSdkPlugin.java]
-      → iOS: dispatchRpc → AppsFlyerRPCBridge → [AppsFlyerLib shared] ...      [ios/.../AppsflyerSdkPlugin.m]
+AppsFlyerSdk.stop(shouldStop)                                         [lib/src/appsflyer_sdk.dart]
+  → _invokeVoidRpc('stop', {'shouldStop': shouldStop})
+    → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
+      → Android: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRpcHandler
+        → AppsFlyerLib.stop(...)
+      → iOS: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRPCBridge
+  → PlatformException is converted to AppsFlyerException
 
-AppsflyerSdk.isStopped()   (Android only; returns null on iOS)
-  → Platform.isAndroid ? _executeRpc<bool>('isStopped') : null
+AppsFlyerSdk.isStopped()                                              [Android only]
+  → not Android: log warning, return false (no RPC dispatched)
+  → _invokeRpc<bool>('isStopped') ?? false
     → Android: dispatchRpc → AppsFlyerRpcHandler → AppsFlyerLib.isStopped()
 ```
 
@@ -38,27 +41,27 @@ AppsflyerSdk.isStopped()   (Android only; returns null on iOS)
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `stop(bool)` (both platforms), `isStopped()` (Android-gated) |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | generic `stop` / `isStopped` dispatch over `AppsFlyerRpcHandler` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | generic `stop` dispatch over `AppsFlyerRPCBridge` |
+| `lib/src/appsflyer_sdk.dart` | `stop(bool shouldStop)` on both platforms; `isStopped()` guarded by an Android platform check |
+| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | Forwards `stop` and `isStopped` through the Android RPC handler |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | Forwards `stop` through the iOS RPC bridge |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `stop`: `isStopped` (bool) — `true` halts all SDK network activity, `false` re-enables it. RPC param key `shouldStop`. `isStopped()`: none. |
-| **Output** | `stop` → `void` (fire-and-forget). `isStopped()` → `Future<bool?>` on Android; **`null` on iOS**. |
+| **Input** | `stop`: `shouldStop` (`bool`) — `true` halts all SDK network activity, `false` re-enables it. RPC param key `shouldStop`. `isStopped()`: no parameters. |
+| **Output** | `stop` → `Future<void>` that completes on native success and throws `AppsFlyerException` on failure. `isStopped()` → `Future<bool>`; a missing native value resolves to `false`, and calling it off Android logs a warning and returns `false` without dispatching an RPC. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` verifies that `stop(true)` dispatches the `stop` RPC with `shouldStop: true`, and that `isStopped()` is Android-only (returns `null` without dispatching on the test host).
+`test/appsflyer_sdk_test.dart` verifies in the cross-platform RPC mapping test that `stop(true)` dispatches RPC method `stop` with `{'shouldStop': true}`, and in the native-return-value test that `isStopped()` dispatches `isStopped` and returns the native `true`. `'platform-only value calls return a safe default off-platform'` asserts that `isStopped()` on iOS returns `false` without dispatching an RPC.
 
 ---
 
 ## Known Limitations
-- `isStopped()` is Android-only and resolves to `null` on iOS.
+- `isStopped()` is Android-only. On iOS it logs a warning and returns `false` without dispatching an RPC, so the value cannot be distinguished from a genuine "not stopped" state.
 - Distinct from `anonymizeUser` (F-013): `stop` disables the entire SDK instance for all users/sessions, while `anonymizeUser` scopes an opt-out to the current user only.
 
 ---

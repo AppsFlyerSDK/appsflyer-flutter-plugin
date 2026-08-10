@@ -1,83 +1,79 @@
 ---
 id: F-001
-name: SDK Initialization & Options Validation
+name: SDK Initialization
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-07-29
+last_verified: 2026-08-07
 depends_on: []
 ---
 
 ## Business Purpose
-This is the entry point that wires the Flutter app's dev key, app ID and startup flags into the native AppsFlyer SDK 7. Without it, no other AppsFlyer API works: no attribution, no events, no deep linking. The Dart-side validation (`_validateAFOptions` / `_validateMapOptions`) catches misconfiguration early (missing dev key, malformed iOS numeric App Store ID) via `assert`s. It also stamps the plugin's identity (`setPluginInfo`, `plugin=flutter`) onto the native SDK so AppsFlyer's backend can attribute traffic to the Flutter wrapper. In SDK 7, `initSdk()` **only initializes** the SDK — it does not send a session. The app must call `startSDK()` (F-002) separately, once per foreground cycle.
+`AppsFlyerSdk.init` configures the native AppsFlyer SDK 7 instance with the developer key and, on iOS, the Apple App ID. Before initialization, the platform bridge makes a best-effort call that identifies the integration as the Flutter plugin; failure of this reporting step does not abort initialization. Initialization does not register optional native listeners and does not send a session; those operations remain explicit public API calls.
 
 ---
 
 ## Trigger
-Called once by the host app after constructing `AppsflyerSdk(options)`, typically in `main()` before `runApp()`. Register `registerSessionReadyListener` (and any conversion/deep-link listeners) **before** calling `initSdk()` so the first signals are not missed. Runs whether `AppsFlyerOptions` (typed) or a raw `Map` was passed to the factory constructor.
+Intended to be called once during application setup through the shared `AppsFlyerSdk.instance`, after subscribing to the event streams the app needs and before registering native conversion, deep-link, or session-ready listeners. Dart does not enforce a single call. Android accepts no `appId`; iOS requires a non-empty value.
 
 ---
 
 ## Call Chain
-All Dart→native traffic goes through the single `af-api` MethodChannel, method `executeRpc`, carrying `{method, params}`. `init` is a plugin-orchestrated RPC method (not generic dispatch): the native side runs an ordered sequence of bridge RPCs.
+All Dart-to-native traffic uses the `af-api` `MethodChannel`. The public method wraps the platform-specific initialization parameters in the standard `{method, params}` RPC envelope.
 
 ```
-AppsflyerSdk(options) factory                                         [lib/src/appsflyer_sdk.dart]
-  → AppsflyerSdk.private(...)
-AppsflyerSdk.initSdk({registerConversionDataCallback, registerOnDeepLinkingCallback})
-  → _validateAFOptions(AppsFlyerOptions) | _validateMapOptions(Map)
-  → sets GCD/UDL flags from the two parameters
-  → _executeRpc('init', validatedOptions)
-    → af-api MethodChannel "executeRpc" {method:'init', params}
-      → Android: AppsflyerSdkPlugin.executeRpc → initFromRpc(params, result)   [android/.../AppsflyerSdkPlugin.java]
-        → AppsFlyerRpcHandler ordered RPCs: setPluginInfo → (setDisableAdvertisingIdentifiers) →
-          (setLogLevel DEBUG) → setDebugLog → initialize(devKey) →
-          (registerConversionListener) → (subscribeForDeepLink) → registerSessionReadyListener →
-          (setAppInviteOneLink); init() never sends the first session
-      → iOS: AppsflyerSdkPlugin.executeRpc → initFromRpc:result:               [ios/.../AppsflyerSdkPlugin.m]
-        → AppsFlyerRPCBridge ordered RPCs: setPluginInfo → initialize(devKey, appId) → isDebug →
-          (setDisableCollectASA) → (setDisableAdvertisingIdentifiers) → (setAppInviteOneLink) →
-          (registerConversionListener) → (registerDeeplinkListener) → registerSessionReadyListener;
-          then waitForATTUserAuthorization (if set) and mark the attribution bridge ready
+AppsFlyerSdk.instance.init(devKey: ..., appId: ...)                    [lib/src/appsflyer_sdk.dart]
+  → empty devKey, or missing/empty appId on iOS → ArgumentError (no RPC dispatched)
+  → _invokeVoidRpc('init', platform-specific params)
+    → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
+      → Android: AppsflyerSdkPlugin.initFromRpc                       [android/.../AppsflyerSdkPlugin.java]
+        → best-effort setPluginInfo(plugin: flutter, pluginVersion); failure is ignored
+        → Android RPC init(devKey)
+      → iOS: AppsflyerSdkPlugin.initFromRpc                           [ios/.../AppsflyerSdkPlugin.m]
+        → best-effort setPluginInfo(plugin: flutter, pluginVersion); failure is ignored
+        → iOS RPC initialize(devKey, appId)
+        → handle pending launch options, when present
+        → mark the attribution bridge ready and flush queued lifecycle requests
 ```
 
-The session-ready listener is registered here only so the app can **observe** readiness (via `registerSessionReadyListener`/`onSessionReady`, delivered over the `af-events` EventChannel); it does not gate `startSDK()`.
+Listener registration is intentionally not part of this sequence. The app separately calls `registerConversionListener`, `registerDeepLinkListener`, and/or `registerSessionReadyListener` after initialization.
 
 ---
 
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `initSdk`, `_validateAFOptions`, `_validateMapOptions`, `_executeRpc` — validation + RPC dispatch |
-| `lib/src/appsflyer_options.dart` | `AppsFlyerOptions` typed config model (devKey, appId, ATT wait time, disableCollectASA, etc.) |
-| `lib/src/appsflyer_constants.dart` | String keys shared across Dart/native (`AF_DEV_KEY`, `AF_APP_Id`, `AF_GCD`, `AF_UDL`, `AF_METHOD_CHANNEL`, `AF_EVENTS_CHANNEL`, `PLUGIN_VERSION`) |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `executeRpc` / `initFromRpc` — plugin-orchestrated init over `AppsFlyerRpcHandler` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `executeRpc` / `initFromRpc:result:` — plugin-orchestrated init over `AppsFlyerRPCBridge` |
+| `lib/src/appsflyer_sdk.dart` | `AppsFlyerSdk.instance`, `init`, `_invokeVoidRpc`, and `_invokeRpc` |
+| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | Makes the non-blocking `setPluginInfo` call before the required `init` RPC; dev-key validation is left to the RPC layer so its `422` reaches the caller intact |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | Makes the non-blocking `setPluginInfo` call before `initialize`, forwards pending launch options, and marks the attribution bridge ready |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `afDevKey` (String, required), `appId` (String, required on iOS — validated against `^\d{8,11}$`), `showDebug` (bool), `timeToWaitForATTUserAuthorization` (double, iOS only), `disableAdvertisingIdentifier` (bool), `disableCollectASA` (bool, iOS only), `appInviteOneLink` (String?), plus `GCD`/`UDL` flags derived from `registerConversionDataCallback` / `registerOnDeepLinkingCallback` |
-| **Output** | `Future` that completes when native init finishes (Android resolves with `"success"`; iOS resolves with `null`). No session is sent — call `startSDK()` for that. |
+| **Input** | `devKey` (`String`, required and checked for non-empty on both platforms); `appId` (`String?`, required and checked for non-empty on iOS, omitted from the Android RPC request) |
+| **Output** | `Future<void>` that completes after the required initialization operations succeed: Android `init`, or iOS `initialize` plus pending launch-options handling when present. Invalid input throws `ArgumentError` before any RPC is dispatched. Failures from the required native/RPC operations are exposed as `AppsFlyerException`; `setPluginInfo` failure is intentionally non-blocking. No session is sent. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` verifies that `initSdk` dispatches the `init` RPC and that the dev key and the `GCD`/`UDL` flags are forwarded in `params`. The iOS App ID regex / ATT-wait assertions run only under `Platform.isIOS`, which the Dart host test environment does not satisfy.
+`test/appsflyer_sdk_test.dart` verifies the iOS payload, confirms that Android omits `appId`, allows Android initialization without it, rejects a missing/empty iOS `appId`, rejects an empty `devKey` on both platforms without dispatching an RPC, and verifies the singleton entry point.
 
 ---
 
 ## Known Limitations
-- Validation uses Dart `assert()`, which is stripped in release/profile builds — a missing `afDevKey` (Android surfaces an `INIT_ERROR`) or malformed iOS `appId` only fails once it reaches native code.
-- `disableCollectASA` and `timeToWaitForATTUserAuthorization` are applied on iOS only; on Android they are silently ignored.
+- Dart checks only that `devKey` is non-empty and, on iOS, that `appId` is present. Both RPC layers enforce the same rules and report a violation as code `422` — Android through `require(devKey.isNotEmpty())` in `InitRequest`, iOS through `AFRPCInitRequest`. The Dart checks are a fail-fast convenience that avoids a channel round trip and names the offending parameter; they are not the only line of defense. Any stricter validation stays in the RPC/native SDK layers.
+- Plugin identification is best-effort on both platforms. A `setPluginInfo` failure does not fail `init()`, so successful completion confirms native initialization but not successful plugin-info reporting.
+- Initialization alone does not produce conversion, deep-link, session-ready, or Launch events. The relevant native listeners and `start()` must be invoked explicitly.
 
 ---
 
 ## Dependencies
 ```mermaid
 flowchart LR
-    F001["F-001 · SDK Initialization & Options Validation"]:::sdkCore
+    F001["F-001 · SDK Initialization"]:::sdkCore
+    F002["F-002 · SDK Start"]:::sdkCore
+    F002 -->|"requires initialized SDK"| F001
     classDef sdkCore fill:#4C6EF5,color:#fff
 ```

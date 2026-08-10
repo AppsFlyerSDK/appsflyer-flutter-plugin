@@ -1,5 +1,4 @@
 #import <Flutter/Flutter.h>
-#import "AppsFlyerAttribution.h"
 
 #if __has_include(<Flutter/FlutterSceneLifeCycle.h>)
 #import <Flutter/FlutterSceneLifeCycle.h>
@@ -15,17 +14,6 @@
 
 // Plugin version
 #define kAppsFlyerPluginVersion             @"7.0.1"
-
-// initSdk option keys (sent from Dart in the `init` RPC params map)
-#define afDevKey                            @"afDevKey"
-#define afAppId                             @"afAppId"
-#define afIsDebug                           @"isDebug"
-#define afTimeToWaitForATTUserAuthorization @"timeToWaitForATTUserAuthorization"
-#define afConversionData                    @"GCD"
-#define afUDL                               @"UDL"
-#define afInviteOneLink                     @"appInviteOneLink"
-#define afDisableCollectASA                 @"disableCollectASA"
-#define afDisableAdvertisingIdentifier      @"disableAdvertisingIdentifier"
 
 // Flutter channels
 #define afMethodChannel                 @"af-api"

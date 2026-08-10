@@ -1,6 +1,12 @@
 # AppsFlyer Flutter Plugin — Feature Catalog Index
 
-60 catalogued features across 6 categories. Five are `removed` in SDK 7 (F-008, F-021, F-023, F-036, F-038) — kept as tombstone entries pointing to `doc/migration-guide.md`. See `DIAGRAM.md` for runtime/init dependency diagrams and the full dependency table.
+60 catalogued features across 6 categories. Six are `removed` in SDK 7 (F-008, F-021, F-023, F-036, F-038, F-056) — kept as tombstone entries pointing to the current API or migration documentation. See `DIAGRAM.md` for runtime/init dependency diagrams and the full dependency table.
+
+> **Verification status:** Entries with `last_verified: 2026-08-04` describe the
+> current native-aligned Flutter API. Entries carrying an earlier verification
+> date are archived implementation snapshots, even when their feature status is
+> `active`; do not use their Dart signatures or call chains as current API
+> documentation until they are reverified against `lib/src/appsflyer_sdk.dart`.
 
 ---
 
@@ -10,8 +16,8 @@ SDK lifecycle, identity, privacy/consent, and low-level configuration.
 
 | ID | Name | Status | Platform |
 |----|------|--------|----------|
-| F-001 | SDK Initialization & Options Validation | active | both |
-| F-002 | SDK Start (session launch + result handler) | active | both |
+| F-001 | SDK Initialization | active | both |
+| F-002 | SDK Start (session launch) | active | both |
 | F-003 | SDK/Plugin Version Retrieval | active | both |
 | F-006 | Custom Host Configuration | active | both |
 | F-007 | Android ID Collection Opt-out | active | android |
@@ -92,7 +98,7 @@ OneLink-based invite/referral link generation and cross-app promotion.
 | F-028 | App Invite OneLink ID Configuration | active | both |
 | F-029 | Cross-Promotion Impression/Click Tracking | active | both |
 | F-030 | Custom/Branded OneLink Domains | active | both |
-| F-056 | App Invite Link OneLink ID (init-time) | active | both |
+| F-056 | App Invite OneLink ID (init-time option) | removed | both |
 
 ## platformIntegration
 
