@@ -4,8 +4,8 @@ name: ASA (Apple Search Ads) Collection Opt-out
 type: sdkCore
 platform: ios
 status: active
-last_verified: 2026-08-05
-depends_on: ["F-001"]
+last_verified: 2026-08-10
+depends_on: []
 ---
 
 ## Business Purpose
@@ -14,7 +14,7 @@ The native iOS SDK automatically queries Apple's Search Ads Attribution API (ASA
 ---
 
 ## Trigger
-The host app calls `setDisableCollectASA(true)` after `init()` and before `start()`, so the first session is sent with ASA collection already disabled. Both this method and `setDisableAppleAdsAttribution` are iOS-only; on Android each is ignored with a logged warning and no RPC is dispatched.
+The host app calls `setDisableCollectASA(true)` and, when full Apple Ads attribution suppression is required, `setDisableAppleAdsAttribution(true)` before `start()`. Neither method requires `init()` to have run first. Both are iOS-only; on Android each is ignored with a logged warning and no RPC is dispatched.
 
 ---
 
@@ -51,7 +51,7 @@ AppsFlyerSdk.setDisableAppleAdsAttribution(disable)                   [lib/src/a
 | | |
 |--|--|
 | **Input** | `disable` (`bool`) sent under the `disable` param key for both methods. |
-| **Output** | `Future<void>` completes once the RPC layer accepts the fire-and-forget native call. Native errors throw `AppsFlyerException`; on Android the call is ignored with a logged warning and no RPC is dispatched. |
+| **Output** | `Future<void>` completes after RPC validation and the synchronous native SDK setter invocation. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or timeout. On Android the call is ignored with a logged warning and no RPC is dispatched. |
 
 ---
 
@@ -72,8 +72,4 @@ AppsFlyerSdk.setDisableAppleAdsAttribution(disable)                   [lib/src/a
 ---
 
 ## Dependencies
-```mermaid
-flowchart LR
-    F057["F-057 · ASA Collection Opt-out"]:::sdkCore -->|"configured after"| F001["F-001 · SDK Initialization"]:::sdkCore
-    classDef sdkCore fill:#4C6EF5,color:#fff
-```
+No required feature dependency. Both settings are runtime properties that must be applied before the first `start()` they should affect.

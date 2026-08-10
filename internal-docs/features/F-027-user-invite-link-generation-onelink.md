@@ -4,7 +4,7 @@ name: User Invite Link Generation (OneLink)
 type: oneLinkAndGrowth
 platform: both
 status: active
-last_verified: 2026-08-06
+last_verified: 2026-08-10
 depends_on: ["F-028"]
 ---
 
@@ -49,8 +49,8 @@ AppsFlyerSdk.logInvite(channel, [eventParameters])                    [lib/src/a
 ## Input / Output
 | | |
 |--|--|
-| **Input** | Optional named `parameters` (`AppsFlyerInviteLinkParams`) with `channel`, `campaign`, `referrerName`, `referrerImageUrl`, `referrerCustomerId`, `baseDeepLink`, `brandDomain`, and `userParams`; optional `awaitResponse` (`bool`, default `true`; mapped only to Android RPC). `logInvite` accepts `channel` plus optional `eventParameters`. |
-| **Output** | `generateInviteLink` returns `Future<String>` with the generated URL. With the default `awaitResponse: true`, Android awaits asynchronous generation; `false` returns the synchronously generated long link. The current iOS RPC 7.0.12 does not expose the flag and always awaits asynchronous generation. `logInvite` returns `Future<void>` after RPC acceptance. RPC failures are exposed as `AppsFlyerException`. |
+| **Input** | Optional named `parameters` (`AppsFlyerInviteLinkParams`) with `channel`, `campaign`, `referrerName`, `referrerImageUrl`, `referrerCustomerId`, `baseDeepLink`, `brandDomain`, and `userParams`; optional `awaitResponse` (`bool`, default `true`; mapped only to Android RPC). `logInvite` accepts `channel` plus optional `eventParameters`; Android RPC requires a non-empty channel, while iOS currently treats it as optional. |
+| **Output** | `generateInviteLink` returns `Future<String>` with the generated URL. With `awaitResponse: true`, Android awaits asynchronous generation for up to 10 seconds; `false` returns the synchronously generated long link. The current iOS RPC 7.0.12 does not expose the flag and always awaits asynchronous generation with a 10-second timeout. `logInvite` returns `Future<void>` after validation and synchronous SDK invocation. RPC failures are exposed as `AppsFlyerException`. |
 
 ---
 
@@ -63,6 +63,8 @@ AppsFlyerSdk.logInvite(channel, [eventParameters])                    [lib/src/a
 - Dart does not duplicate native validation that a OneLink ID has already been configured.
 - Android and iOS use different RPC keys for the same public `referrerCustomerId` field; `toRpcMap` preserves that platform difference.
 - The Android RPC honors `awaitResponse`; the current iOS RPC 7.0.12 does not expose it for invite-link generation and always waits for the callback. Full behavioral parity requires iOS RPC support.
+- Invite-generation timeout does not cancel native generation. A link produced after timeout is not delivered to the original Dart call.
+- `logInvite('')` is platform-asymmetric: Android rejects an empty channel, while iOS forwards an absent/empty channel to the native API.
 - `logInvite` has no native network-completion callback; its `Future<void>` confirms RPC acceptance.
 
 ---
@@ -70,6 +72,6 @@ AppsFlyerSdk.logInvite(channel, [eventParameters])                    [lib/src/a
 ## Dependencies
 ```mermaid
 flowchart LR
-    F028["F-028 · App Invite OneLink ID Configuration"]:::oneLinkAndGrowth -->|"provides base OneLink ID"| F027["F-027 · User Invite Link Generation"]:::oneLinkAndGrowth
+    F027["F-027 · User Invite Link Generation"]:::oneLinkAndGrowth -->|"requires base OneLink ID from"| F028["F-028 · App Invite OneLink ID Configuration"]:::oneLinkAndGrowth
     classDef oneLinkAndGrowth fill:#7048E8,color:#fff
 ```

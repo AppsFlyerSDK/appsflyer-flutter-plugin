@@ -4,7 +4,7 @@ name: Current Device Language Override
 type: platformIntegration
 platform: ios
 status: active
-last_verified: 2026-08-05
+last_verified: 2026-08-10
 depends_on: []
 ---
 
@@ -45,7 +45,7 @@ AppsFlyerSdk.setCurrentDeviceLanguage(language)                         [lib/src
 | | |
 |--|--|
 | **Input** | `language` (`String`) — an IETF/ISO language code (e.g. `"en"`) forwarded as-is under the `language` param key; no format validation in Dart. |
-| **Output** | `Future<void>` that completes when the native request succeeds and throws `AppsFlyerException` on a native or RPC failure. On a non-iOS platform the call is ignored with a logged warning, dispatches no RPC, and completes without throwing. |
+| **Output** | `Future<void>` that completes after RPC validation and the synchronous native SDK property assignment. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or timeout. On a non-iOS platform the call is ignored with a logged warning, dispatches no RPC, and completes without throwing. |
 
 ---
 

@@ -5,9 +5,11 @@ class TextBorder extends StatelessWidget {
   final TextEditingController controller;
   final String labelText;
 
-  const TextBorder(
-      {required this.controller, required this.labelText, Key? key})
-      : super(key: key);
+  const TextBorder({
+    required this.controller,
+    required this.labelText,
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {

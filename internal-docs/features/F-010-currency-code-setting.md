@@ -4,7 +4,7 @@ name: Currency Code Setting
 type: eventsAndRevenue
 platform: both
 status: active
-last_verified: 2026-08-04
+last_verified: 2026-08-10
 depends_on: []
 ---
 
@@ -48,7 +48,7 @@ AppsFlyerSdk.setCurrencyCode(currencyCode)                            [lib/src/a
 | | |
 |--|--|
 | **Input** | `currencyCode` (`String`) — expected to be a three-letter ISO 4217 code; the native default is `"USD"`. Sent under the `currencyCode` param key. |
-| **Output** | `Future<void>` completes once the RPC layer accepts the fire-and-forget native call; native errors throw `AppsFlyerException`. |
+| **Output** | `Future<void>` completes after native RPC validation and the synchronous SDK setter invocation. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or request timeout. |
 
 ---
 
@@ -58,7 +58,7 @@ AppsFlyerSdk.setCurrencyCode(currencyCode)                            [lib/src/a
 ---
 
 ## Known Limitations
-- **No format validation** in the plugin: any string (empty, wrong length, lowercase, non-existent code) is passed straight to the native SDK. Native-side handling is outside this plugin's code, and an invalid code produces no Dart-side error.
+- Dart performs no format validation. Android RPC requires a non-empty three-character string; iOS RPC checks only that the value is a string. Neither bridge verifies that it is a real ISO 4217 code, and later SDK-level rejection is not returned to Dart.
 - No API exists to read back the currently configured currency code — the plugin is write-only for this setting.
 - No ordering is enforced relative to `init()`, `start()`, or revenue-logging calls; applying it after revenue events have been logged may leave prior events at the previous currency, depending on native SDK behavior.
 - The native API has no completion callback, so a completed `Future` confirms only that the RPC layer accepted the call.

@@ -4,7 +4,7 @@ name: App Invite OneLink ID Configuration
 type: oneLinkAndGrowth
 platform: both
 status: active
-last_verified: 2026-08-04
+last_verified: 2026-08-10
 depends_on: []
 ---
 
@@ -14,7 +14,7 @@ The User Invite API needs a base OneLink template ID before it can generate invi
 ---
 
 ## Trigger
-Called explicitly by the host app after `init()` and before the first `generateInviteLink` call, or whenever the application changes the OneLink ID.
+Called explicitly by the host app before the first `generateInviteLink` call, or whenever the application changes the OneLink ID. Neither Flutter nor native RPC requires it to run after `init()`.
 
 ---
 
@@ -41,8 +41,8 @@ AppsFlyerSdk.setAppInviteOneLink(oneLinkId)                            [lib/src/
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `oneLinkId` (`String`), sent under the RPC key `oneLinkId` on both platforms |
-| **Output** | `Future<void>` completes after the RPC layer accepts the native setter. Failures are exposed as `AppsFlyerException`. |
+| **Input** | `oneLinkId` (`String`), sent under the RPC key `oneLinkId` on both platforms. Android RPC rejects an empty string; iOS RPC currently performs a type-only check. |
+| **Output** | `Future<void>` completes after native RPC validation and the synchronous SDK setter invocation. Validation or bridge failures are exposed as `AppsFlyerException`; there is no native completion callback or timeout. |
 
 ---
 
@@ -52,7 +52,7 @@ AppsFlyerSdk.setAppInviteOneLink(oneLinkId)                            [lib/src/
 ---
 
 ## Known Limitations
-- The Flutter layer intentionally does not duplicate native OneLink ID validation.
+- Dart does not validate the value. Android rejects an empty ID, while iOS accepts it at the RPC layer, so invalid input can fail differently downstream.
 - The former init-time `AppsFlyerOptions.appInviteOneLink` path was removed; F-056 is retained only as a tombstone.
 
 ---

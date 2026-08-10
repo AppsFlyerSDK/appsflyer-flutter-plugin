@@ -4,7 +4,7 @@ name: SDK/Plugin Version Retrieval
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-08-07
+last_verified: 2026-08-10
 depends_on: []
 ---
 

@@ -4,7 +4,7 @@ name: Custom/Branded OneLink Domains
 type: oneLinkAndGrowth
 platform: both
 status: active
-last_verified: 2026-08-04
+last_verified: 2026-08-10
 depends_on: []
 ---
 
@@ -50,7 +50,7 @@ AppsFlyerSdk.setOneLinkCustomDomain(List<String> domains)                       
 | | |
 |--|--|
 | **Input** | `domains` (`List<String>`) — sent wrapped in the RPC params map under the `domains` key (`{'domains': domains}`). The list must be non-empty. |
-| **Output** | `Future<void>` that completes when the native request succeeds and throws `AppsFlyerException` when either bridge rejects the request (including the empty-list case) or the RPC call fails. |
+| **Output** | `Future<void>` that completes after native RPC validation and the synchronous SDK setter invocation. Either bridge rejects an empty list with `AppsFlyerException`; there is no native completion callback or request timeout. |
 
 ---
 

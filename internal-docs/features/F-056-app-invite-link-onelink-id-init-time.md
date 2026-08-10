@@ -4,7 +4,7 @@ name: App Invite OneLink ID (init-time option)
 type: oneLinkAndGrowth
 platform: both
 status: removed
-last_verified: 2026-08-04
+last_verified: 2026-08-10
 depends_on: []
 ---
 

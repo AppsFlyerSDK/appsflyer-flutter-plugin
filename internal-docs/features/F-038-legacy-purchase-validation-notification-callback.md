@@ -4,7 +4,7 @@ name: Legacy Purchase-Validation Notification Callback
 type: purchaseValidation
 platform: both
 status: removed
-last_verified: 2026-07-29
+last_verified: 2026-08-10
 depends_on: []
 ---
 
@@ -14,7 +14,7 @@ depends_on: []
 
 It only ever existed to serve the V1 validation APIs (F-023), which are themselves removed. The transport it relied on is also gone: SDK 7 has no `"callbacks"` MethodChannel and no `AppsFlyerStreamHandler`; all reverse events now flow over the single `af-events` EventChannel, and there is no `"validatePurchase"` event on it.
 
-**Replacement:** `validateAndLogInAppPurchaseV2` (F-024) returns the validation result (or throws) directly on its own `Future` — no separate listener registration is needed.
+**Replacement:** `validateAndLogInAppPurchase` (F-024) returns the validation result (or throws) directly on its own `Future` — no separate listener registration is needed.
 
 See [`doc/migration-guide.md`](/doc/migration-guide.md#removed-apis-and-their-replacements) and the [CHANGELOG](/CHANGELOG.md).
 

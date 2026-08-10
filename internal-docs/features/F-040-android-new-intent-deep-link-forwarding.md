@@ -4,12 +4,12 @@ name: Android New-Intent Deep-Link Forwarding
 type: deepLinking
 platform: android
 status: active
-last_verified: 2026-08-04
+last_verified: 2026-08-10
 depends_on: []
 ---
 
 ## Business Purpose
-The native AppsFlyer Android SDK inspects the hosting `Activity`'s intent for deep-link data during its own lifecycle (`onResume`). For a warm-started app (already running, brought back to the foreground by a new `VIEW` intent — e.g. tapping a OneLink while the app sits in the background), Android delivers that new intent via `onNewIntent`. In SDK 7 the SDK subscribes to the activity lifecycle from `init()` (via `subscribeForDeepLink`, F-037), so it resolves warm-start VIEW intents automatically on the next `onResume` — provided the `Activity`'s current intent is the new one. This feature exists purely to keep the `Activity`'s intent in sync so the SDK sees the freshly delivered intent.
+The native AppsFlyer Android SDK inspects the hosting `Activity`'s intent during its lifecycle (`onResume`). For a warm-started app, Android delivers a new `VIEW` intent through `onNewIntent`. Initialization attaches the native SDK to lifecycle handling, while the explicit F-037 listener registration subscribes for UDL results. This feature keeps the `Activity`'s current intent in sync so the SDK sees the newly delivered intent on the next resume.
 
 ---
 
@@ -24,8 +24,8 @@ Android delivers a new Intent to the running Activity (app already warm)
   → PluginRegistry.NewIntentListener.onNewIntent(Intent intent)                    [android/.../AppsflyerSdkPlugin.java]
     → if (activity != null) activity.setIntent(intent)   // keep the Activity's intent in sync
     → return false                                       // does not claim exclusive handling
-      // SDK 7 subscribes to the activity lifecycle from init(); once subscribeForDeepLink has run,
-      // the SDK resolves the (now-current) VIEW intent automatically on the next onResume.
+      // init() establishes SDK lifecycle handling; registerDeepLinkListener() separately
+      // installs the UDL listener. The SDK examines the current VIEW intent on onResume.
         → afDeepLinkListener → onDeepLinking (F-037), delivered to Dart over the af-events EventChannel
 ```
 Note: unlike SDK 6, the listener no longer calls `AppsFlyerLib.performOnDeepLinking(intent, ...)` from `onNewIntent`; the SDK's own lifecycle handling performs the resolution. The listener only synchronizes the `Activity` intent.
@@ -63,6 +63,6 @@ No dedicated test found — no native (JUnit/Robolectric) test target under `and
 ## Dependencies
 ```mermaid
 flowchart LR
-    F040["F-040 · Android New-Intent Deep-Link Forwarding"]:::deepLinking -->|"synced intent resolved by SDK lifecycle, which triggers"| F037["F-037 · Unified Deep Linking (UDL) Callback & Models"]:::deepLinking
+    F040["F-040 · Android New-Intent Deep-Link Forwarding"]:::deepLinking
     classDef deepLinking fill:#E64980,color:#fff
 ```

@@ -4,7 +4,7 @@ name: Manual IMEI/Android ID Override
 type: sdkCore
 platform: android
 status: removed
-last_verified: 2026-08-04
+last_verified: 2026-08-10
 depends_on: []
 ---
 

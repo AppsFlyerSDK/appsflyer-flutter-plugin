@@ -4,7 +4,7 @@ name: User Anonymization (Opt-out logging)
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-08-04
+last_verified: 2026-08-10
 depends_on: []
 ---
 
@@ -47,7 +47,7 @@ AppsFlyerSdk.anonymizeUser(shouldAnonymize)                           [lib/src/a
 | | |
 |--|--|
 | **Input** | `shouldAnonymize` (`bool`) — `true` anonymizes logging for the current user, `false` restores normal logging. RPC param key `shouldAnonymize`. |
-| **Output** | `Future<void>` completes when the native request succeeds and throws `AppsFlyerException` for native errors or RPC timeouts. |
+| **Output** | `Future<void>` completes after native RPC validation and the synchronous SDK setter invocation. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or request timeout. |
 
 ---
 
@@ -57,7 +57,7 @@ AppsFlyerSdk.anonymizeUser(shouldAnonymize)                           [lib/src/a
 ---
 
 ## Known Limitations
-- The flag is instance-scoped (a property on the shared native SDK), not tied to a specific customer user ID — if the app switches logged-in users without resetting it, the anonymization state can leak across user sessions.
+- The flag is process/runtime state on the shared native SDK, not tied to a customer user ID. It remains in effect across foreground cycles until `anonymizeUser(false)` is called; the app must reapply its desired value after a cold start.
 - No way to read back the current anonymization state from Dart.
 
 ---

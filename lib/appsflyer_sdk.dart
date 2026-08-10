@@ -12,7 +12,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'package:json_annotation/json_annotation.dart';
-import 'package:meta/meta.dart';
 
 part 'src/appsflyer_constants.dart';
 part 'src/appsflyer_event.dart';

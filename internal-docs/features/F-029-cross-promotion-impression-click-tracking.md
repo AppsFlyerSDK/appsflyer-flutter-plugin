@@ -4,8 +4,8 @@ name: Cross-Promotion Impression/Click Tracking
 type: oneLinkAndGrowth
 platform: both
 status: active
-last_verified: 2026-08-04
-depends_on: ["F-027"]
+last_verified: 2026-08-10
+depends_on: []
 ---
 
 ## Business Purpose
@@ -56,7 +56,7 @@ AppsFlyerSdk.logAndOpenStore(promotedAppId, campaign: ..., userParams: ...)     
 | | |
 |--|--|
 | **Input** | `logCrossPromoteImpression`: `appId` (required positional) plus optional `campaign` (defaults to `''`) and `userParams`, sent as `{appId, campaign, userParams}`. `logAndOpenStore`: `promotedAppId` (required positional) plus the same optional named arguments, sent as `{promotedAppId, campaign, userParams}`. |
-| **Output** | `Future<void>` for both. The Future completes when the native request succeeds and throws `AppsFlyerException` when the RPC layer or native SDK rejects it. `logAndOpenStore` completes after the iOS plugin has issued the store-open, but the generated click URL itself is not returned to Dart. |
+| **Output** | `Future<void>` for both. `logCrossPromoteImpression` completes after validation and synchronous SDK invocation. On Android, `logAndOpenStore` also returns after synchronous invocation; on iOS it awaits click-URL generation (10-second RPC timeout), then completes after `UIApplication.open` calls its completion handler. RPC/native failures are exposed as `AppsFlyerException`; the click URL is not returned to Dart. |
 
 ---
 
@@ -67,16 +67,11 @@ AppsFlyerSdk.logAndOpenStore(promotedAppId, campaign: ..., userParams: ...)     
 
 ## Known Limitations
 - **iOS store-open is plugin-orchestrated**: the iOS RPC layer has no "log and open store" action, so `logAndOpenStoreFromRpc` opens the store by reading `clickURL` from the RPC result and calling `UIApplication openURL:options:completionHandler:`. If the bridge returns no `clickURL`, the Future still completes successfully but nothing opens.
+- An iOS cross-promotion timeout fails the Dart Future but does not cancel native work; a late native completion can still occur after the caller has received `AppsFlyerException`.
 - No validation in Dart of `appId`/`promotedAppId`/`campaign`. Android rejects an empty app ID in the RPC request (`require(...isNotEmpty())`), which surfaces to the caller as `AppsFlyerException`.
 - The generated click URL is not exposed to Dart, so an app cannot intercept or rewrite it before the store page opens.
 
 ---
 
 ## Dependencies
-```mermaid
-flowchart LR
-    F029["F-029 · Cross-Promotion Impression/Click Tracking"]:::oneLinkAndGrowth
-    F027["F-027 · User Invite Link Generation (OneLink)"]:::oneLinkAndGrowth
-    F029 -->|"shares the OneLink/invite growth surface with"| F027
-    classDef oneLinkAndGrowth fill:#7048E8,color:#fff
-```
+No required feature dependency. The iOS native implementation reuses a URL-generator helper, but the public cross-promotion APIs do not require F-027 invite-link generation or F-028 invite configuration.

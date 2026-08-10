@@ -4,8 +4,8 @@ name: Conversion Data Callback (GCD)
 type: deepLinking
 platform: both
 status: active
-last_verified: 2026-08-05
-depends_on: ["F-001"]
+last_verified: 2026-08-10
+depends_on: ["F-001", "F-002"]
 ---
 
 ## Business Purpose
@@ -14,7 +14,7 @@ When a user installs the app after clicking an attributed link (or organically),
 ---
 
 ## Trigger
-The host app subscribes to `onConversionDataSuccess` (and `onConversionDataFailure`), calls `registerConversionListener()` after `init()`, and then receives conversion data once the native SDK has fetched it from AppsFlyer's servers following an app install/launch. There is no init-time flag: registration is an explicit RPC call.
+The host app subscribes to `onConversionDataSuccess` and `onConversionDataFailure`, calls `registerConversionListener()` after `init()`, then follows the normal session-ready flow and calls `start()`. Listener registration only installs the delegate; the Launch sent by `start()` triggers the conversion-data request whose result reaches the streams. There is no init-time flag.
 
 ---
 
@@ -59,7 +59,7 @@ Android also exposes `unregisterConversionListener()`; on iOS the call is ignore
 | | |
 |--|--|
 | **Input** | None from Dart beyond `registerConversionListener()`; the payload itself originates from AppsFlyer's attribution servers via the native SDK. |
-| **Output** | `onConversionDataSuccess` emits `Map<String, dynamic>` (the raw conversion payload). `onConversionDataFailure` emits the raw failure payload as `Map<String, dynamic>` — not an RPC exception, since the RPC call itself already succeeded. Payload shape differs by platform: Android sends `{"error": String}` with no error code; iOS sends `{"error": String, "code": int}`. `registerConversionListener()` itself returns `Future<void>`. |
+| **Output** | `onConversionDataSuccess` emits `Map<String, dynamic>` (the raw conversion payload). `onConversionDataFailure` emits the raw failure payload as `Map<String, dynamic>` — not an RPC exception, since registration itself already succeeded. Payload shape differs by platform: Android sends `{"error": String}` with no error code; iOS sends `{"error": String, "code": int}`. `registerConversionListener()` returns `Future<void>` after synchronous listener registration; it does not wait for conversion data and has no request timeout. |
 
 ---
 
@@ -76,6 +76,7 @@ Android also exposes `unregisterConversionListener()`; on iOS the call is ignore
 
 ## Known Limitations
 - Subscribe to the streams **before** calling `registerConversionListener()`. The streams are broadcast filters over `af-events`, so events delivered before a subscription exists are not replayed by Dart.
+- Registering the listener does not issue the conversion-data network request. The app must still call `start()` for the foreground cycle; otherwise no Launch is sent and no conversion result is expected.
 - Both platforms buffer native events in `pendingEvents` until Dart attaches to `af-events` (RD-65582), so an install-conversion event emitted before the stream is attached is not lost at the native layer.
 - `onConversionDataFailure` passes through the raw native payload unchanged: on Android it never carries a `code` field (the native delegate only supplies an error message), while on iOS it does. Callers that need a `code` must handle its absence on Android rather than relying on a synthesized default.
 - `unregisterConversionListener()` is Android-only; iOS integrations cannot stop conversion-data delivery through the RPC bridge.
@@ -86,6 +87,7 @@ Android also exposes `unregisterConversionListener()`; on iOS the call is ignore
 ```mermaid
 flowchart LR
     F035["F-035 · Conversion Data Callback (GCD)"]:::deepLinking -->|"listener registered after"| F001["F-001 · SDK Initialization"]:::sdkCore
+    F035 -->|"Launch from start triggers request"| F002["F-002 · SDK Start"]:::sdkCore
     classDef deepLinking fill:#E64980,color:#fff
     classDef sdkCore fill:#4C6EF5,color:#fff
 ```

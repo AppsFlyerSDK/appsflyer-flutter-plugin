@@ -4,7 +4,7 @@ name: App-Open Attribution Callback (OAOA)
 type: deepLinking
 platform: both
 status: removed
-last_verified: 2026-08-05
+last_verified: 2026-08-10
 depends_on: []
 ---
 

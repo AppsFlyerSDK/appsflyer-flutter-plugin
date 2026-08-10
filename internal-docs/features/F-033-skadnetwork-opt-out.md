@@ -4,7 +4,7 @@ name: SKAdNetwork Opt-out (iOS)
 type: platformIntegration
 platform: ios
 status: active
-last_verified: 2026-08-05
+last_verified: 2026-08-10
 depends_on: []
 ---
 
@@ -14,7 +14,7 @@ Apple's SKAdNetwork is the privacy-preserving attribution framework AppsFlyer's 
 ---
 
 ## Trigger
-Called by the host app during startup configuration, after `init()` and before the first session (`start()`), whenever the app wants to opt out of AppsFlyer's automatic SKAdNetwork conversion-value handling. The method is iOS-only; on Android the call is ignored with a logged warning.
+Called by the host app during startup configuration, before the first session (`start()`), whenever the app wants to opt out of AppsFlyer's automatic SKAdNetwork handling. The method is iOS-only; on Android the call is ignored with a logged warning. No ordering relative to `init()` is enforced.
 
 ---
 
@@ -46,7 +46,7 @@ AppsFlyerSdk.setDisableSKAdNetwork(disable)                           [lib/src/a
 | | |
 |--|--|
 | **Input** | `disable` (`bool`) — `true` disables AppsFlyer's SKAdNetwork handling. Sent under the `disable` param key. |
-| **Output** | `Future<void>` completes once the RPC layer accepts the fire-and-forget native call. Native errors throw `AppsFlyerException`; calling on Android logs a warning, dispatches nothing, and returns without throwing. |
+| **Output** | `Future<void>` completes after RPC validation and the synchronous native SDK setter invocation. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or timeout. Calling on Android logs a warning, dispatches nothing, and returns without throwing. |
 
 ---
 
@@ -61,7 +61,7 @@ The Dart harness cannot verify that the native SDK assignment takes effect.
 
 ## Known Limitations
 - **iOS-only**: SKAdNetwork is Apple-specific and no Android implementation exists. Calling the method on Android is a no-op, but a logged one: the plugin emits a `debugPrint` warning, dispatches no RPC, and returns without throwing.
-- Disabling SKAdNetwork handling here does not stop iOS from making the OS-level registration calls (`registerAppForAdNetworkAttribution` / `updateConversionValue`); it only stops AppsFlyer's SDK-side processing.
+- The native implementation disables AppsFlyer's SKAdNetwork object and cancels its timer. The plugin exposes no callback or getter to prove whether any OS-level call had already happened before the setter ran, which is why the call belongs before the first `start()`.
 - The native API has no completion callback, so a completed `Future` confirms only that the RPC layer accepted the call.
 
 ---

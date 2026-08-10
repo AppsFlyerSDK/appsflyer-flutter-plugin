@@ -4,7 +4,7 @@ name: Partner-Specific Data
 type: platformIntegration
 platform: both
 status: active
-last_verified: 2026-08-04
+last_verified: 2026-08-10
 depends_on: []
 ---
 
@@ -43,8 +43,8 @@ AppsFlyerSdk.setPartnerData(String partnerId, Map<String, dynamic> data) [lib/sr
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `partnerId` (String) — the AppsFlyer partner integration identifier. `data` (`Map<String, dynamic>`, non-nullable) — arbitrary key/value payload, sent under the `data` param key. |
-| **Output** | `Future<void>` completes when the native request succeeds and throws `AppsFlyerException` for native errors or RPC timeouts. |
+| **Input** | `partnerId` (`String`) — the AppsFlyer partner integration identifier; both native RPC parsers require it to be non-empty. `data` (`Map<String, dynamic>`, non-nullable) — arbitrary key/value payload, sent under the `data` param key. |
+| **Output** | `Future<void>` completes after native RPC validation and the synchronous SDK setter invocation. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or timeout. |
 
 ---
 

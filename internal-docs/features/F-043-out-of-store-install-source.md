@@ -4,7 +4,7 @@ name: Out-of-Store Install Source (Android)
 type: platformIntegration
 platform: android
 status: active
-last_verified: 2026-08-05
+last_verified: 2026-08-10
 depends_on: []
 ---
 
@@ -47,8 +47,8 @@ AppsFlyerSdk.getOutOfStore()                                             [lib/sr
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `setOutOfStore`: `sourceName` (String) — a custom install-source label (e.g. `"facebook_int"`), sent under the `sourceName` key. `getOutOfStore`: no input. |
-| **Output** | `setOutOfStore`: `Future<void>` completing when the native request succeeds; `AppsFlyerException` on native errors or RPC timeouts. `getOutOfStore`: `Future<String?>` resolving to the previously-set source label, or `null` verbatim when the native SDK returns no value. Off Android neither method throws: `setOutOfStore` returns without dispatching an RPC and `getOutOfStore` logs a warning and returns `null`, so off-Android `null` also means "call ignored". |
+| **Input** | `setOutOfStore`: non-empty `sourceName` (`String`) such as `"amazon"`, sent under the `sourceName` key. Android RPC rejects an empty string and the native SDK stores the value lowercased. `getOutOfStore`: no input. |
+| **Output** | `setOutOfStore`: `Future<void>` completing after RPC validation and synchronous SDK invocation, with no callback or timeout. `getOutOfStore`: `Future<String?>` resolving to the native stored value, or `null` when none exists. Bridge/validation failures surface as `AppsFlyerException`. Off Android, the setter dispatches nothing and the getter returns `null`, so off-platform `null` also means "call ignored". |
 
 ---
 
@@ -60,6 +60,7 @@ AppsFlyerSdk.getOutOfStore()                                             [lib/sr
 ## Known Limitations
 - **Android-only**: no iOS implementation exists (out-of-store distribution is an Android-specific concern). Calling either Dart method on another platform is a no-op, but a logged one — the plugin emits a `debugPrint` warning and dispatches no RPC.
 - `getOutOfStore()` cannot distinguish "never set" from "native returned nothing" — both surface as `null`, as does an off-Android call that was ignored.
+- The Android SDK normalizes the stored source name to lowercase; `getOutOfStore()` can therefore return a different casing from the input.
 
 ---
 

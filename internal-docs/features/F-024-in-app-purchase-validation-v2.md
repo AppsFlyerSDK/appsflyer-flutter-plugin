@@ -4,8 +4,8 @@ name: In-App Purchase Validation V2 (cross-platform)
 type: purchaseValidation
 platform: both
 status: active
-last_verified: 2026-08-06
-depends_on: ["F-025"]
+last_verified: 2026-08-10
+depends_on: []
 ---
 
 ## Business Purpose
@@ -63,7 +63,7 @@ A `null` native reply is normalized to an empty map rather than propagated as `n
 | | |
 |--|--|
 | **Input** | `purchase` (`AFPurchaseDetails`) — `AFAndroidPurchaseDetails(purchaseType, productId, purchaseToken)` for Google Play or `AFIOSPurchaseDetails(purchaseType, productId, transactionId)` for the App Store; `additionalParameters` (`Map<String, String>?`, optional); `awaitResponse` (`bool`, optional, default `true`; mapped only to Android RPC). `AFPurchaseType` serializes as `"one_time_purchase"` / `"subscription"` on Android and `"oneTimePurchase"` / `"subscription"` on iOS. |
-| **Output** | `Future<Map<String, dynamic>>` — with the default `awaitResponse: true`, completes with the native validation-result map. On Android, `false` starts validation without a callback and completes with an empty map. The current iOS RPC 7.0.12 does not expose the flag and always waits for the validation result. Native and bridge failures throw `AppsFlyerException`. Passing the wrong platform's model throws `ArgumentError`, which also covers any platform other than Android or iOS. |
+| **Output** | `Future<Map<String, dynamic>>` — with the default `awaitResponse: true`, completes with the native validation-result map. Android waits up to 5 seconds; `false` starts validation without a callback and completes with an empty map. The current iOS RPC 7.0.12 does not expose the flag, always awaits validation, and uses a 30-second timeout. Native and bridge failures throw `AppsFlyerException`. Passing the wrong platform's model throws `ArgumentError`, including on a non-mobile platform. |
 
 ---
 
@@ -81,14 +81,9 @@ A `null` native reply is normalized to an empty map rather than propagated as `n
 - The purchase-type wire values differ between platforms (`one_time_purchase` on Android, `oneTimePurchase` on iOS) because each native RPC parser expects its own casing; the Dart enum hides this, but the payloads are not interchangeable.
 - The returned validation-result map is untyped (`Map<String, dynamic>`) and passed through from the native reply, so its keys are defined by the native SDK rather than by the Flutter API.
 - The Android RPC honors `awaitResponse: false`; the current iOS RPC 7.0.12 exposes neither this field nor a fire-and-forget branch for purchase validation. Full behavioral parity requires iOS RPC support.
+- A timeout fails the Dart Future but does not cancel the store/server validation already started by the native SDK. A late result is not delivered through a second Flutter callback.
 
 ---
 
 ## Dependencies
-```mermaid
-flowchart LR
-    F024["F-024 · In-App Purchase Validation V2"]:::purchaseValidation
-    F025["F-025 · iOS Receipt Validation Sandbox Toggle"]:::purchaseValidation
-    F024 -->|"iOS: validates against endpoint set by"| F025
-    classDef purchaseValidation fill:#F59F00,color:#fff
-```
+No required feature dependency. F-025 is an optional iOS environment switch used only for sandbox validation.

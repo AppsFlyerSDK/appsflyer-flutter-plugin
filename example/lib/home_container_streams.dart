@@ -11,11 +11,11 @@ class HomeContainerStreams extends StatefulWidget {
 
   // ignore: prefer_const_constructors_in_immutables
   HomeContainerStreams({
-    Key? key,
+    super.key,
     required this.onData,
     required this.onAttribution,
     required this.logEvent,
-  }) : super(key: key);
+  });
 
   @override
   State<HomeContainerStreams> createState() => _HomeContainerStreamsState();

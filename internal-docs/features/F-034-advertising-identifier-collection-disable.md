@@ -4,7 +4,7 @@ name: Advertising Identifier Collection Disable
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-08-04
+last_verified: 2026-08-10
 depends_on: []
 ---
 
@@ -14,7 +14,7 @@ Privacy regulations (GDPR, CCPA) and platform policy changes increasingly requir
 ---
 
 ## Trigger
-The host app calls `setDisableAdvertisingIdentifiers(true)` after `init()`, before `start()` when the first session must already omit the identifiers, or at any later point to change the setting. Collection is enabled by default in the native SDK.
+The host app calls `setDisableAdvertisingIdentifiers(true)` before `start()` when the first session must omit advertising identifiers, or later to change the runtime setting. The public Flutter API does not require `init()` to run first.
 
 ---
 
@@ -48,7 +48,7 @@ AppsFlyerSdk.setDisableAdvertisingIdentifiers(disable)                [lib/src/a
 | | |
 |--|--|
 | **Input** | `disable` (`bool`) — `true` disables collection of GAID/AAID/OAID (Android) or IDFA (iOS). Sent under `isDisable` on Android and `disable` on iOS. |
-| **Output** | `Future<void>` completes once the RPC layer accepts the fire-and-forget native call; native errors throw `AppsFlyerException`. |
+| **Output** | `Future<void>` completes after RPC validation and the synchronous native SDK setter invocation. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or timeout. |
 
 ---
 

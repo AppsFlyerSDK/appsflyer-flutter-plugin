@@ -4,7 +4,7 @@ name: Manual GDPR/DMA Consent API
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-08-04
+last_verified: 2026-08-10
 depends_on: []
 ---
 
@@ -16,7 +16,7 @@ SDK 7 replaces the previous two-variant surface (the deprecated `AppsFlyerConsen
 ---
 
 ## Trigger
-Called by the host app once consent has been captured from the user through the app's own consent UI. Per `doc/consent-dma.md`, call it after `init()` and before `start()`, so the very first SDK network request already carries the correct consent state. Consent is not persisted across sessions — supply it on every app start.
+Called by the host app once consent has been captured from the user's own consent UI. Per `doc/consent-dma.md`, call it after `init()` and before the first `start()`, so the launch request carries the correct state. The native SDK retains the value across foreground cycles in the same process, but not across a cold start; supply it once per process launch.
 
 ---
 
@@ -55,8 +55,8 @@ AppsFlyerSdk.setConsentData({isUserSubjectToGDPR, hasConsentForDataUsage,
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `isUserSubjectToGDPR` (required `bool`); `hasConsentForDataUsage`, `hasConsentForAdsPersonalization`, and `hasConsentForAdStorage` (`bool?`, where `null` means "not yet decided"). When `isUserSubjectToGDPR` is `true`, `hasConsentForDataUsage` and `hasConsentForAdsPersonalization` are **required** — omitting either throws an `ArgumentError` before any RPC is sent. `hasConsentForAdStorage` is always optional. All four keys are sent, including `null` values. |
-| **Output** | `Future<void>` completes once the RPC layer accepts the fire-and-forget native call; native errors throw `AppsFlyerException`. |
+| **Input** | `isUserSubjectToGDPR` (required `bool`); `hasConsentForDataUsage`, `hasConsentForAdsPersonalization`, and `hasConsentForAdStorage` (`bool?`, where `null` means "not supplied"). When `isUserSubjectToGDPR` is `true`, `hasConsentForDataUsage` and `hasConsentForAdsPersonalization` are **required** — omitting either throws an `ArgumentError` before any RPC is sent. `hasConsentForAdStorage` is always optional. Dart constructs all four keys; Android's JSON conversion omits null-valued entries, while iOS transports them as JSON null. Both native request models interpret them as absent optional values. |
+| **Output** | `Future<void>` completes after native RPC validation and the synchronous SDK setter invocation. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or request timeout. |
 
 ---
 
@@ -70,7 +70,8 @@ AppsFlyerSdk.setConsentData({isUserSubjectToGDPR, hasConsentForDataUsage,
 ## Known Limitations
 - Dart applies the stricter iOS contract on both platforms: when `isUserSubjectToGDPR` is `true`, the two consent flags are required even though the Android native API would accept them as absent. This is intentional — a single cross-platform contract avoids a call that succeeds on one platform and fails on the other.
 - The validation is a thrown `ArgumentError` rather than an `assert`, so it holds in release builds as well as debug.
-- Consent is order-sensitive relative to `init()` and `start()` (it must be set before the first session to affect the initial request), but neither the Dart API nor either native handler enforces or warns about this ordering.
+- Consent is order-sensitive relative to `start()` (it must be set before the first session to affect the launch request), but neither the Dart API nor either native handler enforces or warns about this ordering.
+- "Every app start" means every cold/process start. The native SDK keeps the value for later background-to-foreground sessions in the same process; the Flutter plugin adds no persistence of its own.
 - The native API has no completion callback, so a completed `Future` confirms only that the RPC layer accepted the call — not that the consent state reached AppsFlyer's servers.
 
 ---

@@ -4,7 +4,7 @@ name: "Purchase Connector: Android Validation Result Listeners"
 type: purchaseValidation
 platform: android
 status: active
-last_verified: 2026-07-29
+last_verified: 2026-08-10
 depends_on: ["F-049"]
 ---
 
@@ -82,6 +82,5 @@ No dedicated test found. Grepping `test/` for `PurchaseConnector`, `Subscription
 ```mermaid
 flowchart LR
     F051["F-051 · Purchase Connector: Android Validation Result Listeners"]:::purchaseValidation -->|"requires configuration from"| F049["F-049 · Purchase Connector: Configuration & Lifecycle"]:::purchaseValidation
-    F053["F-053 · Purchase Connector: Google Play Data Models"]:::purchaseValidation -->|"payload shape for"| F051
     classDef purchaseValidation fill:#F59F00,color:#fff
 ```

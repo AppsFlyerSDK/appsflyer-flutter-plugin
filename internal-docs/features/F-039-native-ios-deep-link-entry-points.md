@@ -4,7 +4,7 @@ name: Native iOS Deep-Link Entry Points (URL scheme / Universal Links / Scenes)
 type: deepLinking
 platform: ios
 status: active
-last_verified: 2026-08-04
+last_verified: 2026-08-10
 depends_on: []
 ---
 
@@ -89,6 +89,6 @@ No dedicated test found — this logic lives entirely in Objective-C native code
 ## Dependencies
 ```mermaid
 flowchart LR
-    F039["F-039 · Native iOS Deep-Link Entry Points"]:::deepLinking -->|"forwards resolved URL/activity to native SDK, which triggers"| F037["F-037 · Unified Deep Linking (UDL) Callback & Models"]:::deepLinking
+    F039["F-039 · Native iOS Deep-Link Entry Points"]:::deepLinking
     classDef deepLinking fill:#E64980,color:#fff
 ```

@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';

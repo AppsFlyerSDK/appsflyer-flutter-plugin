@@ -4,7 +4,7 @@ name: Partner Postback Sharing Filter
 type: platformIntegration
 platform: both
 status: active
-last_verified: 2026-08-05
+last_verified: 2026-08-10
 depends_on: []
 ---
 
@@ -50,7 +50,7 @@ AppsFlyerSdk.setSharingFilterForPartners(List<String>? partners)         [lib/sr
 | | |
 |--|--|
 | **Input** | `partners` (`List<String>?`) — partner ID strings (e.g. `'facebook_int'`, `'googleadwords_int'`), or the literal `'all'` to block every partner. `null` or an empty list clears the filter (iOS only); both are sent as `null` under the `partners` param key. |
-| **Output** | `Future<void>` completes when the native request succeeds and throws `AppsFlyerException` for native errors or RPC timeouts. A clear request on Android completes normally without throwing, having logged a warning and dispatched nothing. |
+| **Output** | `Future<void>` completes after native RPC validation and the synchronous SDK setter invocation. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or timeout. A clear request on Android completes normally after logging a warning and dispatching nothing. |
 
 ---
 
@@ -60,7 +60,7 @@ AppsFlyerSdk.setSharingFilterForPartners(List<String>? partners)         [lib/sr
 ---
 
 ## Known Limitations
-- No validation in Dart or native code that partner ID strings are well-formed or recognized; typos silently fail to filter the intended partner.
+- Dart and the RPC request models do not verify that individual partner IDs are recognized. The native SDK can ignore or filter unsupported values without returning a per-ID result, so a typo is not observable through the completed Future.
 - Clearing the filter is not reachable on Android through RPC 7.0.1. `SetSharingFilterForPartnersRequest` enforces `require(partners.isNotEmpty())`, so the bridge rejects the only payload that would express a clear. Dart logs and skips the call rather than dispatching a request that cannot be served, which means **an Android filter cannot be undone at runtime** — the app must avoid setting it in the first place. The native Android SDK's own `SharingFilter` does accept an empty set, so this is an RPC-layer gap rather than an SDK limitation.
 
 ---

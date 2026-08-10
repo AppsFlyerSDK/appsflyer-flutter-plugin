@@ -2,7 +2,8 @@
 ticket: DELIVERY-125462
 prd: internal-docs/prds/spm-support.md
 research: internal-docs/researches/R-001-spm-support.md
-planned_feature_doc: F-060 — doc to be written after development is complete
+status: superseded
+implemented_feature_doc: F-060
 ---
 
 # Tech Design: Swift Package Manager (SPM) Support
@@ -13,7 +14,7 @@ planned_feature_doc: F-060 — doc to be written after development is complete
 
 | Type | ID | Name |
 |------|----|------|
-| Issue case | none | `docs/issue-cases/` does not exist in this repo yet — no hot-zone history to check |
+| Issue case | none | No `internal-docs/issue-cases/` directory existed when this historical design was written |
 | Feature doc | F-054 | Purchase Connector: Build-Time Opt-in — directly extended by this design |
 
 ## Approach
@@ -129,7 +130,7 @@ All four must be run on a real device build, not just `--no-codesign`, before Al
 
 ## Documentation impact (flag only — action in Phase 3)
 
-- **F-054** (`docs/features/F-054-purchase-connector-build-time-opt-in.md`): add SPM as a third gating path in its Call Chain/Files sections, and add the corrected failure-mode bullet to Known Limitations (see above) once implementation lands.
+- **F-054** (`internal-docs/features/F-054-purchase-connector-build-time-opt-in.md`): add SPM as a third gating path in its Call Chain/Files sections, and add the corrected failure-mode bullet to Known Limitations (see above) once implementation lands.
 - **F-060** (new): this feature's own catalog entry, written in Phase 3 from the real implemented code — supersedes the placeholder discussion from earlier in this session; do not reuse any earlier draft.
 - `CHANGELOG.md` and release notes (PRD requirement 5): document SPM support added for Core, PurchaseConnector's continued CocoaPods-only status, and link flutter/flutter#161182 for apps tracking when that might change.
 

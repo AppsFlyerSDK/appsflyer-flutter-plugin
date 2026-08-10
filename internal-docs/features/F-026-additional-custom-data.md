@@ -4,7 +4,7 @@ name: Additional Custom Data
 type: eventsAndRevenue
 platform: both
 status: active
-last_verified: 2026-08-04
+last_verified: 2026-08-10
 depends_on: []
 ---
 
@@ -48,7 +48,7 @@ AppsFlyerSdk.setAdditionalData(customData)                            [lib/src/a
 | | |
 |--|--|
 | **Input** | `customData` (`Map<String, dynamic>`, non-null) — arbitrary key/value pairs; pass an empty map to clear. RPC param key `customData`. |
-| **Output** | `Future<void>` completes when the native request succeeds and throws `AppsFlyerException` for native errors or RPC timeouts. |
+| **Output** | `Future<void>` completes after native RPC validation and the synchronous SDK setter invocation. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or request timeout. Both native SDKs replace the current map, and an empty map clears it. |
 
 ---
 
@@ -59,7 +59,8 @@ AppsFlyerSdk.setAdditionalData(customData)                            [lib/src/a
 
 ## Known Limitations
 - No documented or enforced key/value shape — arbitrary nested values are passed straight through to the native SDK with no serialization validation in this plugin layer; malformed values surface only as a native RPC failure, reported as `AppsFlyerException`.
-- No API to read back previously set additional data; merge-vs-replace semantics live entirely in the native `setAdditionalData` implementation, outside this plugin's code.
+- No API reads the current map back. Each call replaces the native runtime value rather than merging it; callers that need additive updates must merge locally and resend the full map.
+- The value is retained across foreground cycles in the same process but must be reapplied after a cold start.
 
 ---
 

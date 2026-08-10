@@ -4,12 +4,12 @@ name: Missing-Configuration Guard for Purchase Connector
 type: purchaseValidation
 platform: both
 status: active
-last_verified: 2026-07-29
+last_verified: 2026-08-10
 depends_on: ["F-049"]
 ---
 
 ## Business Purpose
-`PurchaseConnector` is a Dart-side singleton that must be seeded with a `PurchaseConnectorConfiguration` (log subscriptions/in-apps, sandbox, StoreKit version) the very first time it is created; every later use of the connector — starting/stopping transaction observation, registering validation listeners — assumes that configuration already exists. If an app called for the singleton before ever supplying a config (e.g. a widget deep in the app calls `PurchaseConnector()` with no args, expecting an already-configured instance from elsewhere, but app startup order was wrong), there would be no configuration to build the native connector from. This guard turns that programmer error into an immediate, typed Dart exception (`MissingConfigurationException`) at the call site instead of a null/uninitialized native connector failing silently or crashing later when a purchase actually occurs — which is far harder to trace back to a missing `configure()` call.
+`PurchaseConnector` is a Dart-side singleton that must be seeded with a `PurchaseConnectorConfiguration` the first time it is created. Later observation and listener calls assume that configuration exists. If the first call is `PurchaseConnector()` with no config, this guard throws `MissingConfigurationException` immediately instead of leaving the native connector uninitialized. Configuration is supplied through `PurchaseConnector(config: ...)`; there is no public Dart `configure()` method, even though the current exception string incorrectly tells the caller to use one.
 
 ---
 

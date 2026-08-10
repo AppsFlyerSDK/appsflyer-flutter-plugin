@@ -4,7 +4,7 @@ name: Push Notification Deep-Link Path Config
 type: deepLinking
 platform: both
 status: active
-last_verified: 2026-08-05
+last_verified: 2026-08-10
 depends_on: ["F-037"]
 ---
 
@@ -51,7 +51,7 @@ The configured path is later consulted when a push payload reaches the native SD
 | | |
 |--|--|
 | **Input** | `deepLinkPath` (`List<String>`) — ordered JSON keys describing where in the push payload the OneLink URL is nested (for example `["deeply", "nested", "link"]`), sent wrapped under the `deepLinkPath` RPC params key. The native bridges require a non-empty list. |
-| **Output** | `Future<void>` completes when the native request succeeds and throws `AppsFlyerException` for native errors, including the empty-list rejection. |
+| **Output** | `Future<void>` completes after native RPC validation and the synchronous SDK configuration call. An empty list or bridge failure throws `AppsFlyerException`; there is no native completion callback or request timeout. |
 
 ---
 
@@ -61,7 +61,7 @@ The configured path is later consulted when a push payload reaches the native SD
 ---
 
 ## Known Limitations
-- Must be called before `init()` per the dartdoc; nothing enforces or warns about ordering, so calling it late is a silent no-op for that launch.
+- Must be called before `init()` per the public Dart contract; nothing in Dart or RPC enforces the ordering. The implementation does not expose enough state to prove what a late call affects, so it must not be treated as supported for the current launch.
 - On Android this path config is sufficient on its own (the SDK auto-extracts from intent extras). On iOS it configures the path but does nothing until the payload is separately forwarded with `handlePushNotification(pushPayload)` (F-031) — an integrator who configures the path on iOS but skips that step will see push deep links silently fail to resolve.
 - **The push forwarding APIs are deliberately not unified**: `sendPushNotificationData({campaign, pid, isRetargeting, additionalParameters})` is Android-only and `handlePushNotification(Map<String, dynamic> pushPayload)` is iOS-only, because the native parameter shapes have nothing in common. Calling either on the wrong platform is ignored with a logged warning and no RPC is dispatched, so a misplaced call is harmless but silent apart from the log line. Branching is not required for correctness, but because the two APIs take different inputs a cross-platform app will normally branch anyway.
 - **Empty list fails at the native bridge, not in Dart**: both bridges reject an empty `deepLinkPath` (Android `require(deepLinkPath.isNotEmpty())`; iOS `guard [String] && !isEmpty else missingParameter`). Because the method is awaitable, that rejection now surfaces as `AppsFlyerException`, but only after a round trip — Dart does not pre-validate. iOS also conflates missing and empty into `missingParameter`, so the two platforms report the same mistake with different error text.

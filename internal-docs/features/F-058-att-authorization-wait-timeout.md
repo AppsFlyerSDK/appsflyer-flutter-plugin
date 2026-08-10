@@ -4,7 +4,7 @@ name: ATT Authorization Wait Timeout (iOS)
 type: sdkCore
 platform: ios
 status: removed
-last_verified: 2026-08-04
+last_verified: 2026-08-10
 depends_on: []
 ---
 

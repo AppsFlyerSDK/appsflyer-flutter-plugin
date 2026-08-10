@@ -4,8 +4,8 @@ name: Push Notification Data Handling
 type: deepLinking
 platform: both
 status: active
-last_verified: 2026-08-05
-depends_on: ["F-022"]
+last_verified: 2026-08-10
+depends_on: []
 ---
 
 ## Business Purpose
@@ -60,7 +60,7 @@ Any OneLink URL found at the configured path (F-022) is resolved and delivered a
 | | |
 |--|--|
 | **Input** | Android: named arguments `campaign` and `pid` (both required by the native SDK), plus optional `isRetargeting` and `additionalParameters`; sent as `{campaign, pid, isRetargeting, additionalParameters}`. iOS: the complete APNs notification `userInfo` dictionary, sent as `{pushPayload}`. |
-| **Output** | `Future<void>` for both. Each completes when the native request succeeds and throws `AppsFlyerException` when the RPC layer or native SDK rejects it. Called on the wrong platform, each logs a warning and returns without dispatching an RPC. Any resolved OneLink URL arrives asynchronously on `onDeepLinkReceived` (F-037), gated by the path configured in F-022. |
+| **Output** | `Future<void>` for both. Each completes after native RPC validation and the synchronous SDK invocation; neither confirms attribution or deep-link resolution and neither has a request timeout. Validation or bridge failures throw `AppsFlyerException`. Called on the wrong platform, each logs a warning and returns without dispatching an RPC. If F-022 was configured and F-037 registered, a resolved OneLink URL arrives asynchronously on `onDeepLinkReceived`. |
 
 ---
 
@@ -82,9 +82,4 @@ No Dart test covers native attribution or the deep-link extraction that follows.
 ---
 
 ## Dependencies
-```mermaid
-flowchart LR
-    F031["F-031 · Push Notification Data Handling"]:::deepLinking -->|"requires deep-link key-path from"| F022["F-022 · Push Notification Deep-Link Path Config"]:::deepLinking
-    F031 -->|"resolved OneLink URL surfaces via"| F037["F-037 · Unified Deep Linking (UDL) Callback & Models"]:::deepLinking
-    classDef deepLinking fill:#E64980,color:#fff
-```
+No required feature dependency for push attribution itself. F-022 and F-037 are optional workflow components when the payload also contains a OneLink URL that the app wants delivered through UDL.

@@ -4,7 +4,7 @@ name: Unified Deep Linking (UDL) Callback & Models
 type: deepLinking
 platform: both
 status: active
-last_verified: 2026-08-05
+last_verified: 2026-08-10
 depends_on: ["F-001", "F-039", "F-040"]
 ---
 
@@ -91,8 +91,8 @@ Android also exposes `unregisterDeeplinkListener()`, which dispatches `unsubscri
 ```mermaid
 flowchart LR
     F037["F-037 · Unified Deep Linking (UDL) Callback & Models"]:::deepLinking -->|"listener registered after"| F001["F-001 · SDK Initialization"]:::sdkCore
-    F039["F-039 · Native iOS Deep-Link Entry Points"]:::deepLinking -->|"forwards openURL/continueUserActivity/scene events to native SDK, which triggers"| F037
-    F040["F-040 · Android New-Intent Deep-Link Forwarding"]:::deepLinking -->|"forwards onNewIntent to native SDK, which triggers"| F037
+    F037 -->|"iOS input arrives through"| F039["F-039 · Native iOS Deep-Link Entry Points"]:::deepLinking
+    F037 -->|"Android warm-intent state is synchronized by"| F040["F-040 · Android New-Intent Deep-Link Forwarding"]:::deepLinking
     classDef deepLinking fill:#E64980,color:#fff
     classDef sdkCore fill:#4C6EF5,color:#fff
 ```

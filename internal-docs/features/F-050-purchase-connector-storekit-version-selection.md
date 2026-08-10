@@ -4,7 +4,7 @@ name: "Purchase Connector: StoreKit Version Selection (iOS)"
 type: purchaseValidation
 platform: ios
 status: active
-last_verified: 2026-07-29
+last_verified: 2026-08-10
 depends_on: ["F-049"]
 ---
 

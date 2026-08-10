@@ -4,7 +4,7 @@ name: Customer User ID (CUID)
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-08-04
+last_verified: 2026-08-10
 depends_on: []
 ---
 
@@ -46,8 +46,8 @@ AppsFlyerSdk.setCustomerUserId(customerId)                            [lib/src/a
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `customerId` (String) — the developer-defined customer user ID. RPC param key `customerId`. |
-| **Output** | `Future<void>` completes when the native request succeeds and throws `AppsFlyerException` for native errors. |
+| **Input** | `customerId` (`String`) — the developer-defined customer user ID. Android RPC rejects an empty value; iOS RPC requires a string but does not reject an empty string. RPC param key `customerId`. |
+| **Output** | `Future<void>` completes after native RPC validation and the synchronous SDK setter invocation. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or request timeout. |
 
 ---
 
@@ -57,7 +57,7 @@ AppsFlyerSdk.setCustomerUserId(customerId)                            [lib/src/a
 ---
 
 ## Known Limitations
-- No validation of the `customerId` string (empty, whitespace, length) before it is forwarded to native code.
+- Dart performs no value validation. Android RPC rejects an empty string, while iOS RPC accepts one; neither bridge rejects whitespace-only values.
 - To associate the first session with the CUID, await it before `start()`; there is no dedicated "set CUID and log session" API in SDK 7.
 
 ---

@@ -4,8 +4,8 @@ name: Debug Logging Toggle
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-08-05
-depends_on: ["F-001"]
+last_verified: 2026-08-10
+depends_on: []
 ---
 
 ## Business Purpose
@@ -50,7 +50,7 @@ AppsFlyerSdk.setLogLevel(logLevel)                                    [Android o
 | | |
 |--|--|
 | **Input** | `enabled` (`bool`) sent as the `isDebug` RPC parameter. Android only: `logLevel` (`AFLogLevel`) sent as its uppercase name. |
-| **Output** | `Future<void>` completes when the native request succeeds and throws `AppsFlyerException` for native errors. Off Android, `setLogLevel` is ignored with a logged warning and no RPC is dispatched. |
+| **Output** | `Future<void>` completes after native RPC validation and the synchronous SDK logging setter invocation. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or timeout. Off Android, `setLogLevel` is ignored with a logged warning and no RPC is dispatched. |
 
 ---
 
@@ -70,8 +70,4 @@ AppsFlyerSdk.setLogLevel(logLevel)                                    [Android o
 ---
 
 ## Dependencies
-```mermaid
-flowchart LR
-    F059["F-059 · Debug Logging Toggle"]:::sdkCore -->|"dispatched over the RPC bridge established by"| F001["F-001 · SDK Initialization"]:::sdkCore
-    classDef sdkCore fill:#4C6EF5,color:#fff
-```
+No required feature dependency. `enableDebug` may run before `init()` and should run before the first `start()` whose diagnostics are needed.

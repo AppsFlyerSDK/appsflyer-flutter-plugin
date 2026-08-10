@@ -4,7 +4,7 @@ name: Deep-Link URL Resolution Allow-list
 type: deepLinking
 platform: both
 status: active
-last_verified: 2026-08-04
+last_verified: 2026-08-10
 depends_on: []
 ---
 
@@ -52,7 +52,7 @@ AppsFlyerSdk.setResolveDeepLinkURLs(List<String> urls)                          
 | | |
 |--|--|
 | **Input** | `urls` (`List<String>`) — the domains/URLs (for example `"click.example.com"`) the SDK should attempt to resolve as deep links. The native bridges require a non-empty list. |
-| **Output** | `Future<void>` completes when the native request succeeds and throws `AppsFlyerException` for native errors, including the empty-list rejection. Configuring the allow-list does not itself deliver deep-link data; matching URLs simply become eligible for the resolution flow that feeds F-037 (UDL) and F-035 (GCD). |
+| **Output** | `Future<void>` completes after native RPC validation and the synchronous SDK setter invocation. An empty list or bridge failure throws `AppsFlyerException`; there is no native completion callback or timeout. Configuring the allow-list does not itself deliver data; matching URLs become eligible for the UDL resolution flow in F-037. |
 
 ---
 

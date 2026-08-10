@@ -4,7 +4,7 @@ name: Disable Network Data Transfer
 type: sdkCore
 platform: android
 status: active
-last_verified: 2026-08-05
+last_verified: 2026-08-10
 depends_on: []
 ---
 
@@ -45,7 +45,7 @@ AppsFlyerSdk.setDisableNetworkData(isDisable)                          [lib/src/
 | | |
 |--|--|
 | **Input** | `isDisable` (bool) — `true` opts out of network/carrier data collection; `false` keeps default collection behavior. Sent under the `isDisable` param key. |
-| **Output** | `Future<void>` completes when the native request succeeds and throws `AppsFlyerException` for native errors or RPC timeouts. Calling it off Android completes without throwing: the call is ignored with a logged warning and no RPC is dispatched. |
+| **Output** | On Android, `Future<void>` completes after RPC validation and synchronous SDK invocation, with no native completion callback or timeout. Validation or bridge failures throw `AppsFlyerException`. Off Android the call is ignored with a logged warning and no RPC is dispatched. |
 
 ---
 

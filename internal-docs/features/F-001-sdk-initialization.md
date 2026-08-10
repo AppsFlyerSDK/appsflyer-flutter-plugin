@@ -4,7 +4,7 @@ name: SDK Initialization
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-08-07
+last_verified: 2026-08-10
 depends_on: []
 ---
 
@@ -73,7 +73,5 @@ Listener registration is intentionally not part of this sequence. The app separa
 ```mermaid
 flowchart LR
     F001["F-001 · SDK Initialization"]:::sdkCore
-    F002["F-002 · SDK Start"]:::sdkCore
-    F002 -->|"requires initialized SDK"| F001
     classDef sdkCore fill:#4C6EF5,color:#fff
 ```

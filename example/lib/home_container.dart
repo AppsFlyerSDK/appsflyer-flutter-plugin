@@ -13,13 +13,13 @@ class HomeContainer extends StatefulWidget {
 
   // ignore: prefer_const_constructors_in_immutables
   HomeContainer({
-    Key? key,
+    super.key,
     required this.onData,
     required this.deepLinkData,
     required this.logEvent,
     required this.logAdRevenueEvent,
     required this.validatePurchase,
-  }) : super(key: key);
+  });
 
   @override
   State<HomeContainer> createState() => _HomeContainerState();

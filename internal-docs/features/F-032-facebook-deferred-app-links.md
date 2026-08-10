@@ -4,7 +4,7 @@ name: Facebook Deferred App Links
 type: deepLinking
 platform: both
 status: active
-last_verified: 2026-08-05
+last_verified: 2026-08-10
 depends_on: []
 ---
 
@@ -59,7 +59,7 @@ AppsFlyerSdk.setFacebookDeferredAppLink(String? url)                            
 | | |
 |--|--|
 | **Input** | `enableFacebookDeferredApplinks`: `isEnabled` (bool). `setFacebookDeferredAppLink`: `url` (`String?`; `null` clears the current URL). |
-| **Output** | `Future<void>` — completes when the native request succeeds and throws `AppsFlyerException` for native errors or RPC timeouts. On Android, `setFacebookDeferredAppLink` logs a warning and returns without dispatching an RPC. Resolved deferred-link data (if any) is not returned here — it surfaces through whichever conversion/attribution stream the app has registered (`onConversionDataSuccess`, or UDL `onDeepLinkReceived`), which are native-SDK internal behaviors this plugin does not directly wire to this flag. |
+| **Output** | `Future<void>` — completes after native RPC validation and the synchronous SDK configuration call. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or timeout. On Android, `setFacebookDeferredAppLink` logs a warning and returns without dispatching an RPC. Any resolved data is delivered later through a separately registered conversion-data or UDL stream. |
 
 ---
 

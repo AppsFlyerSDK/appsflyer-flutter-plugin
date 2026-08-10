@@ -4,7 +4,7 @@ name: "Purchase Connector: Google Play Purchase/Subscription Data Models"
 type: purchaseValidation
 platform: android
 status: active
-last_verified: 2026-07-29
+last_verified: 2026-08-10
 depends_on: ["F-049", "F-051"]
 ---
 

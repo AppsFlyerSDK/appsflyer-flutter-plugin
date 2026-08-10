@@ -1,15 +1,15 @@
 ---
 id: F-054
-name: "Purchase Connector: Build-Time Opt-in (Android include/exclude variants)"
+name: "Purchase Connector: Build-Time Opt-in"
 type: purchaseValidation
 platform: both
 status: active
-last_verified: 2026-07-29
-depends_on: [F-060]
+last_verified: 2026-08-10
+depends_on: []
 ---
 
 ## Business Purpose
-The Purchase Connector depends on the Google Play Billing Library (Android) and StoreKit (iOS) — libraries the plugin does not bundle, because most apps that don't sell in-app purchases/subscriptions shouldn't have to pull in billing dependencies just to use core attribution. This feature is the build-time switch that lets an app pull the real native Purchase Connector implementation into its build only if it explicitly opts in; apps that don't opt in get an inert stub instead. Without this switch, every consumer of the Flutter plugin would be forced to carry Play Billing Library / StoreKit purchase-connector native code (and satisfy their ProGuard/versioning constraints) even if they never call any Purchase Connector Dart API, which is unacceptable to plugins that just want attribution and deep linking.
+Purchase Connector adds optional native purchase-observation dependencies and code that core-attribution apps do not need. This feature is the build-time switch that includes and registers the real native implementation only when the consuming app opts in. Android compiles either the connector source set or an inert stub; CocoaPods conditionally includes the iOS Purchase Connector subspec and compile flag. Without the opt-in, the public Dart classes still compile but native channel calls cannot be served.
 
 ---
 
@@ -92,18 +92,9 @@ No dedicated test found — this is a Gradle/CocoaPods build-configuration conce
 - iOS has the same silent-gap behavior by omission rather than an explicit stub: if `$AppsFlyerPurchaseConnector` is undefined, the `PurchaseConnector` subspec/macro/registration are all compiled out, so `PurchaseConnectorPlugin` never registers a handler for `af-purchase-connector` either — same `MissingPluginException` outcome as Android, but reached via a completely different mechanism (absent Ruby global vs. an explicit empty Kotlin object), which is easy for engineers modifying one platform to forget applies to the other.
 - **F-049 (Purchase Connector: Configuration & Lifecycle) and every other Purchase Connector Dart API are entirely meaningless without this feature being correctly opted into on both platforms** — the Dart-side classes (`PurchaseConnector`, `PurchaseConnectorConfiguration`, etc.) are always compiled into the plugin regardless of opt-in status, so an app can write code against them, pass static analysis, and still get runtime `MissingPluginException`s in production if it forgot the Podfile/gradle.properties step on either platform (`doc/purchase-connector.md` calls this out explicitly).
 - The two opt-in mechanisms are asymmetric in strictness: Android checks a boolean value (`.toBoolean() ?: false`), so `appsflyer.enable_purchase_connector=false` or an unset/malformed property both cleanly resolve to "excluded." iOS checks mere *definedness* of `$AppsFlyerPurchaseConnector` (`defined?(...)`), so setting it to `false` in a Podfile still counts as "opted in" (`if defined?($AppsFlyerPurchaseConnector)` is true regardless of the assigned value) — a plausible copy-paste mistake (`$AppsFlyerPurchaseConnector = false` intending to disable it) silently enables the feature.
-- **As of F-060 (Swift Package Manager Support), this gate has a third path with no opt-in mechanism at all**: an app integrated via SPM cannot enable Purchase Connector under any configuration this release — `ios/appsflyer_sdk/Package.swift` never defines `ENABLE_PURCHASE_CONNECTOR`, so the `#ifdef` guard always resolves false. Calling any Purchase Connector Dart API from an SPM-only integration fails with the same generic `MissingPluginException` described above for the CocoaPods not-opted-in case — this is not a new failure mode, but it is a third, permanent path to the same confusing outcome, not a temporary misconfiguration a developer can fix by setting a flag. Apps that need Purchase Connector must stay on CocoaPods until flutter/flutter#161182 (Flutter's own plugin tooling lacking conditional-compilation support) is resolved — see F-060 and `docs/researches/R-001-spm-support.md` for why SPM Package Traits do not currently offer a workaround.
+- **As of F-060 (Swift Package Manager Support), this gate has a third path with no opt-in mechanism at all**: an app integrated via SPM cannot enable Purchase Connector under any configuration this release — `ios/appsflyer_sdk/Package.swift` never defines `ENABLE_PURCHASE_CONNECTOR`, so the `#ifdef` guard always resolves false. Calling any Purchase Connector Dart API from an SPM-only integration fails with the same generic `MissingPluginException` described above for the CocoaPods not-opted-in case — this is not a new failure mode, but it is a third, permanent path to the same confusing outcome, not a temporary misconfiguration a developer can fix by setting a flag. Apps that need Purchase Connector must stay on CocoaPods until flutter/flutter#161182 (Flutter's own plugin tooling lacking conditional-compilation support) is resolved — see F-060 and [`internal-docs/researches/R-001-spm-support.md`](../researches/R-001-spm-support.md) for why SPM Package Traits do not currently offer a workaround.
 
 ---
 
 ## Dependencies
-```mermaid
-flowchart LR
-    F054["F-054 · Purchase Connector: Build-Time Opt-in"]:::purchaseValidation
-    F049["F-049 · Purchase Connector: Configuration & Lifecycle"]:::purchaseValidation
-    F060["F-060 · Swift Package Manager Support"]:::sdkCore
-    F054 -->|"gates compilation/registration of"| F049
-    F060 -->|"adds a third, permanently-excluded iOS path to"| F054
-    classDef purchaseValidation fill:#F59F00,color:#fff
-    classDef sdkCore fill:#4C6EF5,color:#fff
-```
+No required feature dependency. F-049 depends on this opt-in for native availability; F-060 documents that the current SPM product has no Purchase Connector opt-in path.

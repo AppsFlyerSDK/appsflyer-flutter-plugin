@@ -4,7 +4,7 @@ name: Plugin Metadata Reporting to Native SDK
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-08-04
+last_verified: 2026-08-10
 depends_on: ["F-001"]
 ---
 
@@ -26,7 +26,7 @@ AppsFlyerSdk.init(devKey: ..., appId: ...)                            [lib/src/a
   → _invokeVoidRpc('init', {devKey, appId?})
     → MethodChannel('af-api').invokeMethod('executeRpc', {method: 'init', params})
       → Android: AppsflyerSdkPlugin.initFromRpc                       [android/.../AppsflyerSdkPlugin.java]
-        → executeRpcSync('setPluginInfo', {plugin: "android_flutter", pluginVersion: PLUGIN_VERSION})
+        → executeRpcSync('setPluginInfo', {plugin: "flutter", pluginVersion: PLUGIN_VERSION})
         → executeRpcSync('init', {devKey})
       → iOS: AppsflyerSdkPlugin initFromRpc:result:                   [ios/.../AppsflyerSdkPlugin.m]
         → setPluginInfo {plugin: "flutter", pluginVersion: kAppsFlyerPluginVersion}
@@ -37,7 +37,7 @@ AppsFlyerSdk.init(devKey: ..., appId: ...)                            [lib/src/a
     surfaces to Dart as an AppsFlyerException
 ```
 
-Android sends `android_flutter` and iOS sends `flutter`; the Android RPC resolver matches both to `Plugin.FLUTTER` by stripping the `android_` prefix.
+Both platforms send `flutter` as the plugin name. The Android RPC resolver also accepts legacy `android_flutter` by stripping the `android_` prefix, but this plugin reports the short form on both sides.
 
 ---
 
@@ -47,7 +47,7 @@ Android sends `android_flutter` and iOS sends `flutter`; the Android RPC resolve
 | `lib/src/appsflyer_sdk.dart` | `init()` — the Dart entry point whose native orchestration reports the metadata; `String get pluginVersion` exposes the Dart-side constant to the host app |
 | `lib/src/appsflyer_constants.dart` | `PLUGIN_VERSION = "7.0.1"` returned by `pluginVersion` |
 | `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `initFromRpc(...)` — dispatches the `setPluginInfo` RPC with `{plugin: AF_PLUGIN_NAME, pluginVersion: PLUGIN_VERSION}` before the `init` RPC, ignoring its result |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsFlyerConstants.java` | `AF_PLUGIN_NAME = "android_flutter"`, `PLUGIN_VERSION`, `RPC_METHOD_SET_PLUGIN_INFO` — the values reported to the native SDK |
+| `android/src/main/java/com/appsflyer/appsflyersdk/AppsFlyerConstants.java` | `AF_PLUGIN_NAME = "flutter"`, `PLUGIN_VERSION`, `RPC_METHOD_SET_PLUGIN_INFO` — the values reported to the native SDK |
 | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | Dispatches the `setPluginInfo` RPC to the RPC bridge and runs the ordered init sequence from its completion, regardless of the outcome |
 | `ios/appsflyer_sdk/Sources/appsflyer_sdk/include/appsflyer_sdk/AppsflyerSdkPlugin.h` | `kAppsFlyerPluginVersion` — the version reported on iOS |
 
@@ -58,7 +58,7 @@ The plugin does not construct the native `PluginInfo`/`AFSDKPluginFlutter` types
 ## Input / Output
 | | |
 |--|--|
-| **Input** | None from the host app — no Dart parameter exists. The reported values (`plugin: "android_flutter"` on Android, `"flutter"` on iOS, plus the native `PLUGIN_VERSION`/`kAppsFlyerPluginVersion` constant) are fixed in the plugin's source. |
+| **Input** | None from the host app — no Dart parameter exists. The reported values (`plugin: "flutter"` on both platforms, plus the native `PLUGIN_VERSION`/`kAppsFlyerPluginVersion` constant) are fixed in the plugin's source. |
 | **Output** | Nothing is returned to Dart for this step. A `setPluginInfo` failure would only cost the integration label in reporting, so both platforms ignore its outcome and continue initializing; `init()` still succeeds. The metadata itself is transmitted by the native SDK as part of its own request payloads. |
 
 ---
@@ -70,7 +70,7 @@ No dedicated test found. The RPC is dispatched inside the native init orchestrat
 
 ## Known Limitations
 - The reported plugin version is a per-platform constant, currently aligned at `"7.0.1"` (Dart `_AppsFlyerConstants.PLUGIN_VERSION`, Android `AppsFlyerConstants.PLUGIN_VERSION`, iOS `kAppsFlyerPluginVersion`). There is no single source of truth tying the three to each other or to `pubspec.yaml`; the `rc-release.yml` and `promote-release.yml` workflows rewrite all three during a release, so drift is only possible if a version is edited by hand.
-- A `setPluginInfo` failure is unreachable in practice: the RPC only rejects an unresolvable plugin name, and `AF_PLUGIN_NAME` matches `Plugin.FLUTTER("android_flutter")` exactly. Neither platform inspects the result. If `Plugin` is ever renamed upstream the regression would be silent here, but the same enum backs every AppsFlyer plugin, so such a rename would surface across all of them at once.
+- A `setPluginInfo` failure is not expected with the current fixed `"flutter"` value, which maps to `Plugin.FLUTTER`, but neither platform inspects the result. A future mapping or serialization regression would therefore be silent and would remove only the integration metadata, not fail `init()`.
 - The Dart `pluginVersion` getter reads the Dart constant only. It reports what Dart believes the version is, not what the native side actually sent, so a drifted native constant would go unnoticed.
 - No public Dart API exists to inspect, override, or disable the reported metadata; it always fires as part of init.
 - The RPC is dispatched on every `init` call with no guard against reporting the metadata more than once if the app re-initializes.

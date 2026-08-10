@@ -4,7 +4,7 @@ name: In-App Purchase Validation V1 (Android/iOS separate APIs)
 type: purchaseValidation
 platform: both
 status: removed
-last_verified: 2026-08-04
+last_verified: 2026-08-10
 depends_on: []
 ---
 
@@ -46,7 +46,6 @@ AppsFlyerSdk.validateAndLogInAppPurchase(AFAndroidPurchaseDetails | AFIOSPurchas
 | `lib/src/appsflyer_sdk.dart` | Contains the active `validateAndLogInAppPurchase` API; no V1 method remains |
 | `lib/src/af_purchase_details.dart` | `AFPurchaseDetails` with the `AFAndroidPurchaseDetails` / `AFIOSPurchaseDetails` implementations used by the replacement |
 | `doc/migration-guide.md` | Documents both removed V1 methods and their replacement |
-| `doc/migration-guide.md` | Removal and replacement summary for integrators |
 
 ---
 

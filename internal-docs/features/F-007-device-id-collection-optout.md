@@ -4,12 +4,12 @@ name: Android ID Collection Opt-out
 type: sdkCore
 platform: android
 status: active
-last_verified: 2026-08-07
+last_verified: 2026-08-10
 depends_on: []
 ---
 
 ## Business Purpose
-Google Play policy prohibits apps that bundle Google Play Services from collecting the Android ID for advertising/attribution purposes. `setCollectAndroidID(false)` lets a Play-Services-enabled app opt out of this collection so it stays compliant, while the native SDK can use Android ID as a device-level fallback on apps without Google Play Services. Getting this wrong risks Play Store policy violations.
+`setCollectAndroidID` controls whether the Android SDK may collect Android ID as a fallback identifier. Apps must choose the value that matches their distribution context, consent basis, privacy disclosures, and current Google Play policy rather than assuming the identifier is always appropriate.
 
 ---
 

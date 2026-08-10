@@ -4,7 +4,7 @@ name: Manual Deep-Link Re-trigger (performDeepLinking)
 type: deepLinking
 platform: both
 status: active
-last_verified: 2026-08-04
+last_verified: 2026-08-10
 depends_on: ["F-037"]
 ---
 
@@ -50,7 +50,7 @@ The resolved deep link surfaces asynchronously over the `af-events` EventChannel
 | | |
 |--|--|
 | **Input** | `url` (`String`, required) — full URL, OneLink, or Android intent-data string. `shouldTriggerSession` (`bool`, default `false`) — when `true`, Android also enqueues a Launch for re-engagement; the parameter is not included in the iOS RPC params. |
-| **Output** | `Future<void>` completes when the native request succeeds and throws `AppsFlyerException` for native errors. Any resolved deep link is delivered asynchronously on the `onDeepLinkReceived` stream (F-037). |
+| **Output** | `Future<void>` completes after native RPC validation and the synchronous SDK invocation; it does not report the resolution result. Validation or bridge failures throw `AppsFlyerException`. Any resolved deep link is delivered asynchronously on the `onDeepLinkReceived` stream (F-037). |
 
 ---
 

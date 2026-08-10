@@ -4,7 +4,7 @@ name: Delayed Session Start Pending CUID
 type: sdkCore
 platform: android
 status: removed
-last_verified: 2026-08-04
+last_verified: 2026-08-10
 depends_on: ["F-015"]
 ---
 
@@ -47,7 +47,7 @@ AppsFlyerSdk.start()                 → RPC start {awaitResponse: false}     [F
 ---
 
 ## Tests
-No tests — the APIs no longer exist. `test/appsflyer_sdk_test.dart` contains no references to `waitForCustomerUserId` / `setCustomerIdAndLogSession`. The replacement ordering is covered by the existing `setCustomerUserId` RPC mapping and `start awaits the native request callback` tests.
+No tests target the removed APIs. `test/appsflyer_sdk_test.dart` contains no references to `waitForCustomerUserId` or `setCustomerIdAndLogSession`; it separately verifies the current `setCustomerUserId` mapping and both `start()` values of `awaitResponse`, but does not run an end-to-end ordering test.
 
 ---
 

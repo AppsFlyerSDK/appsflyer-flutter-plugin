@@ -4,8 +4,8 @@ name: iOS Receipt Validation Sandbox Toggle
 type: purchaseValidation
 platform: ios
 status: active
-last_verified: 2026-08-05
-depends_on: ["F-024"]
+last_verified: 2026-08-10
+depends_on: []
 ---
 
 ## Business Purpose
@@ -52,7 +52,7 @@ AppsFlyerSdk.setUseUninstallSandbox(bool sandbox)
 | | |
 |--|--|
 | **Input** | `sandbox` (`bool`), sent under the `sandbox` params key |
-| **Output** | `Future<void>` completes when the native request succeeds and throws `AppsFlyerException` for native errors or RPC timeouts. On a non-iOS platform the call logs a warning and returns without dispatching an RPC. The effect is a stateful flag on the native iOS SDK that changes the behavior of subsequent `validateAndLogInAppPurchase` (F-024) and uninstall-measurement calls. |
+| **Output** | `Future<void>` completes after RPC validation and the synchronous native SDK property assignment. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or request timeout. On a non-iOS platform the call logs a warning and returns without dispatching an RPC. The effect is a stateful flag on the native iOS SDK that changes subsequent `validateAndLogInAppPurchase` (F-024) or uninstall-measurement behavior. |
 
 ---
 
@@ -65,16 +65,11 @@ AppsFlyerSdk.setUseUninstallSandbox(bool sandbox)
 
 ## Known Limitations
 - iOS-only: calling either method on another platform is a no-op that only logs a warning, so a misplaced call in shared code is easy to miss unless the log is read. Cross-platform call sites no longer need to branch for correctness.
+- Use the sandbox toggles only for test/sandbox environments or when AppsFlyer support instructs you to do so; production builds normally leave both disabled.
 - Neither toggle has example-app coverage.
 - The flag is native SDK state with no read-back API, so the Flutter layer cannot report which endpoint is currently selected.
 
 ---
 
 ## Dependencies
-```mermaid
-flowchart LR
-    F025["F-025 · iOS Receipt Validation Sandbox Toggle"]:::purchaseValidation
-    F024["F-024 · In-App Purchase Validation V2"]:::purchaseValidation
-    F025 -->|"sets Apple endpoint used by"| F024
-    classDef purchaseValidation fill:#F59F00,color:#fff
-```
+No required feature dependency. F-024 consumes this setting only when the app has explicitly selected the sandbox receipt-validation environment.

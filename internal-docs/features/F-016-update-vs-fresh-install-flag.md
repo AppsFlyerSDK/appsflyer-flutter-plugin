@@ -4,7 +4,7 @@ name: Update vs. Fresh-Install Flag
 type: sdkCore
 platform: android
 status: active
-last_verified: 2026-08-05
+last_verified: 2026-08-10
 depends_on: []
 ---
 
@@ -46,7 +46,7 @@ AppsFlyerSdk.setIsUpdate(bool isUpdate)                               [lib/src/a
 | | |
 |--|--|
 | **Input** | `isUpdate` (`bool`), sent under the RPC param key `isUpdate`. |
-| **Output** | `Future<void>` completes when the native request succeeds and throws `AppsFlyerException` for native errors. On any non-Android platform the call is ignored with a logged warning and no RPC is dispatched. |
+| **Output** | On Android, `Future<void>` completes after RPC validation and the synchronous SDK setter invocation; validation or bridge failures throw `AppsFlyerException`, with no native completion callback or timeout. On any non-Android platform the call is ignored with a logged warning and no RPC is dispatched. |
 
 ---
 

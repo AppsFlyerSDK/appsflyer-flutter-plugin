@@ -4,12 +4,12 @@ name: "Swift Package Manager (SPM) Support (Core, iOS)"
 type: sdkCore
 platform: ios
 status: active
-last_verified: 2026-07-29
+last_verified: 2026-08-10
 depends_on: []
 ---
 
 ## Business Purpose
-Flutter 3.44+ makes Swift Package Manager the default iOS integration mechanism, and CocoaPods trunk goes read-only on December 2, 2026 — after that date, this plugin could no longer publish new CocoaPods releases at all, and any app on Flutter 3.44+ that hadn't migrated would hit a hard build error instead of today's build warning. Without this feature, every consumer of the plugin would eventually be forced onto an unsupported distribution path, and competing attribution SDKs (Adjust, Singular) that already support SPM would have a real integration advantage. This feature adds a `Package.swift` manifest for the Core integration so apps can adopt SPM today, while leaving CocoaPods fully intact for apps that aren't ready to migrate or that need Purchase Connector (see Known Limitations).
+Flutter 3.44+ uses Swift Package Manager as the default native dependency mechanism, while CocoaPods trunk is scheduled to become permanently read-only on December 2, 2026. Existing CocoaPods specs remain consumable, but publishing new podspec versions through trunk will no longer be possible. This feature adds a `Package.swift` manifest for the Core integration while retaining CocoaPods for apps that disable SPM or need Purchase Connector (see Known Limitations).
 
 Ticket: DELIVERY-125462.
 
@@ -37,8 +37,8 @@ Shared source tree (used by both paths, single copy — no duplication):
 SPM path (resolved by `flutter build`/`swift build` at build configuration time):
   ios/appsflyer_sdk/Package.swift  (swift-tools-version:5.9, platforms: [.iOS("13.0")])
     → binaryTarget "AppsFlyerRPC" — the RPC xcframework vendored directly by release URL + SHA-256
-        (AppsFlyerRPC 7.0.12); upstream tag 7.0.12 Package.swift is broken (7.0.1 asset / stale
-        checksum); fix exists on main (51f87d65) but no corrected tag (e.g. 7.0.13) yet
+        (AppsFlyerRPC 7.0.12); at implementation review time, upstream tag 7.0.12's Package.swift
+        referenced the 7.0.1 asset / stale checksum, while the correction existed only on main
     → dependency on AppsFlyerFramework, pinned exactly to 7.0.1 (AppsFlyerRPC 7.0.12 requires it)
     → target "appsflyer_sdk" depends on FlutterFramework, AppsFlyerLib (from AppsFlyerFramework), and AppsFlyerRPC
     → compiles the shared Sources/ tree above, iOS 13.0 minimum
@@ -55,7 +55,7 @@ CocoaPods path (resolved by `pod install` at install time):
 ## Files
 | File | Role |
 |------|------|
-| `ios/appsflyer_sdk/Package.swift` | SPM manifest. `swift-tools-version:5.9` (Xcode 15.0+), `platforms: [.iOS("13.0")]`. Vendors `AppsFlyerRPC` 7.0.12 as a `binaryTarget` (release URL + SHA-256 `14484bce…`) because upstream tag `7.0.12` Package.swift still references the 7.0.1 asset with checksum `da3223c…` (tag commit [`80eb4e21`](https://github.com/AppsFlyerSDK/appsflyer-apple-rpc/commit/80eb4e21dacfb1fa40f02db579c4731abb7db5ed)); the fix is on `main` ([`51f87d65`](https://github.com/AppsFlyerSDK/appsflyer-apple-rpc/commit/51f87d652e1e0d609871317e15dc7f6c2fd08694)) but not yet re-tagged. Depends on `AppsFlyerFramework` `.exact("7.0.1")` for `AppsFlyerLib`, plus the generated `FlutterFramework` package. |
+| `ios/appsflyer_sdk/Package.swift` | SPM manifest. `swift-tools-version:5.9` (Xcode 15.0+), `platforms: [.iOS("13.0")]`. Vendors `AppsFlyerRPC` 7.0.12 as a `binaryTarget` (release URL + SHA-256 `14484bce…`). At implementation review time, upstream tag `7.0.12` referenced the 7.0.1 asset with checksum `da3223c…` (tag commit [`80eb4e21`](https://github.com/AppsFlyerSDK/appsflyer-apple-rpc/commit/80eb4e21dacfb1fa40f02db579c4731abb7db5ed)); the correction was on `main` ([`51f87d65`](https://github.com/AppsFlyerSDK/appsflyer-apple-rpc/commit/51f87d652e1e0d609871317e15dc7f6c2fd08694)). Depends on `AppsFlyerFramework` `.exact("7.0.1")` for `AppsFlyerLib`, plus the generated `FlutterFramework` package. |
 | `ios/appsflyer_sdk/Sources/appsflyer_sdk/*.m` | Core implementation files (`AppsflyerSdkPlugin.m`, `AppsFlyerAttribution.m`) — the single shared source tree for both CocoaPods and SPM. |
 | `ios/appsflyer_sdk/Sources/appsflyer_sdk/include/appsflyer_sdk/*.h` | Public headers — `AppsflyerSdkPlugin.h` is where `pluginClass: AppsflyerSdkPlugin` (declared in `pubspec.yaml`) resolves from in both integration paths. |
 | `ios/appsflyer_sdk.podspec` | `Core` subspec depends on `AppsFlyerRPC 7.0.12` (which transitively pins `AppsFlyerFramework 7.0.1`); `PurchaseConnector` subspec depends on `PurchaseConnector 7.0.1`. No marker declares SPM availability — Flutter's tooling detects it purely by the presence of `Package.swift` at the conventional path. |
@@ -77,18 +77,18 @@ No dedicated automated unit test — this is a build-configuration/distribution-
 
 **Automated CI (CocoaPods path only):** `.github/workflows/lint-test-build.yml` builds the iOS example app via `pod install` on every PR/push and RC release; `.github/workflows/ios-e2e.yml` runs the `.af-e2e/test-plan.json` scenario suite on a simulator after `pod install` (weekly cron + RC gate + manual `workflow_dispatch`). Neither workflow toggles Flutter SPM — they exercise the CocoaPods integration path only. Recent green runs: [Lint, Test & Build — Release 6.18.1](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/actions/runs/30246866162), [iOS E2E — weekly master](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/actions/runs/30185600580).
 
-**Local / manual verification (7.0.x SPM migration):** the SDK 7 RPC migration updated `Package.swift` to vendor **AppsFlyerRPC 7.0.12** (→ AppsFlyerFramework 7.0.1) and raised the deployment target to iOS 13.0. There is no dedicated CI matrix that toggles SPM today; the following were verified locally against the current tree:
+**Recorded manual verification for the 7.0.x migration:** the migration notes record successful local Core builds. This documentation audit rechecked the current manifest and dependency declarations, but did not repeat a full Flutter/Xcode SPM build. There is still no dedicated CI matrix that toggles SPM:
 
 | Configuration | How verified | Status |
 |---------------|--------------|--------|
-| **SPM, Core only** (recommended) | `swift package describe` in `ios/appsflyer_sdk/` confirms `AppsFlyerLib` at `Exact: 7.0.1` + vendored `AppsFlyerRPC` 7.0.12 binaryTarget; `flutter build ios --simulator` with `flutter config --enable-swift-package-manager` and `example/pubspec.yaml` SPM enabled | Verified locally for 7.0.x |
+| **SPM, Core only** (recommended) | `swift package dump-package` in `ios/appsflyer_sdk/` confirms `AppsFlyerLib` at `Exact: 7.0.1` + vendored `AppsFlyerRPC` 7.0.12 binaryTarget; recorded migration verification also used `flutter build ios --simulator` with `flutter config --enable-swift-package-manager` and `example/pubspec.yaml` SPM enabled | Manifest rechecked in this audit; full build evidence is recorded from the 7.0.x migration |
 | **CocoaPods, Core only** | `pod spec lint --quick --allow-warnings`; CI Lint/Test/Build + iOS E2E (above) | Covered by CI |
-| **CocoaPods, Core + PurchaseConnector** | Example app with `$AppsFlyerPurchaseConnector = true`; ad-hoc iOS E2E on throwaway branch ([run 29848672331](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/actions/runs/29848672331), DELIVERY-125462 era, CocoaPods-only) | Verified for 6.18.x; re-run before 7.0.0 RC |
+| **CocoaPods, Core + PurchaseConnector** | Example app with `$AppsFlyerPurchaseConnector = true`; ad-hoc iOS E2E on throwaway branch ([run 29848672331](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/actions/runs/29848672331), DELIVERY-125462 era, CocoaPods-only) | Historical 6.18.x evidence only; no current 7.0.1 run is recorded here |
 | **SPM + PurchaseConnector** | Not supported — see Known Limitations | Explicitly not tested/recommended |
 
 Also verified for every release: `flutter test test` (Dart suite unaffected by iOS build-manifest changes).
 
-> **Gap:** a permanent CI job that builds with `flutter config --enable-swift-package-manager` (SPM Core path) on the 7.0.x line is not yet wired. Before shipping 7.0.0 RC, manually run the SPM Core-only row above and attach the run to the release checklist.
+> **Gap:** a permanent CI job that builds the SPM Core path is not wired. Run the SPM Core-only row above for each release candidate and attach the result to the release checklist; also obtain current CocoaPods + Purchase Connector evidence when that optional component is in release scope.
 
 ---
 
@@ -101,11 +101,4 @@ Also verified for every release: `flutter test test` (Dart suite unaffected by i
 ---
 
 ## Dependencies
-```mermaid
-flowchart LR
-    F060["F-060 · Swift Package Manager Support"]:::sdkCore
-    F054["F-054 · Purchase Connector: Build-Time Opt-in"]:::purchaseValidation
-    F060 -->|"adds a third, permanently-excluded iOS path to"| F054
-    classDef sdkCore fill:#4C6EF5,color:#fff
-    classDef purchaseValidation fill:#F59F00,color:#fff
-```
+No runtime feature dependency. The current SPM product intentionally excludes Purchase Connector; that is a build-support constraint, not a dependency on F-054.

@@ -4,7 +4,7 @@ name: TCF/DMA Automatic Consent Collection
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-08-04
+last_verified: 2026-08-10
 depends_on: ["F-001", "F-002"]
 ---
 

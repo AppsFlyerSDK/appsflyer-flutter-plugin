@@ -4,7 +4,7 @@ name: AppSet ID Collection Opt-out (Android)
 type: sdkCore
 platform: android
 status: active
-last_verified: 2026-08-05
+last_verified: 2026-08-10
 depends_on: []
 ---
 
@@ -46,7 +46,7 @@ AppsFlyerSdk.disableAppSetId()                                        [lib/src/a
 | | |
 |--|--|
 | **Input** | None. The RPC is dispatched with an empty `params` map. |
-| **Output** | `Future<void>` completes when the native request succeeds and throws `AppsFlyerException` for native errors. Called off Android it completes without throwing: the call is ignored with a logged warning and no RPC is dispatched. |
+| **Output** | On Android, `Future<void>` completes after RPC validation and synchronous SDK invocation, with no native completion callback or timeout. Validation or bridge failures throw `AppsFlyerException`. Called off Android it completes without throwing after logging a warning and dispatching no RPC. |
 
 ---
 

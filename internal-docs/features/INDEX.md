@@ -1,12 +1,8 @@
 # AppsFlyer Flutter Plugin — Feature Catalog Index
 
-60 catalogued features across 6 categories. Six are `removed` in SDK 7 (F-008, F-021, F-023, F-036, F-038, F-056) — kept as tombstone entries pointing to the current API or migration documentation. See `DIAGRAM.md` for runtime/init dependency diagrams and the full dependency table.
+69 catalogued features across 6 categories. Seven are `removed` in SDK 7 (F-008, F-021, F-023, F-036, F-038, F-056, F-058) — kept as tombstone entries pointing to the current API or migration documentation. See `DIAGRAM.md` for runtime/init dependency diagrams and the verified dependency table.
 
-> **Verification status:** Entries with `last_verified: 2026-08-04` describe the
-> current native-aligned Flutter API. Entries carrying an earlier verification
-> date are archived implementation snapshots, even when their feature status is
-> `active`; do not use their Dart signatures or call chains as current API
-> documentation until they are reverified against `lib/src/appsflyer_sdk.dart`.
+> **Verification status:** Every entry was checked on **2026-08-10** against the current Dart API, platform plugin sources, pinned Android/iOS RPC implementations, relevant native SDK behavior, and available tests. `last_verified` records an implementation audit, not proof of end-to-end device behavior; each feature's Tests and Known Limitations sections identify remaining coverage gaps.
 
 ---
 
@@ -24,13 +20,13 @@ SDK lifecycle, identity, privacy/consent, and low-level configuration.
 | F-008 | Manual IMEI/Android ID Override | removed | android |
 | F-009 | Minimum Time Between Sessions | active | both |
 | F-011 | TCF/DMA Automatic Consent Collection | active | both |
-| F-012 | Manual GDPR/DMA Consent API (V1 + V2) | active | both |
+| F-012 | Manual GDPR/DMA Consent API | active | both |
 | F-013 | User Anonymization (Opt-out logging) | active | both |
 | F-015 | Customer User ID (CUID) | active | both |
 | F-016 | Update vs. Fresh-Install Flag | active | android |
 | F-017 | SDK Kill Switch (stop) | active | both |
 | F-018 | Uninstall Measurement | active | both |
-| F-019 | User Email Collection (hashed) | active | both |
+| F-019 | User PII Collection and Clearing | active | both |
 | F-020 | AppsFlyer UID Retrieval | active | both |
 | F-021 | Delayed Session Start Pending CUID | removed | android |
 | F-034 | Advertising Identifier Collection Disable | active | both |
@@ -38,9 +34,12 @@ SDK lifecycle, identity, privacy/consent, and low-level configuration.
 | F-047 | AppSet ID Collection Opt-out (Android) | active | android |
 | F-048 | Plugin Metadata Reporting to Native SDK | active | both |
 | F-057 | ASA (Apple Search Ads) Collection Opt-out | active | ios |
-| F-058 | ATT Authorization Wait Timeout (iOS) | active | ios |
+| F-058 | ATT Authorization Wait Timeout (iOS) | removed | ios |
 | F-059 | Debug Logging Toggle | active | both |
 | F-060 | Swift Package Manager (SPM) Support (Core, iOS) | active | ios |
+| F-062 | Android Manual Session Logging | active | android |
+| F-063 | Custom Install ID | active | both |
+| F-066 | iOS Device Data Collection Controls | active | ios |
 
 ## eventsAndRevenue
 
@@ -52,6 +51,7 @@ Reporting in-app events, ad revenue, and monetary context back to AppsFlyer.
 | F-005 | Ad Revenue Logging | active | both |
 | F-010 | Currency Code Setting | active | both |
 | F-026 | Additional Custom Data | active | both |
+| F-061 | Manual Location Logging | active | both |
 
 ## purchaseValidation
 
@@ -68,7 +68,7 @@ Server-side validation of purchases/subscriptions — legacy API and the Purchas
 | F-051 | Purchase Connector: Android Validation Result Listeners | active | android |
 | F-052 | Purchase Connector: iOS Combined Validation Callback | active | ios |
 | F-053 | Purchase Connector: Google Play Purchase/Subscription Data Models | active | android |
-| F-054 | Purchase Connector: Build-Time Opt-in (Android include/exclude variants) | active | both |
+| F-054 | Purchase Connector: Build-Time Opt-in | active | both |
 | F-055 | Missing-Configuration Guard for Purchase Connector | active | both |
 
 ## deepLinking
@@ -87,6 +87,8 @@ Resolving, forwarding, and delivering deep-link/attribution results across platf
 | F-039 | Native iOS Deep-Link Entry Points (URL scheme / Universal Links / Scenes) | active | ios |
 | F-040 | Android New-Intent Deep-Link Forwarding | active | android |
 | F-045 | Deep-Link URL Resolution Allow-list | active | both |
+| F-067 | Deep-Link Resolution Timeout | active | both |
+| F-068 | Deep-Link URL Parameter Appending | active | both |
 
 ## oneLinkAndGrowth
 
@@ -111,3 +113,6 @@ Partner-ecosystem hooks and platform-specific attribution quirks.
 | F-042 | Partner Postback Sharing Filter | active | both |
 | F-043 | Out-of-Store Install Source (Android) | active | android |
 | F-044 | Partner-Specific Data | active | both |
+| F-064 | Android Preinstall Attribution and Detection | active | android |
+| F-065 | Android App ID Override | active | android |
+| F-069 | Android Facebook Attribution ID Retrieval | active | android |

@@ -4,7 +4,7 @@ name: Minimum Time Between Sessions
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-08-04
+last_verified: 2026-08-10
 depends_on: []
 ---
 
@@ -14,7 +14,7 @@ By default AppsFlyer starts a new session whenever the app returns to the foregr
 ---
 
 ## Trigger
-Called by the host app during startup configuration, after `init()` and before `start()`, when the default session-splitting threshold needs to be overridden.
+Called by the host app during startup configuration, before the first `start()`, when the default session-splitting threshold needs to be overridden. The Flutter API does not require a particular order relative to `init()`.
 
 ---
 
@@ -46,8 +46,8 @@ AppsFlyerSdk.setMinTimeBetweenSessions(seconds)                       [lib/src/a
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `seconds` (`int`) sent under the `seconds` param key. |
-| **Output** | `Future<void>` completes once the RPC layer accepts the fire-and-forget native call; native errors throw `AppsFlyerException`. |
+| **Input** | `seconds` (`int`) sent under the `seconds` param key. Both native RPC parsers reject negative values. |
+| **Output** | `Future<void>` completes after native RPC validation and the synchronous SDK setter invocation. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or request timeout. |
 
 ---
 
@@ -57,7 +57,7 @@ AppsFlyerSdk.setMinTimeBetweenSessions(seconds)                       [lib/src/a
 ---
 
 ## Known Limitations
-- No client-side range validation — the value is forwarded to the native SDK as-is.
+- Dart performs no range validation, but both native RPC parsers reject negative values before invoking the SDK.
 - The native API has no completion callback, so a completed `Future` confirms only that the RPC layer accepted the call.
 
 ---

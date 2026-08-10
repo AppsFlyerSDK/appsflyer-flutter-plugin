@@ -4,7 +4,7 @@ name: Uninstall Measurement
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-08-04
+last_verified: 2026-08-10
 depends_on: []
 ---
 
@@ -51,7 +51,7 @@ AppsFlyerSdk.updateServerUninstallToken(token)                        [lib/src/a
 | | |
 |--|--|
 | **Input** | `token` (`String`). Android: FCM registration token, passed through as-is under the `token` key. iOS: APNs device token as an even-length **hexadecimal string**, sent under the `deviceToken` key; the iOS RPC layer converts each hex byte pair into raw `Data` before calling `registerUninstall:`. |
-| **Output** | `Future<void>` that completes when the native request succeeds and throws `AppsFlyerException` for native validation errors, bridge failures, or RPC timeouts. |
+| **Output** | `Future<void>` that completes after native RPC validation and the synchronous SDK registration call. Native validation and bridge failures throw `AppsFlyerException`; neither platform waits for server registration and there is no RPC timeout. |
 
 ---
 

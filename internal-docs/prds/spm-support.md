@@ -2,6 +2,7 @@
 ticket: DELIVERY-125462
 priority: P1
 target: v6.18.0, end of July 2026
+status: superseded
 ---
 
 # PRD: Swift Package Manager (SPM) Support
