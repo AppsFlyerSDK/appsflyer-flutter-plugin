@@ -179,7 +179,7 @@ _events = _eventChannel
 
 Transport-only envelope fields (`timestamp`, `origin`) are ignored on the Dart side.
 
-The Android and iOS plugins each keep an engine-scoped in-memory FIFO of event JSON strings while no Dart event sink is attached, then flush it from `onListen`. There is no persisted or size-bounded queue. Events that occur before plugin registration, after engine teardown, or before the native RPC event handler exists are not recoverable.
+The Android and iOS plugins each keep an in-memory FIFO of event JSON strings while no Dart event sink is attached, then flush it from `onListen`. Both queues are capped at 64 events and drop the oldest on overflow; Android's `AppsFlyerEventBus` is process-scoped, iOS's `pendingEvents` is engine-scoped. Nothing is persisted, so events that occur before plugin registration, after engine teardown, or before the native RPC event handler exists are not recoverable.
 
 Typed public streams filter and map the shared event stream:
 
@@ -424,7 +424,7 @@ The repository CI in `.travis.yml` runs `flutter test test` on Linux. That suite
 
 1. Register the native SDK delegate/listener in the native RPC layer and define a stable event name plus JSON-compatible data shape.
 2. Emit through the RPC notifier/event emitter and keep Flutter-channel access on the platform main thread.
-3. Ensure the platform plugin registers the event handler early enough and decide whether its existing buffer is sufficient — Android's `AppsFlyerEventBus` is process-scoped and bounded, iOS's is engine-scoped.
+3. Ensure the platform plugin registers the event handler early enough and decide whether its existing buffer is sufficient — Android's `AppsFlyerEventBus` is process-scoped, iOS's is engine-scoped, and both are capped at 64 events.
 4. Decode and normalize the event in Dart, then expose a typed broadcast stream. Document subscription-before-registration ordering and platform payload differences.
 5. Test listener gating, event name/payload mapping, malformed input, cancellation/re-listening, and early-event replay. Add device coverage when the callback depends on application lifecycle.
 
@@ -438,7 +438,7 @@ Keep platform-only behavior visibly gated in Dart and documented as such. Purcha
 - Public/native compatibility is checked by tests and review, not generated from a shared cross-platform schema. Android and iOS RPC method names and parameter shapes can drift independently.
 - Android runs fast RPCs inline on the platform thread. Only awaited-callback RPCs use a dedicated blocking executor, so a slow validation or invite-link wait does not stall unrelated setters/getters. iOS permits unrelated requests to overlap, so ordering must still be expressed by awaiting calls.
 - Native timeout errors do not cancel SDK work. Fire-and-forget completion is acceptance, not network delivery.
-- Event buffering is in memory and never persisted, so it does not survive process death. On Android it is process-scoped and capped at 64 events, dropping the oldest on overflow; on iOS it is engine-scoped and unbounded. Malformed events are dropped. The application must subscribe before listener registration to minimize gaps.
+- Event buffering is in memory and never persisted, so it does not survive process death. Both platforms cap the buffer at 64 events and drop the oldest on overflow; the buffer is process-scoped on Android and engine-scoped on iOS. Malformed events are dropped. The application must subscribe before listener registration to minimize gaps.
 - Android deep-link correctness relies on an attached activity and SDK lifecycle inspection of its current intent; there is no plugin URL queue. iOS owns explicit AppDelegate/UIScene forwarding and queues early URL requests in `AppsFlyerAttribution` until initialization.
 - Android deep-link unsubscribe is soft: it clears the RPC listener reference, but the native SDK has no unsubscribe API. iOS exposes no conversion/UDL unregister mapping in the current RPC.
 - The plugin does not enforce a full lifecycle state machine. Call ordering, cold-start configuration replay, ATT prompting, and consent UI remain application responsibilities.

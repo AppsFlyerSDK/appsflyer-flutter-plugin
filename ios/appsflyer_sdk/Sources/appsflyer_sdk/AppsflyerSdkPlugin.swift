@@ -23,6 +23,14 @@ private let kRpcInit = "init"
 private let kRpcLogAndOpenStore = "logAndOpenStore"
 private let kRpcSetPluginInfo = "setPluginInfo"
 
+/// Upper bound for events buffered while no `af-events` sink is attached.
+///
+/// An integration that registers native listeners but never subscribes to the Dart streams — or
+/// cancels its subscription for the rest of the session — would otherwise grow the buffer for the
+/// lifetime of the engine. A session buffers a handful of events, so the cap only acts as a safety
+/// valve. Mirrors `MAX_PENDING_EVENTS` in `AppsFlyerEventBus.kt`.
+private let kMaxPendingEvents = 64
+
 @objc(AppsflyerSdkPlugin)
 public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
 
@@ -349,11 +357,17 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
 
     // Delivers an event to the af-events stream, or buffers it until Dart subscribes (onListen). The
     // bridge completion/event handler is invoked on the main thread, so no extra hop is required.
+    //
+    // The buffer keeps the newest `kMaxPendingEvents` events: dropping the oldest bounds worst-case
+    // memory while still replaying the events a late subscriber is most likely to act on.
     private func deliverEvent(_ argsJson: String) {
         if let eventSink = eventSink {
             eventSink(argsJson)
-        } else {
-            pendingEvents.append(argsJson)
+            return
+        }
+        pendingEvents.append(argsJson)
+        if pendingEvents.count > kMaxPendingEvents {
+            pendingEvents.removeFirst(pendingEvents.count - kMaxPendingEvents)
         }
     }
 
