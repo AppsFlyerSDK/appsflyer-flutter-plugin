@@ -33,7 +33,8 @@ AppsFlyerSdk.registerDeepLinkListener()
       → iOS: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRPCBridge
 
 Native deep link resolved (via F-039 iOS entry points / F-040 Android intent handling):
-  → deliverEvent(json) on EventChannel('af-events'), buffered in pendingEvents until Dart subscribes
+  → Android: AppsFlyerEventBus.publish(json) → EventChannel('af-events'), buffered until a sink attaches
+  → iOS: deliverEvent(json) on EventChannel('af-events'), buffered in pendingEvents until Dart subscribes
     → _AppsFlyerEvent.fromNative(json)                                 [lib/src/appsflyer_event.dart]
       → DeepLinkResult._fromEvent(event, platform: _platform)             [lib/src/udl/deep_link_result.dart]
           status   = data['status'] normalized to DeepLinkStatus
@@ -52,8 +53,9 @@ Android also exposes `unregisterDeeplinkListener()`, which dispatches `unsubscri
 | `lib/src/appsflyer_event.dart` | `_AppsFlyerEvent.fromNative` — parses the RPC envelope (`event`, map-or-null `data`) |
 | `lib/src/udl/deeplink.dart` | `DeepLink` — the raw `clickEvent` map plus typed accessors (`deepLinkValue`, `matchType`, `clickHttpReferrer`, `mediaSource`, `campaign`, `campaignId`, `afSub1..5`, `isDeferred`) and `getStringValue(key)` |
 | `lib/src/udl/deep_link_result.dart` | `DeepLinkResult` (`status`, `deepLink`, `error`, `toJson`), `DeepLinkResult._fromEvent`, `DeepLinkStatus` (`found`/`notFound`/`error`/`unknown`), and `DeepLinkFailure` (`type`, `message`) |
-| `android/.../AppsflyerSdkPlugin.kt` | `processBridgeEvent` / `deliverEvent` forward the bridge deep-link event to the `af-events` sink and buffer it in `pendingEvents` until Dart subscribes |
-| `ios/.../AppsflyerSdkPlugin.swift` | `handleBridgeEvent` / `deliverEvent` do the same on iOS, with the same `pendingEvents` buffering |
+| `android/.../AppsflyerSdkPlugin.kt` | `rpcEventNotifier` hops the bridge deep-link event to the main thread and publishes it to `AppsFlyerEventBus`; `createEventSink` adapts this engine's `af-events` sink |
+| `android/.../AppsFlyerEventBus.kt` | Process-scoped buffer and FIFO replay, so a deep link resolved while no engine is attached is delivered to the next subscriber instead of being lost |
+| `ios/.../AppsflyerSdkPlugin.swift` | `handleBridgeEvent` / `deliverEvent` forward the event to the `af-events` sink and buffer it in `pendingEvents` until Dart subscribes |
 
 ---
 
@@ -83,7 +85,7 @@ Android also exposes `unregisterDeeplinkListener()`, which dispatches `unsubscri
 - Android RPC 7.0.1 serializes the native click event via `org.json.JSONObject.toString()`, which is valid JSON. `_decodeDeepLink` decodes it directly with `jsonDecode` (types, including `is_deferred`, are preserved); a malformed/non-JSON string is treated as "no deep link" (`null`) rather than partially parsed.
 - **`DeepLink.isDeferred` is unreliable on iOS**: the native `AppsFlyerDeepLink.clickEvent` dictionary never includes an `is_deferred` key (the flag lives on a separate native `isDeferred` property that the iOS RPC bridge's `didResolveDeepLink` does not forward). `isDeferred` always returns `null` for iOS deep links regardless of the actual deferred/direct outcome. Android reliably sets `is_deferred` on every resolved deep link. Fixing this requires a native iOS RPC change (forwarding `deepLink.isDeferred` alongside `clickEvent`) — out of scope for the Flutter plugin.
 - `unregisterDeeplinkListener()` is an Android-only soft unsubscribe: the native SDK keeps its listener (it exposes no public unsubscribe API) and the RPC bridge drops subsequent deep-link events.
-- Both platforms buffer native events in `pendingEvents` until Dart attaches to `af-events` (RD-65582) and replay them on attach.
+- Both platforms buffer native events until Dart attaches to `af-events` (RD-65582) and replay them on attach. Android buffers in the process-scoped `AppsFlyerEventBus`, so a deep link resolved while the Flutter engine is torn down (back press, then a link tap) survives engine recreation; the buffer holds at most 64 events and drops the oldest beyond that. iOS buffers per plugin instance and removes its bridge handler on engine detach, so it has no equivalent cross-engine replay.
 
 ---
 

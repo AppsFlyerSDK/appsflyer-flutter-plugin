@@ -115,6 +115,15 @@ replacement table.
 
 - Purchase Connector: removed stray `[AppsFlyer_PC_Debug]` `print` logging that shipped in release builds; the callback handler now accepts both JSON-string and already-decoded `Map` payloads and logs (instead of throwing) on an unrecognized callback name.
 - Purchase Connector (**Android**): subscription and in-app validation-result listeners (`setSubscriptionValidationResultListener` / `setInAppValidationResultListener`) never fired — the Dart callback-name constants used a `#` separator while the native side invokes the channel with `:`, so the handler's `switch` never matched. Aligned the Dart constants to `:`, so these result listeners now deliver.
+- **Android**: native events emitted while no Flutter engine was attached were
+  lost. The native SDK keeps the listener registered by a detached engine
+  (`subscribeForDeepLink` and `registerConversionListener` overwrite a single
+  reference, and deep links have no unsubscribe API), so a deep link or
+  conversion-data callback arriving after the Activity was destroyed — for
+  example a link tapped after leaving the app with the back button — was written
+  into the buffer of a plugin instance Dart could no longer reach. Buffering and
+  replay moved to a process-scoped relay, so those events are delivered to the
+  next subscriber in the order they were published.
 - Optional Android Purchase Connector state is cleared when the Flutter engine
   detaches.
 - Corrected iOS ad-mediation identifiers for custom and direct monetization.

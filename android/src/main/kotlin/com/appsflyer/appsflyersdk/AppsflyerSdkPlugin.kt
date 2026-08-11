@@ -39,7 +39,6 @@ import io.flutter.plugin.common.PluginRegistry
  */
 open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
 
-    private val uiThreadHandler = Handler(Looper.getMainLooper())
     private var rpcExecutor: ExecutorService? = null
 
     private var applicationContext: Context? = null
@@ -50,11 +49,9 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
 
     private var rpcHandler: AppsFlyerRpcHandler? = null
 
-    private var eventSink: EventChannel.EventSink? = null
-
-    // RD-65582: buffer events that arrive before Dart subscribes (onListen), then replay on
-    // attach. Main-thread only.
-    private val pendingEvents: MutableList<String> = ArrayList()
+    // RD-65582: buffering and replay live in AppsFlyerEventBus so they survive engine teardown.
+    // Only the adapter around this engine's EventSink is held here, so it can be detached again.
+    private var eventSink: AppsFlyerEventSink? = null
 
     private val onNewIntentListener = PluginRegistry.NewIntentListener { intent ->
         val currentActivity = activity
@@ -66,13 +63,38 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
 
     private val eventStreamHandler: EventChannel.StreamHandler = object : EventChannel.StreamHandler {
         override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
-            eventSink = events
-            flushPendingEvents()
+            if (events == null) {
+                // Flutter does not do this in practice; without a destination the previous sink is
+                // no longer usable, so events go back to being buffered.
+                releaseEventSink()
+                return
+            }
+            val sink = createEventSink(events)
+            eventSink = sink
+            AppsFlyerEventBus.attach(sink)
         }
 
         override fun onCancel(arguments: Any?) {
-            eventSink = null
+            releaseEventSink()
         }
+    }
+
+    private fun createEventSink(events: EventChannel.EventSink): AppsFlyerEventSink =
+        AppsFlyerEventSink { eventJson ->
+            try {
+                events.success(eventJson)
+                true
+            } catch (t: Throwable) {
+                // Reached when the engine behind this sink is already gone. Reporting the refusal
+                // lets the bus keep the event for the next subscriber instead of losing it.
+                Log.w(AF_PLUGIN_TAG, "af-events sink refused an event: ${t.message}")
+                false
+            }
+        }
+
+    private fun releaseEventSink() {
+        eventSink?.let { sink -> AppsFlyerEventBus.detach(sink) }
+        eventSink = null
     }
 
     private fun onAttachedToEngine(applicationContext: Context, messenger: BinaryMessenger) {
@@ -96,8 +118,9 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
         methodChannel = null
         eventChannel?.setStreamHandler(null)
         eventChannel = null
-        eventSink = null
-        pendingEvents.clear()
+        // The buffer in AppsFlyerEventBus is intentionally left untouched: events emitted while no
+        // engine is attached have to survive until the next subscriber replays them.
+        releaseEventSink()
         AppsFlyerPurchaseConnector.onDetachedFromEngine(binding)
         rpcExecutor?.shutdown()
         rpcExecutor = null
@@ -165,44 +188,13 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
             val rpcContext: Context? = if (activity != null) activity else applicationContext
             handler = AppsFlyerRpcHandler(
                 rpcContext!!,
-                createRpcEventNotifier(),
+                rpcEventNotifier,
                 AppsFlyerLib.getInstance(),
                 JsonRpcRequestParser()
             )
             rpcHandler = handler
         }
         return handler
-    }
-
-    /**
-     * Bridge notifier. Events fire on the SDK's callback thread, so we hop to the main thread before
-     * touching the Flutter channels.
-     */
-    private fun createRpcEventNotifier(): (String) -> Unit {
-        return { eventJson ->
-            uiThreadHandler.post { deliverEvent(eventJson) }
-        }
-    }
-
-    private fun deliverEvent(callListenerArgs: String) {
-        val sink = eventSink
-        if (sink != null) {
-            sink.success(callListenerArgs)
-        } else {
-            pendingEvents.add(callListenerArgs)
-        }
-    }
-
-    private fun flushPendingEvents() {
-        val sink = eventSink
-        if (pendingEvents.isEmpty() || sink == null) {
-            return
-        }
-        val pending: List<String> = ArrayList(pendingEvents)
-        pendingEvents.clear()
-        for (args in pending) {
-            sink.success(args)
-        }
     }
 
     private fun initFromRpc(params: JSONObject, result: Result) {
@@ -302,5 +294,19 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
 
     companion object {
         private const val METHOD_EXECUTE_RPC = "executeRpc"
+
+        private val uiThreadHandler = Handler(Looper.getMainLooper())
+
+        /**
+         * Bridge notifier. Events fire on the SDK's callback thread, so we hop to the main thread
+         * before touching the Flutter channels.
+         *
+         * Deliberately declared on the companion: the native SDK keeps the listener that owns this
+         * notifier registered after the engine is torn down, and capturing no plugin instance is
+         * what stops that listener from pinning — and publishing into — a dead plugin.
+         */
+        private val rpcEventNotifier: (String) -> Unit = { eventJson ->
+            uiThreadHandler.post { AppsFlyerEventBus.publish(eventJson) }
+        }
     }
 }

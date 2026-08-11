@@ -38,6 +38,9 @@ android {
             java.srcDirs += includeConnector ? ['src/main/include-connector'] : ['src/main/exlude-connector']
         }
         includeConnector ? ['src/main/include-connector'] : ['src/main/exlude-connector']
+        test {
+            java.srcDirs = ['src/test/kotlin']
+        }
     }
 
     compileOptions {
@@ -63,4 +66,6 @@ dependencies {
     if (includeConnector) {
         implementation 'com.appsflyer:purchase-connector:2.2.0'
     }
+
+    testImplementation 'junit:junit:4.13.2'
 }

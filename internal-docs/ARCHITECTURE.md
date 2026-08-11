@@ -160,7 +160,7 @@ Flutter public method
 
 The native RPC event notifier emits JSON event envelopes. Both platform plugins forward those envelopes through `af-events` without maintaining Dart callback slots.
 
-Events emitted before Dart attaches an `EventChannel` listener are buffered by the platform plugin and replayed when `onListen` runs.
+Events emitted before Dart attaches an `EventChannel` listener are buffered by the platform plugin and replayed when `onListen` runs. On Android that buffer lives in the process-scoped `AppsFlyerEventBus` rather than on the plugin instance, so it also spans engine teardown: the native SDK keeps the listener registered by a detached engine's `AppsFlyerRpcHandler`, and routing every event through the bus means those late events reach the next subscriber instead of an unreachable plugin. iOS instead removes its bridge event handler in `detachFromEngineForRegistrar:`, so it has no equivalent late-delivery path and keeps its engine-scoped buffer.
 
 The Dart constructor creates one broadcast stream. It catches malformed transport values, logs them with `debugPrint`, and drops them instead of terminating the public streams:
 
@@ -401,7 +401,7 @@ Different test levels protect different boundaries:
 | Generated-model checks | `lib/appsflyer_sdk.g.dart` plus generator workflow | Purchase Connector JSON model conversion; regenerate after annotated model changes |
 | Android RPC tests | native Android SDK/RPC repository | Typed request parsing/validation, handler-to-SDK mapping, callbacks, response/error behavior, timeouts |
 | iOS RPC tests | native iOS SDK/RPC repository | Parser/router/domain handlers, state actor, event encoding, SDK timeout races, negative paths |
-| Platform adapter tests | no comprehensive suite in this repository | Channel registration, engine detach, Android activity/new-intent behavior, iOS AppDelegate/UIScene forwarding, buffering, result unwrapping; these currently require focused native tests or example-app verification |
+| Platform adapter tests | `android/src/test/kotlin/com/appsflyer/appsflyersdk/AppsFlyerEventBusTest.kt`; otherwise no comprehensive suite in this repository | Android event buffering, replay ordering, sink attach/detach across engine recreation, and concurrent publishing are covered by JVM unit tests (`./gradlew :appsflyer_sdk:testDebugUnitTest` from `example/android`). Channel registration, engine detach, Android activity/new-intent behavior, iOS AppDelegate/UIScene forwarding, and result unwrapping still require focused native tests or example-app verification |
 | Device/integration tests | `example/`, RC scenario scripts, real AppsFlyer dashboard/logs | Plugin registration, native dependency packaging, lifecycle sessions, deep links, attribution callbacks, push/uninstall paths, and network-visible behavior |
 
 The repository CI in `.travis.yml` runs `flutter test test` on Linux. That suite cannot load the native SDK binaries or prove Android/iOS lifecycle and packaging behavior. Run the example on a device or emulator for platform changes and follow [`doc/testing-and-troubleshooting.md`](../doc/testing-and-troubleshooting.md). Purchase Connector changes need opt-in builds; iOS Core should be checked through both CocoaPods and SPM where applicable.
@@ -422,7 +422,7 @@ The repository CI in `.travis.yml` runs `flutter test test` on Linux. That suite
 
 1. Register the native SDK delegate/listener in the native RPC layer and define a stable event name plus JSON-compatible data shape.
 2. Emit through the RPC notifier/event emitter and keep Flutter-channel access on the platform main thread.
-3. Ensure the platform plugin registers the event handler early enough and decide whether its existing engine-scoped buffer is sufficient.
+3. Ensure the platform plugin registers the event handler early enough and decide whether its existing buffer is sufficient — Android's `AppsFlyerEventBus` is process-scoped and bounded, iOS's is engine-scoped.
 4. Decode and normalize the event in Dart, then expose a typed broadcast stream. Document subscription-before-registration ordering and platform payload differences.
 5. Test listener gating, event name/payload mapping, malformed input, cancellation/re-listening, and early-event replay. Add device coverage when the callback depends on application lifecycle.
 
@@ -436,7 +436,7 @@ Keep platform-only behavior visibly gated in Dart and documented as such. Purcha
 - Public/native compatibility is checked by tests and review, not generated from a shared cross-platform schema. Android and iOS RPC method names and parameter shapes can drift independently.
 - Android serializes core RPC calls through one executor. An awaited callback stalls later RPC work until it completes or times out. iOS permits unrelated requests to overlap, so ordering must be expressed by awaiting calls.
 - Native timeout errors do not cancel SDK work. Fire-and-forget completion is acceptance, not network delivery.
-- Event buffering is in memory, engine-scoped, and unbounded. Malformed events are dropped. The application must subscribe before listener registration to minimize gaps.
+- Event buffering is in memory and never persisted, so it does not survive process death. On Android it is process-scoped and capped at 64 events, dropping the oldest on overflow; on iOS it is engine-scoped and unbounded. Malformed events are dropped. The application must subscribe before listener registration to minimize gaps.
 - Android deep-link correctness relies on an attached activity and SDK lifecycle inspection of its current intent; there is no plugin URL queue. iOS owns explicit AppDelegate/UIScene forwarding and queues early URL requests in `AppsFlyerAttribution` until initialization.
 - Android deep-link unsubscribe is soft: it clears the RPC listener reference, but the native SDK has no unsubscribe API. iOS exposes no conversion/UDL unregister mapping in the current RPC.
 - The plugin does not enforce a full lifecycle state machine. Call ordering, cold-start configuration replay, ATT prompting, and consent UI remain application responsibilities.
@@ -453,7 +453,8 @@ Keep platform-only behavior visibly gated in Dart and documented as such. Purcha
 | Errors | `lib/src/appsflyer_exception.dart` | Public SDK exceptions |
 | Purchase models | `lib/src/af_purchase_details.dart` | Android/iOS purchase request implementations |
 | Invite model | `lib/src/appsflyer_invite_link_params.dart` | Platform-aware invite parameter mapping |
-| Android plugin | `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Channels, RPC dispatch, lifecycle forwarding, event buffering |
+| Android plugin | `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Channels, RPC dispatch, lifecycle forwarding, `af-events` sink adapter |
+| Android event relay | `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsFlyerEventBus.kt` | Process-scoped event buffering, FIFO replay, and sink attach/detach across engine recreation |
 | Android dependencies | `android/build.gradle` | SDK/RPC BOM, optional connector source set, Android compatibility |
 | iOS plugin | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | Channels, RPC dispatch, lifecycle forwarding, result unwrapping |
 | iOS attribution adapter | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerAttribution.swift` | Queues and forwards early URL/Universal Link RPC calls |

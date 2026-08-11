@@ -33,7 +33,8 @@ AppsFlyerSdk.registerConversionListener()
       → iOS: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRPCBridge
 
 Native conversion data arrives (Android RpcEventNotifier / iOS handleBridgeEvent):
-  → deliverEvent(json) on EventChannel('af-events'), buffered in pendingEvents until Dart subscribes
+  → Android: AppsFlyerEventBus.publish(json) → EventChannel('af-events'), buffered until a sink attaches
+  → iOS: deliverEvent(json) on EventChannel('af-events'), buffered in pendingEvents until Dart subscribes
     → _AppsFlyerEvent.fromNative(json)                                 [lib/src/appsflyer_event.dart]
       → event.name == 'onConversionDataSuccess'
           → Map<String, dynamic> emitted on onConversionDataSuccess
@@ -50,8 +51,9 @@ Android also exposes `unregisterConversionListener()`; on iOS the call is ignore
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `onConversionDataSuccess` / `onConversionDataFailure` streams, `registerConversionListener()`, and the Android-only `unregisterConversionListener()` |
 | `lib/src/appsflyer_event.dart` | `_AppsFlyerEvent.fromNative` — parses the RPC envelope (`event`, map-or-null `data`) |
-| `android/.../AppsflyerSdkPlugin.kt` | `processBridgeEvent` / `deliverEvent` forward bridge events to the `af-events` sink and buffer them in `pendingEvents` until Dart subscribes |
-| `ios/.../AppsflyerSdkPlugin.swift` | `handleBridgeEvent` / `deliverEvent` do the same on iOS, with the same `pendingEvents` buffering |
+| `android/.../AppsflyerSdkPlugin.kt` | `rpcEventNotifier` hops bridge events to the main thread and publishes them to `AppsFlyerEventBus`; `createEventSink` adapts this engine's `af-events` sink |
+| `android/.../AppsFlyerEventBus.kt` | Process-scoped buffer and FIFO replay, so conversion data arriving while no engine is attached reaches the next subscriber |
+| `ios/.../AppsflyerSdkPlugin.swift` | `handleBridgeEvent` / `deliverEvent` forward bridge events to the `af-events` sink and buffer them in `pendingEvents` until Dart subscribes |
 
 ---
 
@@ -77,7 +79,7 @@ Android also exposes `unregisterConversionListener()`; on iOS the call is ignore
 ## Known Limitations
 - Subscribe to the streams **before** calling `registerConversionListener()`. The streams are broadcast filters over `af-events`, so events delivered before a subscription exists are not replayed by Dart.
 - Registering the listener does not issue the conversion-data network request. The app must still call `start()` for the foreground cycle; otherwise no Launch is sent and no conversion result is expected.
-- Both platforms buffer native events in `pendingEvents` until Dart attaches to `af-events` (RD-65582), so an install-conversion event emitted before the stream is attached is not lost at the native layer.
+- Both platforms buffer native events until Dart attaches to `af-events` (RD-65582), so an install-conversion event emitted before the stream is attached is not lost at the native layer. Android buffers in the process-scoped `AppsFlyerEventBus` (capped at 64 events, oldest dropped first), which also covers conversion data arriving while the Flutter engine is torn down; iOS buffers per plugin instance for the lifetime of the engine.
 - `onConversionDataFailure` passes through the raw native payload unchanged: on Android it never carries a `code` field (the native delegate only supplies an error message), while on iOS it does. Callers that need a `code` must handle its absence on Android rather than relying on a synthesized default.
 - `unregisterConversionListener()` is Android-only; iOS integrations cannot stop conversion-data delivery through the RPC bridge.
 
