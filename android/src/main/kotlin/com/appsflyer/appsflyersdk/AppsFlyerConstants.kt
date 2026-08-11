@@ -11,6 +11,9 @@ internal const val RPC_METHOD_SET_PLUGIN_INFO = "setPluginInfo"
 
 internal const val AF_PLUGIN_TAG = "AppsFlyer_FlutterPlugin"
 
+internal const val PLUGIN_DETACHED = "PLUGIN_DETACHED"
+internal const val RPC_EXECUTOR_UNAVAILABLE_MSG = "RPC executor unavailable"
+
 // Purchase Connector constants
 internal const val ERROR = "error"
 internal const val RESULT = "result"

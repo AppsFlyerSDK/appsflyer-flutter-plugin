@@ -50,7 +50,7 @@ afPurchaseClient.stopObservingTransactions()
 | `lib/src/purchase_connector/purchase_connector_configuration.dart` | `PurchaseConnectorConfiguration` — `logSubscriptions`, `logInApps`, `sandbox`, `storeKitVersion` |
 | `lib/src/purchase_connector/store_kit_version.dart` | `StoreKitVersion` enum (SK1=0, SK2=1) with `value`/`fromValue` int mapping sent over the channel |
 | `lib/src/appsflyer_constants.dart` | Channel name (`af-purchase-connector`) and argument key string constants |
-| `android/src/main/include-connector/com/appsflyer/appsflyersdk/AppsFlyerPurchaseConnector.kt` | Android native method-channel handler: `configure`, `startObservingTransactions`, `stopObservingTransactions` |
+| `android/src/main/include-connector/com/appsflyer/appsflyersdk/AppsFlyerPurchaseConnector.kt` | Android native method-channel handler: `configure`, `startObservingTransactions`, `stopObservingTransactions`; engine state keyed per `FlutterPluginBinding` for multi-engine add-to-app |
 | `android/src/main/include-connector/com/appsflyer/appsflyersdk/ConnectorWrapper.kt` | Wraps `PurchaseClient.Builder` (Play Billing) and the two validation listeners |
 | `ios/PurchaseConnector/PurchaseConnectorPlugin.swift` | iOS native method-channel handler: `configure`, `startObservingTransactions`, `stopObservingTransactions`; owns the `PurchaseConnector.shared()` singleton |
 

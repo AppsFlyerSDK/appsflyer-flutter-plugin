@@ -18,6 +18,7 @@ import org.json.JSONObject
 
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
@@ -39,14 +40,20 @@ import io.flutter.plugin.common.PluginRegistry
  */
 open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
 
-    private var rpcExecutor: ExecutorService? = null
+    private var blockingRpcExecutor: ExecutorService? = null
 
+    @Volatile
     private var applicationContext: Context? = null
+
+    @Volatile
     private var activity: Activity? = null
 
     private var methodChannel: MethodChannel? = null
     private var eventChannel: EventChannel? = null
 
+    private val rpcHandlerLock = Any()
+
+    @Volatile
     private var rpcHandler: AppsFlyerRpcHandler? = null
 
     // RD-65582: buffering and replay live in AppsFlyerEventBus so they survive engine teardown.
@@ -61,23 +68,24 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
         false
     }
 
-    private val eventStreamHandler: EventChannel.StreamHandler = object : EventChannel.StreamHandler {
-        override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
-            if (events == null) {
-                // Flutter does not do this in practice; without a destination the previous sink is
-                // no longer usable, so events go back to being buffered.
-                releaseEventSink()
-                return
+    private val eventStreamHandler: EventChannel.StreamHandler =
+        object : EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+                if (events == null) {
+                    // Flutter does not do this in practice; without a destination the previous sink is
+                    // no longer usable, so events go back to being buffered.
+                    releaseEventSink()
+                    return
+                }
+                val sink = createEventSink(events)
+                eventSink = sink
+                AppsFlyerEventBus.attach(sink)
             }
-            val sink = createEventSink(events)
-            eventSink = sink
-            AppsFlyerEventBus.attach(sink)
-        }
 
-        override fun onCancel(arguments: Any?) {
-            releaseEventSink()
+            override fun onCancel(arguments: Any?) {
+                releaseEventSink()
+            }
         }
-    }
 
     private fun createEventSink(events: EventChannel.EventSink): AppsFlyerEventSink =
         AppsFlyerEventSink { eventJson ->
@@ -99,7 +107,7 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
 
     private fun onAttachedToEngine(applicationContext: Context, messenger: BinaryMessenger) {
         this.applicationContext = applicationContext
-        this.rpcExecutor = Executors.newSingleThreadExecutor()
+        this.blockingRpcExecutor = Executors.newSingleThreadExecutor()
 
         methodChannel = MethodChannel(messenger, AF_METHOD_CHANNEL)
         methodChannel?.setMethodCallHandler(this)
@@ -122,9 +130,12 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
         // engine is attached have to survive until the next subscriber replays them.
         releaseEventSink()
         AppsFlyerPurchaseConnector.onDetachedFromEngine(binding)
-        rpcExecutor?.shutdown()
-        rpcExecutor = null
-        rpcHandler = null
+        blockingRpcExecutor?.shutdown()
+        blockingRpcExecutor = null
+        synchronized(rpcHandlerLock) {
+            rpcHandler = null
+        }
+        activity = null
         applicationContext = null
     }
 
@@ -156,14 +167,11 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
 
     @Suppress("UNCHECKED_CAST")
     private fun executeRpc(call: MethodCall, result: Result) {
-        val arguments = call.arguments as Map<String, Any?>?
-        val method = arguments!!["method"] as String?
-
-        var params = JSONObject()
-        val rawParams = arguments["params"]
-        if (rawParams is Map<*, *>) {
-            params = JSONObject(rawParams)
-        }
+        // Internal transport contract (_invokeRpc): {method: String, params: Map}. Apps must not
+        // call this channel directly; a malformed envelope is an integration error and throws here.
+        val arguments = call.arguments as Map<String, Any?>
+        val method = arguments["method"] as String
+        val params = JSONObject(arguments["params"] as Map<*, *>)
 
         try {
             if (RPC_METHOD_INIT == method) {
@@ -177,72 +185,160 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
         }
     }
 
-    @Synchronized
     private fun getOrCreateRpcHandler(): AppsFlyerRpcHandler {
-        var handler = rpcHandler
-        if (handler == null) {
-            // Prefer the Activity context: SDK 7 only replays the cold-start launch intent for
-            // deep linking when init() receives an Activity (see
-            // AndroidLifecycleManagerImpl.registerLifecycleListener). Fall back to the app context
-            // if none is attached yet.
-            val rpcContext: Context? = if (activity != null) activity else applicationContext
-            handler = AppsFlyerRpcHandler(
-                rpcContext!!,
-                rpcEventNotifier,
-                AppsFlyerLib.getInstance(),
-                JsonRpcRequestParser()
-            )
-            rpcHandler = handler
+        synchronized(rpcHandlerLock) {
+            var handler = rpcHandler
+            if (handler == null) {
+                val ctx = requireApplicationContext()
+                handler = createRpcHandler(ctx.applicationContext)
+                rpcHandler = handler
+            }
+            return handler
         }
-        return handler
+    }
+
+    /**
+     * Ephemeral handler for [RPC_METHOD_INIT] only. SDK 7 replays the cold-start launch intent
+     * when init() receives an [Activity] (see AndroidLifecycleManagerImpl.registerLifecycleListener).
+     * The cached handler always uses [Context.getApplicationContext] so it survives rotation.
+     */
+    private fun createRpcHandler(context: Context): AppsFlyerRpcHandler {
+        return AppsFlyerRpcHandler(
+            context,
+            rpcEventNotifier,
+            AppsFlyerLib.getInstance(),
+            JsonRpcRequestParser()
+        )
+    }
+
+    private fun requireApplicationContext(): Context {
+        return applicationContext
+            ?: throw IllegalStateException("Plugin is not attached to a Flutter engine")
     }
 
     private fun initFromRpc(params: JSONObject, result: Result) {
         val afDevKey = params.optString("devKey", "")
+        val initContext = activity ?: applicationContext
+        if (initContext == null) {
+            result.error("INIT_ERROR", "Plugin is not attached to a Flutter engine", null)
+            return
+        }
 
-        rpcExecutor!!.execute {
-            try {
-                // Identify the Flutter integration before init so the plugin name reaches the
-                // first session. Result ignored: the plugin name is a compile-time constant, so
-                // this can't fail in practice.
-                executeRpcSync(
-                    RPC_METHOD_SET_PLUGIN_INFO,
-                    jsonOf(
-                        "plugin", AF_PLUGIN_NAME,
-                        "pluginVersion", PLUGIN_VERSION
-                    )
+        runRpc(result, "init failed", "INIT_ERROR") {
+            // Identify the Flutter integration before init so the plugin name reaches the
+            // first session. Result ignored: the plugin name is a compile-time constant, so
+            // this can't fail in practice.
+            executeRpcSync(
+                RPC_METHOD_SET_PLUGIN_INFO,
+                jsonOf(
+                    "plugin", AF_PLUGIN_NAME,
+                    "pluginVersion", PLUGIN_VERSION
                 )
+            )
 
-                val init = executeRpcSync(
-                    RPC_METHOD_INIT,
-                    jsonOf("devKey", afDevKey)
-                )
-                if (init is RpcResponse.Error) {
-                    uiThreadHandler.post { deliverRpcResult(init, result, null) }
-                    return@execute
-                }
-
-                uiThreadHandler.post { result.success(null) }
-            } catch (t: Throwable) {
-                Log.e(AF_PLUGIN_TAG, "init failed: ${t.message}", t)
-                uiThreadHandler.post { result.error("INIT_ERROR", t.message, null) }
+            val init = executeRpcSync(
+                RPC_METHOD_INIT,
+                jsonOf("devKey", afDevKey),
+                initContext
+            )
+            if (init is RpcResponse.Error) {
+                deliverRpcResult(init, result, null)
+                return@runRpc
             }
+
+            result.success(null)
         }
     }
 
-    private fun dispatchRpc(method: String?, params: JSONObject?, result: Result, voidValue: Any?) {
-        rpcExecutor!!.execute {
+    private fun dispatchRpc(method: String, params: JSONObject, result: Result, voidValue: Any?) {
+        if (isBlockingRpc(method, params)) {
+            runOnBlockingRpcExecutor(
+                result,
+                "dispatchRpc('$method') failed",
+                "UNEXPECTED_ERROR"
+            ) {
+                val response = executeRpcSync(method, params)
+                uiThreadHandler.post { deliverRpcResult(response, result, voidValue) }
+            }
+            return
+        }
+
+        runRpc(result, "dispatchRpc('$method') failed", "UNEXPECTED_ERROR") {
             val response = executeRpcSync(method, params)
-            uiThreadHandler.post { deliverRpcResult(response, result, voidValue) }
+            deliverRpcResult(response, result, voidValue)
         }
     }
 
-    private fun executeRpcSync(method: String?, params: JSONObject?): RpcResponse {
+    /**
+     * RPCs whose native handler blocks on a callback latch (see AppsFlyerRpcHandler.awaitCallback).
+     * Everything else runs inline on the platform thread so setters/getters are not queued behind
+     * a slow awaited call.
+     */
+    private fun isBlockingRpc(method: String, params: JSONObject): Boolean {
+        return when (method) {
+            RPC_METHOD_START, RPC_METHOD_LOG_EVENT ->
+                params.optBoolean(RPC_PARAM_AWAIT_RESPONSE, false)
+            RPC_METHOD_VALIDATE_AND_LOG_IN_APP_PURCHASE, RPC_METHOD_GENERATE_INVITE_LINK ->
+                params.optBoolean(RPC_PARAM_AWAIT_RESPONSE, true)
+            else -> false
+        }
+    }
+
+    private inline fun runRpc(
+        result: Result,
+        failureLog: String,
+        failureCode: String,
+        crossinline block: () -> Unit
+    ) {
+        try {
+            block()
+        } catch (t: Throwable) {
+            Log.e(AF_PLUGIN_TAG, "$failureLog: ${t.message}", t)
+            result.error(failureCode, t.message, null)
+        }
+    }
+
+    private inline fun runOnBlockingRpcExecutor(
+        result: Result,
+        failureLog: String,
+        failureCode: String,
+        crossinline block: () -> Unit
+    ) {
+        val executor = blockingRpcExecutor
+        if (executor == null) {
+            result.error(PLUGIN_DETACHED, RPC_EXECUTOR_UNAVAILABLE_MSG, null)
+            return
+        }
+        try {
+            executor.execute {
+                try {
+                    block()
+                } catch (t: Throwable) {
+                    Log.e(AF_PLUGIN_TAG, "$failureLog: ${t.message}", t)
+                    uiThreadHandler.post { result.error(failureCode, t.message, null) }
+                }
+            }
+        } catch (t: RejectedExecutionException) {
+            Log.e(AF_PLUGIN_TAG, "$failureLog: executor rejected task: ${t.message}", t)
+            result.error(PLUGIN_DETACHED, RPC_EXECUTOR_UNAVAILABLE_MSG, null)
+        }
+    }
+
+    private fun executeRpcSync(
+        method: String,
+        params: JSONObject,
+        initContext: Context? = null
+    ): RpcResponse {
         return try {
             val request = JSONObject()
             request.put("method", method)
-            request.put("params", params ?: JSONObject())
-            getOrCreateRpcHandler().execute(request.toString())
+            request.put("params", params)
+            val handler = if (initContext != null) {
+                createRpcHandler(initContext)
+            } else {
+                getOrCreateRpcHandler()
+            }
+            handler.execute(request.toString())
         } catch (e: JSONException) {
             RpcResponse.Error(RpcErrorCodes.INTERNAL_ERROR, e.message ?: "JSON error")
         }
@@ -294,6 +390,12 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
 
     companion object {
         private const val METHOD_EXECUTE_RPC = "executeRpc"
+
+        private const val RPC_METHOD_START = "start"
+        private const val RPC_METHOD_LOG_EVENT = "logEvent"
+        private const val RPC_METHOD_VALIDATE_AND_LOG_IN_APP_PURCHASE = "validateAndLogInAppPurchase"
+        private const val RPC_METHOD_GENERATE_INVITE_LINK = "generateInviteLink"
+        private const val RPC_PARAM_AWAIT_RESPONSE = "awaitResponse"
 
         private val uiThreadHandler = Handler(Looper.getMainLooper())
 

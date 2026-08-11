@@ -138,12 +138,13 @@ Flutter public method
 
 `AppsflyerSdkPlugin.kt` forwards every method except plugin-orchestrated `init` to `AppsFlyerRpcHandler`.
 
-- Requests run on a single-thread `rpcExecutor`, preserving FIFO ordering.
+- Fast RPCs (setters, getters, and fire-and-forget `start` / `logEvent` / purchase validation / invite generation when `awaitResponse` is `false`) run inline on the platform thread and complete the Flutter `Result` immediately.
+- Awaited-callback RPCs (`start`, `logEvent`, `validateAndLogInAppPurchase`, or `generateInviteLink` when `awaitResponse` is `true`) run on a dedicated single-thread `blockingRpcExecutor` so a slow native latch wait does not head-of-line block unrelated fast calls.
 - The handler uses `JsonRpcRequestParser` and the typed Android RPC request catalog.
 - SDK callbacks required for awaitable RPC operations are converted into the corresponding RPC response.
 - Flutter results are delivered on the main thread.
-- The RPC handler is engine-scoped; an attached `Activity` is preferred as its context so cold-start deep-link lifecycle replay works correctly.
-- Awaited native callbacks block the single RPC executor until completion or timeout. Later requests remain queued, so callers should avoid unnecessary `awaitResponse: true` operations on startup-critical paths.
+- The RPC handler is engine-scoped and cached with `applicationContext` so it survives activity recreation (for example screen rotation) without retaining a destroyed `Activity`. The `init` RPC alone may use the current `Activity` when one is attached, so SDK 7 can replay the cold-start launch intent for deep linking.
+- Awaited native callbacks block only the dedicated blocking executor until completion or timeout. Fast calls are not queued behind them.
 
 ### 4.3 iOS transport
 
@@ -313,7 +314,7 @@ Important differences that affect design and testing:
 
 | Concern | Android | iOS |
 | --- | --- | --- |
-| Core request scheduling | One FIFO executor | Independent async tasks through a `@MainActor` bridge |
+| Core request scheduling | Fast RPCs inline on the platform thread; awaited-callback RPCs on one blocking executor | Independent async tasks through a `@MainActor` bridge |
 | Native request catalog | Kotlin sealed requests parsed by `JsonRpcRequestParser` | Swift typed requests parsed by `AFRPCParser` and routed by domain |
 | Result shape | Bare `RpcResponse.Success` value or void | JSON response envelope with plugin-side unwrapping |
 | UDL subscribe/unsubscribe | `subscribeForDeepLink`; soft unsubscribe drops future callbacks because the SDK has no native unsubscribe | `registerDeeplinkListener`; no public unregister mapping |
@@ -343,6 +344,7 @@ Purchase Connector is a separate optional native subsystem using `af-purchase-co
 - `startObservingTransactions()` and `stopObservingTransactions()` send unawaited calls because their public signatures return `void`. Consequently, native `PlatformException` failures from these calls are not normalized by the core `AppsFlyerException` path.
 - Native validation callbacks travel back over the same Purchase Connector `MethodChannel`, not `af-events`. Dart stores callback functions: separate Android subscription/in-app success/failure listeners and one combined iOS validation callback.
 - Android marshals connector callbacks to the main looper and serializes maps as JSON strings. iOS dispatches its delegate callback to the main queue and also sends JSON text; Dart accepts either a JSON string or a decoded map.
+- On Android, `AppsFlyerPurchaseConnector` keys its `MethodChannel`, `ConnectorWrapper`, and validation listeners per `FlutterPluginBinding`, so add-to-app / multi-engine setups do not share one channel or tear down another engine's connector on detach.
 
 ## 10. Error handling and state boundaries
 
@@ -434,7 +436,7 @@ Keep platform-only behavior visibly gated in Dart and documented as such. Purcha
 
 - Android and iOS are the only registered Flutter targets. Explicit platform gates return safe defaults, but shared calls on other targets can throw `MissingPluginException`.
 - Public/native compatibility is checked by tests and review, not generated from a shared cross-platform schema. Android and iOS RPC method names and parameter shapes can drift independently.
-- Android serializes core RPC calls through one executor. An awaited callback stalls later RPC work until it completes or times out. iOS permits unrelated requests to overlap, so ordering must be expressed by awaiting calls.
+- Android runs fast RPCs inline on the platform thread. Only awaited-callback RPCs use a dedicated blocking executor, so a slow validation or invite-link wait does not stall unrelated setters/getters. iOS permits unrelated requests to overlap, so ordering must still be expressed by awaiting calls.
 - Native timeout errors do not cancel SDK work. Fire-and-forget completion is acceptance, not network delivery.
 - Event buffering is in memory and never persisted, so it does not survive process death. On Android it is process-scoped and capped at 64 events, dropping the oldest on overflow; on iOS it is engine-scoped and unbounded. Malformed events are dropped. The application must subscribe before listener registration to minimize gaps.
 - Android deep-link correctness relies on an attached activity and SDK lifecycle inspection of its current intent; there is no plugin URL queue. iOS owns explicit AppDelegate/UIScene forwarding and queues early URL requests in `AppsFlyerAttribution` until initialization.
