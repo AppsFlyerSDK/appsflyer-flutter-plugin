@@ -111,6 +111,11 @@ void main() {
       expect(AppsFlyerSdk.instance, same(AppsFlyerSdk.instance));
     });
 
+    test('pluginVersion exposes the compiled plugin version constant', () {
+      expect(androidSdk.pluginVersion, '7.0.1');
+      expect(iosSdk.pluginVersion, '7.0.1');
+    });
+
     test('listeners are registered explicitly', () async {
       await androidSdk.registerConversionListener();
       expect(rpcMethod, 'registerConversionListener');

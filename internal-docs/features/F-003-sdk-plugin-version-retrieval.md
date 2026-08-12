@@ -56,7 +56,7 @@ AppsFlyerSdk.pluginVersion                                            [lib/src/a
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` → `'maps getters and native return values'` verifies that `getSdkVersion()` dispatches RPC method `getSdkVersion` with empty params and returns the version string from the mocked native reply.
+`test/appsflyer_sdk_test.dart` → `'maps getters and native return values'` verifies that `getSdkVersion()` dispatches RPC method `getSdkVersion` with empty params and returns the version string from the mocked native reply. `'pluginVersion exposes the compiled plugin version constant'` asserts that `pluginVersion` returns the compiled `PLUGIN_VERSION` constant (`7.0.1`) without a channel call.
 
 ---
 
