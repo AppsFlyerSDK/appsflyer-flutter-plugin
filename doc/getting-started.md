@@ -147,6 +147,36 @@ await appsflyerSdk.registerSessionReadyListener();
 | `registerDeepLinkListener()` | Enables [UDL](https://dev.appsflyer.com/hc/docs/unified-deep-linking-udl) results. |
 | `registerSessionReadyListener()` | Enables one `onSessionReady` event per foreground cycle. |
 
+### Unregister and re-register explicitly
+
+Registration is native state. It is not tied to your Dart stream subscription and
+the plugin never infers that a listener has gone stale — your app decides when
+delivery should stop and start again:
+
+```dart
+@override
+void dispose() {
+  // Stop native delivery when this part of the app no longer consumes it.
+  appsflyerSdk.unregisterSessionReadyListener();
+  appsflyerSdk.unregisterConversionListener();
+  super.dispose();
+}
+```
+
+| Unregister method | Availability |
+|---|---|
+| `unregisterConversionListener()` | Android only |
+| `unregisterDeeplinkListener()` | Android only, and a soft unsubscribe — the native SDK keeps its listener, so events are dropped rather than never delivered |
+| `unregisterSessionReadyListener()` | Android and iOS |
+
+On Android the native listener also outlives the Flutter engine, which is
+destroyed on its own schedule (a back press, or a Flutter screen leaving an
+add-to-app host) while the process keeps running. Your Dart callbacks do not
+survive that, so after a new engine attaches, subscribe to the streams again
+(step 2) and call the `register*Listener()` methods again (step 5) — the same
+sequence as a cold start. Re-registering is cheap: it reconnects to the already
+configured native bridge instead of building a new one.
+
 <a id="start"></a>
 <a id="startsdk"></a>
 ## 6. Start sessions

@@ -37,6 +37,36 @@ import io.flutter.plugin.common.PluginRegistry
  * Bridges Dart's single `executeRpc` method call to [AppsFlyerRpcHandler]. `init` is handled
  * specially to set up the plugin and native SDK in order; every other call is forwarded as-is.
  * Native SDK callbacks flow back unchanged through `af-events`.
+ *
+ * ## State lifetimes
+ *
+ * Android destroys the Flutter engine on its own schedule — a back press, or a Flutter screen
+ * leaving an add-to-app host — while the process, the Activity and `AppsFlyerLib` keep running.
+ * A new instance of this class is built when the app comes back, so state is split by what that
+ * boundary invalidates:
+ *
+ * - **Engine-scoped**, held here and released in [onDetachedFromEngine]: the channels, the
+ *   `af-events` sink adapter, the blocking-RPC executor, and the Activity/Context references.
+ * - **Process-scoped**, held in [AppsFlyerRpcBridge] and [AppsFlyerEventBus]: the RPC handler and
+ *   the event buffer. Both outlive this instance on purpose, so a recreated engine reattaches to
+ *   the already configured native bridge and still receives events emitted while no engine was
+ *   attached (RD-65582).
+ *
+ * Dart state never survives: the application resubscribes to the streams and calls the
+ * `register*Listener` APIs again after a new engine attaches. Reusing the handler only makes that
+ * re-registration reuse the listeners already registered on `AppsFlyerLib`.
+ *
+ * ## Two executors
+ *
+ * [sharedRpcExecutor] serves every RPC but `init`. It resolves the one process-wide handler, built
+ * with `applicationContext` so it retains neither an Activity nor an engine.
+ *
+ * `init` instead runs on a throwaway executor built around the current Activity
+ * ([createRpcExecutor] straight from [executeRpcSync]), because
+ * `AndroidLifecycleManagerImpl.registerLifecycleListener` triggers `onActivityResumed` manually
+ * when it receives an `Activity` — that is what lets SDK 7 inspect the launch intent of a cold
+ * start, which is already resumed by the time Dart calls `init()`. That executor is deliberately
+ * not cached: keeping it would pin the Activity for the lifetime of the process.
  */
 open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
 
@@ -50,11 +80,6 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
 
     private var methodChannel: MethodChannel? = null
     private var eventChannel: EventChannel? = null
-
-    private val rpcHandlerLock = Any()
-
-    @Volatile
-    private var rpcHandler: AppsFlyerRpcHandler? = null
 
     // RD-65582: buffering and replay live in AppsFlyerEventBus so they survive engine teardown.
     // Only the adapter around this engine's EventSink is held here, so it can be detached again.
@@ -127,19 +152,18 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        // The buffer in AppsFlyerEventBus is intentionally left untouched: events emitted while no
+        // engine is attached have to survive until the next subscriber replays them. The RPC
+        // executor in AppsFlyerRpcBridge is left alone for the same reason: it belongs to the
+        // process-wide native SDK, not to this engine.
         methodChannel?.setMethodCallHandler(null)
         methodChannel = null
         eventChannel?.setStreamHandler(null)
         eventChannel = null
-        // The buffer in AppsFlyerEventBus is intentionally left untouched: events emitted while no
-        // engine is attached have to survive until the next subscriber replays them.
         releaseEventSink()
         AppsFlyerPurchaseConnector.onDetachedFromEngine(binding)
         blockingRpcExecutor?.shutdown()
         blockingRpcExecutor = null
-        synchronized(rpcHandlerLock) {
-            rpcHandler = null
-        }
         activity = null
         applicationContext = null
     }
@@ -185,30 +209,28 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
         }
     }
 
-    private fun getOrCreateRpcHandler(): AppsFlyerRpcHandler {
-        synchronized(rpcHandlerLock) {
-            var handler = rpcHandler
-            if (handler == null) {
-                val ctx = requireApplicationContext()
-                handler = createRpcHandler(ctx.applicationContext)
-                rpcHandler = handler
-            }
-            return handler
-        }
-    }
+    /**
+     * The process-wide executor, so a new engine reattaches to the already configured bridge
+     * instead of building one that has no memory of the listeners registered on the native SDK.
+     * It always uses [Context.getApplicationContext], which outlives both this engine and the
+     * Activity.
+     */
+    private fun sharedRpcExecutor(): AppsFlyerRpcExecutor =
+        AppsFlyerRpcBridge.shared { createRpcExecutor(requireApplicationContext().applicationContext) }
 
     /**
-     * Ephemeral handler for [RPC_METHOD_INIT] only. SDK 7 replays the cold-start launch intent
-     * when init() receives an [Activity] (see AndroidLifecycleManagerImpl.registerLifecycleListener).
-     * The cached handler always uses [Context.getApplicationContext] so it survives rotation.
+     * SDK 7 replays the cold-start launch intent when init() receives an [Activity] (see
+     * AndroidLifecycleManagerImpl.registerLifecycleListener), so [RPC_METHOD_INIT] runs on an
+     * ephemeral executor built around that Activity instead of the shared one.
      */
-    private fun createRpcHandler(context: Context): AppsFlyerRpcHandler {
-        return AppsFlyerRpcHandler(
+    private fun createRpcExecutor(context: Context): AppsFlyerRpcExecutor {
+        val handler = AppsFlyerRpcHandler(
             context,
             rpcEventNotifier,
             AppsFlyerLib.getInstance(),
             JsonRpcRequestParser()
         )
+        return AppsFlyerRpcExecutor { requestJson -> handler.execute(requestJson) }
     }
 
     private fun requireApplicationContext(): Context {
@@ -333,12 +355,12 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
             val request = JSONObject()
             request.put("method", method)
             request.put("params", params)
-            val handler = if (initContext != null) {
-                createRpcHandler(initContext)
+            val executor = if (initContext != null) {
+                createRpcExecutor(initContext)
             } else {
-                getOrCreateRpcHandler()
+                sharedRpcExecutor()
             }
-            handler.execute(request.toString())
+            executor.execute(request.toString())
         } catch (e: JSONException) {
             RpcResponse.Error(RpcErrorCodes.INTERNAL_ERROR, e.message ?: "JSON error")
         }
