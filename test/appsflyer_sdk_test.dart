@@ -444,19 +444,17 @@ void main() {
   });
 
   group('models and platform payloads', () {
-    test('consent validates GDPR-required fields in release behavior', () {
-      expect(
-        () => androidSdk.setConsentData(isUserSubjectToGDPR: true),
-        throwsArgumentError,
-      );
-      expect(
-        () => androidSdk.setConsentData(
-          isUserSubjectToGDPR: true,
-          hasConsentForDataUsage: true,
-        ),
-        throwsArgumentError,
-      );
-      expect(rpcMethod, isNull);
+    test('setConsentData forwards incomplete GDPR payloads to native RPC',
+        () async {
+      await androidSdk.setConsentData(isUserSubjectToGDPR: true);
+
+      expect(rpcMethod, 'setConsentData');
+      expect(rpcParams, {
+        'isUserSubjectToGDPR': true,
+        'hasConsentForDataUsage': null,
+        'hasConsentForAdsPersonalization': null,
+        'hasConsentForAdStorage': null,
+      });
     });
 
     test('maps every mediation network to the native RPC string', () async {

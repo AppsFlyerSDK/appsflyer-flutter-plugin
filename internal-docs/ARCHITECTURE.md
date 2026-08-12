@@ -368,7 +368,7 @@ Purchase Connector is a separate optional native subsystem using `af-purchase-co
 
 - Core RPC `PlatformException` values are converted to `AppsFlyerException`. `MissingPluginException` is left unwrapped — it is outside the RPC contract.
 - Most explicitly platform-gated calls are short-circuited with a logged warning before a channel request is sent. Seven symmetric getters and setters route through RPC and surface native `AppsFlyerException` values off-platform instead. Shared calls are not guaranteed to work outside Android/iOS.
-- Dart throws `ArgumentError` before transport for incomplete GDPR consent or purchase details for the wrong platform. Most other input validation, including `init` parameters, remains in the typed native RPC request and SDK.
+- Dart throws `ArgumentError` before transport for purchase details on the wrong platform. Most other input validation, including `init` parameters and `setConsentData` GDPR fields, remains in the typed native RPC request and SDK.
 - Android converts parser/validation failures to numeric `RpcResponse.Error` values. Unexpected plugin orchestration failures use plugin error strings such as `UNEXPECTED_ERROR` or `INIT_ERROR`.
 - iOS distinguishes protocol errors in the response `error` envelope from handler failures represented by `result.success == false`; the iOS plugin adapter converts both to `FlutterError` and unwraps successful values.
 - A malformed native event is logged and dropped by Dart. It does not become a stream error. Conversion-data failure and UDL failure are normal event payloads, not failed MethodChannel requests.

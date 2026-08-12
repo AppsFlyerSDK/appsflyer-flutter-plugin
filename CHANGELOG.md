@@ -83,6 +83,9 @@ removed APIs, renames, lifecycle changes, and upgrade instructions.
   Android are forwarded to the native RPC layer instead of being ignored in Dart.
   Clearing currently surfaces as `AppsFlyerException` from the Android RPC bridge
   until the native validation fix lands.
+- `setConsentData` no longer validates GDPR-required fields in Dart; incomplete
+  payloads are forwarded to the native RPC layer (iOS rejects them today;
+  Android validation is tracked separately).
 - `setInstallId()` requires `AppsFlyerAllowCustomInstallId=YES` in iOS
   `Info.plist` and must be called before `init()` on iOS. Android requires
   `APPSFLYER_ALLOW_CUSTOM_INSTALL_ID=true` in `AndroidManifest.xml` and the call

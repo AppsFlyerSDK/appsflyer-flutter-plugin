@@ -607,10 +607,11 @@ await appsflyerSdk.setConsentData(
 );
 ```
 
-When GDPR applies, `hasConsentForDataUsage` and
-`hasConsentForAdsPersonalization` are required. The optional
-`hasConsentForAdStorage` value represents whether the user consented to
-ad-related storage.
+When GDPR applies, supply `hasConsentForDataUsage` and
+`hasConsentForAdsPersonalization` before the first `start()`. The iOS native
+RPC layer rejects incomplete consent as `AppsFlyerException`; Android
+forwards the payload as supplied. The optional `hasConsentForAdStorage` value
+represents whether the user consented to ad-related storage.
 
 To reflect consent in the conversion payload, configure either
 `enableTCFDataCollection` or `setConsentData` after initialization and

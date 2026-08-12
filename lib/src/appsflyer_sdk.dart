@@ -544,23 +544,14 @@ class AppsFlyerSdk {
   /// Sets GDPR and DMA consent data.
   ///
   /// Provide the current consent on every app start before [start]. Consent
-  /// values are not persisted across sessions.
-  ///
-  /// When [isUserSubjectToGDPR] is `true`, [hasConsentForDataUsage] and
-  /// [hasConsentForAdsPersonalization] are required.
-  /// [hasConsentForAdStorage] is optional.
+  /// values are not persisted across sessions. Validation is performed by the
+  /// native RPC layer where enforced. [hasConsentForAdStorage] is optional.
   Future<void> setConsentData({
     required bool isUserSubjectToGDPR,
     bool? hasConsentForDataUsage,
     bool? hasConsentForAdsPersonalization,
     bool? hasConsentForAdStorage,
   }) {
-    if (isUserSubjectToGDPR && hasConsentForDataUsage == null) {
-      throw ArgumentError.notNull('hasConsentForDataUsage');
-    }
-    if (isUserSubjectToGDPR && hasConsentForAdsPersonalization == null) {
-      throw ArgumentError.notNull('hasConsentForAdsPersonalization');
-    }
     return _invokeVoidRpc('setConsentData', {
       'isUserSubjectToGDPR': isUserSubjectToGDPR,
       'hasConsentForDataUsage': hasConsentForDataUsage,

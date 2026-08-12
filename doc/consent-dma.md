@@ -188,11 +188,11 @@ Future<void> setConsentData({
 | Parameter | Type | Description |
 | -------- | -------- | -------- |
 | isUserSubjectToGDPR            | bool (required) | Indicates if the user is subject to GDPR regulations. |
-| hasConsentForDataUsage         | bool?     | Determines if the user consents to data usage. **Required when `isUserSubjectToGDPR` is `true`.** |
-| hasConsentForAdsPersonalization | bool?     | Determines if the user consents to personalized ads. **Required when `isUserSubjectToGDPR` is `true`.** |
+| hasConsentForDataUsage         | bool?     | Determines if the user consents to data usage. Supply when `isUserSubjectToGDPR` is `true`. |
+| hasConsentForAdsPersonalization | bool?     | Determines if the user consents to personalized ads. Supply when `isUserSubjectToGDPR` is `true`. |
 | hasConsentForAdStorage         | bool?     | Determines if the user consents to storing ad-related data. Optional. |
 
-- When `isUserSubjectToGDPR` is `true`, both usage and ads-personalization values are required.
+- When `isUserSubjectToGDPR` is `true`, supply both usage and ads-personalization values before the first `start()`. The iOS native RPC layer validates them; the plugin forwards the payload without Dart-side checks.
 - When `isUserSubjectToGDPR` is `false`, omit the GDPR-specific values.
 - For an `hasConsentForAdStorage` value of `null`, the user has **not explicitly provided consent** for that option.
 - These values should be collected from the user via an appropriate **UI or consent prompt** before calling this method.
