@@ -44,19 +44,18 @@ enum AFRPCBridge {
         }
     }
 
-    /// `handler` is always invoked on the main thread.
+    /// `handler` is always invoked on the main thread, enqueued through `DispatchQueue.main.async`
+    /// even when the caller is already on the main thread.
     ///
-    /// AppsFlyerRPC hops each event onto the main actor before calling the handler, so today this
-    /// resolves synchronously and preserves emission order. That hop is one line inside a vendored
-    /// binary framework, though, and the emitter it wraps is `@Sendable` — the native SDK raises
-    /// events from arbitrary threads. Normalizing here means a future RPC version that stops hopping
-    /// degrades into an extra queue hop instead of an unsynchronized `pendingEvents` mutation and a
-    /// `FlutterEventSink` call off the platform thread.
+    /// A same-thread fast path would let a main-thread emission deliver synchronously ahead of an
+    /// earlier background-thread emission still queued behind it, reordering af-events callbacks.
+    /// Android always posts through `uiThreadHandler` for the same reason. `Task { @MainActor in }`
+    /// is the wrong tool here — GCD's async enqueue is the documented strict-FIFO contract.
     static func setEventHandler(owner: AnyObject, _ handler: @escaping (String) -> Void) {
         onMainActor {
             eventHandlerOwner = owner
             AppsFlyerRPCBridge.shared.setEventHandler { jsonEvent in
-                onMainActor { handler(jsonEvent) }
+                DispatchQueue.main.async { handler(jsonEvent) }
             }
         }
     }

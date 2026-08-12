@@ -340,8 +340,9 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     // ============================================================================
 
     // Forwards the native AppsFlyerRPC envelope to the af-events stream without changing event names
-    // or payloads, or buffers it until Dart subscribes (onListen). AFRPCBridge guarantees main-thread
-    // delivery, so the buffer needs no hop or synchronization of its own.
+    // or payloads, or buffers it until Dart subscribes (onListen). `AFRPCBridge.setEventHandler`
+    // always enqueues here through `DispatchQueue.main.async` so delivery order matches Android's
+    // always-post model; this method assumes it is already on the main thread when called.
     //
     // The buffer keeps the newest `kMaxPendingEvents` events: dropping the oldest bounds worst-case
     // memory while still replaying the events a late subscriber is most likely to act on.
