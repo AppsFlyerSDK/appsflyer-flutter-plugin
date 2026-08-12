@@ -180,7 +180,7 @@ _events = _eventChannel
 
 `_AppsFlyerEvent.fromNative` accepts the RPC JSON string and normalizes:
 
-- `event` → `_AppsFlyerEvent.name`;
+- `event` → `_AppsFlyerEvent.name` (must be a non-empty string; missing, empty, or non-string values throw `FormatException`);
 - `data` → `Map<String, dynamic>` when `data` is a JSON object, otherwise `{}` (covers Android `onSessionReady` with `data: null`).
 
 Transport-only envelope fields (`timestamp`, `origin`) are ignored on the Dart side.

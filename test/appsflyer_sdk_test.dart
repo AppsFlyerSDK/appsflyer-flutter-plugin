@@ -1128,18 +1128,44 @@ void main() {
       expect(deepLinkResult.deepLink!.deepLinkValue, 'home');
     });
 
-    test('drops events with an empty event name', () async {
+    test('drops malformed native events instead of surfacing an error',
+        () async {
       final received = <Map<String, dynamic>>[];
-      final subscription =
-          androidSdk.onConversionDataSuccess.listen(received.add);
+      final errors = <Object>[];
+      final subscription = androidSdk.onConversionDataSuccess.listen(
+        received.add,
+        onError: errors.add,
+      );
       await pumpEventQueue();
+
+      await _emitRaw('not-json-at-all');
+      await _emitRaw(jsonEncode(<dynamic>['not', 'an', 'object']));
       await _emitEvent({
         'event': null,
+        'data': {'media_source': 'organic'},
+      });
+      await _emitEvent({
+        'event': '',
+        'data': {'media_source': 'organic'},
+      });
+      await _emitEvent({
+        'event': 123,
         'data': {'media_source': 'organic'},
       });
       await pumpEventQueue();
 
       expect(received, isEmpty);
+      expect(errors, isEmpty);
+
+      await _emitEvent({
+        'event': 'onConversionDataSuccess',
+        'data': {'media_source': 'organic'},
+      });
+      await pumpEventQueue();
+
+      expect(received.single, {'media_source': 'organic'});
+      expect(errors, isEmpty);
+
       await subscription.cancel();
     });
 
@@ -1216,35 +1242,6 @@ void main() {
       expect(ios.status, DeepLinkStatus.error);
       expect(ios.error!.message, 'Network unavailable');
       expect(ios.error!.type, isNull);
-    });
-
-    test('drops malformed native events instead of surfacing an error',
-        () async {
-      final received = <Map<String, dynamic>>[];
-      final errors = <Object>[];
-      final subscription = androidSdk.onConversionDataSuccess.listen(
-        received.add,
-        onError: errors.add,
-      );
-      await pumpEventQueue();
-
-      await _emitRaw('not-json-at-all');
-      await _emitRaw(jsonEncode(<dynamic>['not', 'an', 'object']));
-      await pumpEventQueue();
-
-      expect(received, isEmpty);
-      expect(errors, isEmpty);
-
-      await _emitEvent({
-        'event': 'onConversionDataSuccess',
-        'data': {'media_source': 'organic'},
-      });
-      await pumpEventQueue();
-
-      expect(received.single, {'media_source': 'organic'});
-      expect(errors, isEmpty);
-
-      await subscription.cancel();
     });
   });
 }

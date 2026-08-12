@@ -21,7 +21,8 @@ class _AppsFlyerEvent {
   ///
   /// Android and iOS RPC 7.x always emit a JSON object with `event` and `data`
   /// (`data` is a map, or JSON `null` for Android `onSessionReady`). The Flutter
-  /// bridge forwards that payload as a JSON [json]. Malformed input throws
+  /// bridge forwards that payload as a JSON [json]. Malformed input — a non-object
+  /// envelope, or a missing, empty, or non-string `event` field — throws
   /// [FormatException] and is dropped by the plugin stream transformer.
   factory _AppsFlyerEvent.fromNative(String json) {
     final decoded = jsonDecode(json);
@@ -29,9 +30,15 @@ class _AppsFlyerEvent {
       throw const FormatException('AppsFlyer event must be a JSON object');
     }
     final envelope = Map<String, dynamic>.from(decoded);
+    final rawEvent = envelope['event'];
+    if (rawEvent is! String || rawEvent.isEmpty) {
+      throw const FormatException(
+        'AppsFlyer event must include a non-empty event name',
+      );
+    }
     final rawData = envelope['data'];
     return _AppsFlyerEvent(
-      name: envelope['event']?.toString() ?? '',
+      name: rawEvent,
       data: rawData is Map
           ? Map<String, dynamic>.from(rawData)
           : <String, dynamic>{},
