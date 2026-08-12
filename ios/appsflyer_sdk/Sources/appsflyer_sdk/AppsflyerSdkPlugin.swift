@@ -328,7 +328,10 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
         case "generateInviteLink":
             return data?["url"]
         default:
-            return nil
+            // Void setters have no `data` and correctly return nil. Unlisted getters that return a
+            // map payload surface it here instead of silently nil — scalar getters with named-key
+            // nesting still need explicit cases until the RPC envelope matches Android's flat shape.
+            return data
         }
     }
 

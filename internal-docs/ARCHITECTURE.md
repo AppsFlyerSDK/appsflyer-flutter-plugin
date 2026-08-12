@@ -156,7 +156,7 @@ Flutter public method
 - The `executeRpc` envelope `{method, params}` is parsed with force casts outside dispatch error handling, matching Android: a malformed envelope from anything other than the plugin's `_invokeRpc` path is an integration error and traps. Dispatch-time serialization still validates every RPC payload with `JSONSerialization.isValidJSONObject` in `jsonString(from:)` before writing, which rejects the non-finite doubles that would otherwise raise `NSInvalidArgumentException`; such calls fail with a `SERIALIZATION_ERROR` `FlutterError`. `example/ios/RunnerTests` pins that serialization behavior.
 - Native completion-handler APIs are invoked on the main queue and bridged into Swift concurrency. RPC state used to gate listeners is held in an actor.
 - JSON protocol errors and SDK failures become `FlutterError` values.
-- iOS-specific nested result envelopes are unwrapped into the primitive or map shape expected by Dart.
+- iOS-specific nested result envelopes are unwrapped into the primitive or map shape expected by Dart. Scalar getters with named-key nesting (`getSdkVersion`, `getAppsFlyerUID`, `isSessionReady`, `generateInviteLink`) have explicit cases until the RPC module aligns with Android's flat shape; everything else returns the `data` map when present (void setters correctly get `nil`).
 - `logAndOpenStore` is the only non-init public call requiring plugin orchestration because the plugin opens the returned store URL.
 
 ## 5. Reverse path: native SDK → RPC → Dart streams
