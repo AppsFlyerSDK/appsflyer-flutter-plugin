@@ -334,12 +334,15 @@ jobs:
             echo "✅ Dart:" && grep "PLUGIN_VERSION" "$DART_FILE"
           fi
 
-          # iOS - AppsflyerSdkPlugin.h (#define)
-          IOS_FILE="ios/Classes/AppsflyerSdkPlugin.h"
+          # iOS - AppsflyerSdkPlugin.swift
+          IOS_FILE="ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift"
           if [ -f "$IOS_FILE" ]; then
-            sed -i.bak 's/kAppsFlyerPluginVersion[[:space:]]*@"[^"]*"/kAppsFlyerPluginVersion             @"'"$VERSION"'"/' "$IOS_FILE"
+            sed -i.bak "s/kAppsFlyerPluginVersion = \".*\"/kAppsFlyerPluginVersion = \"$VERSION\"/" "$IOS_FILE"
             rm "$IOS_FILE.bak"
             echo "✅ iOS:" && grep "kAppsFlyerPluginVersion" "$IOS_FILE"
+          else
+            echo "::error::iOS plugin version file not found: $IOS_FILE" >&2
+            exit 1
           fi
 
       - name: Update README SDK and Purchase Connector versions

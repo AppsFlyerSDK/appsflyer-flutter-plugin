@@ -61,8 +61,7 @@ AppsFlyerSdk.pluginVersion                                            [lib/src/a
 ---
 
 ## Known Limitations
-- `_AppsFlyerConstants.PLUGIN_VERSION` is a separate compiled constant rather than a runtime read of `pubspec.yaml`. The RC and production-promotion workflows rewrite the Dart constant alongside the package version, but no general validation check guarantees that they remain equal when changes are made outside those workflows.
-- The same release workflows still target the obsolete `ios/Classes/AppsflyerSdkPlugin.h` path when updating the native iOS plugin-version constant. The current constant is `kAppsFlyerPluginVersion` in `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift`, so native iOS `setPluginInfo` can report a stale plugin version until the release tooling is corrected. This does not change the Dart `pluginVersion` getter.
+- `_AppsFlyerConstants.PLUGIN_VERSION` is a separate compiled constant rather than a runtime read of `pubspec.yaml`. The RC and production-promotion workflows rewrite the Dart, Android (`AppsFlyerConstants.kt`), and iOS (`kAppsFlyerPluginVersion` in `AppsflyerSdkPlugin.swift`) constants alongside the package version, but no general validation check guarantees that they remain equal when changes are made outside those workflows.
 - `pluginVersion` reports the *plugin's* version, not the native SDK's — integrators looking for the native version must use `getSdkVersion()`.
 
 ---
