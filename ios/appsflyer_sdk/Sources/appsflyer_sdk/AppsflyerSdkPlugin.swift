@@ -116,6 +116,7 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
         // does. See `AFRPCBridge.eventHandlerOwner`.
         AFRPCBridge.removeEventHandler(owner: self)
         eventChannel?.setStreamHandler(nil)
+        AppsFlyerAttribution.shared().resetBridgeStateIfOwned(by: self)
     }
 
     /// `eventHandlerRegistered` only keeps the second call site (`initFromRpc`) from re-registering
@@ -221,7 +222,7 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
                     self.deliverFlutterResult(result, sequenceError)
                     return
                 }
-                AppsFlyerAttribution.shared().markBridgeReady()
+                AppsFlyerAttribution.shared().markBridgeReady(markedBy: self)
                 self.deliverFlutterResult(result, nil)
             }
         }

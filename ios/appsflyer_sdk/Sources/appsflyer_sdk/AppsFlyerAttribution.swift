@@ -4,8 +4,12 @@
 //
 //  Created by Amit Kremer on 11/02/2021.
 //
+//  Interim queue-and-forward layer for UIKit deep-link entry points. Native Swift should call the
+//  typed lifecycle API in AppsFlyerRPC directly once the upstream lifecycle-callback wrapper lands;
+//  this class (and its JSON round-trip through AFRPCBridge) is then expected to be removed.
 
 import Foundation
+import os
 import UIKit
 
 @objc(AppsFlyerAttribution)
@@ -19,9 +23,14 @@ public class AppsFlyerAttribution: NSObject {
     }
 
     private static let sharedInstance = AppsFlyerAttribution()
+    private static let log = OSLog(subsystem: "com.appsflyer.appsflyer_sdk",
+                                   category: "AppsFlyerAttribution")
 
     private var isBridgeReady = false
     private var pendingRequests: [PendingRequest] = []
+    /// The plugin instance that last called `markBridgeReady(markedBy:)`. Used to reset queue state
+    /// on engine detach without affecting a live second engine in multi-engine hosts.
+    private weak var bridgeReadyOwner: AnyObject?
 
     @objc(shared)
     public class func shared() -> AppsFlyerAttribution {
@@ -74,12 +83,39 @@ public class AppsFlyerAttribution: NSObject {
     @objc(markBridgeReady)
     public func markBridgeReady() {
         onMain { [self] in
-            isBridgeReady = true
-            let requests = pendingRequests
-            pendingRequests.removeAll()
-            for request in requests {
-                execute(method: request.method, params: request.params)
+            applyBridgeReady(recordOwner: false, owner: nil)
+        }
+    }
+
+    /// Called from `AppsflyerSdkPlugin` after `init()` completes so detach can reset this singleton
+    /// only for the engine that marked it ready.
+    func markBridgeReady(markedBy owner: AnyObject) {
+        onMain { [self] in
+            applyBridgeReady(recordOwner: true, owner: owner)
+        }
+    }
+
+    /// Clears queue state when the owning Flutter engine detaches. No-op for other engines.
+    func resetBridgeStateIfOwned(by owner: AnyObject) {
+        onMain { [self] in
+            guard bridgeReadyOwner === owner else {
+                return
             }
+            bridgeReadyOwner = nil
+            isBridgeReady = false
+            pendingRequests.removeAll()
+        }
+    }
+
+    private func applyBridgeReady(recordOwner: Bool, owner: AnyObject?) {
+        if recordOwner {
+            bridgeReadyOwner = owner
+        }
+        isBridgeReady = true
+        let requests = pendingRequests
+        pendingRequests.removeAll()
+        for request in requests {
+            execute(method: request.method, params: request.params)
         }
     }
 
@@ -140,8 +176,40 @@ public class AppsFlyerAttribution: NSObject {
         guard JSONSerialization.isValidJSONObject(envelope),
               let data = try? JSONSerialization.data(withJSONObject: envelope, options: []),
               let json = String(data: data, encoding: .utf8) else {
+            Self.logError("Attribution RPC envelope serialization failed for method \(method)")
             return
         }
-        AFRPCBridge.executeJson(json) { _ in }
+        AFRPCBridge.executeJson(json) { response in
+            Self.logRpcFailureIfNeeded(method: method, response: response)
+        }
+    }
+
+    private static func logRpcFailureIfNeeded(method: String, response: String) {
+        guard let data = response.data(using: .utf8),
+              let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            logError("Attribution RPC response parse failed for method \(method)")
+            return
+        }
+        if let envelopeError = parsed["error"] as? [String: Any] {
+            let code = (envelopeError["code"] as? String) ?? "RPC_ERROR"
+            let message = (envelopeError["message"] as? String) ?? "unknown"
+            logError("Attribution RPC protocol error for \(method): \(code) — \(message)")
+            return
+        }
+        guard let resultObj = parsed["result"] as? [String: Any] else {
+            return
+        }
+        let success = (resultObj["success"] as? NSNumber)?.boolValue ?? true
+        if success {
+            return
+        }
+        let message = (resultObj["error"] as? String)
+            ?? (resultObj["message"] as? String)
+            ?? "SDK operation failed"
+        logError("Attribution RPC SDK error for \(method): \(message)")
+    }
+
+    private static func logError(_ message: String) {
+        os_log(.error, log: log, "%{public}@", message)
     }
 }
