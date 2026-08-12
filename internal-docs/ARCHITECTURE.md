@@ -72,9 +72,18 @@ An explicitly platform-gated API is usually a deliberate no-op off-platform. Its
 All public RPC-backed methods delegate to two helpers:
 
 ```dart
-Future<T?> _invokeRpc<T>(String method, [Map<String, dynamic>? params]);
+Future<T> _invokeNullableRpc<T>(String method, [Map<String, dynamic>? params]);
+Future<T> _invokeRpc<T extends Object>(String method, [Map<String, dynamic>? params]);
 Future<void> _invokeVoidRpc(String method, [Map<String, dynamic>? params]);
 ```
+
+`_invokeNullableRpc` is the unconstrained primitive for RPC calls whose native
+reply may legitimately be absent (`String?`, `Map?`, or `void`). `_invokeRpc`
+requires a non-null reply and throws `AppsFlyerException` when the native side
+returns nothing, so callers such as `isSessionReady`, `isStopped`,
+`getSdkVersion`, and `generateInviteLink` do not need ad-hoc `?? false`, `!`,
+or per-method null checks. `_invokeVoidRpc` delegates to
+`_invokeNullableRpc<Object?>`.
 
 `_invokeRpc` sends this channel payload:
 
@@ -85,7 +94,7 @@ Future<void> _invokeVoidRpc(String method, [Map<String, dynamic>? params]);
 }
 ```
 
-The Flutter channel method is always `executeRpc`. A native `PlatformException` is converted into public `AppsFlyerException` before reaching plugin consumers. If the native reply decodes to a non-null value whose runtime type does not match the Dart call's expected `T`, `_invokeRpc` throws `AppsFlyerException` instead of surfacing a raw cast error. `AppsFlyerException.code` is populated only when `PlatformException.code` is numeric. Android RPC failures normally use HTTP-style numeric codes (`400`, `404`, `422`, `500`, `503`). iOS protocol errors also preserve numeric RPC codes, but an iOS handler failure without an `errorCode` is exposed with the non-numeric fallback `SDK_ERROR`. Plugin transport failures such as `UNEXPECTED_ERROR`, `SERIALIZATION_ERROR`, and `RPC_PARSE_ERROR` are also non-numeric. All of those cases therefore produce `AppsFlyerException(code: null, ...)` while retaining the message.
+The Flutter channel method is always `executeRpc`. A native `PlatformException` is converted into public `AppsFlyerException` before reaching plugin consumers. If the native reply decodes to a non-null value whose runtime type does not match the Dart call's expected type argument, `_invokeNullableRpc` throws `AppsFlyerException` instead of surfacing a raw cast error. When `_invokeRpc` receives a null reply it throws `AppsFlyerException` with message `<method> returned no value`. `AppsFlyerException.code` is populated only when `PlatformException.code` is numeric. Android RPC failures normally use HTTP-style numeric codes (`400`, `404`, `422`, `500`, `503`). iOS protocol errors also preserve numeric RPC codes, but an iOS handler failure without an `errorCode` is exposed with the non-numeric fallback `SDK_ERROR`. Plugin transport failures such as `UNEXPECTED_ERROR`, `SERIALIZATION_ERROR`, and `RPC_PARSE_ERROR` are also non-numeric. All of those cases therefore produce `AppsFlyerException(code: null, ...)` while retaining the message.
 
 `MissingPluginException` — when no native handler answers the channel — is **not** part of the RPC error contract and is **not** converted to `AppsFlyerException`. It indicates a Flutter integration gap (unsupported platform, or plugin registration failure) and should not occur on a properly integrated Android or iOS build.
 

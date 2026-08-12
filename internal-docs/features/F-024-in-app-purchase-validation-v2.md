@@ -34,7 +34,7 @@ AppsFlyerSdk.validateAndLogInAppPurchase(                                  [lib/
                                    additionalParameters}
       → wrong platform for the model, including any non-mobile platform → ArgumentError
   → Android only: append {awaitResponse}
-  → _invokeRpc<Map<Object?, Object?>>('validateAndLogInAppPurchase', params)
+  → _invokeNullableRpc<Map<Object?, Object?>?>>('validateAndLogInAppPurchase', params)
     → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
       → Android: AppsflyerSdkPlugin.executeRpc → dispatchRpc('validateAndLogInAppPurchase', ...)
         → AppsFlyerRpcHandler.execute(json) → AppsFlyerLib.validateAndLogInAppPurchase(...)

@@ -37,7 +37,7 @@ isPreInstalledApp()
 | | |
 |--|--|
 | **Input** | `mediaSource` is required and non-empty; `campaign` and `siteId` are optional strings defaulting to `''`. `isPreInstalledApp()` has no input. |
-| **Output** | The setter returns `Future<void>` after synchronous SDK invocation; the getter returns `Future<bool>`. Off Android the setter is a logged no-op; the getter throws `AppsFlyerException` when the native RPC layer reports the method as unavailable. Bridge failures surface as `AppsFlyerException`. |
+| **Output** | The setter returns `Future<void>` after synchronous SDK invocation; the getter returns `Future<bool>`. Off Android the setter is a logged no-op; the getter throws `AppsFlyerException` when the native RPC layer reports the method as unavailable. On Android an unexpected native null reply also throws instead of being reported as `false`. Bridge failures surface as `AppsFlyerException`. |
 
 ## Tests
 `test/appsflyer_sdk_test.dart` verifies the setter map, getter return value, and the setter off-platform guard. `'symmetric platform-only getters surface RPC method-not-found off-platform'` covers `isPreInstalledApp()` on iOS. Android native parser/handler tests cover validation and forwarding.
@@ -45,7 +45,7 @@ isPreInstalledApp()
 ## Known Limitations
 - Dart does not validate an empty media source; Android RPC rejects it after the channel round trip.
 - The setter Future does not confirm that the campaign was included in a Launch. It must run before the relevant `start()`.
-- Off-platform `false` from `isPreInstalledApp()` is no longer returned; wrong-platform calls throw `AppsFlyerException` instead.
+- Off-platform calls throw `AppsFlyerException` instead of returning `false`. Unexpected native null replies on Android do the same.
 
 ## Dependencies
 No required feature dependency; this is configuration consumed by a later F-002 Launch.

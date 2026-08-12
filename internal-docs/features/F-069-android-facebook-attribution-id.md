@@ -17,16 +17,16 @@ Called on demand on Android when the app needs the native Facebook attribution i
 ## Call Chain
 ```
 AppsFlyerSdk.getAttributionId()                                      [lib/src/appsflyer_sdk.dart]
-  → non-Android: log warning and return null
-  → _invokeRpc<String>('getAttributionId', {})
+  → _invokeNullableRpc<String?>('getAttributionId', {})
     → Android AppsFlyerRpcHandler → AppsFlyerLib.getAttributionId(context)
       → nullable string reply
+    → iOS: native RPC reports method not found → AppsFlyerException (404)
 ```
 
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | Public Android-guarded nullable getter |
+| `lib/src/appsflyer_sdk.dart` | Public Android-only nullable getter routed through RPC without a Dart guard |
 | `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Generic RPC forwarding and reply serialization |
 | Android `plugin_bridge/.../RpcRequest.kt` and `AppsFlyerRpcHandler.kt` | Getter request and native SDK call |
 
@@ -34,13 +34,13 @@ AppsFlyerSdk.getAttributionId()                                      [lib/src/ap
 | | |
 |--|--|
 | **Input** | None; the RPC params map is empty. |
-| **Output** | `Future<String?>` with the native value or `null`. Off Android it logs a warning and returns `null` without dispatching RPC. Bridge failures surface as `AppsFlyerException`. |
+| **Output** | `Future<String?>` with the native value or `null`. Off Android it throws `AppsFlyerException` when the native RPC layer reports the method as unavailable. Bridge failures surface as `AppsFlyerException`. |
 
 ## Tests
-`test/appsflyer_sdk_test.dart` verifies the Android native-return mapping and the off-platform `null` guard. Android handler tests verify the context-based SDK call.
+`test/appsflyer_sdk_test.dart` verifies the Android native-return mapping. `'symmetric platform-only getters surface RPC method-not-found off-platform'` covers the iOS wrong-platform path. Android handler tests verify the context-based SDK call.
 
 ## Known Limitations
-- `null` can mean unavailable on Android or unsupported platform; the log is the only distinction for the latter.
+- `null` on Android means unavailable; wrong-platform calls throw `AppsFlyerException` instead of returning `null`.
 - The Flutter plugin does not fetch, generate, validate, or persist this ID itself.
 
 ## Dependencies

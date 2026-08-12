@@ -28,7 +28,7 @@ AppsFlyerSdk.generateInviteLink({parameters, awaitResponse})          [lib/src/a
   → _invokeRpc<String>('generateInviteLink', params)
     → Android/iOS RPC generateInviteLink
   → non-empty URL completes Future<String>
-  → empty/missing URL throws AppsFlyerException
+  → missing URL throws AppsFlyerException (`generateInviteLink returned no value`)
 
 AppsFlyerSdk.logInvite(channel, [eventParameters])                    [lib/src/appsflyer_sdk.dart]
   → _invokeVoidRpc('logInvite', {channel, eventParameters})

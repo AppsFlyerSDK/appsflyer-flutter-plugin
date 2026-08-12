@@ -30,7 +30,7 @@ AppsFlyerSdk.registerSessionReadyListener()
         → native event 'onSessionReady' → EventChannel('af-events') → Stream<void>
 
 AppsFlyerSdk.isSessionReady()
-  → RPC 'isSessionReady' → current native readiness boolean (missing value → false)
+  → RPC 'isSessionReady' → current native readiness boolean; unexpected null throws AppsFlyerException
 
 AppsFlyerSdk.start({awaitResponse})                                   [lib/src/appsflyer_sdk.dart]
   → no Dart or RPC readiness check; the app is responsible for onSessionReady ordering
@@ -66,7 +66,7 @@ AppsFlyerSdk.unregisterSessionReadyListener()
 | | |
 |--|--|
 | **Input** | Listener registration/unregistration and readiness query take no arguments. `start` takes `awaitResponse` (`bool`, named, default `false`) — when `true`, wait for the native request callback; when `false`, return after the native fire-and-forget method returns and RPC reports immediate success. |
-| **Output** | `registerSessionReadyListener()` and `unregisterSessionReadyListener()` return `Future<void>` after synchronous native registration state changes. `isSessionReady()` returns `Future<bool>` and normalizes a missing value to `false`. `onSessionReady` emits `void` once per foreground cycle. For `start()`, the default fire-and-forget completion does not prove a Launch was sent; `awaitResponse: true` completes on the native request callback or throws `AppsFlyerException` for native errors/timeouts. |
+| **Output** | `registerSessionReadyListener()` and `unregisterSessionReadyListener()` return `Future<void>` after synchronous native registration state changes. `isSessionReady()` returns `Future<bool>`; an unexpected native null reply throws `AppsFlyerException` instead of being reported as `false`. `onSessionReady` emits `void` once per foreground cycle. For `start()`, the default fire-and-forget completion does not prove a Launch was sent; `awaitResponse: true` completes on the native request callback or throws `AppsFlyerException` for native errors/timeouts. |
 
 ---
 

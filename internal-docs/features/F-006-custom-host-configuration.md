@@ -51,7 +51,7 @@ AppsFlyerSdk.getHostName() / AppsFlyerSdk.getHostPrefix()   (Android only)
 | | |
 |--|--|
 | **Input** | `setHost`: `hostPrefixName` (`String`) and `hostName` (`String`), sent under the RPC param keys `hostPrefixName` and `hostName`. Android RPC requires a non-empty `hostName` and permits an empty `hostPrefixName`; iOS RPC requires both values to be non-empty. `getHostName`/`getHostPrefix`: no parameters (the RPC params map is empty). |
-| **Output** | `setHost` → `Future<void>` that completes after RPC validation and the synchronous native setter invocation; it does not confirm that the native SDK accepted or used the host. RPC or bridge failures are exposed as `AppsFlyerException`. `getHostName()`/`getHostPrefix()` → `Future<String?>` on Android; on iOS wrong-platform calls throw `AppsFlyerException` when the native RPC layer reports the method as unavailable. |
+| **Output** | `setHost` → `Future<void>` that completes after RPC validation and the synchronous native setter invocation; it does not confirm that the native SDK accepted or used the host. RPC or bridge failures are exposed as `AppsFlyerException`. `getHostName()`/`getHostPrefix()` → `Future<String>` on Android; on iOS wrong-platform calls throw `AppsFlyerException` when the native RPC layer reports the method as unavailable. |
 
 ---
 
@@ -61,7 +61,7 @@ AppsFlyerSdk.getHostName() / AppsFlyerSdk.getHostPrefix()   (Android only)
 ---
 
 ## Known Limitations
-- `getHostName`/`getHostPrefix` are Android-only at the native RPC layer. On iOS each throws `AppsFlyerException` when the RPC layer reports the method as unavailable, so a `null` result means the native getter returned nothing rather than "wrong platform".
+- `getHostName`/`getHostPrefix` are Android-only at the native RPC layer. On iOS each throws `AppsFlyerException` when the RPC layer reports the method as unavailable. On Android an unexpected native null reply also throws instead of surfacing as `null`.
 - Dart does not guard against empty values. Android RPC rejects an empty `hostName` with an RPC error but accepts an empty `hostPrefixName`; iOS RPC rejects either empty value. On Android, a whitespace-only `hostName` passes RPC validation but is silently ignored by the native SDK, so the `Future` can still complete successfully without changing the host.
 - Must be called before the SDK establishes its first network connection (before `start()`) to take effect; this ordering is not enforced by the plugin.
 

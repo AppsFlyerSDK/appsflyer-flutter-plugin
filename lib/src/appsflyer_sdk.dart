@@ -182,8 +182,8 @@ class AppsFlyerSdk {
   ///
   /// Use this when [registerSessionReadyListener] was registered after the SDK
   /// became ready.
-  Future<bool> isSessionReady() async {
-    return await _invokeRpc<bool>('isSessionReady') ?? false;
+  Future<bool> isSessionReady() {
+    return _invokeRpc<bool>('isSessionReady');
   }
 
   /// Sends a session ("Launch").
@@ -399,14 +399,14 @@ class AppsFlyerSdk {
   /// Returns the configured host name.
   ///
   /// Android only.
-  Future<String?> getHostName() {
+  Future<String> getHostName() {
     return _invokeRpc<String>('getHostName');
   }
 
   /// Returns the configured host prefix.
   ///
   /// Android only.
-  Future<String?> getHostPrefix() {
+  Future<String> getHostPrefix() {
     return _invokeRpc<String>('getHostPrefix');
   }
 
@@ -477,7 +477,7 @@ class AppsFlyerSdk {
   ///
   /// Android only.
   Future<String?> getOutOfStore() {
-    return _invokeRpc<String>('getOutOfStore');
+    return _invokeNullableRpc<String?>('getOutOfStore');
   }
 
   /// Manually marks the app as updated.
@@ -609,7 +609,7 @@ class AppsFlyerSdk {
       _logUnsupportedPlatform('isStopped', 'Android');
       return false;
     }
-    return await _invokeRpc<bool>('isStopped') ?? false;
+    return _invokeRpc<bool>('isStopped');
   }
 
   /// Disables collection of advertising identifiers.
@@ -758,7 +758,7 @@ class AppsFlyerSdk {
     if (_isAndroid) {
       params['awaitResponse'] = awaitResponse;
     }
-    final result = await _invokeRpc<Map<Object?, Object?>>(
+    final result = await _invokeNullableRpc<Map<Object?, Object?>?>(
       'validateAndLogInAppPurchase',
       params,
     );
@@ -848,13 +848,7 @@ class AppsFlyerSdk {
     if (_isAndroid) {
       params['awaitResponse'] = awaitResponse;
     }
-    final url = await _invokeRpc<String>('generateInviteLink', params);
-    if (url == null) {
-      throw const AppsFlyerException(
-        message: 'generateInviteLink returned no result',
-      );
-    }
-    return url;
+    return _invokeRpc<String>('generateInviteLink', params);
   }
 
   /// Logs the `af_invite` event when a user shares an invite.
@@ -1022,43 +1016,41 @@ class AppsFlyerSdk {
   }
 
   /// Returns the native AppsFlyer SDK version.
-  Future<String> getSdkVersion() async {
-    final version = await _invokeRpc<String>('getSdkVersion');
-    if (version == null) {
-      throw const AppsFlyerException(
-        message: 'getSdkVersion returned no result',
-      );
-    }
-    return version;
+  Future<String> getSdkVersion() {
+    return _invokeRpc<String>('getSdkVersion');
   }
 
   /// Returns the AppsFlyer unique device ID created for this install.
   Future<String?> getAppsFlyerUID() {
-    return _invokeRpc<String>('getAppsFlyerUID');
+    return _invokeNullableRpc<String?>('getAppsFlyerUID');
   }
 
   /// Whether the app was installed as an OEM or manufacturer preinstall.
   ///
   /// Android only.
-  Future<bool> isPreInstalledApp() async {
-    return await _invokeRpc<bool>('isPreInstalledApp') ?? false;
+  Future<bool> isPreInstalledApp() {
+    return _invokeRpc<bool>('isPreInstalledApp');
   }
 
   /// Returns the Facebook attribution ID, if available.
   ///
   /// Android only.
   Future<String?> getAttributionId() {
-    return _invokeRpc<String>('getAttributionId');
+    return _invokeNullableRpc<String?>('getAttributionId');
   }
 
   Future<void> _invokeVoidRpc(
     String method, [
     Map<String, dynamic>? params,
   ]) async {
-    await _invokeRpc<Object?>(method, params);
+    await _invokeNullableRpc<Object?>(method, params);
   }
 
-  Future<T?> _invokeRpc<T>(
+  /// Calls [method] via the RPC channel and casts the result to [T].
+  ///
+  /// [T] may be nullable — pass e.g. `String?` when the native side may
+  /// legitimately return no value.
+  Future<T> _invokeNullableRpc<T>(
     String method, [
     Map<String, dynamic>? params,
   ]) async {
@@ -1076,10 +1068,25 @@ class AppsFlyerSdk {
               'Unexpected RPC result type for $method: ${result.runtimeType}',
         );
       }
-      return result as T?;
+      return result as T;
     } on PlatformException catch (error) {
       throw AppsFlyerException.fromPlatformException(error);
     }
+  }
+
+  /// Calls [method] via the RPC channel and requires a non-null result.
+  ///
+  /// Throws [AppsFlyerException] if the native side unexpectedly returns no
+  /// value.
+  Future<T> _invokeRpc<T extends Object>(
+    String method, [
+    Map<String, dynamic>? params,
+  ]) async {
+    final result = await _invokeNullableRpc<T?>(method, params);
+    if (result == null) {
+      throw AppsFlyerException(message: '$method returned no value');
+    }
+    return result;
   }
 
   void _logIgnoredCall(String method, String reason) {

@@ -32,7 +32,7 @@ AppsFlyerSdk.stop(shouldStop)                                         [lib/src/a
 
 AppsFlyerSdk.isStopped()                                              [Android only]
   → not Android: log warning, return false (no RPC dispatched)
-  → _invokeRpc<bool>('isStopped') ?? false
+  → _invokeRpc<bool>('isStopped')
     → Android: dispatchRpc → AppsFlyerRpcHandler → AppsFlyerLib.isStopped()
 ```
 
@@ -51,7 +51,7 @@ AppsFlyerSdk.isStopped()                                              [Android o
 | | |
 |--|--|
 | **Input** | `stop`: `shouldStop` (`bool`) — `true` halts all SDK network activity, `false` re-enables it. RPC param key `shouldStop`. `isStopped()`: no parameters. |
-| **Output** | `stop` → `Future<void>` that completes after RPC validation and the synchronous native setter invocation; it has no completion callback or timeout. `isStopped()` → `Future<bool>`; a missing native value resolves to `false`, and calling it off Android logs a warning and returns `false` without dispatching an RPC. Bridge or validation failures surface as `AppsFlyerException`. |
+| **Output** | `stop` → `Future<void>` that completes after RPC validation and the synchronous native setter invocation; it has no completion callback or timeout. `isStopped()` → `Future<bool>` on Android; an unexpected native null reply throws `AppsFlyerException`. Calling it off Android logs a warning and returns `false` without dispatching an RPC. Bridge or validation failures surface as `AppsFlyerException`. |
 
 ---
 

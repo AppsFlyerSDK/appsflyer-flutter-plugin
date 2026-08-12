@@ -28,7 +28,7 @@ AppsFlyerSdk.getSdkVersion()                                          [lib/src/a
       → Android: dispatchRpc → AppsFlyerRpcHandler → AppsFlyerLib.getSdkVersion()   [android/.../AppsflyerSdkPlugin.kt]
       → iOS: dispatchRpc → AppsFlyerRPCBridge → [AppsFlyerLib shared] ...           [ios/.../AppsflyerSdkPlugin.swift]
         (iOS unwraps the version from the nested {data:{version}} result)
-  → null or empty reply is rejected with AppsFlyerException (code 500)
+  → unexpected null reply throws AppsFlyerException (`<method> returned no value`)
   → PlatformException is converted to AppsFlyerException
 
 AppsFlyerSdk.pluginVersion                                            [lib/src/appsflyer_sdk.dart]

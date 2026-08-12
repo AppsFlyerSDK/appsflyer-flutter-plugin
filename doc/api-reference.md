@@ -681,7 +681,7 @@ _Example:_
 await appsFlyerSdk.setHost("pref", "my-host");
 ```
 ---
-**<a id="getHostName"> `Future<String?> getHostName()`** — **Android only**
+**<a id="getHostName"> `Future<String> getHostName()`** — **Android only**
 
 _Example:_
 ```dart
@@ -690,7 +690,7 @@ appsFlyerSdk.getHostName().then((name) {
        });
 ```
 ---
-**<a id="getHostPrefix"> `Future<String?> getHostPrefix()`** — **Android only**
+**<a id="getHostPrefix"> `Future<String> getHostPrefix()`** — **Android only**
 
 _Example:_
 ```dart

@@ -280,6 +280,27 @@ void main() {
       expect(rpcMethod, 'isSessionReady');
     });
 
+    test('unexpected null RPC result throws AppsFlyerException', () async {
+      rpcResult = null;
+
+      for (final call in <Future<bool> Function()>[
+        iosSdk.isSessionReady,
+        androidSdk.isStopped,
+        androidSdk.isPreInstalledApp,
+      ]) {
+        await expectLater(
+          call(),
+          throwsA(
+            isA<AppsFlyerException>().having(
+              (error) => error.message,
+              'message',
+              '$rpcMethod returned no value',
+            ),
+          ),
+        );
+      }
+    });
+
     test('platform-only void calls are ignored without reaching the native RPC',
         () async {
       await iosSdk.setCollectAndroidID(true);
@@ -594,7 +615,7 @@ void main() {
           isA<AppsFlyerException>().having(
             (error) => error.message,
             'message',
-            'generateInviteLink returned no result',
+            'generateInviteLink returned no value',
           ),
         ),
       );
@@ -1038,7 +1059,7 @@ void main() {
           isA<AppsFlyerException>().having(
             (error) => error.message,
             'message',
-            'getSdkVersion returned no result',
+            'getSdkVersion returned no value',
           ),
         ),
       );

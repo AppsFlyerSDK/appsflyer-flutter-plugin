@@ -73,6 +73,12 @@ removed APIs, renames, lifecycle changes, and upgrade instructions.
   `getAttributionId`, `setUseReceiptValidationSandbox`,
   `setUseUninstallSandbox`) route through the native RPC layer instead and throw
   `AppsFlyerException` when the method is unavailable on that platform.
+- `getHostName()` and `getHostPrefix()` now return non-nullable `Future<String>`
+  on Android; unexpected native null replies throw `AppsFlyerException` instead
+  of surfacing as `null`.
+- RPC helpers split into `_invokeNullableRpc` and `_invokeRpc<T extends Object>`;
+  bool getters such as `isSessionReady`, `isStopped`, and `isPreInstalledApp`
+  no longer coerce an unexpected native `null` to `false`.
 - `setInstallId()` requires `AppsFlyerAllowCustomInstallId=YES` in iOS
   `Info.plist` and must be called before `init()` on iOS. Android requires
   `APPSFLYER_ALLOW_CUSTOM_INSTALL_ID=true` in `AndroidManifest.xml` and the call

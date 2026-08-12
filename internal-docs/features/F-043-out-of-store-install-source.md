@@ -28,7 +28,7 @@ AppsFlyerSdk.setOutOfStore(String sourceName)                            [lib/sr
       → Android: dispatchRpc → AppsFlyerRpcHandler.execute("setOutOfStore") → SDK setOutOfStore
 
 AppsFlyerSdk.getOutOfStore()                                             [lib/src/appsflyer_sdk.dart]
-  → _invokeRpc<String>('getOutOfStore')
+  → _invokeNullableRpc<String?>('getOutOfStore')
     → Android: dispatchRpc → AppsFlyerRpcHandler.execute("getOutOfStore") → SDK getOutOfStore
     → iOS: native RPC reports method not found → AppsFlyerException (404)
   → PlatformException is converted to AppsFlyerException

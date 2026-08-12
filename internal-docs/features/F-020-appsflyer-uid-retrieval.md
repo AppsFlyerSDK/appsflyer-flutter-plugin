@@ -23,7 +23,7 @@ A generic RPC round trip with a typed native return value. Unlike `getHostName`/
 
 ```
 AppsFlyerSdk.getAppsFlyerUID()                                        [lib/src/appsflyer_sdk.dart]
-  → _invokeRpc<String>('getAppsFlyerUID')
+  → _invokeNullableRpc<String?>('getAppsFlyerUID')
     → MethodChannel('af-api').invokeMethod('executeRpc', {method: 'getAppsFlyerUID', params: {}})
       → Android: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRpcHandler
         → AppsFlyerLib.getInstance().getAppsFlyerUID(context)  (returned on the RPC reply)
