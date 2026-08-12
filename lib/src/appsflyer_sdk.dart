@@ -1111,13 +1111,20 @@ class AppsFlyerSdk {
     Map<String, dynamic>? params,
   ]) async {
     try {
-      return await _methodChannel.invokeMethod<T>(
+      final dynamic result = await _methodChannel.invokeMethod<dynamic>(
         'executeRpc',
         <String, dynamic>{
           'method': method,
           'params': params ?? <String, dynamic>{},
         },
       );
+      if (result != null && result is! T) {
+        throw AppsFlyerException(
+          message:
+              'Unexpected RPC result type for $method: ${result.runtimeType}',
+        );
+      }
+      return result as T?;
     } on PlatformException catch (error) {
       throw AppsFlyerException.fromPlatformException(error);
     }

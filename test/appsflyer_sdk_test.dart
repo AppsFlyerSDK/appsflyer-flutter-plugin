@@ -269,6 +269,22 @@ void main() {
       );
     });
 
+    test('unexpected RPC result type becomes AppsFlyerException', () async {
+      rpcResult = 1;
+
+      await expectLater(
+        androidSdk.isSessionReady(),
+        throwsA(
+          isA<AppsFlyerException>().having(
+            (error) => error.message,
+            'message',
+            'Unexpected RPC result type for isSessionReady: int',
+          ),
+        ),
+      );
+      expect(rpcMethod, 'isSessionReady');
+    });
+
     test('platform-only void calls are ignored without reaching the native RPC',
         () async {
       await iosSdk.setCollectAndroidID(true);
