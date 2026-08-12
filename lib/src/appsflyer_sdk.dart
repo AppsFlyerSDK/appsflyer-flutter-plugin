@@ -1061,7 +1061,13 @@ class AppsFlyerSdk {
 
   /// Returns the native AppsFlyer SDK version.
   Future<String> getSdkVersion() async {
-    return (await _invokeRpc<String>('getSdkVersion'))!;
+    final version = await _invokeRpc<String>('getSdkVersion');
+    if (version == null) {
+      throw const AppsFlyerException(
+        message: 'getSdkVersion returned no result',
+      );
+    }
+    return version;
   }
 
   /// Returns the AppsFlyer unique device ID created for this install.

@@ -986,6 +986,18 @@ void main() {
       expect(rpcMethod, 'getSdkVersion');
       expect(rpcParams, isEmpty);
 
+      rpcResult = null;
+      expect(
+        () => iosSdk.getSdkVersion(),
+        throwsA(
+          isA<AppsFlyerException>().having(
+            (error) => error.message,
+            'message',
+            'getSdkVersion returned no result',
+          ),
+        ),
+      );
+
       rpcResult = 'uid';
       expect(await iosSdk.getAppsFlyerUID(), 'uid');
       expect(rpcMethod, 'getAppsFlyerUID');
