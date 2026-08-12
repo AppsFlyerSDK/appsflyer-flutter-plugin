@@ -43,7 +43,7 @@ AppsFlyerAttribution (queueing singleton, isBridgeReady initially NO)           
       → else: append {method, params} to the pendingRequests queue
 
 AppsflyerSdkPlugin initFromRpc:result: (Dart AppsFlyerSdk.init() → af-api executeRpc('init') → native init sequence)   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift]
-  → runSequence: setPluginInfo → initialize → handleLaunchOptions (only when launch options were captured)
+  → runSequence: setPluginInfo → initialize
   → [[AppsFlyerAttribution shared] markBridgeReady]
     → isBridgeReady = YES, then drains pendingRequests through [[AppsFlyerRPCBridge shared] executeJson:]
       → native SDK resolves the deep link → triggers F-037 (UDL) delivery to Dart
@@ -81,7 +81,7 @@ No dedicated test found — this logic lives entirely in Swift native code with 
 - **All delegate methods return `NO`**: every intercepted method (including `application:didFinishLaunchingWithOptions:`) explicitly returns `NO`. Flutter ORs the results of its registered delegates, so returning `NO` avoids blocking other plugins from handling the same URL — but it also means AppsFlyer's interception is invisible to code that checks the return value for "was this URL handled."
 - **UIScene support is conditionally compiled**: the `scene:...` methods only exist when `__has_include(<Flutter/FlutterSceneLifeCycle.h>)` is true (Flutter 3.41+); on older Flutter engine versions without UIScene support, only the legacy `UIApplicationDelegate` methods run. Either way the host `AppDelegate` does not have to forward anything, because the plugin is registered as a delegate itself.
 - The `markBridgeReady` handshake depends on Dart actually calling `AppsFlyerSdk.init()`; if the app never initializes the SDK (or does so much later), queued deep-link data waits indefinitely in `pendingRequests`. A failed init sequence returns the error to Dart without marking the bridge ready, so the queue is never drained for that launch.
-- **`handleLaunchOptions` is lifecycle-managed**: `application:didFinishLaunchingWithOptions:` captures JSON-safe launch options, and `initFromRpc` forwards them after `initialize` through the iOS RPC before marking the attribution bridge ready. `NSURL` values are converted to strings and non-JSON values are dropped.
+- **`handleLaunchOptions` is forwarded at launch**: `application:didFinishLaunchingWithOptions:` sanitizes launch options and immediately sends `handleLaunchOptions` through `AFRPCBridge` (fire-and-forget). The native SDK has no `initialize` dependency on that call; it only sets a pending-deeplink flag that `registerSessionReadyListener` samples later. `NSURL` values are converted to strings and non-JSON values are dropped.
 - No test coverage exists for any of the buffering/forwarding logic described here.
 
 ---

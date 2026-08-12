@@ -41,7 +41,6 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     private var eventSink: FlutterEventSink?
     private var pendingEvents: [String] = []
     private var eventHandlerRegistered = false
-    private var pendingLaunchOptions: NSDictionary?
 
     // ============================================================================
     // Plugin / channel lifecycle
@@ -181,15 +180,13 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
         let devKey = stringParam(params, key: "devKey")
         let appId = stringParam(params, key: "appId")
 
-        // Ordered RPC sequence: initialize -> pending launch options. Listener registration
-        // is explicit in Dart, so initialization has no hidden callback side effects.
-        var sequence: [RpcCall] = []
-        sequence.append(RpcCall(method: "initialize",
-                                params: ["devKey": devKey ?? "", "appId": appId ?? ""]))
-        if let pendingLaunchOptions = pendingLaunchOptions {
-            sequence.append(RpcCall(method: "handleLaunchOptions",
-                                    params: ["launchOptions": pendingLaunchOptions]))
-        }
+        // Ordered RPC sequence: initialize only. `handleLaunchOptions` is forwarded from
+        // `application:didFinishLaunchingWithOptions:` as soon as launch options arrive — the native
+        // SDK has no init dependency on that call. Listener registration is explicit in Dart.
+        let sequence: [RpcCall] = [
+            RpcCall(method: "initialize",
+                    params: ["devKey": devKey ?? "", "appId": appId ?? ""])
+        ]
 
         // setPluginInfo runs ahead of the sequence rather than inside it: the plugin name must
         // reach the first session payload, but it only labels reporting, so its outcome must not
@@ -206,7 +203,6 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
                     result(sequenceError)
                     return
                 }
-                self.pendingLaunchOptions = nil
                 AppsFlyerAttribution.shared().markBridgeReady()
                 result(nil)
             }
@@ -426,18 +422,23 @@ extension AppsflyerSdkPlugin {
     @objc(application:didFinishLaunchingWithOptions:)
     public func application(_ application: UIApplication,
                             didFinishLaunchingWithOptions launchOptions: [AnyHashable: Any]) -> Bool {
-        if !launchOptions.isEmpty {
-            let jsonSafeOptions = NSMutableDictionary()
-            for (key, value) in launchOptions {
-                let stringKey = String(describing: key as AnyObject)
-                if let url = value as? URL {
-                    jsonSafeOptions[stringKey] = url.absoluteString
-                } else if JSONSerialization.isValidJSONObject([value]) {
-                    jsonSafeOptions[stringKey] = value
-                }
-            }
-            pendingLaunchOptions = jsonSafeOptions
+        guard !launchOptions.isEmpty else {
+            return false
         }
+        let jsonSafeOptions = NSMutableDictionary()
+        for (key, value) in launchOptions {
+            let stringKey = String(describing: key as AnyObject)
+            if let url = value as? URL {
+                jsonSafeOptions[stringKey] = url.absoluteString
+            } else if JSONSerialization.isValidJSONObject([value]) {
+                jsonSafeOptions[stringKey] = value
+            }
+        }
+        // Fire-and-forget: native `handleLaunchOptions:` only sets a pending-deeplink flag and has
+        // no dependency on `initialize`. It must run before `registerSessionReadyListener`, which
+        // Dart registers after `init()` — forwarding here satisfies that earlier than caching did.
+        executeJson(forMethod: "handleLaunchOptions",
+                    params: ["launchOptions": jsonSafeOptions]) { _, _ in }
         return false
     }
 

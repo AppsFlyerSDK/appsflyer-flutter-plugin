@@ -32,7 +32,6 @@ AppsFlyerSdk.init(devKey: ..., appId: ...)                            [lib/src/a
         → setPluginInfo {plugin: "flutter", pluginVersion: kAppsFlyerPluginVersion}
         → then an ordered sequence in its completion:
           → initialize {devKey, appId}
-          → handleLaunchOptions (only when launch options were buffered)
   → the setPluginInfo outcome is ignored on both platforms; only an initialize failure
     surfaces to Dart as an AppsFlyerException
 ```

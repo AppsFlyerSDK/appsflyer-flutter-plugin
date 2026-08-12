@@ -30,9 +30,17 @@ enum AFRPCBridge {
     /// `AppsFlyerEventBus.detach`. Weak so a released plugin cannot keep itself alive here.
     @MainActor private static weak var eventHandlerOwner: AnyObject?
 
+    /// `completion` is always invoked on the main thread.
+    ///
+    /// AppsFlyerRPC documents main-thread delivery today, but the hop is one line inside a vendored
+    /// binary framework. Normalizing here means a future RPC version that resumes off the main actor
+    /// degrades into an extra queue hop instead of unsynchronized mutations in plugin state (for
+    /// example `markBridgeReady` / `pendingEvents`) from an RPC completion.
     static func executeJson(_ jsonRequest: String, completion: @escaping (String) -> Void) {
         onMainActor {
-            AppsFlyerRPCBridge.shared.executeJson(jsonRequest, completion: completion)
+            AppsFlyerRPCBridge.shared.executeJson(jsonRequest) { response in
+                onMainActor { completion(response) }
+            }
         }
     }
 
