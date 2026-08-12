@@ -304,8 +304,6 @@ void main() {
       await androidSdk.setDisableIDFVCollection(true);
       await androidSdk.setShouldCollectDeviceName(true);
       await androidSdk.setCurrentDeviceLanguage('en');
-      await androidSdk.setUseReceiptValidationSandbox(true);
-      await androidSdk.setUseUninstallSandbox(true);
       await androidSdk.setFacebookDeferredAppLink('https://example.com');
       await androidSdk.handlePushNotification({'aps': {}});
 
@@ -314,14 +312,76 @@ void main() {
 
     test('platform-only value calls return a safe default off-platform',
         () async {
-      expect(await iosSdk.getHostName(), isNull);
-      expect(await iosSdk.getHostPrefix(), isNull);
-      expect(await iosSdk.getOutOfStore(), isNull);
-      expect(await iosSdk.getAttributionId(), isNull);
       expect(await iosSdk.isStopped(), isFalse);
-      expect(await iosSdk.isPreInstalledApp(), isFalse);
 
       expect(rpcMethod, isNull);
+    });
+
+    test(
+        'symmetric platform-only getters surface RPC method-not-found off-platform',
+        () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(methodChannel, (call) async {
+        final args = Map<String, dynamic>.from(call.arguments as Map);
+        rpcMethod = args['method'] as String;
+        throw PlatformException(
+          code: '404',
+          message: 'Method not found: $rpcMethod',
+        );
+      });
+
+      for (final getter in <Future<Object?> Function()>[
+        iosSdk.getHostName,
+        iosSdk.getHostPrefix,
+        iosSdk.getOutOfStore,
+        iosSdk.getAttributionId,
+        () => iosSdk.isPreInstalledApp(),
+      ]) {
+        await expectLater(
+          getter(),
+          throwsA(
+            isA<AppsFlyerException>()
+                .having((error) => error.code, 'code', 404)
+                .having(
+                  (error) => error.message,
+                  'message',
+                  'Method not found: $rpcMethod',
+                ),
+          ),
+        );
+      }
+    });
+
+    test(
+        'symmetric platform-only setters surface RPC errors off-platform',
+        () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(methodChannel, (call) async {
+        final args = Map<String, dynamic>.from(call.arguments as Map);
+        rpcMethod = args['method'] as String;
+        throw PlatformException(
+          code: '422',
+          message: 'Unknown RPC method: $rpcMethod',
+        );
+      });
+
+      for (final setter in <Future<void> Function()>[
+        () => androidSdk.setUseReceiptValidationSandbox(true),
+        () => androidSdk.setUseUninstallSandbox(true),
+      ]) {
+        await expectLater(
+          setter(),
+          throwsA(
+            isA<AppsFlyerException>()
+                .having((error) => error.code, 'code', 422)
+                .having(
+                  (error) => error.message,
+                  'message',
+                  'Unknown RPC method: $rpcMethod',
+                ),
+          ),
+        );
+      }
     });
 
     test('iOS ASA collection is configured through an explicit setter',

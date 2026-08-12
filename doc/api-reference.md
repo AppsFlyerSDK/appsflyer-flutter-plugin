@@ -179,10 +179,15 @@ Contains an optional numeric error code and message. Native failures can use
 HTTP-style codes (`400`, `422`, `500`, …). When the platform supplies a
 non-numeric code, `code` is `null` and `message` carries the failure text.
 
-Calling a platform-only API on the wrong platform does not throw. The plugin
-logs a warning, skips the native call, and returns a safe default — `null` or
-`false` for APIs with a return value, and nothing for `void` APIs. This keeps
-cross-platform call sites free of platform branches without hiding the mistake.
+Calling a platform-only API on the wrong platform usually does not throw. Most
+guarded APIs log a warning, skip the native call, and return a safe default —
+`null` or `false` for APIs with a return value, and nothing for `void` APIs.
+Seven symmetric getters and setters route through the native RPC layer instead:
+`getHostName`, `getHostPrefix`, `getOutOfStore`, `isPreInstalledApp`,
+`getAttributionId`, `setUseReceiptValidationSandbox`, and
+`setUseUninstallSandbox`. Wrong-platform calls to those APIs surface as
+`AppsFlyerException` (typically code `404` on iOS; on Android the interim RPC
+dispatcher maps unknown methods to code `422`).
 
 ---
 
@@ -332,7 +337,7 @@ longer needed. Android also exposes
 [`unregisterConversionListener()`](#unregisterConversionListener) to remove its
 native listener; iOS has no corresponding unregister operation.
 
-**<a id="getAttributionId"> `Future<String?> getAttributionId()`** — returns the Facebook (Katana) attribution ID the SDK reads from the installed Facebook app's on-device content provider (also attached to attribution payloads automatically). Most apps never need it directly; exposed for parity with the native SDK. **Android only** — on iOS it logs a warning and returns `null`.
+**<a id="getAttributionId"> `Future<String?> getAttributionId()`** — returns the Facebook (Katana) attribution ID the SDK reads from the installed Facebook app's on-device content provider (also attached to attribution payloads automatically). Most apps never need it directly; exposed for parity with the native SDK. **Android only** — calling it on iOS throws `AppsFlyerException` when the native RPC layer reports the method as unavailable.
 
 _Example:_
 ```dart
@@ -1327,7 +1332,8 @@ print(appsFlyerSdk.pluginVersion);
 **<a id="isPreInstalledApp"> `Future<bool> isPreInstalledApp()`** — **Android only**
 
 Returns whether the app install was a device preinstall (OEM/manufacturer). On
-iOS it logs a warning and returns `false`. See also `setPreinstallAttribution`.
+iOS the native RPC layer reports the method as unavailable and the call throws
+`AppsFlyerException`. See also `setPreinstallAttribution`.
 
 _Example:_
 ```dart

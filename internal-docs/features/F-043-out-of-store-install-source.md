@@ -19,7 +19,7 @@ Android apps aren't limited to Google Play distribution — they can be side-loa
 ---
 
 ## Call Chain
-Awaitable RPC calls over the single `executeRpc` entry point. Both Dart methods are Android-only: on any other platform the call is ignored with a logged warning and no RPC is dispatched — `setOutOfStore` simply returns, `getOutOfStore` returns `null`.
+Awaitable RPC calls over the single `executeRpc` entry point. `setOutOfStore` remains Android-only with a Dart platform guard. `getOutOfStore` is Android-only at the native RPC layer and routes through `_invokeRpc` without a Dart guard.
 ```
 AppsFlyerSdk.setOutOfStore(String sourceName)                            [lib/src/appsflyer_sdk.dart]
   → not Android: log warning, return (no RPC dispatched)
@@ -28,9 +28,9 @@ AppsFlyerSdk.setOutOfStore(String sourceName)                            [lib/sr
       → Android: dispatchRpc → AppsFlyerRpcHandler.execute("setOutOfStore") → SDK setOutOfStore
 
 AppsFlyerSdk.getOutOfStore()                                             [lib/src/appsflyer_sdk.dart]
-  → not Android: log warning, return null (no RPC dispatched)
   → _invokeRpc<String>('getOutOfStore')
     → Android: dispatchRpc → AppsFlyerRpcHandler.execute("getOutOfStore") → SDK getOutOfStore
+    → iOS: native RPC reports method not found → AppsFlyerException (404)
   → PlatformException is converted to AppsFlyerException
 ```
 
@@ -48,18 +48,18 @@ AppsFlyerSdk.getOutOfStore()                                             [lib/sr
 | | |
 |--|--|
 | **Input** | `setOutOfStore`: non-empty `sourceName` (`String`) such as `"amazon"`, sent under the `sourceName` key. Android RPC rejects an empty string and the native SDK stores the value lowercased. `getOutOfStore`: no input. |
-| **Output** | `setOutOfStore`: `Future<void>` completing after RPC validation and synchronous SDK invocation, with no callback or timeout. `getOutOfStore`: `Future<String?>` resolving to the native stored value, or `null` when none exists. Bridge/validation failures surface as `AppsFlyerException`. Off Android, the setter dispatches nothing and the getter returns `null`, so off-platform `null` also means "call ignored". |
+| **Output** | `setOutOfStore`: `Future<void>` completing after RPC validation and synchronous SDK invocation, with no callback or timeout. `getOutOfStore`: `Future<String?>` resolving to the native stored value, or `null` when none exists. Bridge/validation failures surface as `AppsFlyerException`. Off Android, `setOutOfStore` is a logged no-op; `getOutOfStore` throws `AppsFlyerException` when the native RPC layer reports the method as unavailable. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` → `'maps every Android-only API'` verifies that `setOutOfStore('amazon')` dispatches RPC method `setOutOfStore` with `{'sourceName': 'amazon'}`. `'maps getters and native return values'` verifies that `getOutOfStore()` dispatches `getOutOfStore` and returns the mocked native value. Off-platform behavior is covered too: `'platform-only void calls are ignored without reaching the native RPC'` calls `setOutOfStore('source')` on iOS and asserts no RPC is dispatched, and `'platform-only value calls return a safe default off-platform'` asserts `getOutOfStore()` resolves to `null` on iOS with no RPC dispatched. The Dart harness cannot verify the native Android SDK read/write behavior.
+`test/appsflyer_sdk_test.dart` → `'maps every Android-only API'` verifies that `setOutOfStore('amazon')` dispatches RPC method `setOutOfStore` with `{'sourceName': 'amazon'}`. `'maps getters and native return values'` verifies that `getOutOfStore()` dispatches `getOutOfStore` and returns the mocked native value. Off-platform behavior is covered too: `'platform-only void calls are ignored without reaching the native RPC'` calls `setOutOfStore('source')` on iOS and asserts no RPC is dispatched, and `'symmetric platform-only getters surface RPC method-not-found off-platform'` asserts `getOutOfStore()` throws `AppsFlyerException` with code `404` on iOS. The Dart harness cannot verify the native Android SDK read/write behavior.
 
 ---
 
 ## Known Limitations
-- **Android-only**: no iOS implementation exists (out-of-store distribution is an Android-specific concern). Calling either Dart method on another platform is a no-op, but a logged one — the plugin emits a `debugPrint` warning and dispatches no RPC.
-- `getOutOfStore()` cannot distinguish "never set" from "native returned nothing" — both surface as `null`, as does an off-Android call that was ignored.
+- **Android-only**: no iOS implementation exists (out-of-store distribution is an Android-specific concern). `setOutOfStore` on another platform is still a logged no-op; `getOutOfStore` throws `AppsFlyerException` when the native RPC layer reports the method as unavailable.
+- `getOutOfStore()` cannot distinguish "never set" from "native returned nothing" on Android — both surface as `null`.
 - The Android SDK normalizes the stored source name to lowercase; `getOutOfStore()` can therefore return a different casing from the input.
 
 ---

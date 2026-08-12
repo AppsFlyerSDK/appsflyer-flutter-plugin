@@ -398,25 +398,15 @@ class AppsFlyerSdk {
 
   /// Returns the configured host name.
   ///
-  /// Android only. On another platform the call is logged and ignored, and this
-  /// method returns `null`.
-  Future<String?> getHostName() async {
-    if (!_isAndroid) {
-      _logUnsupportedPlatform('getHostName', 'Android');
-      return null;
-    }
+  /// Android only.
+  Future<String?> getHostName() {
     return _invokeRpc<String>('getHostName');
   }
 
   /// Returns the configured host prefix.
   ///
-  /// Android only. On another platform the call is logged and ignored, and this
-  /// method returns `null`.
-  Future<String?> getHostPrefix() async {
-    if (!_isAndroid) {
-      _logUnsupportedPlatform('getHostPrefix', 'Android');
-      return null;
-    }
+  /// Android only.
+  Future<String?> getHostPrefix() {
     return _invokeRpc<String>('getHostPrefix');
   }
 
@@ -485,13 +475,8 @@ class AppsFlyerSdk {
 
   /// Returns the out-of-store install source.
   ///
-  /// Android only. On another platform the call is logged and ignored, and this
-  /// method returns `null`.
-  Future<String?> getOutOfStore() async {
-    if (!_isAndroid) {
-      _logUnsupportedPlatform('getOutOfStore', 'Android');
-      return null;
-    }
+  /// Android only.
+  Future<String?> getOutOfStore() {
     return _invokeRpc<String>('getOutOfStore');
   }
 
@@ -785,11 +770,7 @@ class AppsFlyerSdk {
   /// Enables sandbox mode for App Store receipt validation.
   ///
   /// iOS only.
-  Future<void> setUseReceiptValidationSandbox(bool sandbox) async {
-    if (!_isIOS) {
-      _logUnsupportedPlatform('setUseReceiptValidationSandbox', 'iOS');
-      return;
-    }
+  Future<void> setUseReceiptValidationSandbox(bool sandbox) {
     return _invokeVoidRpc(
       'setUseReceiptValidationSandbox',
       {'sandbox': sandbox},
@@ -800,11 +781,7 @@ class AppsFlyerSdk {
   ///
   /// iOS only. This is the uninstall-measurement companion to
   /// [setUseReceiptValidationSandbox].
-  Future<void> setUseUninstallSandbox(bool sandbox) async {
-    if (!_isIOS) {
-      _logUnsupportedPlatform('setUseUninstallSandbox', 'iOS');
-      return;
-    }
+  Future<void> setUseUninstallSandbox(bool sandbox) {
     return _invokeVoidRpc(
       'setUseUninstallSandbox',
       {'sandbox': sandbox},
@@ -1062,25 +1039,15 @@ class AppsFlyerSdk {
 
   /// Whether the app was installed as an OEM or manufacturer preinstall.
   ///
-  /// Android only. On another platform the call is logged and ignored, and this
-  /// method returns `false`.
+  /// Android only.
   Future<bool> isPreInstalledApp() async {
-    if (!_isAndroid) {
-      _logUnsupportedPlatform('isPreInstalledApp', 'Android');
-      return false;
-    }
     return await _invokeRpc<bool>('isPreInstalledApp') ?? false;
   }
 
   /// Returns the Facebook attribution ID, if available.
   ///
-  /// Android only. On another platform the call is logged and ignored, and this
-  /// method returns `null`.
-  Future<String?> getAttributionId() async {
-    if (!_isAndroid) {
-      _logUnsupportedPlatform('getAttributionId', 'Android');
-      return null;
-    }
+  /// Android only.
+  Future<String?> getAttributionId() {
     return _invokeRpc<String>('getAttributionId');
   }
 

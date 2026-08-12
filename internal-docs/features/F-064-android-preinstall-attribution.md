@@ -21,14 +21,15 @@ setPreinstallAttribution(mediaSource, campaign:, siteId:)
     → AppsFlyerLib.setPreinstallAttribution(...)
 
 isPreInstalledApp()
-  → Android guard → RPC with empty params
-    → AppsFlyerLib.isPreInstalledApp(context) → boolean reply
+  → _invokeRpc<bool>('isPreInstalledApp')
+    → Android: AppsFlyerLib.isPreInstalledApp(context) → boolean reply
+    → iOS: native RPC reports method not found → AppsFlyerException (404)
 ```
 
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | Public Android-only setter/getter and safe off-platform defaults |
+| `lib/src/appsflyer_sdk.dart` | Public Android-only setter with an off-platform guard; `isPreInstalledApp()` routes through RPC without a Dart guard |
 | `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Generic RPC forwarding |
 | Android `plugin_bridge/.../RpcRequest.kt`, `JsonRpcRequestParser.kt`, and `AppsFlyerRpcHandler.kt` | Validation, mapping, native calls, and getter reply |
 
@@ -36,15 +37,15 @@ isPreInstalledApp()
 | | |
 |--|--|
 | **Input** | `mediaSource` is required and non-empty; `campaign` and `siteId` are optional strings defaulting to `''`. `isPreInstalledApp()` has no input. |
-| **Output** | The setter returns `Future<void>` after synchronous SDK invocation; the getter returns `Future<bool>`. Off Android the setter is a logged no-op and the getter logs and returns `false`. Bridge failures surface as `AppsFlyerException`. |
+| **Output** | The setter returns `Future<void>` after synchronous SDK invocation; the getter returns `Future<bool>`. Off Android the setter is a logged no-op; the getter throws `AppsFlyerException` when the native RPC layer reports the method as unavailable. Bridge failures surface as `AppsFlyerException`. |
 
 ## Tests
-`test/appsflyer_sdk_test.dart` verifies the setter map, getter return value, and both off-platform guards. Android native parser/handler tests cover validation and forwarding.
+`test/appsflyer_sdk_test.dart` verifies the setter map, getter return value, and the setter off-platform guard. `'symmetric platform-only getters surface RPC method-not-found off-platform'` covers `isPreInstalledApp()` on iOS. Android native parser/handler tests cover validation and forwarding.
 
 ## Known Limitations
 - Dart does not validate an empty media source; Android RPC rejects it after the channel round trip.
 - The setter Future does not confirm that the campaign was included in a Launch. It must run before the relevant `start()`.
-- Off-platform `false` is a safe default, not a real native classification.
+- Off-platform `false` from `isPreInstalledApp()` is no longer returned; wrong-platform calls throw `AppsFlyerException` instead.
 
 ## Dependencies
 No required feature dependency; this is configuration consumed by a later F-002 Launch.

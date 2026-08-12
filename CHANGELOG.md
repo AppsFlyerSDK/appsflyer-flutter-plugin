@@ -67,8 +67,12 @@ removed APIs, renames, lifecycle changes, and upgrade instructions.
   `setCustomerIdAndLogSession`.
 - Runtime configuration setters must be re-applied on every cold start before
   `start()`.
-- Guarded platform-only methods log and return a safe default when called
-  outside their supported platform.
+- Most guarded platform-only methods log and return a safe default when called
+  outside their supported platform. Seven symmetric getters and setters
+  (`getHostName`, `getHostPrefix`, `getOutOfStore`, `isPreInstalledApp`,
+  `getAttributionId`, `setUseReceiptValidationSandbox`,
+  `setUseUninstallSandbox`) route through the native RPC layer instead and throw
+  `AppsFlyerException` when the method is unavailable on that platform.
 - `setInstallId()` requires `AppsFlyerAllowCustomInstallId=YES` in iOS
   `Info.plist` and must be called before `init()` on iOS. Android requires
   `APPSFLYER_ALLOW_CUSTOM_INSTALL_ID=true` in `AndroidManifest.xml` and the call

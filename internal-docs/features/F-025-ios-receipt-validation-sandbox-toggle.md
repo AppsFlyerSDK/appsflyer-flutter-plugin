@@ -21,20 +21,19 @@ Called by the host app during setup or configuration, before the purchase-valida
 ---
 
 ## Call Chain
-Both toggles are awaitable RPC calls, restricted to iOS by a platform check. On any other platform the call is ignored with a logged warning and no RPC is dispatched, so a misplaced call is visible only in the log.
+Both toggles are awaitable RPC calls, iOS-only at the native RPC layer. Dart no longer short-circuits them off iOS; wrong-platform calls reach the native RPC dispatcher and surface `AppsFlyerException`.
 
 ```
 AppsFlyerSdk.setUseReceiptValidationSandbox(bool sandbox)              [lib/src/appsflyer_sdk.dart]
-  → not iOS: log warning, return (no RPC dispatched)
   → _invokeVoidRpc('setUseReceiptValidationSandbox', {'sandbox': sandbox})
     → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
       → iOS: AppsflyerSdkPlugin.executeRpc → dispatchRpc:method:@"setUseReceiptValidationSandbox"
         → [AppsFlyerRPCBridge shared] executeJson:completion: → AFRPCRequestHandler → SDK
+      → Android: unknown method → AppsFlyerException (422 interim)
   → successful per-call reply completes Future<void>
   → PlatformException is converted to AppsFlyerException
 
 AppsFlyerSdk.setUseUninstallSandbox(bool sandbox)
-  → not iOS: log warning, return (no RPC dispatched)
   → _invokeVoidRpc('setUseUninstallSandbox', {'sandbox': sandbox})
 ```
 
@@ -43,7 +42,7 @@ AppsFlyerSdk.setUseUninstallSandbox(bool sandbox)
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `setUseReceiptValidationSandbox(bool sandbox)` → RPC `setUseReceiptValidationSandbox` with `{sandbox}`; `setUseUninstallSandbox(bool sandbox)` → RPC `setUseUninstallSandbox` with `{sandbox}`. Both iOS-only, guarded by an iOS platform check |
+| `lib/src/appsflyer_sdk.dart` | `setUseReceiptValidationSandbox(bool sandbox)` → RPC `setUseReceiptValidationSandbox` with `{sandbox}`; `setUseUninstallSandbox(bool sandbox)` → RPC `setUseUninstallSandbox` with `{sandbox}`. Both iOS-only at the native RPC layer |
 | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | No per-method handler — generic `executeRpc` → `dispatchRpc` forwards to `AppsFlyerRPCBridge` |
 
 ---
@@ -52,19 +51,19 @@ AppsFlyerSdk.setUseUninstallSandbox(bool sandbox)
 | | |
 |--|--|
 | **Input** | `sandbox` (`bool`), sent under the `sandbox` params key |
-| **Output** | `Future<void>` completes after RPC validation and the synchronous native SDK property assignment. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or request timeout. On a non-iOS platform the call logs a warning and returns without dispatching an RPC. The effect is a stateful flag on the native iOS SDK that changes subsequent `validateAndLogInAppPurchase` (F-024) or uninstall-measurement behavior. |
+| **Output** | `Future<void>` completes after RPC validation and the synchronous native SDK property assignment. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or request timeout. On a non-iOS platform the call reaches the Android RPC dispatcher and throws `AppsFlyerException` (code `422` interim until the native RPC fix lands). The effect is a stateful flag on the native iOS SDK that changes subsequent `validateAndLogInAppPurchase` (F-024) or uninstall-measurement behavior. |
 
 ---
 
 ## Tests
 `test/appsflyer_sdk_test.dart` — `maps every iOS-only API` asserts that `setUseReceiptValidationSandbox(true)` and `setUseUninstallSandbox(true)` each dispatch their own RPC method with `{'sandbox': true}`.
 
-`platform-only void calls are ignored without reaching the native RPC` covers both toggles explicitly: called on Android, each is asserted to dispatch no RPC method.
+`platform-only void calls are ignored without reaching the native RPC` still covers other iOS-only APIs. `'symmetric platform-only setters surface RPC errors off-platform'` covers both sandbox toggles on Android and expects `AppsFlyerException` with code `422`.
 
 ---
 
 ## Known Limitations
-- iOS-only: calling either method on another platform is a no-op that only logs a warning, so a misplaced call in shared code is easy to miss unless the log is read. Cross-platform call sites no longer need to branch for correctness.
+- iOS-only at the native RPC layer: calling either method on Android throws `AppsFlyerException` (code `422` interim) instead of logging and returning silently.
 - Use the sandbox toggles only for test/sandbox environments or when AppsFlyer support instructs you to do so; production builds normally leave both disabled.
 - Neither toggle has example-app coverage.
 - The flag is native SDK state with no read-back API, so the Flutter layer cannot report which endpoint is currently selected.
