@@ -27,6 +27,10 @@ private let kRpcSetPluginInfo = "setPluginInfo"
 /// valve. Mirrors `MAX_PENDING_EVENTS` in `AppsFlyerEventBus.kt`.
 private let kMaxPendingEvents = 64
 
+/// Matches `PLUGIN_DETACHED` / detach messaging in `AppsflyerSdkPlugin.kt`.
+private let kPluginDetached = "PLUGIN_DETACHED"
+private let kPluginDetachedMessage = "Plugin is not attached to a Flutter engine"
+
 @objc(AppsflyerSdkPlugin)
 public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
 
@@ -41,6 +45,10 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     private var eventSink: FlutterEventSink?
     private var pendingEvents: [String] = []
     private var eventHandlerRegistered = false
+    /// Set in `tearDownForEngineDetach()` so in-flight `executeJson` completions and nested
+    /// `DispatchQueue.main.async` work from `logAndOpenStoreFromRpc` do not call `FlutterResult` or
+    /// `markBridgeReady()` after this engine's channel is gone.
+    private var isEngineDetached = false
 
     // ============================================================================
     // Plugin / channel lifecycle
@@ -99,6 +107,7 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     }
 
     private func tearDownForEngineDetach() {
+        isEngineDetached = true
         eventSink = nil
         pendingEvents.removeAll()
         eventHandlerRegistered = false
@@ -154,6 +163,12 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     /// Single RPC entry point. Initialization and the cross-promotion URL side effect require
     /// plugin orchestration; every other method is forwarded to AppsFlyerRPC as-is.
     private func executeRpc(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        guard !isEngineDetached else {
+            deliverFlutterResult(result, FlutterError(code: kPluginDetached,
+                                                      message: kPluginDetachedMessage,
+                                                      details: nil))
+            return
+        }
         // Internal transport contract (_invokeRpc): {method: String, params: Map}. Apps must not
         // call this channel directly; a malformed envelope is an integration error and traps here.
         let arguments = call.arguments as! NSDictionary
@@ -199,12 +214,15 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
         executeJson(forMethod: kRpcSetPluginInfo,
                     params: ["plugin": "flutter", "pluginVersion": kAppsFlyerPluginVersion]) { _, _ in
             self.runSequence(sequence, index: 0) { sequenceError in
+                guard !self.isEngineDetached else {
+                    return
+                }
                 if let sequenceError = sequenceError {
-                    result(sequenceError)
+                    self.deliverFlutterResult(result, sequenceError)
                     return
                 }
                 AppsFlyerAttribution.shared().markBridgeReady()
-                result(nil)
+                self.deliverFlutterResult(result, nil)
             }
         }
     }
@@ -229,8 +247,11 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
 
     private func logAndOpenStoreFromRpc(_ params: NSDictionary, result: @escaping FlutterResult) {
         executeJson(forMethod: kRpcLogAndOpenStore, params: params) { resultObj, error in
+            guard !self.isEngineDetached else {
+                return
+            }
             if let error = error {
-                result(error)
+                self.deliverFlutterResult(result, error)
                 return
             }
             let data = resultObj?["data"] as? [String: Any]
@@ -240,13 +261,16 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
             }
             if let url = url {
                 DispatchQueue.main.async {
+                    guard !self.isEngineDetached else {
+                        return
+                    }
                     UIApplication.shared.open(url, options: [:]) { _ in
-                        result(nil)
+                        self.deliverFlutterResult(result, nil)
                     }
                 }
                 return
             }
-            result(nil)
+            self.deliverFlutterResult(result, nil)
         }
     }
 
@@ -256,12 +280,24 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
 
     private func dispatchRpc(_ method: String, params: NSDictionary, result: @escaping FlutterResult) {
         executeJson(forMethod: method, params: params) { resultObj, error in
-            if let error = error {
-                result(error)
+            guard !self.isEngineDetached else {
                 return
             }
-            result(self.unwrapValue(forMethod: method, resultObj: resultObj))
+            if let error = error {
+                self.deliverFlutterResult(result, error)
+                return
+            }
+            self.deliverFlutterResult(result, self.unwrapValue(forMethod: method, resultObj: resultObj))
         }
+    }
+
+    /// Invokes `FlutterResult` only while this engine instance is still attached. After detach the
+    /// isolate may already be gone; skipping is safer than replying on a dead channel.
+    private func deliverFlutterResult(_ result: @escaping FlutterResult, _ value: Any?) {
+        guard !isEngineDetached else {
+            return
+        }
+        result(value)
     }
 
     /// Serializes the {id?, method, params} envelope, calls the bridge, and normalizes the JSON string
@@ -277,6 +313,9 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
             return
         }
         AFRPCBridge.executeJson(json) { response in
+            guard !self.isEngineDetached else {
+                return
+            }
             var parseError: Error?
             guard let parsed = self.dictionary(fromJson: response, error: &parseError) else {
                 completion(nil, FlutterError(code: "RPC_PARSE_ERROR",
