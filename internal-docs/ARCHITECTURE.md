@@ -163,7 +163,7 @@ Flutter public method
 
 The native RPC event notifier emits JSON event envelopes. Both platform plugins forward those envelopes through `af-events` without maintaining Dart callback slots.
 
-Events emitted before Dart attaches an `EventChannel` listener are buffered by the platform plugin and replayed when `onListen` runs. On Android that buffer lives in the process-scoped `AppsFlyerEventBus` rather than on the plugin instance, so it also spans engine teardown: the native SDK keeps the listener registered by a detached engine's `AppsFlyerRpcHandler`, and routing every event through the bus means those late events reach the next subscriber instead of an unreachable plugin. iOS instead removes its bridge event handler in `detachFromEngineForRegistrar:`, so it has no equivalent late-delivery path and keeps its engine-scoped buffer.
+Events emitted before Dart attaches an `EventChannel` listener are buffered by the platform plugin and replayed when `onListen` runs. On Android that buffer lives in the process-scoped `AppsFlyerEventBus` rather than on the plugin instance, so it also spans engine teardown: the native SDK keeps the listener registered by a detached engine's `AppsFlyerRpcHandler`, and routing every event through the bus means those late events reach the next subscriber instead of an unreachable plugin. iOS instead removes its bridge event handler in `detachFromEngineForRegistrar:` — only when the detaching instance still owns the bridge's single handler slot — so it has no equivalent late-delivery path and keeps its engine-scoped buffer.
 
 The Dart constructor creates one broadcast stream. It catches malformed transport values, logs them with `debugPrint`, and drops them instead of terminating the public streams:
 
@@ -347,6 +347,7 @@ Purchase Connector is a separate optional native subsystem using `af-purchase-co
 - Native validation callbacks travel back over the same Purchase Connector `MethodChannel`, not `af-events`. Dart stores callback functions: separate Android subscription/in-app success/failure listeners and one combined iOS validation callback.
 - Android marshals connector callbacks to the main looper and serializes maps as JSON strings. iOS dispatches its delegate callback to the main queue and also sends JSON text; Dart accepts either a JSON string or a decoded map.
 - On Android, `AppsFlyerPurchaseConnector` keys its `MethodChannel`, `ConnectorWrapper`, and validation listeners per `FlutterPluginBinding`, so add-to-app / multi-engine setups do not share one channel or tear down another engine's connector on detach.
+- On iOS, `PurchaseConnectorPlugin` remains a process singleton holding one channel, so the last engine to register owns it. It publishes no instance of its own and therefore receives no detach callback directly: `AppsflyerSdkPlugin.detachFromEngineForRegistrar:` calls `tearDownForEngineDetach(registrar:)`, which stops transaction observation, clears the revenue delegate and the channel, and lets the next engine call `configure` again. The teardown is skipped unless the detaching registrar still owns the channel, so a stale engine cannot stop observation for a live one.
 
 ## 10. Error handling and state boundaries
 
@@ -357,7 +358,7 @@ Purchase Connector is a separate optional native subsystem using `af-purchase-co
 - iOS distinguishes protocol errors in the response `error` envelope from handler failures represented by `result.success == false`; the iOS plugin adapter converts both to `FlutterError` and unwraps successful values.
 - A malformed native event is logged and dropped by Dart. It does not become a stream error. Conversion-data failure and UDL failure are normal event payloads, not failed MethodChannel requests.
 - Android detaches channels, clears pending events, shuts down its executor, and releases its RPC handler/context when the Flutter engine detaches.
-- iOS registers its RPC event handler during plugin construction and tears it down in `detachFromEngineForRegistrar:` (after `publish:` in `registerWithRegistrar:`), clearing `eventSink`, `pendingEvents`, and the bridge event handler when the `FlutterEngine` is deallocated.
+- iOS registers its RPC event handler during plugin construction and tears it down in `detachFromEngineForRegistrar:` (after `publish:` in `registerWithRegistrar:`), clearing `eventSink`, `pendingEvents`, and the bridge event handler when the `FlutterEngine` is deallocated. `AppsFlyerRPCBridge` holds one handler per process while plugin instances are per engine, so `AFRPCBridge` records the registering instance as the slot's owner and removes the handler only for that owner — a detaching engine cannot silence events for an engine that registered after it and is still alive. This mirrors the `this.sink === sink` guard in `AppsFlyerEventBus.detach`; on both platforms the newest registration owns event delivery.
 - Event-stream subscriptions belong to the Flutter application; the SDK exposes broadcast streams and does not install per-callback global state.
 
 ## 11. Serialization and parameter contracts

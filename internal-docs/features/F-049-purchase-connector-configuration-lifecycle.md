@@ -39,6 +39,11 @@ afPurchaseClient.stopObservingTransactions()
   → _methodChannel.invokeMethod("stopObservingTransactions")
     → Android: connectorWrapper.stopObservingTransactions()
     → iOS: connector.stopObservingTransactions()
+
+Flutter engine detach (no Dart call involved)
+  → Android: AppsflyerSdkPlugin.onDetachedFromEngine → AppsFlyerPurchaseConnector.onDetachedFromEngine(binding) → EngineAttachment.dispose()
+  → iOS: AppsflyerSdkPlugin.detachFromEngineForRegistrar: → PurchaseConnectorPlugin.tearDownForEngineDetach(registrar:)   [skipped unless that registrar still owns the channel]
+    → connector.stopObservingTransactions(); purchaseRevenueDelegate = nil; connector = nil; method channel handler cleared
 ```
 
 ---
@@ -52,7 +57,7 @@ afPurchaseClient.stopObservingTransactions()
 | `lib/src/appsflyer_constants.dart` | Channel name (`af-purchase-connector`) and argument key string constants |
 | `android/src/main/include-connector/com/appsflyer/appsflyersdk/AppsFlyerPurchaseConnector.kt` | Android native method-channel handler: `configure`, `startObservingTransactions`, `stopObservingTransactions`; engine state keyed per `FlutterPluginBinding` for multi-engine add-to-app |
 | `android/src/main/include-connector/com/appsflyer/appsflyersdk/ConnectorWrapper.kt` | Wraps `PurchaseClient.Builder` (Play Billing) and the two validation listeners |
-| `ios/PurchaseConnector/PurchaseConnectorPlugin.swift` | iOS native method-channel handler: `configure`, `startObservingTransactions`, `stopObservingTransactions`; owns the `PurchaseConnector.shared()` singleton |
+| `ios/PurchaseConnector/PurchaseConnectorPlugin.swift` | iOS native method-channel handler: `configure`, `startObservingTransactions`, `stopObservingTransactions`; owns the `PurchaseConnector.shared()` singleton and releases it in `tearDownForEngineDetach(registrar:)` when its own engine detaches |
 
 ---
 
@@ -75,6 +80,7 @@ No dedicated test found. `test/appsflyer_sdk_test.dart` contains no references t
 - iOS StoreKit 2 selection silently falls back to StoreKit 1 on iOS < 15.0 (`PurchaseConnectorPlugin.configure`), with only a `print` statement — an app targeting iOS 15+ that assumed SK2 semantics on an older OS gets SK1 behavior with no error surfaced to Dart.
 - `doc/purchase-connector.md` documents calling `startObservingTransactions` right after core [`start`](/doc/getting-started.md#start) and `stopObservingTransactions` right before `stop()` as best practice, but nothing in code enforces or checks core-SDK start state — the ordering is a documentation convention only, not a code dependency.
 - Entire feature is a no-op unless the app opted in at build time (see F-054); nothing in the Dart-only view (this file's code) tells the caller whether the native side is even present.
+- iOS keeps one connector and one channel per process, so with several Flutter engines the last one to register owns both and earlier engines stop receiving validation callbacks — Android instead keys them per `FlutterPluginBinding`. Engine detach is ownership-checked on iOS, so a detaching engine no longer stops observation for a live one, but per-engine connectors remain Android-only.
 
 ---
 

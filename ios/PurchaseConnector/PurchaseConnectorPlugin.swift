@@ -24,6 +24,14 @@ import Flutter
     
     /// Instance of method channel providing a bridge to Dart code.
     private var methodChannel: FlutterMethodChannel? = nil
+
+    /// Registrar whose engine installed the channel this singleton currently holds.
+    ///
+    /// This plugin keeps one channel per process while registration happens per engine, so a host
+    /// running several engines hands the channel to whichever one registered last. Recording the
+    /// registrar lets a detaching engine tell whether the channel is still its own before tearing
+    /// anything down, the same guard `AFRPCBridge` applies to the RPC event handler.
+    private weak var owningRegistrar: FlutterPluginRegistrar? = nil
     
     private var logOptions: AutoLogPurchaseRevenueOptions = []
     
@@ -38,8 +46,45 @@ import Flutter
     /// Mandatory method needed to register the plugin with iOS part of Flutter app.
     public static func register(with registrar: FlutterPluginRegistrar) {
         /// Create a new method channel with the registrar.
+        shared.owningRegistrar = registrar
         shared.methodChannel =  FlutterMethodChannel(name: AF_PURCHASE_CONNECTOR_CHANNEL, binaryMessenger: registrar.messenger())
         shared.methodChannel!.setMethodCallHandler(shared.methodCallHandler)
+    }
+
+    /// Releases everything this engine's registration owns, mirroring `EngineAttachment.dispose()` in
+    /// the Android connector: transaction observation stops, the delegate stops pointing at a channel
+    /// whose engine is gone, and `configure` becomes available again for the next engine.
+    ///
+    /// Called by `AppsflyerSdkPlugin.detachFromEngineForRegistrar:` — this plugin publishes no
+    /// instance of its own, so it has no detach callback to receive directly.
+    internal static func tearDownForEngineDetach(registrar: FlutterPluginRegistrar) {
+        onMain {
+            shared.tearDown(registrar: registrar)
+        }
+    }
+
+    private func tearDown(registrar: FlutterPluginRegistrar) {
+        /// A stale engine must not stop observing transactions for an engine that registered after it.
+        guard owningRegistrar === registrar else {
+            return
+        }
+        owningRegistrar = nil
+        connector?.stopObservingTransactions()
+        connector?.purchaseRevenueDelegate = nil
+        connector = nil
+        logOptions = []
+        methodChannel?.setMethodCallHandler(nil)
+        methodChannel = nil
+    }
+
+    /// Engine detach is the one entry point that may run off the main thread, and both StoreKit
+    /// observation and channel teardown belong on it.
+    private static func onMain(_ body: @escaping () -> Void) {
+        if Thread.isMainThread {
+            body()
+        } else {
+            DispatchQueue.main.async(execute: body)
+        }
     }
 
     /// Method called when a Flutter method call occurs. It handles and routes flutter method invocations.

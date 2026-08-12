@@ -90,6 +90,12 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
 
     @objc(detachFromEngineForRegistrar:)
     public func detachFromEngine(for registrar: FlutterPluginRegistrar) {
+        #if ENABLE_PURCHASE_CONNECTOR
+        // The connector is registered from `register(with:)` but publishes no instance of its own, so
+        // it only reaches a detach callback through this one. Android forwards the same pair of
+        // lifecycle events to `AppsFlyerPurchaseConnector`.
+        PurchaseConnectorPlugin.tearDownForEngineDetach(registrar: registrar)
+        #endif
         tearDownForEngineDetach()
     }
 
@@ -97,16 +103,22 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
         eventSink = nil
         pendingEvents.removeAll()
         eventHandlerRegistered = false
-        AFRPCBridge.removeEventHandler()
+        // Ownership-checked: in a multi-engine host this instance may no longer hold the bridge's
+        // single event-handler slot, and tearing down must not cut events off from the engine that
+        // does. See `AFRPCBridge.eventHandlerOwner`.
+        AFRPCBridge.removeEventHandler(owner: self)
         eventChannel?.setStreamHandler(nil)
     }
 
+    /// `eventHandlerRegistered` only keeps the second call site (`initFromRpc`) from re-registering
+    /// what `init(messenger:)` already installed — instance state cannot guard the bridge's global
+    /// slot, which is what `AFRPCBridge`'s owner tracking is for.
     private func registerEventHandler() {
         if eventHandlerRegistered {
             return
         }
         eventHandlerRegistered = true
-        AFRPCBridge.setEventHandler { [weak self] jsonEvent in
+        AFRPCBridge.setEventHandler(owner: self) { [weak self] jsonEvent in
             self?.deliverEvent(jsonEvent)
         }
     }

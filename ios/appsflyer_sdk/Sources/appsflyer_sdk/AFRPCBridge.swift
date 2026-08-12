@@ -21,6 +21,15 @@ import AppsFlyerRPC
 /// covers it rather than tripping the precondition.
 enum AFRPCBridge {
 
+    /// Owner of the handler currently installed in `AppsFlyerRPCBridge`'s single global slot.
+    ///
+    /// The slot holds one handler per process while plugin instances are per engine, so a host
+    /// running several engines (add-to-app, `FlutterEngineGroup`, multi-scene) hands the slot to
+    /// whichever instance registered last. Recording the owner lets a detaching instance tell
+    /// whether the installed handler is still its own, mirroring the `this.sink === sink` guard in
+    /// `AppsFlyerEventBus.detach`. Weak so a released plugin cannot keep itself alive here.
+    @MainActor private static weak var eventHandlerOwner: AnyObject?
+
     static func executeJson(_ jsonRequest: String, completion: @escaping (String) -> Void) {
         onMainActor {
             AppsFlyerRPCBridge.shared.executeJson(jsonRequest, completion: completion)
@@ -35,16 +44,23 @@ enum AFRPCBridge {
     /// events from arbitrary threads. Normalizing here means a future RPC version that stops hopping
     /// degrades into an extra queue hop instead of an unsynchronized `pendingEvents` mutation and a
     /// `FlutterEventSink` call off the platform thread.
-    static func setEventHandler(_ handler: @escaping (String) -> Void) {
+    static func setEventHandler(owner: AnyObject, _ handler: @escaping (String) -> Void) {
         onMainActor {
+            eventHandlerOwner = owner
             AppsFlyerRPCBridge.shared.setEventHandler { jsonEvent in
                 onMainActor { handler(jsonEvent) }
             }
         }
     }
 
-    static func removeEventHandler() {
+    /// No-op unless `owner` still holds the global slot: an engine tearing down must not silence the
+    /// events of an engine that registered after it and is still alive.
+    static func removeEventHandler(owner: AnyObject) {
         onMainActor {
+            guard eventHandlerOwner === owner else {
+                return
+            }
+            eventHandlerOwner = nil
             AppsFlyerRPCBridge.shared.removeEventHandler()
         }
     }
