@@ -73,19 +73,35 @@ public class AppsFlyerAttribution: NSObject {
 
     @objc(markBridgeReady)
     public func markBridgeReady() {
-        isBridgeReady = true
-        let requests = pendingRequests
-        pendingRequests.removeAll()
-        for request in requests {
-            execute(method: request.method, params: request.params)
+        onMain { [self] in
+            isBridgeReady = true
+            let requests = pendingRequests
+            pendingRequests.removeAll()
+            for request in requests {
+                execute(method: request.method, params: request.params)
+            }
         }
     }
 
     private func executeOrQueue(method: String, params: [String: Any]) {
-        if isBridgeReady {
-            execute(method: method, params: params)
+        onMain { [self] in
+            if isBridgeReady {
+                execute(method: method, params: params)
+            } else {
+                pendingRequests.append(PendingRequest(method: method, params: params))
+            }
+        }
+    }
+
+    /// Serializes `isBridgeReady` / `pendingRequests` on the main queue. UIKit entry points are
+    /// already main-thread; `markBridgeReady` is normalized there by `AFRPCBridge`, but the public
+    /// `@objc` surface must not rely on caller thread affinity. Interim until the RPC lifecycle
+    /// wrapper absorbs this queue.
+    private func onMain(_ body: @escaping () -> Void) {
+        if Thread.isMainThread {
+            body()
         } else {
-            pendingRequests.append(PendingRequest(method: method, params: params))
+            DispatchQueue.main.async(execute: body)
         }
     }
 
