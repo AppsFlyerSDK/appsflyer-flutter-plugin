@@ -373,8 +373,7 @@ void main() {
       }
     });
 
-    test(
-        'symmetric platform-only setters surface RPC errors off-platform',
+    test('symmetric platform-only setters surface RPC errors off-platform',
         () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(methodChannel, (call) async {
@@ -625,7 +624,8 @@ void main() {
       expect(rpcParams, isNot(contains('awaitResponse')));
     });
 
-    test('generateInviteLink throws AppsFlyerException when native returns null',
+    test(
+        'generateInviteLink throws AppsFlyerException when native returns null',
         () async {
       rpcResult = null;
 
