@@ -79,6 +79,10 @@ removed APIs, renames, lifecycle changes, and upgrade instructions.
 - RPC helpers split into `_invokeNullableRpc` and `_invokeRpc<T extends Object>`;
   bool getters such as `isSessionReady`, `isStopped`, and `isPreInstalledApp`
   no longer coerce an unexpected native `null` to `false`.
+- `setSharingFilterForPartners(null)` and `setSharingFilterForPartners([])` on
+  Android are forwarded to the native RPC layer instead of being ignored in Dart.
+  Clearing currently surfaces as `AppsFlyerException` from the Android RPC bridge
+  until the native validation fix lands.
 - `setInstallId()` requires `AppsFlyerAllowCustomInstallId=YES` in iOS
   `Info.plist` and must be called before `init()` on iOS. Android requires
   `APPSFLYER_ALLOW_CUSTOM_INSTALL_ID=true` in `AndroidManifest.xml` and the call

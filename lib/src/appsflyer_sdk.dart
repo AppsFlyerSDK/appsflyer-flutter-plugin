@@ -445,17 +445,9 @@ class AppsFlyerSdk {
   /// Blocks sharing of S2S events through postback or API with the specified
   /// partners.
   ///
-  /// Pass `null` or an empty list to clear the filter on iOS. On Android,
-  /// clearing is not supported — the call is ignored and the existing filter
-  /// stays in place.
-  Future<void> setSharingFilterForPartners(List<String>? partners) async {
-    if (_isAndroid && (partners == null || partners.isEmpty)) {
-      _logIgnoredCall(
-        'setSharingFilterForPartners(clear)',
-        'Android cannot clear the filter; the existing filter is unchanged',
-      );
-      return;
-    }
+  /// Pass `null` or an empty list to clear the filter. The plugin normalizes
+  /// an empty list to `null` before sending the RPC request.
+  Future<void> setSharingFilterForPartners(List<String>? partners) {
     return _invokeVoidRpc(
       'setSharingFilterForPartners',
       {'partners': partners != null && partners.isEmpty ? null : partners},

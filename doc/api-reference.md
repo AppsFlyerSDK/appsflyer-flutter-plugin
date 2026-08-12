@@ -1405,12 +1405,11 @@ await appsFlyerSdk.setSharingFilterForPartners(
 );
 ```
 
-Passing `null` or an empty list clears the filter on iOS; the plugin normalizes
-both to the same native request, so the two are interchangeable.
-
-Android does not support clearing the filter. A clear request is ignored with a
-logged warning and **leaves the existing filter in place**. If you need the
-filter gone on Android, you must avoid setting it in the first place.
+Passing `null` or an empty list clears the filter; the plugin normalizes
+both to the same native request, so the two are interchangeable. On Android
+the current RPC bridge rejects a clear request with `AppsFlyerException`
+until the native RPC validation is fixed; the call is forwarded rather than
+silently ignored.
 
 ---
 **<a id="setOneLinkCustomDomain"> `Future<void> setOneLinkCustomDomain(List<String> domains)`**

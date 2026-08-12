@@ -412,12 +412,34 @@ void main() {
       expect(rpcParams, {'disable': true});
     });
 
-    test('Android cannot clear the sharing filter through RPC 7.0.1', () async {
-      await androidSdk.setSharingFilterForPartners(null);
-      expect(rpcMethod, isNull);
+    test('Android clear requests reach the native RPC layer', () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(methodChannel, (call) async {
+        final args = Map<String, dynamic>.from(call.arguments as Map);
+        rpcMethod = args['method'] as String;
+        rpcParams = Map<String, dynamic>.from(args['params'] as Map);
+        throw PlatformException(
+          code: '422',
+          message: 'partners must not be empty',
+        );
+      });
 
-      await androidSdk.setSharingFilterForPartners([]);
-      expect(rpcMethod, isNull);
+      for (final partners in <List<String>?>[null, []]) {
+        await expectLater(
+          androidSdk.setSharingFilterForPartners(partners),
+          throwsA(
+            isA<AppsFlyerException>()
+                .having((error) => error.code, 'code', 422)
+                .having(
+                  (error) => error.message,
+                  'message',
+                  'partners must not be empty',
+                ),
+          ),
+        );
+        expect(rpcMethod, 'setSharingFilterForPartners');
+        expect(rpcParams, {'partners': null});
+      }
     });
   });
 
