@@ -886,10 +886,13 @@ class AppsFlyerSdk {
     if (_isAndroid) {
       params['awaitResponse'] = awaitResponse;
     }
-    return (await _invokeRpc<String>(
-      'generateInviteLink',
-      params,
-    ))!;
+    final url = await _invokeRpc<String>('generateInviteLink', params);
+    if (url == null) {
+      throw const AppsFlyerException(
+        message: 'generateInviteLink returned no result',
+      );
+    }
+    return url;
   }
 
   /// Logs the `af_invite` event when a user shares an invite.

@@ -538,6 +538,22 @@ void main() {
       await iosSdk.generateInviteLink(awaitResponse: false);
       expect(rpcParams, isNot(contains('awaitResponse')));
     });
+
+    test('generateInviteLink throws AppsFlyerException when native returns null',
+        () async {
+      rpcResult = null;
+
+      expect(
+        () => androidSdk.generateInviteLink(),
+        throwsA(
+          isA<AppsFlyerException>().having(
+            (error) => error.message,
+            'message',
+            'generateInviteLink returned no result',
+          ),
+        ),
+      );
+    });
   });
 
   group('complete RPC mapping', () {
