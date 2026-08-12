@@ -8,10 +8,6 @@
 import Foundation
 import UIKit
 
-#if canImport(appsflyer_sdk_objc)
-import appsflyer_sdk_objc
-#endif
-
 @objc(AppsFlyerAttribution)
 public class AppsFlyerAttribution: NSObject {
 
@@ -130,6 +126,6 @@ public class AppsFlyerAttribution: NSObject {
               let json = String(data: data, encoding: .utf8) else {
             return
         }
-        AFFlutterRPCBridge.executeJson(json) { _ in }
+        AFRPCBridge.executeJson(json) { _ in }
     }
 }

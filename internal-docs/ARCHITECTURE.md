@@ -145,13 +145,15 @@ Flutter public method
 - Flutter results are delivered on the main thread.
 - The RPC handler is engine-scoped and cached with `applicationContext` so it survives activity recreation (for example screen rotation) without retaining a destroyed `Activity`. The `init` RPC alone may use the current `Activity` when one is attached, so SDK 7 can replay the cold-start launch intent for deep linking.
 - Awaited native callbacks block only the dedicated blocking executor until completion or timeout. Fast calls are not queued behind them.
+- The `executeRpc` envelope `{method, params}` is parsed with unchecked casts outside the dispatch `try/catch`. A malformed envelope from anything other than the plugin's `_invokeRpc` path is an integration error and throws (`ClassCastException`) rather than returning a graceful `FlutterError`.
 
 ### 4.3 iOS transport
 
 `AppsflyerSdkPlugin.swift` serializes `{method, params}` and calls `AppsFlyerRPCBridge.executeJson`.
 
 - `AppsFlyerRPCBridge` is `@MainActor`-isolated. It starts an async task per request; unlike Android, the plugin has no single FIFO executor for unrelated calls. Callers must `await` operations whose ordering matters.
-- Because the plugin's Flutter-facing methods are non-isolated, it reaches the bridge through the `appsflyer_sdk_objc` shim (`AFFlutterRPCBridge`), which calls the bridge's Objective-C interface exactly as the previous Objective-C plugin did — no actor isolation is introduced on the plugin side. The same shim provides the `@try/@catch` boundary that turns malformed Flutter arguments into an `UNEXPECTED_ERROR` `FlutterError`.
+- The plugin's Flutter-facing methods are non-isolated, so it reaches the bridge through `AFRPCBridge` (`AFRPCBridge.swift`), a Swift-only accessor that is the single point of contact in both directions. Outbound call sites — Flutter channel handlers plus `UIApplication`/`UIScene` delegate callbacks — already run on the main thread, so it uses `MainActor.assumeIsolated` to keep each call synchronous while asserting that assumption at runtime; engine detach, the one caller that may run off the main thread, hops through the main queue instead. Inbound events pass through the same normalization, so main-thread delivery to `deliverEvent` does not depend on `AppsFlyerRPCBridge` keeping its own main-actor hop across version bumps. There is no Objective-C in the Core plugin.
+- The `executeRpc` envelope `{method, params}` is parsed with force casts outside dispatch error handling, matching Android: a malformed envelope from anything other than the plugin's `_invokeRpc` path is an integration error and traps. Dispatch-time serialization still validates every RPC payload with `JSONSerialization.isValidJSONObject` in `jsonString(from:)` before writing, which rejects the non-finite doubles that would otherwise raise `NSInvalidArgumentException`; such calls fail with a `SERIALIZATION_ERROR` `FlutterError`. `example/ios/RunnerTests` pins that serialization behavior.
 - Native completion-handler APIs are invoked on the main queue and bridged into Swift concurrency. RPC state used to gate listeners is held in an actor.
 - JSON protocol errors and SDK failures become `FlutterError` values.
 - iOS-specific nested result envelopes are unwrapped into the primitive or map shape expected by Dart.
@@ -460,7 +462,7 @@ Keep platform-only behavior visibly gated in Dart and documented as such. Purcha
 | Android dependencies | `android/build.gradle` | SDK/RPC BOM, optional connector source set, Android compatibility |
 | iOS plugin | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | Channels, RPC dispatch, lifecycle forwarding, result unwrapping |
 | iOS attribution adapter | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerAttribution.swift` | Queues and forwards early URL/Universal Link RPC calls |
-| iOS Objective-C shim | `ios/appsflyer_sdk/Sources/appsflyer_sdk_objc/AppsFlyerFlutterObjCShim.{h,m}` | `NSException` boundary around RPC dispatch and isolation-free `AppsFlyerRPCBridge` pass-throughs |
+| iOS RPC bridge access | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AFRPCBridge.swift` | Main-actor-checked access to the `@MainActor`-isolated `AppsFlyerRPCBridge` from the plugin's non-isolated contexts |
 | iOS dependencies | `ios/appsflyer_sdk.podspec`, `ios/appsflyer_sdk/Package.swift` | CocoaPods subspecs and Core-only SPM product/version pins |
 | Purchase Connector | `lib/src/purchase_connector/`, `android/src/main/include-connector/`, `ios/PurchaseConnector/` | Optional non-core channel, state, models, and native callbacks |
 | Dart contract tests | `test/appsflyer_sdk_test.dart` | Public mapping, platform behavior, errors, and event decoding |

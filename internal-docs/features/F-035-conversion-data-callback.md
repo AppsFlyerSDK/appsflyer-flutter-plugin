@@ -32,7 +32,7 @@ AppsFlyerSdk.registerConversionListener()
       → Android: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRpcHandler
       → iOS: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRPCBridge
 
-Native conversion data arrives (Android RpcEventNotifier / iOS handleBridgeEvent):
+Native conversion data arrives (Android RpcEventNotifier / iOS AFRPCBridge event handler):
   → Android: AppsFlyerEventBus.publish(json) → EventChannel('af-events'), buffered until a sink attaches
   → iOS: deliverEvent(json) on EventChannel('af-events'), buffered in pendingEvents until Dart subscribes
     → _AppsFlyerEvent.fromNative(json)                                 [lib/src/appsflyer_event.dart]
@@ -53,7 +53,7 @@ Android also exposes `unregisterConversionListener()`; on iOS the call is ignore
 | `lib/src/appsflyer_event.dart` | `_AppsFlyerEvent.fromNative` — parses the RPC envelope (`event`, map-or-null `data`) |
 | `android/.../AppsflyerSdkPlugin.kt` | `rpcEventNotifier` hops bridge events to the main thread and publishes them to `AppsFlyerEventBus`; `createEventSink` adapts this engine's `af-events` sink |
 | `android/.../AppsFlyerEventBus.kt` | Process-scoped buffer and FIFO replay, so conversion data arriving while no engine is attached reaches the next subscriber |
-| `ios/.../AppsflyerSdkPlugin.swift` | `handleBridgeEvent` / `deliverEvent` forward bridge events to the `af-events` sink and buffer them in `pendingEvents` until Dart subscribes |
+| `ios/.../AppsflyerSdkPlugin.swift` | `deliverEvent` forwards bridge events to the `af-events` sink and buffers them in `pendingEvents` until Dart subscribes |
 
 ---
 

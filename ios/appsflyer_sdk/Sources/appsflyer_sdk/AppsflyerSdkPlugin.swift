@@ -7,10 +7,6 @@ import Foundation
 import UIKit
 import Flutter
 
-#if canImport(appsflyer_sdk_objc)
-import appsflyer_sdk_objc
-#endif
-
 // Plugin version
 private let kAppsFlyerPluginVersion = "7.0.1"
 
@@ -101,7 +97,7 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
         eventSink = nil
         pendingEvents.removeAll()
         eventHandlerRegistered = false
-        AFFlutterRPCBridge.removeEventHandler()
+        AFRPCBridge.removeEventHandler()
         eventChannel?.setStreamHandler(nil)
     }
 
@@ -110,8 +106,8 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
             return
         }
         eventHandlerRegistered = true
-        AFFlutterRPCBridge.setEventHandler { [weak self] jsonEvent in
-            self?.handleBridgeEvent(jsonEvent)
+        AFRPCBridge.setEventHandler { [weak self] jsonEvent in
+            self?.deliverEvent(jsonEvent)
         }
     }
 
@@ -147,30 +143,18 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     /// Single RPC entry point. Initialization and the cross-promotion URL side effect require
     /// plugin orchestration; every other method is forwarded to AppsFlyerRPC as-is.
     private func executeRpc(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-        // Parsing happens inside the exception boundary too: unlike Android, Flutter's iOS
-        // MethodChannel does not catch NSException around handleMethodCall: itself, so a malformed
-        // call.arguments would otherwise crash the app instead of being reported as a Flutter error.
-        let exception = AFFlutterRunCatchingNSException {
-            let args = call.arguments as? NSDictionary
-            let params = (args?["params"] as? NSDictionary) ?? NSDictionary()
+        // Internal transport contract (_invokeRpc): {method: String, params: Map}. Apps must not
+        // call this channel directly; a malformed envelope is an integration error and traps here.
+        let arguments = call.arguments as! NSDictionary
+        let method = arguments["method"] as! String
+        let params = arguments["params"] as! NSDictionary
 
-            guard let method = args?["method"] as? String else {
-                result(FlutterError(code: "UNEXPECTED_ERROR", message: "RPC dispatch failed", details: nil))
-                return
-            }
-
-            if kRpcInit == method {
-                self.initFromRpc(params, result: result)
-            } else if kRpcLogAndOpenStore == method {
-                self.logAndOpenStoreFromRpc(params, result: result)
-            } else {
-                self.dispatchRpc(method, params: params, result: result)
-            }
-        }
-        if let exception = exception {
-            result(FlutterError(code: "UNEXPECTED_ERROR",
-                                message: exception.reason ?? "RPC dispatch failed",
-                                details: nil))
+        if kRpcInit == method {
+            initFromRpc(params, result: result)
+        } else if kRpcLogAndOpenStore == method {
+            logAndOpenStoreFromRpc(params, result: result)
+        } else {
+            dispatchRpc(method, params: params, result: result)
         }
     }
 
@@ -284,7 +268,7 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
                                          details: nil))
             return
         }
-        AFFlutterRPCBridge.executeJson(json) { response in
+        AFRPCBridge.executeJson(json) { response in
             var parseError: Error?
             guard let parsed = self.dictionary(fromJson: response, error: &parseError) else {
                 completion(nil, FlutterError(code: "RPC_PARSE_ERROR",
@@ -344,19 +328,9 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     // Event forwarding (bridge -> af-events stream)
     // ============================================================================
 
-    /// Forwards the native AppsFlyerRPC envelope without changing event names or payloads.
-    private func handleBridgeEvent(_ jsonEvent: String) {
-        if Thread.isMainThread {
-            deliverEvent(jsonEvent)
-        } else {
-            DispatchQueue.main.async {
-                self.deliverEvent(jsonEvent)
-            }
-        }
-    }
-
-    // Delivers an event to the af-events stream, or buffers it until Dart subscribes (onListen). The
-    // bridge completion/event handler is invoked on the main thread, so no extra hop is required.
+    // Forwards the native AppsFlyerRPC envelope to the af-events stream without changing event names
+    // or payloads, or buffers it until Dart subscribes (onListen). AFRPCBridge guarantees main-thread
+    // delivery, so the buffer needs no hop or synchronization of its own.
     //
     // The buffer keeps the newest `kMaxPendingEvents` events: dropping the oldest bounds worst-case
     // memory while still replaying the events a late subscriber is most likely to act on.

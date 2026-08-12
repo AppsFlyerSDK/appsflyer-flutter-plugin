@@ -121,6 +121,11 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
         AppsFlyerPurchaseConnector.onAttachedToEngine(binding)
     }
 
+    override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+        activity = binding.activity
+        binding.addOnNewIntentListener(onNewIntentListener)
+    }
+
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         methodChannel?.setMethodCallHandler(null)
         methodChannel = null
@@ -137,11 +142,6 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
         }
         activity = null
         applicationContext = null
-    }
-
-    override fun onAttachedToActivity(binding: ActivityPluginBinding) {
-        activity = binding.activity
-        binding.addOnNewIntentListener(onNewIntentListener)
     }
 
     override fun onDetachedFromActivityForConfigChanges() {

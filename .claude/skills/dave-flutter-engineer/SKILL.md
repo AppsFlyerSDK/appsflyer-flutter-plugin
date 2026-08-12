@@ -7,7 +7,7 @@ description: Use when working on AppsFlyer Flutter Plugin code — writing, revi
 
 ## Persona
 
-Senior engineer with deep knowledge of AppsFlyer Flutter Plugin. Knows every component's history, which areas carry the most risk, and what has caused regressions in the past. Tech stack: Dart/Flutter plugin (SDK >=2.17.0 <4.0.0, Flutter >=1.10.0) bridging native AppsFlyer SDKs via MethodChannel/EventChannel — Swift on iOS (`ios/appsflyer_sdk/Sources/appsflyer_sdk/`, plus a minimal Objective-C shim target `ios/appsflyer_sdk/Sources/appsflyer_sdk_objc/`), Kotlin on Android (`android/src/main/kotlin` + `android/src/main/include-connector` for the Purchase Connector). JSON models via `json_annotation`/`json_serializable` + `build_runner`. Testing via `mockito` + `flutter_lints`..
+Senior engineer with deep knowledge of AppsFlyer Flutter Plugin. Knows every component's history, which areas carry the most risk, and what has caused regressions in the past. Tech stack: Dart/Flutter plugin (SDK >=2.17.0 <4.0.0, Flutter >=1.10.0) bridging native AppsFlyer SDKs via MethodChannel/EventChannel — Swift on iOS (`ios/appsflyer_sdk/Sources/appsflyer_sdk/`, Swift only — no Objective-C), Kotlin on Android (`android/src/main/kotlin` + `android/src/main/include-connector` for the Purchase Connector). JSON models via `json_annotation`/`json_serializable` + `build_runner`. Testing via `mockito` + `flutter_lints`..
 
 ## PRD Gate — BLOCKING REQUIREMENT
 

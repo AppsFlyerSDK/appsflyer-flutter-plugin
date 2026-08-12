@@ -55,7 +55,7 @@ Android also exposes `unregisterDeeplinkListener()`, which dispatches `unsubscri
 | `lib/src/udl/deep_link_result.dart` | `DeepLinkResult` (`status`, `deepLink`, `error`, `toJson`), `DeepLinkResult._fromEvent`, `DeepLinkStatus` (`found`/`notFound`/`error`/`unknown`), and `DeepLinkFailure` (`type`, `message`) |
 | `android/.../AppsflyerSdkPlugin.kt` | `rpcEventNotifier` hops the bridge deep-link event to the main thread and publishes it to `AppsFlyerEventBus`; `createEventSink` adapts this engine's `af-events` sink |
 | `android/.../AppsFlyerEventBus.kt` | Process-scoped buffer and FIFO replay, so a deep link resolved while no engine is attached is delivered to the next subscriber instead of being lost |
-| `ios/.../AppsflyerSdkPlugin.swift` | `handleBridgeEvent` / `deliverEvent` forward the event to the `af-events` sink and buffer it in `pendingEvents` until Dart subscribes |
+| `ios/.../AppsflyerSdkPlugin.swift` | `deliverEvent` forwards the event to the `af-events` sink and buffers it in `pendingEvents` until Dart subscribes |
 
 ---
 

@@ -21,14 +21,7 @@ Pod::Spec.new do |s|
   end
 
   s.subspec 'Core' do |ss|
-    # Swift implementation plus the minimal Objective-C shim (NSException boundary and the
-    # isolation-free AppsFlyerRPCBridge pass-through). Its header must stay public so the pod's
-    # umbrella header exposes it to the Swift sources compiled into the same module.
-    ss.source_files = [
-      'appsflyer_sdk/Sources/appsflyer_sdk/**/*.swift',
-      'appsflyer_sdk/Sources/appsflyer_sdk_objc/**/*.{h,m}'
-    ]
-    ss.public_header_files = 'appsflyer_sdk/Sources/appsflyer_sdk_objc/include/*.h'
+    ss.source_files = 'appsflyer_sdk/Sources/appsflyer_sdk/**/*.swift'
     ss.dependency 'Flutter'
     ss.ios.dependency 'AppsFlyerRPC', '7.0.12'
   end
