@@ -159,6 +159,10 @@ Flutter public method
 - iOS-specific nested result envelopes are unwrapped into the primitive or map shape expected by Dart. Scalar getters with named-key nesting (`getSdkVersion`, `getAppsFlyerUID`, `isSessionReady`, `generateInviteLink`) have explicit cases until the RPC module aligns with Android's flat shape; everything else returns the `data` map when present (void setters correctly get `nil`).
 - `logAndOpenStore` is the only non-init public call requiring plugin orchestration because the plugin opens the returned store URL.
 
+### 4.4 iOS Swift Package Manager (Core)
+
+Core iOS code is shared between CocoaPods (`ios/appsflyer_sdk.podspec`) and SPM (`ios/appsflyer_sdk/Package.swift`). The SPM manifest includes Flutter's required path dependency on `../FlutterFramework`. That package is **not** checked into the plugin repo — Flutter tooling generates it in the consuming app's ephemeral build output during `flutter pub get` / `flutter build`. Standalone `swift package resolve` against the plugin checkout is therefore expected to fail; the supported integration test is `flutter build ios` with Swift Package Manager enabled in the app. See F-060 for Purchase Connector exclusions and verification details.
+
 ## 5. Reverse path: native SDK → RPC → Dart streams
 
 The native RPC event notifier emits JSON event envelopes. Both platform plugins forward those envelopes through `af-events` without maintaining Dart callback slots.
@@ -464,7 +468,7 @@ Keep platform-only behavior visibly gated in Dart and documented as such. Purcha
 | iOS plugin | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | Channels, RPC dispatch, lifecycle forwarding, result unwrapping |
 | iOS attribution adapter | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerAttribution.swift` | Queues and forwards early URL/Universal Link RPC calls |
 | iOS RPC bridge access | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AFRPCBridge.swift` | Main-actor-checked access to the `@MainActor`-isolated `AppsFlyerRPCBridge` from the plugin's non-isolated contexts |
-| iOS dependencies | `ios/appsflyer_sdk.podspec`, `ios/appsflyer_sdk/Package.swift` | CocoaPods subspecs and Core-only SPM product/version pins |
+| iOS dependencies | `ios/appsflyer_sdk.podspec`, `ios/appsflyer_sdk/Package.swift` | CocoaPods subspecs; Core-only SPM manifest (AppsFlyerFramework + vendored AppsFlyerRPC binaryTarget + ephemeral Flutter-generated `FlutterFramework` path dependency — see §4.4, F-060) |
 | Purchase Connector | `lib/src/purchase_connector/`, `android/src/main/include-connector/`, `ios/PurchaseConnector/` | Optional non-core channel, state, models, and native callbacks |
 | Dart contract tests | `test/appsflyer_sdk_test.dart` | Public mapping, platform behavior, errors, and event decoding |
 

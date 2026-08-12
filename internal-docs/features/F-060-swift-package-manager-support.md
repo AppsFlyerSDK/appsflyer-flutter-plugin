@@ -32,8 +32,13 @@ Shared source tree (used by both paths, single copy — no duplication):
     AppsFlyerAttribution.swift
     AFRPCBridge.swift                   (main-actor-checked AppsFlyerRPCBridge access)
 
-SPM path (resolved by `flutter build`/`swift build` at build configuration time):
+SPM path (resolved by `flutter build` at build configuration time — not by standalone `swift package resolve` in the plugin checkout):
   ios/appsflyer_sdk/Package.swift  (swift-tools-version:5.9, platforms: [.iOS("13.0")])
+    → path dependency `.package(name: "FlutterFramework", path: "../FlutterFramework")` per Flutter's
+        plugin-author SPM guide — resolves to ios/FlutterFramework relative to this manifest
+    → that directory is NOT committed in the plugin repo: Flutter tooling generates the
+        FlutterFramework Swift package in the consuming app's ephemeral build output during
+        `flutter pub get` / `flutter build`; removing the dependency breaks `import Flutter`
     → binaryTarget "AppsFlyerRPC" — the RPC xcframework vendored directly by release URL + SHA-256
         (AppsFlyerRPC 7.0.12); at implementation review time, upstream tag 7.0.12's Package.swift
         referenced the 7.0.1 asset / stale checksum, while the correction existed only on main
@@ -55,7 +60,7 @@ CocoaPods path (resolved by `pod install` at install time):
 ## Files
 | File | Role |
 |------|------|
-| `ios/appsflyer_sdk/Package.swift` | SPM manifest. `swift-tools-version:5.9` (Xcode 15.0+), `platforms: [.iOS("13.0")]`. Vendors `AppsFlyerRPC` 7.0.12 as a `binaryTarget` (release URL + SHA-256 `14484bce…`). At implementation review time, upstream tag `7.0.12` referenced the 7.0.1 asset with checksum `da3223c…` (tag commit [`80eb4e21`](https://github.com/AppsFlyerSDK/appsflyer-apple-rpc/commit/80eb4e21dacfb1fa40f02db579c4731abb7db5ed)); the correction was on `main` ([`51f87d65`](https://github.com/AppsFlyerSDK/appsflyer-apple-rpc/commit/51f87d652e1e0d609871317e15dc7f6c2fd08694)). Depends on `AppsFlyerFramework` `.exact("7.0.1")` for `AppsFlyerLib`, plus the generated `FlutterFramework` package. |
+| `ios/appsflyer_sdk/Package.swift` | SPM manifest. `swift-tools-version:5.9` (Xcode 15.0+), `platforms: [.iOS("13.0")]`. Declares the Flutter-required path dependency `.package(name: "FlutterFramework", path: "../FlutterFramework")` — the generated ephemeral package is created by Flutter in the consuming app, not checked into this repository (see Known Limitations). Vendors `AppsFlyerRPC` 7.0.12 as a `binaryTarget` (release URL + SHA-256 `14484bce…`). Depends on `AppsFlyerFramework` `.exact("7.0.1")` for `AppsFlyerLib`. |
 | `ios/appsflyer_sdk/Sources/appsflyer_sdk/*.swift` | Core implementation files (`AppsflyerSdkPlugin.swift`, `AppsFlyerAttribution.swift`, `AFRPCBridge.swift`) — the single shared source tree for both CocoaPods and SPM, Swift only. `@objc(AppsflyerSdkPlugin)` is where `pluginClass: AppsflyerSdkPlugin` (declared in `pubspec.yaml`) resolves from in both integration paths. |
 | `ios/appsflyer_sdk.podspec` | `Core` subspec depends on `AppsFlyerRPC 7.0.12` (which transitively pins `AppsFlyerFramework 7.0.1`); `PurchaseConnector` subspec depends on `PurchaseConnector 7.0.1`. No marker declares SPM availability — Flutter's tooling detects it purely by the presence of `Package.swift` at the conventional path. |
 | `ios/.gitignore` | `.build/` and `.swiftpm/` — local SPM resolution/build artifacts that must not be committed. |
@@ -80,7 +85,7 @@ No dedicated automated unit test — this is a build-configuration/distribution-
 
 | Configuration | How verified | Status |
 |---------------|--------------|--------|
-| **SPM, Core only** (recommended) | `swift package dump-package` in `ios/appsflyer_sdk/` confirms `AppsFlyerLib` at `Exact: 7.0.1` + vendored `AppsFlyerRPC` 7.0.12 binaryTarget; recorded migration verification also used `flutter build ios --simulator` with `flutter config --enable-swift-package-manager` and `example/pubspec.yaml` SPM enabled | Manifest rechecked in this audit; full build evidence is recorded from the 7.0.x migration |
+| **SPM, Core only** (recommended) | `flutter build ios --simulator` (or device) with `flutter config --enable-swift-package-manager` and SPM enabled in the consuming app — Flutter generates the ephemeral `FlutterFramework` package and resolves the plugin manifest in that context. Do **not** use `swift package resolve` / opening `ios/appsflyer_sdk/Package.swift` in isolation as the gate; it fails because `../FlutterFramework` is absent from the plugin checkout by design. | Recorded migration verification used this path; manifest pins rechecked in audits |
 | **CocoaPods, Core only** | `pod spec lint --quick --allow-warnings`; CI Lint/Test/Build + iOS E2E (above) | Covered by CI |
 | **CocoaPods, Core + PurchaseConnector** | Example app with `$AppsFlyerPurchaseConnector = true`; ad-hoc iOS E2E on throwaway branch ([run 29848672331](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/actions/runs/29848672331), DELIVERY-125462 era, CocoaPods-only) | Historical 6.18.x evidence only; no current 7.0.1 run is recorded here |
 | **SPM + PurchaseConnector** | Not supported — see Known Limitations | Explicitly not tested/recommended |
@@ -92,6 +97,7 @@ Also verified for every release: `flutter test test` (Dart suite unaffected by i
 ---
 
 ## Known Limitations
+- **The `FlutterFramework` path dependency is ephemeral and intentional.** `Package.swift` declares `.package(name: "FlutterFramework", path: "../FlutterFramework")` because [Flutter's SPM plugin-author guide](https://docs.flutter.dev/packages-and-plugins/swift-package-manager/for-plugin-authors) requires it and recent Flutter tool versions error at build time if it is missing. The directory is **not** part of the plugin repository — Flutter generates that Swift package in the consuming app's ephemeral build output when `flutter pub get` / `flutter build` runs. Running `swift package resolve`, `swift build`, or opening `ios/appsflyer_sdk/Package.swift` directly in Xcode against a bare plugin checkout therefore fails with "could not find package 'FlutterFramework'"; that is expected. The supported verification method is a full `flutter build ios` with Swift Package Manager enabled in the consuming app (see Tests table above).
 - **Purchase Connector is not available via SPM this release, with no opt-in mechanism at all.** `Package.swift` never references `ios/PurchaseConnector/` and has no equivalent of the podspec's `pod_target_xcconfig` macro injection, so `ENABLE_PURCHASE_CONNECTOR` is never defined for an SPM build under any configuration. Calling a Purchase Connector Dart API from an SPM-only integration fails with the same generic Flutter `MissingPluginException` that F-054 already documents for the CocoaPods not-opted-in case — this is not a new or worse failure mode, but it is a third, permanent path to it (not something a developer can fix by setting a flag, unlike the other two paths). Apps that need Purchase Connector must stay on CocoaPods until flutter/flutter#161182 is resolved.
 - **SPM and Purchase Connector cannot be combined.** An app can set `$AppsFlyerPurchaseConnector = true` in its Podfile while also having SPM enabled — this may build without duplicate-symbol errors, but Flutter's tooling can silently drop the CocoaPods `PurchaseConnector` pod once it detects the plugin has a `Package.swift`, meaning the feature may not be present despite looking configured. This combination is explicitly documented as unsupported (`doc/installation-guide.md`, `doc/purchase-connector.md`): **apps using Purchase Connector must not enable SPM for this plugin at all.**
 - **flutter/flutter#161182 (Flutter's own plugin tooling lacking conditional-compilation support under SPM) is the real blocker**, not a SwiftPM limitation — investigated during research (`internal-docs/researches/R-001-spm-support.md`), including whether SwiftPM Package Traits (Swift tools 6.1+) could work around it. They cannot: the issue's own text states Flutter would need to add trait support to its plugin tooling first, which it has not.
