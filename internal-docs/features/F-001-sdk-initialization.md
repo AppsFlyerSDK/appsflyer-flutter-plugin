@@ -23,7 +23,6 @@ All Dart-to-native traffic uses the `af-api` `MethodChannel`. The public method 
 
 ```
 AppsFlyerSdk.instance.init(devKey: ..., appId: ...)                    [lib/src/appsflyer_sdk.dart]
-  → empty devKey, or missing/empty appId on iOS → ArgumentError (no RPC dispatched)
   → _invokeVoidRpc('init', platform-specific params)
     → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
       → Android: AppsflyerSdkPlugin.initFromRpc                       [android/.../AppsflyerSdkPlugin.kt]
@@ -52,18 +51,18 @@ Listener registration is intentionally not part of this sequence. The app separa
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `devKey` (`String`, required and checked for non-empty on both platforms); `appId` (`String?`, required and checked for non-empty on iOS, omitted from the Android RPC request) |
-| **Output** | `Future<void>` that completes after the required initialization operations succeed: Android `init`, or iOS `initialize` plus pending launch-options handling when present. Invalid input throws `ArgumentError` before any RPC is dispatched. Failures from the required native/RPC operations are exposed as `AppsFlyerException`; `setPluginInfo` failure is intentionally non-blocking. No session is sent. |
+| **Input** | `devKey` (`String`, required by both native RPC layers); `appId` (`String?`, required by the native iOS RPC layer, omitted from the Android RPC request). Dart does not validate either value before transport. |
+| **Output** | `Future<void>` that completes after the required initialization operations succeed: Android `init`, or iOS `initialize` plus pending launch-options handling when present. Invalid input is validated by the native RPC layer and surfaced as `AppsFlyerException` when the RPC reports an error. `setPluginInfo` failure is intentionally non-blocking. No session is sent. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` verifies the iOS payload, confirms that Android omits `appId`, allows Android initialization without it, rejects a missing/empty iOS `appId`, rejects an empty `devKey` on both platforms without dispatching an RPC, and verifies the singleton entry point.
+`test/appsflyer_sdk_test.dart` verifies the iOS payload, confirms that Android omits `appId`, allows Android initialization without it, forwards invalid `devKey`/`appId` values to the native RPC layer instead of validating them in Dart, and verifies the singleton entry point.
 
 ---
 
 ## Known Limitations
-- Dart checks only that `devKey` is non-empty and, on iOS, that `appId` is present. Both RPC layers enforce the same rules and report a violation as code `422` — Android through `require(devKey.isNotEmpty())` in `InitRequest`, iOS through `AFRPCInitRequest`. The Dart checks are a fail-fast convenience that avoids a channel round trip and names the offending parameter; they are not the only line of defense. Any stricter validation stays in the RPC/native SDK layers.
+- Input validation for `devKey` and `appId` is performed by the native RPC layer. Android rejects an empty `devKey` through `InitRequest` (`422`); iOS rejects a missing or empty `appId` through `AFRPCInitRequest`. Dart forwards the values as supplied and does not validate them before transport.
 - Plugin identification is best-effort on both platforms. A `setPluginInfo` failure does not fail `init()`, so successful completion confirms native initialization but not successful plugin-info reporting.
 - Initialization alone does not produce conversion, deep-link, session-ready, or Launch events. The relevant native listeners and `start()` must be invoked explicitly.
 

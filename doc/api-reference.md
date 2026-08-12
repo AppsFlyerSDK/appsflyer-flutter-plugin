@@ -191,12 +191,11 @@ cross-platform call sites free of platform branches without hiding the mistake.
 ##### <a id="init"> **`Future<void> init({required String devKey, String? appId})`**
 
 Initializes the native SDK without sending a session. `appId` is the Apple App
-ID required by iOS. It is optional and is not sent to the native SDK on Android.
+ID required by the native iOS SDK. It is optional and is not sent to the native SDK on Android.
 
-Throws `ArgumentError` for an empty `devKey` on either platform, and on iOS for
-a missing or empty `appId`. Dart validates these values before calling the
-native SDK and names the offending parameter. Invalid values that reach the
-native SDK are reported with error code `422`.
+Invalid `devKey` or `appId` values are validated by the native RPC layer and
+reported as `AppsFlyerException` (typically code `422`) when the RPC rejects
+the request.
 
 _Example:_
 

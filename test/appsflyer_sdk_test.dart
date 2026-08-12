@@ -83,28 +83,18 @@ void main() {
       expect(rpcParams, {'devKey': 'android-dev-key'});
     });
 
-    test('init requires a non-empty appId on iOS', () {
-      expect(
-        () => iosSdk.init(devKey: 'ios-dev-key'),
-        throwsArgumentError,
-      );
-      expect(
-        () => iosSdk.init(devKey: 'ios-dev-key', appId: ''),
-        throwsArgumentError,
-      );
-      expect(rpcMethod, isNull);
-    });
+    test('init forwards invalid values to the native RPC layer', () async {
+      await androidSdk.init(devKey: '');
+      expect(rpcMethod, 'init');
+      expect(rpcParams, {'devKey': ''});
 
-    test('init requires a non-empty devKey on both platforms', () {
-      expect(
-        () => androidSdk.init(devKey: ''),
-        throwsArgumentError,
-      );
-      expect(
-        () => iosSdk.init(devKey: '', appId: '123456789'),
-        throwsArgumentError,
-      );
-      expect(rpcMethod, isNull);
+      await iosSdk.init(devKey: 'ios-dev-key');
+      expect(rpcMethod, 'init');
+      expect(rpcParams, {'devKey': 'ios-dev-key', 'appId': null});
+
+      await iosSdk.init(devKey: 'ios-dev-key', appId: '');
+      expect(rpcMethod, 'init');
+      expect(rpcParams, {'devKey': 'ios-dev-key', 'appId': ''});
     });
 
     test('the public SDK entry point is a singleton', () {

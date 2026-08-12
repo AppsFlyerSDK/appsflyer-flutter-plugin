@@ -209,7 +209,7 @@ Future<void> init({required String devKey, String? appId});
 ```
 
 - Android receives only `devKey`; `appId` is not sent.
-- iOS requires a non-empty `appId` and receives both fields.
+- iOS requires a non-empty `appId` and receives both fields. The native RPC layer validates both values.
 - Initialization does not register optional conversion, UDL, or session-ready listeners.
 - Initialization does not send a Launch.
 
@@ -310,7 +310,7 @@ The public layer normalizes only where a reliable mapping exists.
 Examples:
 
 - `registerDeepLinkListener` selects the different Android and iOS RPC method names.
-- `init` omits `appId` on Android but enforces it on iOS.
+- `init` omits `appId` on Android. iOS receives both fields; validation is native-side.
 - `AFMediationNetwork` maps to the native platform's accepted identifier.
 - `AppsFlyerInviteLinkParams.referrerCustomerId` maps to Android `customerId` and iOS `referrerCustomerId`.
 - `AFPurchaseDetails` has dedicated Android and iOS implementations because the native RPC request shapes differ.
@@ -359,7 +359,7 @@ Purchase Connector is a separate optional native subsystem using `af-purchase-co
 
 - Core RPC `PlatformException` values are converted to `AppsFlyerException`. `MissingPluginException` is left unwrapped — it is outside the RPC contract.
 - Explicitly platform-gated calls are short-circuited with a logged warning before a channel request is sent; shared calls are not guaranteed to work outside Android/iOS.
-- Dart throws `ArgumentError` before transport for an empty `devKey`, a missing/empty iOS `appId`, incomplete GDPR consent, or purchase details for the wrong platform. Most business validation remains in the typed native RPC request and SDK.
+- Dart throws `ArgumentError` before transport for incomplete GDPR consent or purchase details for the wrong platform. Most other input validation, including `init` parameters, remains in the typed native RPC request and SDK.
 - Android converts parser/validation failures to numeric `RpcResponse.Error` values. Unexpected plugin orchestration failures use plugin error strings such as `UNEXPECTED_ERROR` or `INIT_ERROR`.
 - iOS distinguishes protocol errors in the response `error` envelope from handler failures represented by `result.success == false`; the iOS plugin adapter converts both to `FlutterError` and unwraps successful values.
 - A malformed native event is logged and dropped by Dart. It does not become a stream error. Conversion-data failure and UDL failure are normal event payloads, not failed MethodChannel requests.

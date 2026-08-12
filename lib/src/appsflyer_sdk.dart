@@ -108,27 +108,12 @@ class AppsFlyerSdk {
   ///
   /// Does not send a session.
   ///
-  /// [appId] is required on iOS and is not sent to Android.
-  ///
-  /// Throws [ArgumentError] if [devKey] is empty or [appId] is missing on iOS.
+  /// [appId] is required by the native iOS SDK and is not sent to Android.
+  /// Input validation is performed by the native RPC layer.
   Future<void> init({
     required String devKey,
     String? appId,
   }) {
-    if (devKey.isEmpty) {
-      throw ArgumentError.value(
-        devKey,
-        'devKey',
-        'devKey must not be empty',
-      );
-    }
-    if (_isIOS && (appId == null || appId.isEmpty)) {
-      throw ArgumentError.value(
-        appId,
-        'appId',
-        'appId is required on iOS',
-      );
-    }
     return _invokeVoidRpc(
       'init',
       _isIOS ? {'devKey': devKey, 'appId': appId} : {'devKey': devKey},
