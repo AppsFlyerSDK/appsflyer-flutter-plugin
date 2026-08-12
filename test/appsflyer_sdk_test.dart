@@ -361,55 +361,29 @@ void main() {
       expect(rpcMethod, isNull);
     });
 
-    test('ad mediation values preserve native platform naming', () async {
-      await androidSdk.logAdRevenue(
-        monetizationNetwork: 'network',
-        mediationNetwork: AFMediationNetwork.customMediation,
-        currencyIso4217Code: 'USD',
-        revenue: 1.5,
-        additionalParameters: {'placement': 'banner'},
-      );
-      expect(rpcParams, {
-        'monetizationNetwork': 'network',
-        'mediationNetwork': 'custom_mediation',
-        'currencyIso4217Code': 'USD',
-        'revenue': 1.5,
-        'additionalParameters': {'placement': 'banner'},
-      });
+    test('maps every mediation network to the native RPC string', () async {
+      const androidMediationNetworks = {
+        ..._sharedMediationNetworkRpcValues,
+        AFMediationNetwork.customMediation: 'custom_mediation',
+        AFMediationNetwork.directMonetizationNetwork:
+            'direct_monetization_network',
+      };
+      const iosMediationNetworks = {
+        ..._sharedMediationNetworkRpcValues,
+        AFMediationNetwork.customMediation: 'custom',
+        AFMediationNetwork.directMonetizationNetwork: 'directmonetization',
+      };
 
-      await iosSdk.logAdRevenue(
-        monetizationNetwork: 'network',
-        mediationNetwork: AFMediationNetwork.customMediation,
-        currencyIso4217Code: 'USD',
-        revenue: 1.5,
-        additionalParameters: {'placement': 'banner'},
+      await _expectLogAdRevenueMediationNetworks(
+        androidSdk,
+        androidMediationNetworks,
+        () => rpcParams,
       );
-      expect(rpcParams, {
-        'monetizationNetwork': 'network',
-        'mediationNetwork': 'custom',
-        'currencyIso4217Code': 'USD',
-        'revenue': 1.5,
-        'additionalParameters': {'placement': 'banner'},
-      });
-    });
-
-    test('direct monetization network preserves native platform naming',
-        () async {
-      await androidSdk.logAdRevenue(
-        monetizationNetwork: 'network',
-        mediationNetwork: AFMediationNetwork.directMonetizationNetwork,
-        currencyIso4217Code: 'USD',
-        revenue: 2.0,
+      await _expectLogAdRevenueMediationNetworks(
+        iosSdk,
+        iosMediationNetworks,
+        () => rpcParams,
       );
-      expect(rpcParams!['mediationNetwork'], 'direct_monetization_network');
-
-      await iosSdk.logAdRevenue(
-        monetizationNetwork: 'network',
-        mediationNetwork: AFMediationNetwork.directMonetizationNetwork,
-        currencyIso4217Code: 'USD',
-        revenue: 2.0,
-      );
-      expect(rpcParams!['mediationNetwork'], 'directmonetization');
     });
 
     test('purchase validation sends the Android contract', () async {
@@ -1244,6 +1218,50 @@ void main() {
       expect(ios.error!.type, isNull);
     });
   });
+}
+
+const _sharedMediationNetworkRpcValues = {
+  AFMediationNetwork.ironSource: 'ironsource',
+  AFMediationNetwork.applovinMax: 'applovin_max',
+  AFMediationNetwork.googleAdMob: 'google_admob',
+  AFMediationNetwork.fyber: 'fyber',
+  AFMediationNetwork.appodeal: 'appodeal',
+  AFMediationNetwork.admost: 'admost',
+  AFMediationNetwork.topon: 'topon',
+  AFMediationNetwork.tradplus: 'tradplus',
+  AFMediationNetwork.yandex: 'yandex',
+  AFMediationNetwork.chartboost: 'chartboost',
+  AFMediationNetwork.unity: 'unity',
+  AFMediationNetwork.toponPte: 'topon_pte',
+};
+
+Future<void> _expectLogAdRevenueMediationNetworks(
+  AppsFlyerSdk sdk,
+  Map<AFMediationNetwork, String> expectedNetworks,
+  Map<String, dynamic>? Function() readRpcParams,
+) async {
+  for (final entry in expectedNetworks.entries) {
+    final additionalParameters = entry.key == AFMediationNetwork.customMediation
+        ? {'placement': 'banner'}
+        : null;
+    await sdk.logAdRevenue(
+      monetizationNetwork: 'network',
+      mediationNetwork: entry.key,
+      currencyIso4217Code: 'USD',
+      revenue: 1.0,
+      additionalParameters: additionalParameters,
+    );
+    expect(
+      readRpcParams(),
+      {
+        'monetizationNetwork': 'network',
+        'mediationNetwork': entry.value,
+        'currencyIso4217Code': 'USD',
+        'revenue': 1.0,
+        'additionalParameters': additionalParameters,
+      },
+    );
+  }
 }
 
 Future<void> _emitEvent(Map<String, dynamic> event) =>

@@ -72,7 +72,7 @@ Every other value returns the same string on both platforms.
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` — `ad mediation values preserve native platform naming` calls `logAdRevenue` with `AFMediationNetwork.customMediation` on the Android-configured and iOS-configured SDK instances and asserts the complete RPC parameter map, including `mediationNetwork == 'custom_mediation'` on Android and `'custom'` on iOS.
+`test/appsflyer_sdk_test.dart` — `maps every mediation network to the native RPC string` loops over every `AFMediationNetwork` value on both the Android- and iOS-configured SDK instances and asserts the full `logAdRevenue` RPC parameter map, including the platform-specific `mediationNetwork` strings (`custom_mediation` / `custom`, `direct_monetization_network` / `directmonetization`, and the shared underscored identifiers for the other networks).
 
 The `PlatformException becomes AppsFlyerException` test covers the shared `_invokeRpc` error conversion that `logAdRevenue` uses; it exercises that path through `logEvent` rather than through `logAdRevenue`.
 
