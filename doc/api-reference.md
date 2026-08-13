@@ -118,6 +118,39 @@ exception propagate if the call is not essential on that platform.
 
 ---
 
+## Multi-engine hosts
+
+<a id="multi-engine-hosts"></a>
+
+The native AppsFlyer SDK is **process-scoped**. The Flutter plugin keeps one
+native RPC handler, one `af-events` transport subscription, and one native
+listener reference per event type for the whole process — the same contract as
+the native SDKs themselves.
+
+Each `FlutterEngine` loads its own plugin instance and Dart isolate.
+`AppsFlyerSdk.instance` is a singleton within that isolate only.
+
+**Sequential engine lifecycle** (one engine destroyed, another created later) is
+supported: re-run `register*Listener()` after the new engine attaches. Native
+configuration survives; you are reconnecting Dart callbacks to the existing
+bridge. See [Getting started → Add-to-app and multiple Flutter engines](getting-started.md#multi-engine).
+
+**Concurrent multi-engine hosts** (two or more engines alive at once — add-to-app
+with overlapping Flutter routes, `FlutterEngineGroup`, multi-scene) are **not
+supported** for event delivery:
+
+- The engine whose `af-events` subscription attached **most recently** is the only
+  one that receives conversion, deep-link, and session-ready callbacks.
+- The **last** `register*Listener()` call from any engine wins at the native SDK
+  and replaces earlier registrations.
+- `init()` and `start()` must be driven from **one primary engine**; all engines
+  share the same native SDK instance.
+
+Integrate AppsFlyer from a single Flutter entry point. Do not call `init()` or
+register listeners from secondary engines that may run in parallel.
+
+---
+
 ##### <a id="appsflyer-options"> **`AppsFlyerSdk.instance`**
 
 `AppsFlyerSdk` is the cross-platform SDK entry point. Use its shared

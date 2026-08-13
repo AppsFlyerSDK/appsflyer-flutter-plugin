@@ -193,6 +193,44 @@ is
 cheap: it reconnects to the already configured native bridge instead of building
 a new one.
 
+<a id="multi-engine"></a>
+## Add-to-app and multiple Flutter engines
+
+The AppsFlyer **native SDK is process-scoped** — one `AppsFlyerLib` instance per
+app process. The Flutter plugin mirrors that on the native side: one RPC handler,
+one `af-events` delivery path, and one native listener slot per event type
+(`registerConversionListener`, `registerDeepLinkListener`, and so on all replace
+the previous registration).
+
+Each `FlutterEngine` gets its own plugin instance and Dart isolate.
+`AppsFlyerSdk.instance` is a singleton **within that isolate**, not across
+engines.
+
+### One live engine at a time (typical add-to-app)
+
+When the user leaves a Flutter screen and the engine is destroyed, register your
+listeners again after a new engine attaches — the same sequence as steps 2 and 5
+above. Native configuration survives; re-registering reconnects your Dart callbacks
+to the existing native bridge.
+
+### Multiple engines alive at once (unsupported)
+
+If two or more Flutter engines coexist in the same process — add-to-app with
+overlapping routes, `FlutterEngineGroup` warm-up, or multi-scene hosts — **only
+one engine receives native events**:
+
+| Layer | Behavior |
+|---|---|
+| `af-events` delivery | The engine whose EventChannel subscription attached **most recently** wins. Older engines do not receive conversion, deep-link, or session-ready callbacks even if Dart listeners are still registered. |
+| Native `register*Listener()` | The **last** registration from any engine overwrites the native SDK's single listener reference for that event type. |
+| `init()` / `start()` | All engines share the same native SDK. Call `init()`, register listeners, and drive `start()` from **one primary engine** only. |
+
+Do not integrate AppsFlyer from secondary Flutter modules. If your host app uses
+add-to-app, pick one engine (usually the main Flutter entry point) for the full
+startup sequence in this guide.
+
+See also [API reference → Multi-engine hosts](api-reference.md#multi-engine-hosts).
+
 <a id="start"></a>
 <a id="startsdk"></a>
 ## 6. Start sessions

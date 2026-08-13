@@ -22,6 +22,12 @@ typedef OnSessionReady = void Function();
 /// plugin holds one callback per event and replaces it on re-registration, the
 /// same contract as the native SDKs.
 ///
+/// **Multi-engine hosts:** the native SDK and plugin transport are
+/// process-scoped. When more than one Flutter engine is alive, only the engine
+/// whose `af-events` subscription attached most recently receives native events,
+/// and the last `register*Listener()` from any engine wins at the native layer.
+/// Integrate from one primary engine. See `doc/getting-started.md#multi-engine`.
+///
 /// Initialization does not send a session. Register the session-ready listener
 /// and call [start] from its callback:
 ///

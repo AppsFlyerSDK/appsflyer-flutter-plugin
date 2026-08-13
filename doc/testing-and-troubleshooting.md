@@ -112,6 +112,22 @@ OneLinks. Disable it via `flutter_deeplinking_enabled=false` (Android) and
 `FlutterDeepLinkingEnabled=false` (iOS) — see the breaking-change note at the top of
 [Deep linking](deep-linking.md).
 
+### Events missing in an add-to-app or multi-engine host
+
+The native SDK and plugin `af-events` transport are **process-scoped**. When two or
+more Flutter engines are alive at once, only the engine whose EventChannel
+subscription attached **most recently** receives conversion, deep-link, and
+session-ready callbacks. The last `register*Listener()` from any engine also wins
+at the native layer.
+
+Integrate AppsFlyer from **one primary engine** — call `init()`, register
+listeners, and drive `start()` only there. Do not initialize from secondary Flutter
+modules that may run in parallel.
+
+When an engine is destroyed and recreated sequentially (typical add-to-app back
+navigation), re-register listeners after the new engine attaches — see
+[Getting started → Add-to-app and multiple Flutter engines](getting-started.md#multi-engine).
+
 ### `MissingPluginException` when calling a Purchase Connector API
 
 Purchase Connector has no Swift Package Manager path. If you enabled SPM, calling
