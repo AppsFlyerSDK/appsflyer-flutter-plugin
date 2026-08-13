@@ -61,6 +61,11 @@ import io.flutter.plugin.common.PluginRegistry
  * [sharedRpcExecutor] serves every RPC but `init`. It resolves the one process-wide handler, built
  * with `applicationContext` so it retains neither an Activity nor an engine.
  *
+ * Fast RPCs (setters, getters, and fire-and-forget calls) run inline on the platform thread.
+ * Awaited-callback RPCs (`start`, `logEvent`, purchase validation, invite links when
+ * `awaitResponse` is true) run on [blockingRpcExecutor] so a slow native latch wait does not
+ * head-of-line block unrelated fast calls on the platform thread.
+ *
  * `init` instead runs on a throwaway executor built around the current Activity
  * ([createRpcExecutor] straight from [executeRpcSync]), because
  * `AndroidLifecycleManagerImpl.registerLifecycleListener` triggers `onActivityResumed` manually
@@ -71,6 +76,9 @@ import io.flutter.plugin.common.PluginRegistry
 open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
 
     private var blockingRpcExecutor: ExecutorService? = null
+
+    @Volatile
+    private var isEngineDetached = false
 
     @Volatile
     private var applicationContext: Context? = null
@@ -131,6 +139,7 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
     }
 
     private fun onAttachedToEngine(applicationContext: Context, messenger: BinaryMessenger) {
+        isEngineDetached = false
         this.applicationContext = applicationContext
         this.blockingRpcExecutor = Executors.newSingleThreadExecutor()
 
@@ -152,6 +161,9 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        // Set first so in-flight blocking-RPC completions posted to the main looper drop their
+        // Flutter Result instead of replying on a torn-down engine (mirrors iOS isEngineDetached).
+        isEngineDetached = true
         // The buffer in AppsFlyerEventBus is intentionally left untouched: events emitted while no
         // engine is attached have to survive until the next subscriber replays them. The RPC
         // executor in AppsFlyerRpcBridge is left alone for the same reason: it belongs to the
@@ -266,7 +278,7 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
                 return@runRpc
             }
 
-            result.success(null)
+            deliverRpcResult(RpcResponse.VoidSuccess, result, null)
         }
     }
 
@@ -335,7 +347,11 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
                     block()
                 } catch (t: Throwable) {
                     Log.e(AF_PLUGIN_TAG, "$failureLog: ${t.message}", t)
-                    uiThreadHandler.post { result.error(failureCode, t.message, null) }
+                    uiThreadHandler.post {
+                        if (!isEngineDetached) {
+                            result.error(failureCode, t.message, null)
+                        }
+                    }
                 }
             }
         } catch (t: RejectedExecutionException) {
@@ -365,6 +381,15 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
     }
 
     private fun deliverRpcResult(response: RpcResponse, result: Result, voidValue: Any?) {
+        // Synchronous callers cannot observe a detach — they share the platform thread with
+        // onDetachedFromEngine. Only awaited RPCs can: shutdown() lets the in-flight task run to
+        // completion, so its latch can resolve after the engine is gone. Replying then is not fatal
+        // — Flutter drops the response with a "FlutterJNI was detached" warning — but the warning is
+        // misleading in customer bug reports, so the result is dropped here instead.
+        if (isEngineDetached) {
+            Log.d(AF_PLUGIN_TAG, "Dropping RPC result after engine detach")
+            return
+        }
         if (response is RpcResponse.Success<*>) {
             result.success(response.result)
         } else if (response is RpcResponse.VoidSuccess) {
