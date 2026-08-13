@@ -224,17 +224,19 @@ not forward an `is_deferred` flag on the click event, so it always returns
 
 Contains an optional numeric error code and message. Native failures can use
 HTTP-style codes (`400`, `422`, `500`, …). When the platform supplies a
-non-numeric code, `code` is `null` and `message` carries the failure text.
+non-numeric code, `code` is `null` and [message] carries the failure text.
+Plugin transport failures such as `SERIALIZATION_ERROR` and `RPC_PARSE_ERROR` use
+non-numeric codes, so [code] is `null`. On iOS, `SERIALIZATION_ERROR` is raised
+when an RPC payload cannot be encoded as JSON (for example non-finite `double`
+values in `eventValues`). Android does not use that code today — the same
+payload may surface as `UNEXPECTED_ERROR` or a numeric RPC error instead.
 
-Calling a platform-only API on the wrong platform usually does not throw. Most
-guarded APIs log a warning, skip the native call, and return a safe default —
-`null` or `false` for APIs with a return value, and nothing for `void` APIs.
-Seven symmetric getters and setters route through the native RPC layer instead:
-`getHostName`, `getHostPrefix`, `getOutOfStore`, `isPreInstalledApp`,
-`getAttributionId`, `setUseReceiptValidationSandbox`, and
-`setUseUninstallSandbox`. Wrong-platform calls to those APIs surface as
-`AppsFlyerException` (typically code `404` on iOS; on Android the interim RPC
-dispatcher maps unknown methods to code `422`).
+Calling a platform-only API on the wrong platform throws
+[`AppsFlyerException`](#AppsFlyerException). The plugin forwards every call to
+the native RPC layer; the exception's `code` comes from the native layer and
+currently differs between platforms: Android reports `422`, iOS reports `404`.
+Match on the platform-only marker in this document rather than on the code.
+See [Platform-only APIs](#platform-only-apis).
 
 ---
 
@@ -431,7 +433,7 @@ appsFlyerSdk.getAttributionId().then((id) {
 | parameter       | type     | description                                                                                                                                                                       |
 | --------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `eventName`     | `String` | Use descriptive, action-based names (e.g., "purchase", "add_to_cart", "level_completed"), keep names concise but meaningful, use lowercase with underscores for consistency and avoid special characters and spaces. See the [recommended event list by business](https://support.appsflyer.com/hc/en-us/articles/115005544169-In-app-events-Overview#recommended-events-by-business-vertical). |
-| `eventValues`   | `Map<String, dynamic>?` | Optional named event details |
+| `eventValues`   | `Map<String, dynamic>?` | Optional named event details. Values must be JSON-serializable. Non-finite numbers (`double.nan`, `double.infinity`) are rejected on **iOS** with `AppsFlyerException` (`SERIALIZATION_ERROR`, `code` is `null`). On **Android** the same payload may fail with a different code (`UNEXPECTED_ERROR` or a numeric RPC error). Validate with `value.isFinite` before sending. |
 | `awaitResponse` | `bool` | Optional named parameter. Defaults to `false`. When `true`, wait for the native request callback. When `false`, return when the native SDK accepts the request. |
 
 _Example:_
