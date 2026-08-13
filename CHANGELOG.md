@@ -107,6 +107,13 @@ removed APIs, renames, lifecycle changes, and upgrade instructions.
 - Remove legacy `SingleInstallBroadcastReceiver` and
   `MultipleInstallBroadcastReceiver` manifest entries. The plugin already
   includes Google Play Install Referrer `2.2`.
+- Removed the Core CocoaPods Objective-C public headers
+  (`AppsflyerSdkPlugin.h`, `AppsFlyerAttribution.h`,
+  `AppsFlyerStreamHandler.h`, `FlutterAppDelegate+AppsFlyerStreamHandler.h`).
+  The iOS bridge is Swift-only; host apps that imported those headers must
+  rely on automatic plugin registration or import
+  `<appsflyer_sdk/appsflyer_sdk-Swift.h>` instead. See
+  [migration guide — iOS: Objective-C public headers removed](doc/migration-guide.md#ios-objective-c-public-headers-removed).
 
 See the [v6 → v7 migration guide](doc/migration-guide.md) for the complete
 replacement table.

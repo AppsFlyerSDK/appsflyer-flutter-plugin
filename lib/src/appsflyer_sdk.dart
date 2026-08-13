@@ -79,11 +79,11 @@ class AppsFlyerSdk {
   /// callback arrives.
   void _ensureEventsSubscribed() {
     _eventSubscription ??= _eventChannel.receiveBroadcastStream().listen(
-          _handleNativeEvent,
-          onError: (Object error, StackTrace stackTrace) {
-            debugPrint('AppsFlyer: af-events stream error: $error');
-          },
-        );
+      _handleNativeEvent,
+      onError: (Object error, StackTrace stackTrace) {
+        debugPrint('AppsFlyer: af-events stream error: $error');
+      },
+    );
   }
 
   void _handleNativeEvent(dynamic value) {

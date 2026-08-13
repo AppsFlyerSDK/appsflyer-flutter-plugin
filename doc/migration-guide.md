@@ -233,7 +233,7 @@ New parity APIs exposed in the plugin (already present in the native SDK 7):
 | `setDisableAppleAdsAttribution(disable)` | Disable Apple Ads (ASA) attribution via AdServices | iOS only |
 | `setDisableIDFVCollection(disable)` | Disable IDFV collection | iOS only |
 | `setShouldCollectDeviceName(collect)` | Opt in to device-name collection | iOS only |
-| `setUseUninstallSandbox(enabled)` | Sandbox mode for uninstall-measurement validation | iOS only |
+| `setUseUninstallSandbox(sandbox)` | Sandbox mode for uninstall-measurement validation | iOS only |
 
 `setInstallId()` has platform-specific ordering and opt-in requirements. On
 iOS, call it before `init()` and set `AppsFlyerAllowCustomInstallId` to `YES` in
@@ -296,6 +296,63 @@ For Samsung / Xiaomi / Huawei store referrers, see §11 of the same guide.
 
 ---
 
+## iOS: Objective-C public headers removed
+
+Plugin **6.18.x** exported four Objective-C headers from the Core CocoaPods
+subspec (`public_header_files`):
+
+- `AppsflyerSdkPlugin.h`
+- `AppsFlyerAttribution.h`
+- `AppsFlyerStreamHandler.h`
+- `FlutterAppDelegate+AppsFlyerStreamHandler.h`
+
+Plugin **7.x** rewrites the Core bridge in **Swift only**. The Core subspec
+ships Swift sources and declares **no** `public_header_files`. The
+`af-events` stream handler and the old `FlutterAppDelegate` category are gone;
+deep-link entry points live in `AppsflyerSdkPlugin.swift` and
+`AppsFlyerAttribution.swift`.
+
+### Who is affected
+
+| Host app type | Action |
+| --- | --- |
+| Standard Flutter app (Dart-only `AppDelegate`, no manual AppsFlyer `#import`) | **No change.** Flutter registers the plugin; URL / Universal Link / UIScene callbacks are wired automatically. |
+| Add-to-app or custom native `AppDelegate` / `SceneDelegate` that `#import`ed the v6 headers to forward `openURL` / `continueUserActivity` manually | **Update imports** — see below. |
+
+If your host code still contains:
+
+```objc
+#import <appsflyer_sdk/AppsFlyerAttribution.h>
+```
+
+the project **will not compile** after upgrading to plugin 7.
+
+### Replacement
+
+1. **Prefer removing manual forwarding.** The plugin registers as an
+   application and (when supported) scene delegate. Register listeners from
+   Dart (`registerDeepLinkListener` before `init()`, then `init()` /
+   `start()` as documented above) and let the plugin forward OS callbacks.
+
+2. **If native code must call into the attribution singleton**, import the
+   generated Swift compatibility header instead of the deleted `.h` files:
+
+   ```objc
+   #import <appsflyer_sdk/appsflyer_sdk-Swift.h>
+   ```
+
+   Then use the pinned Objective-C selectors exposed from Swift, for example
+   `[[AppsFlyerAttribution shared] handleOpenUrl:url options:options]` and
+   `continueUserActivity:`. Bridge readiness is opened internally when Dart
+   calls `init()` — there is no public `markBridgeReady` on the Objective-C
+   surface.
+
+3. **Purchase Connector** — when the `$AppsFlyerPurchaseConnector` Podfile
+   flag is enabled, the Purchase Connector subspec still publishes its own
+   `.h` files. That does **not** restore the removed Core headers above.
+
+---
+
 ## Platform behavior
 
 Calling a platform-only method outside its supported mobile platform throws an
@@ -325,9 +382,11 @@ surfaced as `AppsFlyerException` with an optional numeric `code` and `message`.
 
 - Android purchase validation requires a Play purchase token.
 - iOS purchase validation requires an App Store transaction ID.
-- Android cannot clear partner-sharing filters; iOS can. A clear request on
-  Android is logged and leaves the existing filter unchanged.
-- Passing an empty partner list is equivalent to passing `null`.
+- Clearing partner-sharing filters (`setSharingFilterForPartners(null)` or
+  `[]`) works on iOS. On Android the call is forwarded to the native RPC
+  layer and currently surfaces as `AppsFlyerException` until the Android RPC
+  validation is fixed — it is not silently ignored.
+- Passing an empty partner list is normalized to `null` before the RPC call.
 - On Android, `unregisterDeeplinkListener()` does not reliably stop subsequent
   deep-link events. Do not rely on it to disable deep-link handling.
 - `setInstallId` has different native ordering rules: iOS configures it before
