@@ -35,9 +35,8 @@ android {
     sourceSets {
         main {
             java.srcDirs = ['src/main/java', 'src/main/kotlin']
-            java.srcDirs += includeConnector ? ['src/main/include-connector'] : ['src/main/exlude-connector']
+            java.srcDirs += includeConnector ? ['src/main/include-connector'] : ['src/main/exclude-connector']
         }
-        includeConnector ? ['src/main/include-connector'] : ['src/main/exlude-connector']
         test {
             java.srcDirs = ['src/test/kotlin']
         }
