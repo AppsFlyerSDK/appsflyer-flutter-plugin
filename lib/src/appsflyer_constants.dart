@@ -5,6 +5,13 @@ class _AppsFlyerConstants {
   static const String AF_EVENTS_CHANNEL = "af-events";
   static const String AF_METHOD_CHANNEL = "af-api";
 
+  // Native RPC event names delivered on AF_EVENTS_CHANNEL.
+  static const String EVENT_CONVERSION_DATA_SUCCESS = "onConversionDataSuccess";
+  static const String EVENT_CONVERSION_DATA_FAIL = "onConversionDataFail";
+  static const String EVENT_DEEP_LINKING = "onDeepLinking";
+  static const String EVENT_DEEP_LINK_RECEIVED = "onDeepLinkReceived";
+  static const String EVENT_SESSION_READY = "onSessionReady";
+
   // Purchase Connector constants
   static const String AF_PURCHASE_CONNECTOR_CHANNEL = "af-purchase-connector";
   static const String CONFIGURE_KEY = "configure";

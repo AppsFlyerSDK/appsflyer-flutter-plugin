@@ -2,7 +2,6 @@
 
 > **Audience:** apps routing users to in-app content via OneLink. Complete
 > [Getting started](getting-started.md) first. API details:
-> [`onDeepLinkReceived`](api-reference.md#onDeepLinkReceived),
 > [`registerDeepLinkListener`](api-reference.md#registerDeepLinkListener).
 > Push deep links:
 > [`addPushNotificationDeepLinkPath`](api-reference.md#addPushNotificationDeepLinkPath),
@@ -36,7 +35,7 @@ installed, **deferred deep linking** routes the user to the store first and
 delivers the in-app destination after install.
 
 The plugin uses **Unified Deep Linking (UDL)** for both direct and deferred deep
-links. Results are delivered through `onDeepLinkReceived` after you call
+links. Results are delivered to the callback you pass to
 `registerDeepLinkListener()`.
 
 Read the [OneLink™ Deep Linking Guide](https://support.appsflyer.com/hc/en-us/articles/208874366-OneLink-Deep-Linking-Guide#Intro) for dashboard and link configuration.
@@ -89,7 +88,7 @@ For App Links, see AppsFlyer's
 
 The plugin updates the attached activity with each new intent. The Android SDK
 resolves warm-start deep links through its activity-lifecycle hook after
-`registerDeepLinkListener()` has subscribed the native listener. No custom
+`registerDeepLinkListener()` has registered the native listener. No custom
 `MainActivity.onNewIntent` implementation is required.
 
 ### <a id="ios-deeplink"></a> iOS
@@ -131,22 +130,30 @@ The plugin forwards URL-scheme callbacks the same way. See AppsFlyer's
 ## Flutter integration
 
 1. Complete [Getting started](getting-started.md) — `init()`, listener
-   registration, and `start()` from `onSessionReady`.
-2. Subscribe to `onDeepLinkReceived` **before** calling
-   `registerDeepLinkListener()` so the first native result is not missed.
-3. Call `registerDeepLinkListener()` after `init()` (see Getting started).
+   registration, and `start()` from the session-ready callback.
+2. Call `registerDeepLinkListener(onDeepLink)` **before** `init()`, passing the
+   callback that handles the result.
+
+> ⚠️ **Register before `init()`.** On Android, `init()` hands the launch intent
+> to the native SDK, which then decides — once per install — whether to send the
+> deferred deep-link resolution request. With no listener registered at that
+> point, that request is never sent, and the decision is persisted: later
+> launches do not retry it. Registering after `init()` therefore breaks deferred
+> deep linking on Android even though direct links keep working. When testing a
+> fix, reinstall the app (or clear its data); the skipped state survives a plain
+> app restart.
 
 ### <a id="unified-deeplinking"></a> Unified Deep Linking (recommended)
 
 UDL handles **direct** links (app already open or cold start) and **deferred**
-links (after install) through the same `onDeepLinkReceived` stream.
+links (after install) through the same `registerDeepLinkListener` callback.
 
 **Flow:**
 
 1. User clicks a OneLink short URL.
 2. Android App Links / iOS Universal Links (or the deferred install path) open the app.
 3. The native SDK resolves the link and delivers a result to the plugin.
-4. `onDeepLinkReceived` emits a `DeepLinkResult` with `deep_link_value` and other available fields.
+4. Your callback receives a `DeepLinkResult` with `deep_link_value` and other available fields.
 
 > 📘 **UDL privacy (new users):** UDL returns only deferred deep-linking
 > parameters (`deep_link_value`, `deep_link_sub1`–`deep_link_sub10`). Other
@@ -161,7 +168,7 @@ links (after install) through the same `onDeepLinkReceived` stream.
 Platform references: [Android UDL](https://dev.appsflyer.com/docs/android-unified-deep-linking), [iOS UDL](https://dev.appsflyer.com/docs/ios-unified-deep-linking).
 
 ```dart
-appsflyerSdk.onDeepLinkReceived.listen((DeepLinkResult result) {
+await appsflyerSdk.registerDeepLinkListener((DeepLinkResult result) {
   switch (result.status) {
     case DeepLinkStatus.found:
       print(result.deepLink);
@@ -178,8 +185,6 @@ appsflyerSdk.onDeepLinkReceived.listen((DeepLinkResult result) {
       break;
   }
 });
-
-await appsflyerSdk.registerDeepLinkListener();
 ```
 
 `DeepLinkResult` exposes a `DeepLink` model:
@@ -235,15 +240,20 @@ class DeepLink {
 ### <a id="handle-deeplinking"></a> Direct deep linking
 
 When the app is already installed, a URL scheme, App Link, or Universal Link
-opens the app and the resolved destination is delivered on `onDeepLinkReceived`.
+opens the app and the resolved destination is delivered to the
+`registerDeepLinkListener` callback.
 Use the UDL listener above — no separate direct-link API is required.
 
 ### <a id="deferred-deep-linking"></a> Deferred deep linking
 
 When the app is not installed, the link first sends the user to the app store.
 After installation and the first app open, the resolved destination is
-delivered through `onDeepLinkReceived`. Use the same UDL listener described
+delivered to the `registerDeepLinkListener` callback. Use the same UDL listener described
 above; no separate deferred-link listener is required.
+
+This is the path that depends on registration order: register the listener
+before `init()`, otherwise Android never sends the resolution request for that
+install.
 
 ---
 

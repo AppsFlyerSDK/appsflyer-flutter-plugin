@@ -34,7 +34,7 @@ AppsFlyerSdk.addPushNotificationDeepLinkPath(List<String> deepLinkPath)         
   → successful reply completes Future<void>
   → PlatformException is converted to AppsFlyerException
 ```
-The configured path is later consulted when a push payload reaches the native SDK — on Android automatically from the launch/new-intent extras, and on iOS when the app forwards the payload with `handlePushNotification(pushPayload)` (see F-031). Any OneLink URL found at that path is resolved and delivered on the `onDeepLinkReceived` stream (F-037).
+The configured path is later consulted when a push payload reaches the native SDK — on Android automatically from the launch/new-intent extras, and on iOS when the app forwards the payload with `handlePushNotification(pushPayload)` (see F-031). Any OneLink URL found at that path is resolved and delivered to the registered `registerDeepLinkListener` callback (F-037).
 
 ---
 

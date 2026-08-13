@@ -17,11 +17,15 @@ it, and starting sessions with the SDK 7 session-ready model.
 Set up the SDK once on every cold start, in this order:
 
 1. Get the shared SDK instance.
-2. Subscribe to the Dart streams your app needs.
+2. Register the deep-link listener, if your app uses deep linking.
 3. Initialize the native SDK.
 4. Apply configuration that must be included in the first Launch.
-5. Register the corresponding native listeners.
-6. Call `start()` whenever `onSessionReady` emits.
+5. Register the remaining native listeners your app needs, each with its callback.
+6. Call `start()` from the session-ready callback.
+
+`registerDeepLinkListener()` is the one listener that must be registered
+**before** `init(...)`; the others are registered after. See
+[Register the deep-link listener before init](#deep-link-listener-before-init).
 
 The following sections explain each step.
 
@@ -36,41 +40,27 @@ import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 final AppsFlyerSdk appsflyerSdk = AppsFlyerSdk.instance;
 ```
 
-## 2. Subscribe to SDK events
+## <a id="deep-link-listener-before-init"></a> 2. Register the deep-link listener
 
-Subscribe to each Dart stream before registering its native listener. Creating
-a stream subscription does not initialize the SDK or send a request.
+`Future<void> registerDeepLinkListener(OnDeepLinkReceived onDeepLink)`
 
-`onSessionReady` is required for session reporting. The conversion-data and
-deep-link streams are optional:
+If your app handles deep links, register this listener **before** `init(...)`:
 
 ```dart
-// Optional: conversion data (GCD).
-appsflyerSdk.onConversionDataSuccess.listen((data) {
-  print('Conversion data: $data');
-});
-appsflyerSdk.onConversionDataFailure.listen((error) {
-  print('Conversion data error: $error');
-});
-
-// Optional: Unified Deep Linking (UDL).
-appsflyerSdk.onDeepLinkReceived.listen((result) {
+await appsflyerSdk.registerDeepLinkListener((result) {
   print('Deep-link result: $result');
-});
-
-// Required: start a session on every foreground cycle.
-appsflyerSdk.onSessionReady.listen((_) async {
-  try {
-    await appsflyerSdk.start(awaitResponse: true);
-    print('AppsFlyer session reported.');
-  } on AppsFlyerException catch (error) {
-    print('AppsFlyer start error: $error');
-  }
 });
 ```
 
-The `onSessionReady` callback is declared at this point, but it cannot run until
-`registerSessionReadyListener()` is called in step 5.
+On Android, `init(...)` hands the launch intent to the native SDK, and that is
+when the SDK decides whether to resolve a deferred deep link. The decision is
+made once per install: with no listener registered at that moment, the deferred
+resolution request is never sent — not even on a later launch. Registering
+before `init(...)` is supported on both platforms and is also correct for direct
+links.
+
+Skip this step if your app does not use deep linking. For the full guide,
+including the `DeepLinkResult` payload, see [Deep linking](deep-linking.md).
 
 ## 3. Initialize the SDK
 
@@ -127,31 +117,50 @@ Other common optional settings include:
 | `setDisableAdvertisingIdentifiers(bool disable)` | Opts out of collecting advertising identifiers, including OAID, AAID, GAID, and IDFA. |
 | `setDisableCollectASA(bool disable)` | Opts out of Apple Search Ads attribution collection. This method is available only on iOS. |
 
-## 5. Register native listeners
+## 5. Register the remaining listeners
 
-Register listeners after `init(...)`. Only register the optional listeners your
-app uses, and register the session-ready listener last:
+Each listener takes its callback as an argument, so registering the listener and
+handling its event are the same step. Register these after `init(...)`, register
+only the optional listeners your app uses, and register the session-ready
+listener last:
 
 ```dart
-// Optional. The Dart streams were subscribed to in step 2.
-await appsflyerSdk.registerConversionListener();
-await appsflyerSdk.registerDeepLinkListener();
+// Optional: conversion data (GCD).
+await appsflyerSdk.registerConversionListener(
+  onSuccess: (data) {
+    print('Conversion data: $data');
+  },
+  onFailure: (error) {
+    print('Conversion data error: $error');
+  },
+);
 
-// Required. Register last because this can emit onSessionReady immediately.
-await appsflyerSdk.registerSessionReadyListener();
+// Required. Register last because the callback can be invoked immediately.
+await appsflyerSdk.registerSessionReadyListener(() async {
+  try {
+    await appsflyerSdk.start(awaitResponse: true);
+    print('AppsFlyer session reported.');
+  } on AppsFlyerException catch (error) {
+    print('AppsFlyer start error: $error');
+  }
+});
 ```
 
 | Registration method | Event |
 |---|---|
-| `registerConversionListener()` | Enables [GCD](https://dev.appsflyer.com/hc/docs/conversion-data) success and failure events. |
-| `registerDeepLinkListener()` | Enables [UDL](https://dev.appsflyer.com/hc/docs/unified-deep-linking-udl) results. |
-| `registerSessionReadyListener()` | Enables one `onSessionReady` event per foreground cycle. |
+| `registerConversionListener(onSuccess:, onFailure:)` | Enables [GCD](https://dev.appsflyer.com/hc/docs/conversion-data) success and failure events. |
+| `registerDeepLinkListener(onDeepLink)` | Enables [UDL](https://dev.appsflyer.com/hc/docs/unified-deep-linking-udl) results. Register it before `init(...)` — see [step 2](#deep-link-listener-before-init). |
+| `registerSessionReadyListener(onReady)` | Enables one session-ready event per foreground cycle. |
+
+The plugin keeps **one callback per event** and replaces it when you register
+again, matching the native SDKs. There is no stream to subscribe to, so a single
+native event can never reach two handlers in your app — for example, `start()`
+cannot be issued twice for one session-ready event.
 
 ### Unregister and re-register explicitly
 
-Registration is native state. It is not tied to your Dart stream subscription and
-the plugin never infers that a listener has gone stale — your app decides when
-delivery should stop and start again:
+Registration is native state, and the plugin never infers that a listener has
+gone stale — your app decides when delivery should stop and start again:
 
 ```dart
 @override
@@ -169,13 +178,19 @@ void dispose() {
 | `unregisterDeeplinkListener()` | Android only, and a soft unsubscribe — the native SDK keeps its listener, so events are dropped rather than never delivered |
 | `unregisterSessionReadyListener()` | Android and iOS |
 
+Where the unregister call reaches the native SDK it also drops the callback you
+passed at registration. On iOS, `unregisterConversionListener()` and
+`unregisterDeeplinkListener()` are ignored with a logged warning, so their
+callbacks stay registered.
+
 On Android the native listener also outlives the Flutter engine, which is
 destroyed on its own schedule (a back press, or a Flutter screen leaving an
 add-to-app host) while the process keeps running. Your Dart callbacks do not
-survive that, so after a new engine attaches, subscribe to the streams again
-(step 2) and call the `register*Listener()` methods again (step 5) — the same
-sequence as a cold start. Re-registering is cheap: it reconnects to the already
-configured native bridge instead of building a new one.
+survive that, so after a new engine attaches, call the `register*Listener()`
+methods again (steps 2 and 5) — the same sequence as a cold start. Re-registering
+is
+cheap: it reconnects to the already configured native bridge instead of building
+a new one.
 
 <a id="start"></a>
 <a id="startsdk"></a>
@@ -183,18 +198,18 @@ configured native bridge instead of building a new one.
 
 `Future<void> start({bool awaitResponse = false})`
 
-`init(...)` and `registerSessionReadyListener()` do not report a session.
-`start()` sends the session (Launch). Call it from the `onSessionReady` handler
-created in step 2.
+`init(...)` and `registerSessionReadyListener(...)` do not report a session.
+`start()` sends the session (Launch). Call it from the session-ready callback
+registered in step 5.
 
-`onSessionReady` emits once per foreground cycle, after launch deep-link
+The session-ready callback runs once per foreground cycle, after launch deep-link
 processing finishes or times out. This includes the initial launch and every
 background-to-foreground transition. Calling `start()` only once during app
 setup reports the first session but misses later foreground sessions.
 
 If the first session must wait for consent, a Customer User ID, ATT
-authorization, or another app condition, complete that work in the
-`onSessionReady` handler before calling `start()`.
+authorization, or another app condition, complete that work inside the
+session-ready callback before calling `start()`.
 
 ### Choose when the `Future` completes
 
@@ -208,12 +223,12 @@ authorization, or another app condition, complete that work in the
 <a id="conversion-data-start"></a>
 ### Conversion-data timing
 
-`registerConversionListener()` only enables the callbacks. The conversion-data
+`registerConversionListener(...)` only enables the callbacks. The conversion-data
 request is sent after `start()` reports the Launch, and its result is delivered
-through `onConversionDataSuccess` or `onConversionDataFailure`.
+to `onSuccess` or `onFailure`.
 
 The `Future` returned by `start()` is not the conversion-data result. Always use
-the conversion-data streams to receive GCD data.
+the conversion-data callbacks to receive GCD data.
 
 Conversion data also provides an extended deferred deep-linking path for cases
 where UDL does not return a deferred link, such as some SRN campaigns or legacy
@@ -228,26 +243,13 @@ import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 final AppsFlyerSdk appsflyerSdk = AppsFlyerSdk.instance;
 
 Future<void> configureAppsFlyer() async {
-  // Subscribe before registering native listeners.
-  appsflyerSdk.onConversionDataSuccess.listen((data) {
-    print('Conversion data: $data');
-  });
-  appsflyerSdk.onConversionDataFailure.listen((error) {
-    print('Conversion data error: $error');
-  });
-  appsflyerSdk.onDeepLinkReceived.listen((result) {
+  await appsflyerSdk.enableDebug(true); // Testing only.
+
+  // Register before init() so Android can resolve a deferred deep link.
+  await appsflyerSdk.registerDeepLinkListener((result) {
     print('Deep-link result: $result');
   });
-  appsflyerSdk.onSessionReady.listen((_) async {
-    try {
-      await appsflyerSdk.start(awaitResponse: true);
-      print('AppsFlyer session reported.');
-    } on AppsFlyerException catch (error) {
-      print('AppsFlyer start error: $error');
-    }
-  });
 
-  await appsflyerSdk.enableDebug(true); // Testing only.
   await appsflyerSdk.init(
     devKey: '<DEV_KEY>',
     appId: '<APP_ID>',
@@ -256,12 +258,24 @@ Future<void> configureAppsFlyer() async {
   // Apply values that must be included in the first Launch.
   await appsflyerSdk.setCustomerUserId('<CUSTOMER_USER_ID>');
 
-  // Register optional listeners first.
-  await appsflyerSdk.registerConversionListener();
-  await appsflyerSdk.registerDeepLinkListener();
+  await appsflyerSdk.registerConversionListener(
+    onSuccess: (data) {
+      print('Conversion data: $data');
+    },
+    onFailure: (error) {
+      print('Conversion data error: $error');
+    },
+  );
 
-  // Register last. This can emit onSessionReady and trigger start().
-  await appsflyerSdk.registerSessionReadyListener();
+  // Register last. The callback can run immediately and trigger start().
+  await appsflyerSdk.registerSessionReadyListener(() async {
+    try {
+      await appsflyerSdk.start(awaitResponse: true);
+      print('AppsFlyer session reported.');
+    } on AppsFlyerException catch (error) {
+      print('AppsFlyer start error: $error');
+    }
+  });
 }
 ```
 
@@ -275,9 +289,9 @@ sent.
 
 **1. Add ATT handling.** The recommended Flutter integration is the
 [`app_tracking_transparency`](https://pub.dev/packages/app_tracking_transparency)
-package. Request authorization from the `onSessionReady` handler shown in step
-3 so the same Dart flow works with both the legacy application lifecycle and
-the UIScene lifecycle.
+package. Request authorization from the session-ready callback shown in step 5 so
+the same Dart flow works with both the legacy application lifecycle and the
+UIScene lifecycle.
 
 **2. Add the usage-description key** to your `Info.plist`:
 
@@ -287,14 +301,13 @@ the UIScene lifecycle.
 ```
 
 **3. Delay the first session** until the ATT request completes. The plugin does
-not expose `waitForATTUserAuthorization`. In step 2, use the following
-`onSessionReady` handler instead of the basic handler, then continue with steps
-3–5:
+not expose `waitForATTUserAuthorization`. In step 5, register the following
+session-ready callback instead of the basic one:
 
 ```dart
 var attHandled = false;
 
-appsflyerSdk.onSessionReady.listen((_) async {
+await appsflyerSdk.registerSessionReadyListener(() async {
   if (!attHandled) {
     await AppTrackingTransparency.requestTrackingAuthorization();
     attHandled = true;
@@ -311,7 +324,7 @@ appsflyerSdk.onSessionReady.listen((_) async {
 > callback only for a legacy app that has not adopted UIScene. See Flutter's
 > [UIScene adoption guide](https://docs.flutter.dev/release/breaking-changes/uiscenedelegate).
 
-As in the standard flow, call `registerSessionReadyListener()` only after
+As in the standard flow, call `registerSessionReadyListener(...)` only after
 `init(...)` and any configuration that must be included in the first Launch.
 
 For the full iOS 14 guide, see AppsFlyer's

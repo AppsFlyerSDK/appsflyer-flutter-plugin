@@ -14,7 +14,7 @@ depends_on: []
 ---
 
 ## Trigger
-Intended to be called once during application setup through the shared `AppsFlyerSdk.instance`, after subscribing to the event streams the app needs and before registering native conversion, deep-link, or session-ready listeners. Dart does not enforce a single call. Android accepts no `appId`; iOS requires a non-empty value.
+Intended to be called once during application setup through the shared `AppsFlyerSdk.instance`, and before registering the native conversion, deep-link, or session-ready listeners the app needs. Dart does not enforce a single call. Android accepts no `appId`; iOS requires a non-empty value.
 
 ---
 

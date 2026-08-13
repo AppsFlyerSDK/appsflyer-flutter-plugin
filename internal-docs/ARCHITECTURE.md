@@ -19,7 +19,7 @@ The Flutter plugin is a thin, typed bridge over the native Android and iOS RPC m
 - Dart owns public naming, type safety, platform gates, event models, and error normalization.
 - Native SDK validation, persistence, lifecycle state, threading, and network behavior remain native responsibilities.
 - Every core Dart-to-native call uses one RPC transport method: `executeRpc` on `af-api`.
-- Native asynchronous SDK events use `af-events` and are exposed as broadcast Dart streams.
+- Native asynchronous SDK events use `af-events` and are demultiplexed into one application callback per event, registered through the `register*Listener` APIs. The plugin exposes no public `Stream`.
 - Per-call results remain correlated to the originating `MethodChannel` reply; they are not delivered through global callback slots.
 - Intentional Android/iOS RPC differences are adapted explicitly instead of being hidden by duplicated business logic.
 
@@ -34,7 +34,7 @@ host Flutter app
           → native AppsFlyer SDK
 ```
 
-The callback direction is reversed, but ownership is not: the native SDK emits a callback, the RPC layer creates an event envelope, the platform plugin transports it, and Dart exposes a typed stream. Neither native platform imports Dart business logic. The optional Purchase Connector follows a separate channel and does not pass through the core RPC router.
+The callback direction is reversed, but ownership is not: the native SDK emits a callback, the RPC layer creates an event envelope, the platform plugin transports it, and Dart invokes the typed callback registered for that event. Neither native platform imports Dart business logic. The optional Purchase Connector follows a separate channel and does not pass through the core RPC router.
 
 ```mermaid
 flowchart LR
@@ -46,8 +46,8 @@ flowchart LR
     IOS --> IOSSDK["AppsFlyer iOS SDK 7"]
     AndroidSDK -->|"callback → RPC notifier → plugin"| Events["af-events EventChannel"]
     IOSSDK -->|"delegate → RPC emitter → plugin"| Events
-    Events --> Streams["typed Dart streams"]
-    Streams --> App
+    Events --> Registry["private listener registry (one callback per event)"]
+    Registry --> App
 ```
 
 ## 2. Public Dart layer
@@ -109,7 +109,7 @@ Public APIs use the delivery style supported by the underlying capability:
 | Awaitable request result | `start`, `logEvent`, `validateAndLogInAppPurchase`, `generateInviteLink` | Completes or fails through the originating `MethodChannel` reply |
 | Awaitable RPC acceptance | setters, `logAdRevenue`, `logInvite` | Completes after the native RPC accepts the operation |
 | Immediate Dart getter | `pluginVersion` | Reads local package metadata; no RPC |
-| Broadcast stream | conversion data, UDL, session readiness | Delivered through `af-events` and exposed through typed public getters |
+| Registered callback | conversion data, UDL, session readiness | Delivered through `af-events` and dispatched to the single callback passed to the matching `register*Listener` |
 
 `start`, `logEvent`, `generateInviteLink`, and `validateAndLogInAppPurchase` expose a public `awaitResponse` parameter. It defaults to `false` for `start` and `logEvent`, and to `true` for the two result-producing APIs. The flag is forwarded to both platforms for `start` and `logEvent`, but only Android exposes it for invite generation and purchase validation.
 
@@ -125,7 +125,7 @@ The channel names are identical across Dart, Android, and iOS:
 
 The core `MethodChannel` remains necessary: an `EventChannel` can deliver native events but cannot provide correlated request/reply calls for initialization, setters, getters, `start`, event logging, purchase validation, or invite-link generation.
 
-The channel names, `executeRpc` entry point, RPC method strings, parameter keys, JSON envelopes, and native event names are **internal transport contracts**. They are not a second public Flutter API and applications must not call them directly. `AppsFlyerSdk`, its exported models, and its documented streams are the public compatibility boundary. A transport contract can differ by platform while the public Dart method remains stable; the Dart layer owns that mapping.
+The channel names, `executeRpc` entry point, RPC method strings, parameter keys, JSON envelopes, and native event names are **internal transport contracts**. They are not a second public Flutter API and applications must not call them directly. `AppsFlyerSdk`, its exported models, and its documented callback typedefs are the public compatibility boundary. A transport contract can differ by platform while the public Dart method remains stable; the Dart layer owns that mapping.
 
 ## 4. Forward path: Dart → RPC → native SDK
 
@@ -172,19 +172,19 @@ Flutter public method
 
 Core iOS code is shared between CocoaPods (`ios/appsflyer_sdk.podspec`) and SPM (`ios/appsflyer_sdk/Package.swift`). The SPM manifest includes Flutter's required path dependency on `../FlutterFramework`. That package is **not** checked into the plugin repo — Flutter tooling generates it in the consuming app's ephemeral build output during `flutter pub get` / `flutter build`. Standalone `swift package resolve` against the plugin checkout is therefore expected to fail; the supported integration test is `flutter build ios` with Swift Package Manager enabled in the app. See F-060 for Purchase Connector exclusions and verification details.
 
-## 5. Reverse path: native SDK → RPC → Dart streams
+## 5. Reverse path: native SDK → RPC → Dart callbacks
 
 The native RPC event notifier emits JSON event envelopes. Both platform plugins forward those envelopes through `af-events` without maintaining Dart callback slots.
 
 Events emitted before Dart attaches an `EventChannel` listener are buffered by the platform plugin and replayed when `onListen` runs. On Android that buffer lives in the process-scoped `AppsFlyerEventBus` rather than on the plugin instance, so it also spans engine teardown: the native SDK keeps the listeners registered through the process-scoped `AppsFlyerRpcHandler`, and routing every event through the bus means those late events reach the next subscriber instead of an unreachable plugin. iOS instead removes its bridge event handler in `detachFromEngineForRegistrar:` — only when the detaching instance still owns the bridge's single handler slot — so it has no equivalent late-delivery path and keeps its engine-scoped buffer.
 
-The Dart constructor creates one broadcast stream. It catches malformed transport values, logs them with `debugPrint`, and drops them instead of terminating the public streams:
+Dart holds exactly one `af-events` subscription, owned by `AppsFlyerSdk` itself. It is established lazily on the first `register*Listener` call — not in the constructor — because both platforms replay their buffer when Dart attaches, and attaching before a callback slot exists would drain that replay into nothing. The handler catches malformed transport values, logs them with `debugPrint`, and drops them instead of failing the subscription:
 
 ```dart
-_events = _eventChannel
-    .receiveBroadcastStream()
-    .transform(/* validate String and decode _AppsFlyerEvent; drop failures */)
-    .asBroadcastStream();
+void _ensureEventsSubscribed() {
+  _eventSubscription ??=
+      _eventChannel.receiveBroadcastStream().listen(_handleNativeEvent);
+}
 ```
 
 `_AppsFlyerEvent.fromNative` accepts the RPC JSON string and normalizes:
@@ -196,16 +196,16 @@ Transport-only envelope fields (`timestamp`, `origin`) are ignored on the Dart s
 
 The Android and iOS plugins each keep an in-memory FIFO of event JSON strings while no Dart event sink is attached, then flush it from `onListen`. Both queues are capped at 64 events and drop the oldest on overflow; Android's `AppsFlyerEventBus` is process-scoped, iOS's `pendingEvents` is engine-scoped. Nothing is persisted, so events that occur before plugin registration, after engine teardown, or before the native RPC event handler exists are not recoverable.
 
-Typed public streams filter and map the shared event stream:
+`_AppsFlyerListenerRegistry` (`lib/src/appsflyer_listener_registry.dart`) maps each native event name to the single callback registered for it, replacing that callback on re-registration — the same contract as the native SDKs, which hold one listener reference per event type. An event with no registered callback is logged and dropped.
 
-| Dart stream | Native event names |
-| --- | --- |
-| `onConversionDataSuccess` | `onConversionDataSuccess` |
-| `onConversionDataFailure` | `onConversionDataFail` |
-| `onDeepLinkReceived` | `onDeepLinking` or `onDeepLinkReceived` |
-| `onSessionReady` | `onSessionReady` |
+| Registration API | Callback | Native event names |
+| --- | --- | --- |
+| `registerConversionListener` | `onSuccess` | `onConversionDataSuccess` |
+| `registerConversionListener` | `onFailure` | `onConversionDataFail` |
+| `registerDeepLinkListener` | `onDeepLink` | `onDeepLinking` or `onDeepLinkReceived` |
+| `registerSessionReadyListener` | `onReady` | `onSessionReady` |
 
-The application must subscribe to a typed stream before registering the corresponding native listener so the first event is not missed.
+Because the callback is an argument to the registration call, it is always in place before the RPC is dispatched, and no public `Stream` exists for an application to attach additional subscribers to. A single native event therefore cannot fan out to several handlers — `start()` cannot be issued twice for one session-ready event.
 
 ## 6. Initialization and session lifecycle
 
@@ -245,36 +245,36 @@ register RPC event handler
 
 ### 6.2 Listener registration
 
-Native listeners are registered explicitly after `init()`:
+Native listeners are registered explicitly, each with its own ordering relative to `init()`:
 
-| Flutter API | Android RPC | iOS RPC |
-| --- | --- | --- |
-| `registerConversionListener()` | `registerConversionListener` | `registerConversionListener` |
-| `registerDeepLinkListener()` | `subscribeForDeepLink` | `registerDeeplinkListener` |
-| `registerSessionReadyListener()` | `registerSessionReadyListener` | `registerSessionReadyListener` |
+| Flutter API | Android RPC | iOS RPC | Order |
+| --- | --- | --- | --- |
+| `registerDeepLinkListener(onDeepLink)` | `subscribeForDeepLink` | `registerDeeplinkListener` | Before `init()` |
+| `registerConversionListener(onSuccess:, onFailure:)` | `registerConversionListener` | `registerConversionListener` | After `init()` |
+| `registerSessionReadyListener(onReady)` | `registerSessionReadyListener` | `registerSessionReadyListener` | After `init()`, last |
+
+The deep-link listener is the exception because Android's deferred-resolution gate runs inside `init()`: the plugin passes the `Activity` as the init context (§7.1), which makes the native SDK replay the launch intent immediately, and `AFDeepLinkManager` sends the deferred resolution request only if a listener is already attached — a one-shot decision persisted per install. See F-037.
 
 Android additionally exposes `unregisterConversionListener` and the RPC soft-unsubscribe mapped by `unregisterDeeplinkListener`. Session-ready unregister is supported on both platforms.
 
-Registration is native state with an explicit contract: the application decides when delivery stops and resumes, and the plugin never infers that a listener has gone stale. Applications call the matching `unregister*Listener()` at the point in their own lifecycle where they no longer consume the events, and register again afterwards. Because Android's RPC handler is process-scoped (§4.2), a registration — and an `unregisterDeeplinkListener` soft unsubscribe — outlives the engine that requested it, while the Dart subscription does not; a recreated engine therefore repeats the subscribe-then-register sequence of a cold start. See [`doc/getting-started.md`](../doc/getting-started.md) for the integrator-facing version of this contract.
+Registration is native state with an explicit contract: the application decides when delivery stops and resumes, and the plugin never infers that a listener has gone stale. Applications call the matching `unregister*Listener()` at the point in their own lifecycle where they no longer consume the events, and register again afterwards. Where that call reaches the native SDK it also clears the Dart callback slot; the iOS no-ops (`unregisterConversionListener`, `unregisterDeeplinkListener`) leave the callback in place, matching their native behavior. Because Android's RPC handler is process-scoped (§4.2), a registration — and an `unregisterDeeplinkListener` soft unsubscribe — outlives the engine that requested it, while the Dart callbacks do not; a recreated engine therefore repeats the registration sequence of a cold start. See [`doc/getting-started.md`](../doc/getting-started.md) for the integrator-facing version of this contract.
 
 ### 6.3 Session start
 
-The app subscribes to `onSessionReady`, registers the native listener after initialization, and calls `start()` for every emitted foreground-cycle signal.
+The app registers the native listener after initialization and calls `start()` for every foreground-cycle signal delivered to its callback.
 
 ```dart
 final appsFlyer = AppsFlyerSdk.instance;
 
-appsFlyer.onSessionReady.listen((_) async {
+await appsFlyer.init(devKey: devKey, appId: appId);
+await appsFlyer.registerSessionReadyListener(() async {
   await appsFlyer.start();
 });
-
-await appsFlyer.init(devKey: devKey, appId: appId);
-await appsFlyer.registerSessionReadyListener();
 ```
 
 `start({awaitResponse})` and `logEvent(..., {awaitResponse})` forward the public flag (default `false`) to both native RPC layers. `true` completes the `Future<void>` on native request success and `false` completes after RPC acceptance. `generateInviteLink(..., awaitResponse: ...)` and `validateAndLogInAppPurchase(..., awaitResponse: ...)` default to `true` and forward the flag to Android RPC. Android returns a synchronous long link for `generateInviteLink(awaitResponse: false)` and an empty validation-result map for `validateAndLogInAppPurchase(awaitResponse: false)`. The current iOS RPC 7.0.12 does not expose the flag for those two APIs and always awaits their callbacks.
 
-Listener registration can cause readiness or attribution work promptly, so application code must subscribe to the Dart stream first and apply consent/identity settings that must affect the first Launch before registering `onSessionReady`. The wrapper does not maintain an initialized/started state machine or reject out-of-order calls; it relies on the application to await required sequencing and on native RPC/SDK validation for unsupported states. Most configuration is native runtime state and must be re-applied after a cold process start.
+Listener registration can cause readiness or attribution work promptly, so application code must apply consent/identity settings that must affect the first Launch before registering the session-ready listener. The wrapper does not maintain an initialized/started state machine or reject out-of-order calls; it relies on the application to await required sequencing and on native RPC/SDK validation for unsupported states. Most configuration is native runtime state and must be re-applied after a cold process start.
 
 ### 6.4 Callback timeouts
 
@@ -371,10 +371,10 @@ Purchase Connector is a separate optional native subsystem using `af-purchase-co
 - Dart throws `ArgumentError` before transport for purchase details on the wrong platform. Most other input validation, including `init` parameters and `setConsentData` GDPR fields, remains in the typed native RPC request and SDK.
 - Android converts parser/validation failures to numeric `RpcResponse.Error` values. Unexpected plugin orchestration failures use plugin error strings such as `UNEXPECTED_ERROR` or `INIT_ERROR`.
 - iOS distinguishes protocol errors in the response `error` envelope from handler failures represented by `result.success == false`; the iOS plugin adapter converts both to `FlutterError` and unwraps successful values.
-- A malformed native event is logged and dropped by Dart. It does not become a stream error. Conversion-data failure and UDL failure are normal event payloads, not failed MethodChannel requests.
-- Android splits teardown by lifetime. The Dart-facing half is engine-scoped: `onDetachedFromEngine` clears the channel handlers, detaches this engine's `af-events` sink, and shuts down the blocking-RPC executor. In-flight blocking-RPC work that completes after shutdown is not delivered back to Dart (`PLUGIN_DETACHED`). The native-facing half is process-scoped and deliberately survives: `AppsFlyerEventBus` keeps its buffer and `AppsFlyerRpcBridge` keeps the RPC handler, so a recreated engine reattaches to the configured bridge. Dart state does not survive either way — the application resubscribes to the streams and calls the `register*Listener` APIs again after a new engine attaches, and reusing the handler only makes that re-registration reuse the existing listeners instead of building new ones.
+- A malformed native event is logged and dropped by Dart. It never reaches an application callback and does not fail the `af-events` subscription. Conversion-data failure and UDL failure are normal event payloads, not failed MethodChannel requests.
+- Android splits teardown by lifetime. The Dart-facing half is engine-scoped: `onDetachedFromEngine` clears the channel handlers, detaches this engine's `af-events` sink, and shuts down the blocking-RPC executor. In-flight blocking-RPC work that completes after shutdown is not delivered back to Dart (`PLUGIN_DETACHED`). The native-facing half is process-scoped and deliberately survives: `AppsFlyerEventBus` keeps its buffer and `AppsFlyerRpcBridge` keeps the RPC handler, so a recreated engine reattaches to the configured bridge. Dart state does not survive either way — the application calls the `register*Listener` APIs again after a new engine attaches, and reusing the handler only makes that re-registration reuse the existing listeners instead of building new ones.
 - iOS registers its RPC event handler during plugin construction and tears it down in `detachFromEngineForRegistrar:` (after `publish:` in `registerWithRegistrar:`), clearing `eventSink`, `pendingEvents`, and the bridge event handler when the `FlutterEngine` is deallocated. `AppsFlyerRPCBridge` holds one handler per process while plugin instances are per engine, so `AFRPCBridge` records the registering instance as the slot's owner and removes the handler only for that owner — a detaching engine cannot silence events for an engine that registered after it and is still alive. This mirrors the `this.sink === sink` guard in `AppsFlyerEventBus.detach`; on both platforms the newest registration owns event delivery. `isEngineDetached` is set first in teardown so any in-flight `executeJson` completion (including the `init` sequence and `logAndOpenStore`) skips `FlutterResult` and `markBridgeReady()` instead of replying on a dead channel or flushing `AppsFlyerAttribution`'s process-scoped queue for a torn-down engine.
-- Event-stream subscriptions belong to the Flutter application; the SDK exposes broadcast streams and does not install per-callback global state.
+- Event callbacks belong to the Flutter application, but the transport subscription belongs to the plugin: Dart keeps one `af-events` listener and one callback slot per event, so the SDK installs no per-callback global state and the application cannot create a second delivery path.
 
 ## 11. Serialization and parameter contracts
 
@@ -443,8 +443,8 @@ The repository CI in `.travis.yml` runs `flutter test test` on Linux. That suite
 1. Register the native SDK delegate/listener in the native RPC layer and define a stable event name plus JSON-compatible data shape.
 2. Emit through the RPC notifier/event emitter and keep Flutter-channel access on the platform main thread.
 3. Ensure the platform plugin registers the event handler early enough and decide whether its existing buffer is sufficient — Android's `AppsFlyerEventBus` is process-scoped, iOS's is engine-scoped, and both are capped at 64 events.
-4. Decode and normalize the event in Dart, then expose a typed broadcast stream. Document subscription-before-registration ordering and platform payload differences.
-5. Test listener gating, event name/payload mapping, malformed input, cancellation/re-listening, and early-event replay. Add device coverage when the callback depends on application lifecycle.
+4. Decode and normalize the event in Dart, then dispatch it through `_AppsFlyerListenerRegistry` to a callback taken as an argument by the matching `register*Listener` API. Do not add a public `Stream`. Document platform payload differences.
+5. Test listener gating, event name/payload mapping, malformed input, callback replacement on re-registration, and early-event replay. Add device coverage when the callback depends on application lifecycle.
 
 ### 14.3 Platform-only or Purchase Connector feature
 
@@ -456,7 +456,7 @@ Keep platform-only behavior visibly gated in Dart and documented as such. Purcha
 - Public/native compatibility is checked by tests and review, not generated from a shared cross-platform schema. Android and iOS RPC method names and parameter shapes can drift independently.
 - Android runs fast RPCs inline on the platform thread. Only awaited-callback RPCs use a dedicated blocking executor, so a slow validation or invite-link wait does not stall unrelated setters/getters. iOS permits unrelated requests to overlap, so ordering must still be expressed by awaiting calls.
 - Native timeout errors do not cancel SDK work. Fire-and-forget completion is acceptance, not network delivery.
-- Event buffering is in memory and never persisted, so it does not survive process death. Both platforms cap the buffer at 64 events and drop the oldest on overflow; the buffer is process-scoped on Android and engine-scoped on iOS. Malformed events are dropped. The application must subscribe before listener registration to minimize gaps.
+- Event buffering is in memory and never persisted, so it does not survive process death. Both platforms cap the buffer at 64 events and drop the oldest on overflow; the buffer is process-scoped on Android and engine-scoped on iOS. Malformed events are dropped. Dart attaches its single `af-events` subscription on the first `register*Listener` call, so the replay is not consumed before a callback exists; an event whose listener is not yet registered is still logged and dropped.
 - Android deep-link correctness relies on an attached activity and SDK lifecycle inspection of its current intent; there is no plugin URL queue. iOS owns explicit AppDelegate/UIScene forwarding and queues early URL requests in `AppsFlyerAttribution` until initialization.
 - Android deep-link unsubscribe is soft: it clears the RPC listener reference, but the native SDK has no unsubscribe API. iOS exposes no conversion/UDL unregister mapping in the current RPC.
 - The plugin does not enforce a full lifecycle state machine. Call ordering, cold-start configuration replay, ATT prompting, and consent UI remain application responsibilities.
@@ -468,8 +468,9 @@ Keep platform-only behavior visibly gated in Dart and documented as such. Purcha
 | Layer | File | Responsibility |
 | --- | --- | --- |
 | Public library | `lib/appsflyer_sdk.dart` | Library exports |
-| Dart SDK | `lib/src/appsflyer_sdk.dart` | Public API, platform gates, RPC invocation, typed streams |
+| Dart SDK | `lib/src/appsflyer_sdk.dart` | Public API, platform gates, RPC invocation, typed event callbacks |
 | Event model | `lib/src/appsflyer_event.dart` | Native event decoding and normalization |
+| Listener registry | `lib/src/appsflyer_listener_registry.dart` | Private one-callback-per-event dispatch for `af-events` |
 | Errors | `lib/src/appsflyer_exception.dart` | Public SDK exceptions |
 | Purchase models | `lib/src/af_purchase_details.dart` | Android/iOS purchase request implementations |
 | Invite model | `lib/src/appsflyer_invite_link_params.dart` | Platform-aware invite parameter mapping |

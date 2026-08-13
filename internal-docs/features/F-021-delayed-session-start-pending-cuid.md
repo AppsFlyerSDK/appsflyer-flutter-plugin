@@ -16,7 +16,7 @@ In SDK 6 the plugin exposed `waitForCustomerUserId(bool)` and `setCustomerIdAndL
 ---
 
 ## Trigger
-None. The APIs have been removed. To gate the first session on a CUID, defer `start()` — called from the `onSessionReady` stream listener registered with `registerSessionReadyListener()` — until after `setCustomerUserId()` has completed.
+None. The APIs have been removed. To gate the first session on a CUID, defer `start()` — called from the callback registered with `registerSessionReadyListener()` — until after `setCustomerUserId()` has completed.
 
 ---
 
@@ -26,7 +26,7 @@ There is no current call chain. Neither `waitForCustomerUserId` nor `setCustomer
 ```
 AppsFlyerSdk.setCustomerUserId(id)   → RPC setCustomerUserId {customerId}   [F-015]
 AppsFlyerSdk.start()                 → RPC start {awaitResponse: false}     [F-002]
-  (await setCustomerUserId() first, then call start() from the onSessionReady listener)
+  (await setCustomerUserId() first, then call start() from the session-ready callback)
 ```
 
 ---

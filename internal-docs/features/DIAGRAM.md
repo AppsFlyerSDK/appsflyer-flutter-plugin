@@ -72,20 +72,19 @@ flowchart TD
 
 ## Section 2 — First-Launch Workflow
 
-This diagram is chronological, not a `depends_on` graph. It distinguishes calls that must precede `init()` from runtime configuration and explicit listener registration. Subscribe to Dart streams before installing the native listeners so an immediate event is not lost.
+This diagram is chronological, not a `depends_on` graph. It distinguishes calls that must precede `init()` from runtime configuration and explicit listener registration. Each listener takes its callback as an argument, so the callback is always in place before the native listener is installed and an immediate event cannot be lost.
 
 ```mermaid
 flowchart LR
     PRE["Pre-init configuration<br/>F-067 timeout, F-022 push path,<br/>iOS side of F-063"]:::config
-    STREAMS["Subscribe to required Dart streams"]:::dart
     F001["F-001 · init()"]:::sdkCore
     CONFIG["Apply launch configuration<br/>consent, identity, privacy;<br/>Android side of F-063"]:::config
     LISTENERS["Register conversion and/or UDL listeners"]:::listeners
     SESSION["Register session-ready listener"]:::listeners
-    READY["onSessionReady emits<br/>once per foreground cycle"]:::event
+    READY["session-ready callback runs<br/>once per foreground cycle"]:::event
     F002["F-002 · start()"]:::sdkCore
 
-    PRE --> STREAMS --> F001 --> CONFIG --> LISTENERS --> SESSION --> READY --> F002
+    PRE --> F001 --> CONFIG --> LISTENERS --> SESSION --> READY --> F002
 
     classDef sdkCore fill:#4C6EF5,color:#fff
     classDef config fill:#495057,color:#fff
@@ -105,12 +104,12 @@ Configuration that is native runtime state remains available across background-t
 | F-002 | F-001 | Native session start requires initialization |
 | F-011 | F-001 | Documented automatic-consent setup runs after initialization |
 | F-011 | F-002 | The consent workflow gates the first Launch until CMP state is ready |
-| F-014 | F-037 | Resolution result is delivered through the UDL stream |
+| F-014 | F-037 | Resolution result is delivered through the UDL callback |
 | F-022 | F-037 | Configured push URL is useful to the Flutter app through UDL delivery |
 | F-027 | F-028 | Invite generation requires a base OneLink ID |
 | F-035 | F-001 | Conversion listener is explicitly registered after initialization |
 | F-035 | F-002 | The Launch sent by `start()` triggers conversion-data retrieval |
-| F-037 | F-001 | UDL listener is explicitly registered after initialization |
+| F-037 | F-001 | UDL listener is explicitly registered before initialization |
 | F-037 | F-039 | iOS URL/Universal Link/UIScene entry points feed native resolution |
 | F-037 | F-040 | Android warm-intent state must be current for lifecycle resolution |
 | F-048 | F-001 | Plugin metadata is reported inside native init orchestration |

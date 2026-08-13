@@ -1,25 +1,40 @@
 part of appsflyer_sdk;
 
+/// Called with install and attribution conversion data (GCD).
+typedef OnConversionDataSuccess = void Function(Map<String, dynamic> data);
+
+/// Called when the native SDK fails to retrieve conversion data.
+///
+/// The payload shape differs by platform: Android reports `{"error": String}`
+/// with no error code; iOS reports `{"error": String, "code": int}`.
+typedef OnConversionDataFailure = void Function(Map<String, dynamic> error);
+
+/// Called with a Unified Deep Linking result.
+typedef OnDeepLinkReceived = void Function(DeepLinkResult result);
+
+/// Called once per foreground cycle when the SDK is ready to send a session.
+typedef OnSessionReady = void Function();
+
 /// The AppsFlyer SDK entry point.
 ///
-/// Use the shared [instance] to configure and initialize the SDK. Subscribe to
-/// the required event streams before registering their native listeners.
+/// Use the shared [instance] to configure and initialize the SDK. Each event
+/// takes its callback as an argument to its `register*Listener` method; the
+/// plugin holds one callback per event and replaces it on re-registration, the
+/// same contract as the native SDKs.
 ///
-/// Initialization does not send a session. Register the session-ready
-/// listener and call [start] when [onSessionReady] emits:
+/// Initialization does not send a session. Register the session-ready listener
+/// and call [start] from its callback:
 ///
 /// ```dart
 /// final appsFlyer = AppsFlyerSdk.instance;
-///
-/// appsFlyer.onSessionReady.listen((_) async {
-///   await appsFlyer.start();
-/// });
 ///
 /// await appsFlyer.init(
 ///   devKey: 'YOUR_DEV_KEY',
 ///   appId: 'YOUR_APP_ID',
 /// );
-/// await appsFlyer.registerSessionReadyListener();
+/// await appsFlyer.registerSessionReadyListener(() async {
+///   await appsFlyer.start();
+/// });
 /// ```
 class AppsFlyerSdk {
   /// Returns the shared [AppsFlyerSdk] instance.
@@ -31,26 +46,9 @@ class AppsFlyerSdk {
   @visibleForTesting
   AppsFlyerSdk.private(
     this._methodChannel,
-    EventChannel eventChannel, {
+    this._eventChannel, {
     TargetPlatform? platform,
-  }) : _platform = platform ?? defaultTargetPlatform {
-    _events = eventChannel.receiveBroadcastStream().transform(
-      StreamTransformer<dynamic, _AppsFlyerEvent>.fromHandlers(
-        handleData: (dynamic value, EventSink<_AppsFlyerEvent> sink) {
-          try {
-            if (value is! String) {
-              throw FormatException(
-                'AppsFlyer event must be a JSON string, got ${value.runtimeType}',
-              );
-            }
-            sink.add(_AppsFlyerEvent.fromNative(value));
-          } catch (error) {
-            debugPrint('AppsFlyer: dropped malformed native event: $error');
-          }
-        },
-      ),
-    ).asBroadcastStream();
-  }
+  }) : _platform = platform ?? defaultTargetPlatform;
 
   final TargetPlatform _platform;
 
@@ -62,51 +60,43 @@ class AppsFlyerSdk {
   String get pluginVersion => _AppsFlyerConstants.PLUGIN_VERSION;
 
   final MethodChannel _methodChannel;
-  late final Stream<_AppsFlyerEvent> _events;
+  final EventChannel _eventChannel;
+  final _AppsFlyerListenerRegistry _listeners = _AppsFlyerListenerRegistry();
+  StreamSubscription<dynamic>? _eventSubscription;
 
-  /// Listens for successful install and attribution conversion data.
+  /// Attaches the plugin's single `af-events` subscription on first use.
   ///
-  /// Subscribe before [registerConversionListener] so the first result is not
-  /// missed.
-  Stream<Map<String, dynamic>> get onConversionDataSuccess => _events
-      .where((event) => event.name == 'onConversionDataSuccess')
-      .map((event) => event.data);
+  /// Deferred until the first registration on purpose: both platforms buffer
+  /// native events until Dart attaches and replay them on attach, so
+  /// subscribing before a callback slot exists would drain the buffer into
+  /// nothing.
+  void _ensureEventsSubscribed() {
+    _eventSubscription ??=
+        _eventChannel.receiveBroadcastStream().listen(_handleNativeEvent);
+  }
 
-  /// Listens for conversion-data failures reported by the native SDK.
-  ///
-  /// The [registerConversionListener] call can succeed while conversion data
-  /// retrieval still fails. The payload shape differs by platform: Android
-  /// reports `{"error": String}` with no error code; iOS reports
-  /// `{"error": String, "code": int}`.
-  ///
-  /// Subscribe before [registerConversionListener] so the first result is not
-  /// missed.
-  Stream<Map<String, dynamic>> get onConversionDataFailure => _events
-      .where((event) => event.name == 'onConversionDataFail')
-      .map((event) => event.data);
-
-  /// Listens for Unified Deep Linking results.
-  ///
-  /// Subscribe before [registerDeepLinkListener] so a launch deep link is not
-  /// missed.
-  Stream<DeepLinkResult> get onDeepLinkReceived => _events
-      .where(
-        (event) =>
-            event.name == 'onDeepLinking' || event.name == 'onDeepLinkReceived',
-      )
-      .map((event) => DeepLinkResult._fromEvent(event, platform: _platform));
-
-  /// Emits once per foreground cycle when the SDK is ready to send a session.
-  ///
-  /// Subscribe before [registerSessionReadyListener], then call [start] from
-  /// the listener.
-  Stream<void> get onSessionReady => _events
-      .where((event) => event.name == 'onSessionReady')
-      .map<void>((_) {});
+  void _handleNativeEvent(dynamic value) {
+    final _AppsFlyerEvent event;
+    try {
+      if (value is! String) {
+        throw FormatException(
+          'AppsFlyer event must be a JSON string, got ${value.runtimeType}',
+        );
+      }
+      event = _AppsFlyerEvent.fromNative(value);
+    } catch (error) {
+      debugPrint('AppsFlyer: dropped malformed native event: $error');
+      return;
+    }
+    _listeners.dispatch(event);
+  }
 
   /// Initializes the SDK with [devKey] and, on iOS, [appId].
   ///
   /// Does not send a session.
+  ///
+  /// If your app handles deep links, call [registerDeepLinkListener] before
+  /// this method; the other `register*Listener` methods are called after it.
   ///
   /// [appId] is required by the native iOS SDK and is not sent to Android.
   /// Input validation is performed by the native RPC layer.
@@ -122,13 +112,29 @@ class AppsFlyerSdk {
 
   /// Registers the install and attribution conversion-data listener.
   ///
-  /// Subscribe to [onConversionDataSuccess] and [onConversionDataFailure]
-  /// before calling this method so the first result is not missed.
-  Future<void> registerConversionListener() {
+  /// [onSuccess] receives the conversion data (GCD). [onFailure] receives
+  /// retrieval failures: this registration can succeed while the native SDK
+  /// still fails to retrieve conversion data.
+  ///
+  /// Calling this again replaces both callbacks.
+  Future<void> registerConversionListener({
+    required OnConversionDataSuccess onSuccess,
+    OnConversionDataFailure? onFailure,
+  }) {
+    _ensureEventsSubscribed();
+    _listeners.on(
+      _AppsFlyerConstants.EVENT_CONVERSION_DATA_SUCCESS,
+      (event) => onSuccess(event.data),
+    );
+    _listeners.on(
+      _AppsFlyerConstants.EVENT_CONVERSION_DATA_FAIL,
+      (event) => onFailure?.call(event.data),
+    );
     return _invokeVoidRpc('registerConversionListener');
   }
 
-  /// Unregisters the native Android conversion-data listener.
+  /// Unregisters the native Android conversion-data listener and drops the
+  /// callbacks passed to [registerConversionListener].
   ///
   /// This API is available only on Android. Call [registerConversionListener]
   /// again to resume receiving conversion-data events.
@@ -137,44 +143,70 @@ class AppsFlyerSdk {
       _logUnsupportedPlatform('unregisterConversionListener', 'Android');
       return;
     }
+    _listeners.off(_AppsFlyerConstants.EVENT_CONVERSION_DATA_SUCCESS);
+    _listeners.off(_AppsFlyerConstants.EVENT_CONVERSION_DATA_FAIL);
     return _invokeVoidRpc('unregisterConversionListener');
   }
 
   /// Registers the Unified Deep Linking listener.
   ///
-  /// Subscribe to [onDeepLinkReceived] before calling this method so a launch
-  /// deep link is not missed.
-  Future<void> registerDeepLinkListener() {
+  /// [onDeepLink] receives every resolved deep link, deferred or direct.
+  /// Calling this again replaces the callback.
+  ///
+  /// Call this **before** [init]. On Android, [init] hands the launch intent to
+  /// the native SDK, which decides once per install whether to send the deferred
+  /// deep-link resolution request; registering afterwards means that request is
+  /// never sent for that install, and the skipped state persists across
+  /// launches. Direct links are unaffected. Registration before [init] is
+  /// supported on both platforms.
+  Future<void> registerDeepLinkListener(OnDeepLinkReceived onDeepLink) {
+    _ensureEventsSubscribed();
+    void dispatch(_AppsFlyerEvent event) =>
+        onDeepLink(DeepLinkResult._fromEvent(event, platform: _platform));
+    // Android emits onDeepLinking, iOS emits onDeepLinkReceived.
+    _listeners.on(_AppsFlyerConstants.EVENT_DEEP_LINKING, dispatch);
+    _listeners.on(_AppsFlyerConstants.EVENT_DEEP_LINK_RECEIVED, dispatch);
     return _invokeVoidRpc(
       _isAndroid ? 'subscribeForDeepLink' : 'registerDeeplinkListener',
     );
   }
 
-  /// Requests removal of the Unified Deep Linking listener on Android.
+  /// Requests removal of the Unified Deep Linking listener on Android and drops
+  /// the callback passed to [registerDeepLinkListener].
   Future<void> unregisterDeeplinkListener() async {
     if (!_isAndroid) {
       _logUnsupportedPlatform('unregisterDeeplinkListener', 'Android');
       return;
     }
+    _listeners.off(_AppsFlyerConstants.EVENT_DEEP_LINKING);
+    _listeners.off(_AppsFlyerConstants.EVENT_DEEP_LINK_RECEIVED);
     return _invokeVoidRpc('unsubscribeForDeepLink');
   }
 
   /// Registers the session-ready listener.
   ///
-  /// The SDK emits [onSessionReady] once per foreground cycle when it is ready
-  /// to send a session. Subscribe before registering, and call [start] from the
-  /// stream listener:
+  /// The SDK invokes [onReady] once per foreground cycle when it is ready to
+  /// send a session. Call [start] from that callback:
   ///
   /// ```dart
-  /// appsFlyer.onSessionReady.listen((_) => appsFlyer.start());
-  /// await appsFlyer.registerSessionReadyListener();
+  /// await appsFlyer.registerSessionReadyListener(() => appsFlyer.start());
   /// ```
-  Future<void> registerSessionReadyListener() {
+  ///
+  /// Calling this again replaces the callback, so [start] is never issued twice
+  /// for one readiness event.
+  Future<void> registerSessionReadyListener(OnSessionReady onReady) {
+    _ensureEventsSubscribed();
+    _listeners.on(
+      _AppsFlyerConstants.EVENT_SESSION_READY,
+      (_) => onReady(),
+    );
     return _invokeVoidRpc('registerSessionReadyListener');
   }
 
-  /// Removes the listener registered by [registerSessionReadyListener].
+  /// Removes the listener registered by [registerSessionReadyListener] and
+  /// drops its callback.
   Future<void> unregisterSessionReadyListener() {
+    _listeners.off(_AppsFlyerConstants.EVENT_SESSION_READY);
     return _invokeVoidRpc('unregisterSessionReadyListener');
   }
 
@@ -188,8 +220,9 @@ class AppsFlyerSdk {
 
   /// Sends a session ("Launch").
   ///
-  /// Call once for each [onSessionReady] emission. Defer this call when the
-  /// first session must wait for consent or another application condition.
+  /// Call once for each [registerSessionReadyListener] callback invocation.
+  /// Defer this call when the first session must wait for consent or another
+  /// application condition.
   ///
   /// When [awaitResponse] is `false` (the default), the returned [Future]
   /// completes when the native SDK accepts the request. Delivery success or
@@ -303,8 +336,8 @@ class AppsFlyerSdk {
 
   /// Manually logs a session on Android.
   ///
-  /// Android only. For typical Flutter apps, use [start] when [onSessionReady]
-  /// emits instead.
+  /// Android only. For typical Flutter apps, call [start] from the
+  /// [registerSessionReadyListener] callback instead.
   Future<void> logSession() async {
     if (!_isAndroid) {
       _logUnsupportedPlatform('logSession', 'Android');
@@ -848,7 +881,8 @@ class AppsFlyerSdk {
     });
   }
 
-  /// Resolves [url] and delivers the result through [onDeepLinkReceived].
+  /// Resolves [url] and delivers the result to the [registerDeepLinkListener]
+  /// callback.
   ///
   /// The URL can be a full URL, OneLink, or Android intent-data string.
   /// On Android, set [shouldTriggerSession] to `true` to also enqueue a Launch

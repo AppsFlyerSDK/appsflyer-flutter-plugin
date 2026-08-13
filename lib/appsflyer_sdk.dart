@@ -2,8 +2,8 @@
 
 /// The public API for the AppsFlyer SDK 7 Flutter plugin.
 ///
-/// Use [AppsFlyerSdk.instance] to initialize the SDK, register native listeners,
-/// receive SDK events, and call the supported Android and iOS APIs.
+/// Use [AppsFlyerSdk.instance] to initialize the SDK, register native listeners
+/// with their callbacks, and call the supported Android and iOS APIs.
 library appsflyer_sdk;
 
 import 'dart:async';
@@ -15,6 +15,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'src/appsflyer_constants.dart';
 part 'src/appsflyer_event.dart';
+part 'src/appsflyer_listener_registry.dart';
 part 'src/appsflyer_invite_link_params.dart';
 part 'src/appsflyer_sdk.dart';
 part 'src/udl/deep_link_result.dart';

@@ -29,10 +29,6 @@
 - [registerSessionReadyListener](#registerSessionReadyListener)
 - [unregisterSessionReadyListener](#unregisterSessionReadyListener)
 - [isSessionReady](#isSessionReady)
-- [onSessionReady](#onSessionReady)
-- [onConversionDataSuccess](#onConversionDataSuccess)
-- [onConversionDataFailure](#onConversionDataFailure)
-- [onDeepLinkReceived](#onDeepLinkReceived)
 - [logEvent](#logEvent)
 - [logLocation](#logLocation)
 - [logSession](#logSession)
@@ -240,41 +236,89 @@ await appsflyerSdk.setLogLevel(AFLogLevel.debug);
 ```
 
 ---
-**<a id="registerConversionListener"> `Future<void> registerConversionListener()`**
+**<a id="registerConversionListener"> `Future<void> registerConversionListener({required OnConversionDataSuccess onSuccess, OnConversionDataFailure? onFailure})`**
 
-Registers the native conversion-data listener. Subscribe to
-`onConversionDataSuccess` and `onConversionDataFailure` first.
+Registers the native conversion-data listener and the callbacks that receive its
+results.
+
+| Parameter | Type | Description |
+| --------- | ---- | ----------- |
+| `onSuccess` | `void Function(Map<String, dynamic> data)` | Required. Receives the conversion data (GCD). |
+| `onFailure` | `void Function(Map<String, dynamic> error)?` | Optional. Receives conversion-data retrieval failures. |
+
+<a id="onInstallConversionData"></a>
+<a id="onConversionDataSuccess"></a>
+<a id="onConversionDataFailure"></a>
 
 ```dart
-await appsflyerSdk.registerConversionListener();
+await appsflyerSdk.registerConversionListener(
+  onSuccess: (data) {
+    print("conversion data: $data");
+  },
+  onFailure: (error) {
+    print("conversion data failed: $error");
+  },
+);
 ```
+
+The plugin holds **one callback per event** and replaces it when
+`registerConversionListener()` is called again, matching the native SDKs. There
+is no stream to subscribe to, so one native event can never be delivered to two
+places in your app.
+
+`onFailure` is independent of the registration result: this call can succeed
+while the native SDK still fails to retrieve conversion data. The failure payload
+shape differs by platform — Android reports `{"error": String}` with no error
+code; iOS reports `{"error": String, "code": int}`. Android also exposes
+[`unregisterConversionListener()`](#unregisterConversionListener) to remove its
+native listener; iOS has no corresponding unregister operation.
 
 ---
 <a id="unregisterConversionDataListener"></a>
 **<a id="unregisterConversionListener"> `Future<void> unregisterConversionListener()`** — **Android only**
 
-Unregisters the native Android conversion-data listener. Call
-`registerConversionListener()` again to resume receiving conversion-data
-events. On iOS the call is ignored with a logged warning.
+Unregisters the native Android conversion-data listener and drops the callbacks
+passed to `registerConversionListener()`. Call `registerConversionListener()`
+again to resume receiving conversion-data events. On iOS the call is ignored with
+a logged warning and the callbacks are retained.
 
 ```dart
 await appsflyerSdk.unregisterConversionListener();
 ```
 
 ---
-**<a id="registerDeepLinkListener"> `Future<void> registerDeepLinkListener()`**
+**<a id="registerDeepLinkListener"> `Future<void> registerDeepLinkListener(OnDeepLinkReceived onDeepLink)`**
 
-Registers the native Unified Deep Linking listener. Subscribe to
-`onDeepLinkReceived` first.
+Registers the native Unified Deep Linking listener and the callback that receives
+its results.
+
+| Parameter | Type | Description |
+| --------- | ---- | ----------- |
+| `onDeepLink` | `void Function(DeepLinkResult result)` | Required. Receives every resolved deep link, deferred or direct. |
+
+<a id="onDeepLinking"></a>
+<a id="onDeepLinkReceived"></a>
 
 ```dart
-await appsflyerSdk.registerDeepLinkListener();
+await appsflyerSdk.registerDeepLinkListener((result) {
+  print("result: $result");
+});
 ```
+
+Call this **before** [`init`](#init). On Android, `init()` hands the launch
+intent to the native SDK, which decides once per install whether to send the
+deferred deep-link resolution request; registering afterwards means that request
+is never sent for that install, and the skipped state persists across launches.
+Direct links are unaffected. Registration before `init()` is supported on both
+platforms.
+
+Calling this again replaces the callback.
 
 ---
 **<a id="unregisterDeeplinkListener"> `Future<void> unregisterDeeplinkListener()`** — **Android only**
 
-Requests that Android stop forwarding Unified Deep Linking events. In the
+Requests that Android stop forwarding Unified Deep Linking events and drops the
+callback passed to `registerDeepLinkListener()`. In the
 current Android integration, subsequent events may still be delivered; do not
 rely on this method to disable deep-link handling. On iOS the call is ignored
 with a logged warning.
@@ -301,41 +345,16 @@ native SDK accepts the request. Delivery success or failure is not reported.
 | --------------- | ------ | ----------- |
 | `awaitResponse` | `bool` | Optional. Defaults to `false`. When `true`, wait for the native request callback. When `false`, return when the native SDK accepts the request. |
 
-**`start()` must be called once per foreground cycle.** The native SDK resets its "started" state every time the app is backgrounded, so a single `start()` at launch reports only the first session — subsequent foregrounds send nothing. Subscribe to `onSessionReady`, which fires once per foreground cycle when the native SDK's session-readiness conditions are satisfied:
+**`start()` must be called once per foreground cycle.** The native SDK resets its "started" state every time the app is backgrounded, so a single `start()` at launch reports only the first session — subsequent foregrounds send nothing. Register the session-ready listener, whose callback fires once per foreground cycle when the native SDK's session-readiness conditions are satisfied:
 ```dart
 // Recommended SDK 7 pattern: start on every session-ready signal.
-appsflyerSdk.onSessionReady.listen((_) async {
+await appsflyerSdk.registerSessionReadyListener(() async {
   await appsflyerSdk.start();
 });
-await appsflyerSdk.registerSessionReadyListener();
 ```
-Gate the first session by deferring the `start()` call inside the stream
-listener.
+Gate the first session by deferring the `start()` call inside the callback.
+
 ---
-<a id="onInstallConversionData"></a>
-#### <a id="onConversionDataSuccess"> **`Stream<Map<String, dynamic>> get onConversionDataSuccess`**
-
-Emits successful conversion-data payloads. Subscribe before calling
-`registerConversionListener()`.
-
-_Example:_
-
-```dart
-appsflyerSdk.onConversionDataSuccess.listen((data) {
-  print("conversion data: $data");
-});
-await appsflyerSdk.registerConversionListener();
-```
-
-**<a id="onConversionDataFailure"> `Stream<Map<String, dynamic>> get onConversionDataFailure`**
-emits the raw conversion-data failure payload reported by the native SDK. This
-event is independent of listener registration — `registerConversionListener()`
-itself already succeeded. The payload shape differs by platform: Android
-reports `{"error": String}` with no error code; iOS reports `{"error":
-String, "code": int}`. Cancel the Dart stream subscription when it is no
-longer needed. Android also exposes
-[`unregisterConversionListener()`](#unregisterConversionListener) to remove its
-native listener; iOS has no corresponding unregister operation.
 
 **<a id="getAttributionId"> `Future<String?> getAttributionId()`** — returns the Facebook (Katana) attribution ID the SDK reads from the installed Facebook app's on-device content provider (also attached to attribution payloads automatically). Most apps never need it directly; exposed for parity with the native SDK. **Android only** — calling it on iOS throws `AppsFlyerException` when the native RPC layer reports the method as unavailable.
 
@@ -344,21 +363,6 @@ _Example:_
 appsFlyerSdk.getAttributionId().then((id) {
   print("Facebook attribution ID: $id");
 });
-```
-
-<a id="onDeepLinking"></a>
-#### <a id="onDeepLinkReceived"> **`Stream<DeepLinkResult> get onDeepLinkReceived`**
-
-Emits Unified Deep Linking results. Subscribe before calling
-`registerDeepLinkListener()`.
-
-_Example:_
-
-```dart
-appsflyerSdk.onDeepLinkReceived.listen((result) {
-  print("result: $result");
-});
-await appsflyerSdk.registerDeepLinkListener();
 ```
 
 ---
@@ -418,8 +422,9 @@ await appsflyerSdk.logLocation(
 
 ##### <a id="logSession"> **`Future<void> logSession()`**
 
-Manually logs a session on Android. For typical Flutter apps, use
-[`start`](#start) when [`onSessionReady`](#onSessionReady) emits instead.
+Manually logs a session on Android. For typical Flutter apps, call
+[`start`](#start) from the
+[`registerSessionReadyListener`](#registerSessionReadyListener) callback instead.
 **Android only**; on iOS the call is ignored with a logged warning.
 
 ```dart
@@ -434,36 +439,40 @@ await appsflyerSdk.logSession();
 
 In SDK 7 the plugin initializes on [`init`](#init); a session is sent when
 the app calls [`start`](#start). Because the native SDK requires `start()` once
-per foreground cycle, subscribe to `onSessionReady` before enabling the native
-listener.
+per foreground cycle, register the session-ready listener and call `start()` from
+its callback.
 
-**<a id="registerSessionReadyListener"> `Future<void> registerSessionReadyListener()`**
+**<a id="registerSessionReadyListener"> `Future<void> registerSessionReadyListener(OnSessionReady onReady)`**
 
-Enables the native readiness event. `onSessionReady` emits **once per foreground
-cycle** when the native session-readiness conditions are satisfied. These
-conditions can include bounded launch deep-link processing. Call `start()` from
-the stream listener so every foreground reports a session.
+Enables the native readiness event and registers its callback.
+
+| Parameter | Type | Description |
+| --------- | ---- | ----------- |
+| `onReady` | `void Function()` | Required. Called **once per foreground cycle** when the native session-readiness conditions are satisfied. |
+
+<a id="onSessionReady"></a>
+
+These conditions can include bounded launch deep-link processing. Call `start()`
+from the callback so every foreground reports a session.
 
 ```dart
-appsflyerSdk.onSessionReady.listen((_) async {
+await appsflyerSdk.registerSessionReadyListener(() async {
   await appsflyerSdk.start();
 });
-await appsflyerSdk.registerSessionReadyListener();
 ```
+
+Calling this again replaces the callback, so `start()` is never issued twice for
+one readiness event.
 
 Platform support: Android ✓ · iOS ✓.
 
-**<a id="onSessionReady"> `Stream<void> get onSessionReady`** — emits once per
-foreground cycle when the native SDK is ready for `start()`.
-
-**<a id="unregisterSessionReadyListener"> `Future<void> unregisterSessionReadyListener()`** — removes the native readiness listener (Android ✓ · iOS ✓).
+**<a id="unregisterSessionReadyListener"> `Future<void> unregisterSessionReadyListener()`** — removes the native readiness listener and drops its callback (Android ✓ · iOS ✓).
 
 **<a id="isSessionReady"> `Future<bool> isSessionReady()`** — returns whether all
 session-readiness conditions are currently satisfied. Supported on both platforms.
 
 ```dart
-appsFlyerSdk.onSessionReady.listen((_) => print("session ready"));
-await appsFlyerSdk.registerSessionReadyListener();
+await appsFlyerSdk.registerSessionReadyListener(() => print("session ready"));
 final ready = await appsFlyerSdk.isSessionReady();
 ```
 
@@ -630,10 +639,9 @@ await appsflyerSdk.setConsentData(
   hasConsentForAdsPersonalization: true,
 );
 
-appsflyerSdk.onSessionReady.listen((_) async {
+await appsflyerSdk.registerSessionReadyListener(() async {
   await appsflyerSdk.start();
 });
-await appsflyerSdk.registerSessionReadyListener();
 ```
 
 If both TCF collection and explicit consent are used, AppsFlyer backend
@@ -949,15 +957,17 @@ to find the OneLink URL in your push payload.
 await appsFlyerSdk.addPushNotificationDeepLinkPath(
   ["deeply", "nested", "deep_link"],
 );
+await appsFlyerSdk.registerDeepLinkListener((result) {
+  // Handle deep-link navigation here.
+});
 await appsFlyerSdk.init(
   devKey: '<DEV_KEY>',
   appId: '<APP_ID>',
 );
-await appsFlyerSdk.registerDeepLinkListener();
 ```
 
 Push configuration does not replace the SDK 7 session lifecycle. Complete the
-normal [`onSessionReady` → `start()` setup](getting-started.md#6-start-sessions)
+normal [session-ready → `start()` setup](getting-started.md#5-register-the-remaining-listeners)
 so the initial Launch and every later foreground session are reported.
 
 #### **Step 2: Send Push Payload to SDK**
@@ -991,28 +1001,18 @@ On iOS, you **MUST also call** `handlePushNotification(pushPayload)` to pass the
 // 1. Configure SDK (in main.dart or app initialization)
 // ========================================
 Future<void> initializeAppsFlyer() async {
-  // STEP 1: Subscribe before registering the corresponding native listeners.
-  appsFlyerSdk.onDeepLinkReceived.listen((DeepLinkResult result) {
+  // STEP 1: Configure the deep-link path before init().
+  await appsFlyerSdk.addPushNotificationDeepLinkPath(
+    ["deeply", "nested", "deep_link"],
+  );
+
+  // STEP 2: Enable native deep-link events and handle them. Also before init().
+  await appsFlyerSdk.registerDeepLinkListener((DeepLinkResult result) {
     if (result.status == DeepLinkStatus.found) {
       print("Deep link found: ${result.deepLink?.deepLinkValue}");
       // Handle deep-link navigation here.
     }
   });
-
-  // Required: report a session on every foreground cycle.
-  appsFlyerSdk.onSessionReady.listen((_) async {
-    try {
-      await appsFlyerSdk.start(awaitResponse: true);
-      print("AppsFlyer session reported.");
-    } on AppsFlyerException catch (error) {
-      print("AppsFlyer start error: $error");
-    }
-  });
-
-  // STEP 2: Configure the deep-link path before init().
-  await appsFlyerSdk.addPushNotificationDeepLinkPath(
-    ["deeply", "nested", "deep_link"],
-  );
 
   // STEP 3: Initialize the SDK.
   await appsFlyerSdk.init(
@@ -1020,11 +1020,16 @@ Future<void> initializeAppsFlyer() async {
     appId: '<APP_ID>',
   );
 
-  // STEP 4: Enable native deep-link events.
-  await appsFlyerSdk.registerDeepLinkListener();
-
-  // STEP 5: Register last because this can emit onSessionReady immediately.
-  await appsFlyerSdk.registerSessionReadyListener();
+  // STEP 4: Register last because this can invoke the callback immediately.
+  // Required: report a session on every foreground cycle.
+  await appsFlyerSdk.registerSessionReadyListener(() async {
+    try {
+      await appsFlyerSdk.start(awaitResponse: true);
+      print("AppsFlyer session reported.");
+    } on AppsFlyerException catch (error) {
+      print("AppsFlyer start error: $error");
+    }
+  });
 }
 
 // ========================================
@@ -1072,7 +1077,7 @@ the explicit terminated-state forwarding above is required only on iOS.
 |---|---|---|
 | **Android** | `sendPushNotificationData(...)` | `addPushNotificationDeepLinkPath()` (auto-handles) |
 | **iOS** | `handlePushNotification(pushPayload)` | `addPushNotificationDeepLinkPath()` **+** `handlePushNotification(pushPayload)` |
-| **Deep Linking** | Basic attribution only | Full deep linking with `onDeepLinkReceived` callback |
+| **Deep Linking** | Basic attribution only | Full deep linking with the `registerDeepLinkListener` callback |
 | **Use Case** | Simple re-engagement | Re-engagement + in-app navigation |
 
 ---
@@ -1081,9 +1086,10 @@ the explicit terminated-state forwarding above is required only on iOS.
 
 - **Traditional approach**: Call Android `sendPushNotificationData(...)` or iOS `handlePushNotification(pushPayload)`
 - **OneLink approach (Recommended)**:
-  - ✅ **Both platforms**: Call `addPushNotificationDeepLinkPath()` before SDK init
+  - ✅ **Both platforms**: Call `addPushNotificationDeepLinkPath()` and
+    `registerDeepLinkListener()` before SDK init
   - ✅ **iOS only**: Also call `handlePushNotification(pushPayload)` when push is received
-  - ✅ **Both platforms**: Handle deep links in `onDeepLinkReceived` callback
+  - ✅ **Both platforms**: Handle deep links in the `registerDeepLinkListener` callback
 
     
 ---
@@ -1536,8 +1542,9 @@ _Example:_
 
 Manually triggers deep link resolution for a given `url` (full URL, OneLink, or intent-data string). Use it to resolve a deep link before the SDK starts (e.g. when delaying `start()`), or for links that don't arrive through the standard intent / Universal Link flow (e.g. Firebase Messaging).
 
-The resolved link is delivered through the [`onDeepLinkReceived`](#onDeepLinkReceived)
-UDL stream on both platforms. `shouldTriggerSession` defaults to `false`, so a
+The resolved link is delivered to the
+[`registerDeepLinkListener`](#registerDeepLinkListener) callback on both
+platforms. `shouldTriggerSession` defaults to `false`, so a
 bare `performDeepLinking(url)` resolves the link without an extra Launch and
 behaves identically on Android and iOS. The flag is Android-only: pass `true` to
 also enqueue a Launch for re-engagement; on iOS it has no effect because the
@@ -1547,11 +1554,7 @@ link is always resolved without an extra managed session.
 Future<void> configureAppsFlyer() async {
   final appsflyerSdk = AppsFlyerSdk.instance;
 
-  appsflyerSdk.onConversionDataSuccess.listen((data) {
-    print("conversion data: $data");
-  });
-
-  appsflyerSdk.onDeepLinkReceived.listen((DeepLinkResult result) {
+  await appsflyerSdk.registerDeepLinkListener((DeepLinkResult result) {
     switch (result.status) {
       case DeepLinkStatus.found:
         print(result.deepLink);
@@ -1573,8 +1576,12 @@ Future<void> configureAppsFlyer() async {
     devKey: '<DEV_KEY>',
     appId: '<APP_ID>',
   );
-  await appsflyerSdk.registerConversionListener();
-  await appsflyerSdk.registerDeepLinkListener();
+
+  await appsflyerSdk.registerConversionListener(
+    onSuccess: (data) {
+      print("conversion data: $data");
+    },
+  );
 
   // Resolve a deep link manually.
   await appsflyerSdk.performDeepLinking(

@@ -7,12 +7,12 @@
 
 Apply privacy and identity settings that must affect the first Launch after
 `init()` and **before** registering the session-ready listener. Registration can
-emit `onSessionReady` immediately and trigger `start()`.
+invoke the session-ready callback immediately and trigger `start()`.
 
 | Goal | API | When to use it |
 | --- | --- | --- |
 | Anonymize attribution data for the current user | `anonymizeUser(true)` | Call before the first `start()`. Call `anonymizeUser(false)` to stop anonymizing future data. |
-| Stop all SDK activity and communication | `stop(true)` | Use for a complete SDK opt-out. Do not call `start()` while stopped. Call `stop(false)` to resume, then continue with the normal `onSessionReady` → `start()` flow. |
+| Stop all SDK activity and communication | `stop(true)` | Use for a complete SDK opt-out. Do not call `start()` while stopped. Call `stop(false)` to resume, then continue with the normal session-ready → `start()` flow. |
 | Disable advertising-identifier collection | `setDisableAdvertisingIdentifiers(true)` | Call before the first `start()` when your privacy choice requires GAID, IDFA, and OAID collection to be disabled. Pass `false` to enable collection again. |
 | Set user PII for network sharing | `setUserEmail`, `setUserPhone`, `setUserFirstName`, `setUserLastName`, `setUserFbLoginId` | Set only the values your app is allowed to share. Email, phone, and name values are hashed by the native SDK; the Facebook App-Scoped ID is not hashed. |
 | Remove previously set PII | `clearUserPii()` | Call on logout, before switching accounts, or when the app should no longer retain values set through the `setUser*` APIs. It does not clear the Customer User ID, consent, or anonymization state. |
@@ -29,8 +29,10 @@ await appsflyerSdk.init(
 await appsflyerSdk.setDisableAdvertisingIdentifiers(true);
 await appsflyerSdk.anonymizeUser(true);
 
-// Register last because this can emit onSessionReady immediately.
-await appsflyerSdk.registerSessionReadyListener();
+// Register last because the callback can run immediately.
+await appsflyerSdk.registerSessionReadyListener(() async {
+  await appsflyerSdk.start();
+});
 ```
 
 `anonymizeUser(true)` does not stop the SDK; it changes how the user's data is
@@ -58,15 +60,11 @@ A CMP compatible with TCF v2.2 or v2.3 collects DMA consent data and stores it i
 2. Call `appsflyerSdk.enableTCFDataCollection(true)`.
 3. Use the CMP to decide if you need the consent dialog in the current session to acquire the consent data. If you need the consent dialog move to step 4, otherwise move to step 5.
 4. Get confirmation from the CMP that the user has made their consent decision and the data is available in NSUserDefaults/SharedPreferences.
-5. Register the session-ready listener. Call `appsflyerSdk.start()` when
-   `onSessionReady` emits.
+5. Register the session-ready listener and call `appsflyerSdk.start()` from its
+   callback.
 
 ```dart
 final appsflyerSdk = AppsFlyerSdk.instance;
-
-appsflyerSdk.onSessionReady.listen((_) async {
-  await appsflyerSdk.start();
-});
 
 await appsflyerSdk.init(
   devKey: 'your_dev_key',
@@ -76,10 +74,14 @@ await appsflyerSdk.enableTCFDataCollection(true);
 
 // CMP pseudocode procedure
 if (cmpManager.hasConsent()) {
-  await appsflyerSdk.registerSessionReadyListener();
+  await appsflyerSdk.registerSessionReadyListener(() async {
+    await appsflyerSdk.start();
+  });
 } else {
   await cmpManager.presentConsentDialogToUser();
-  await appsflyerSdk.registerSessionReadyListener();
+  await appsflyerSdk.registerSessionReadyListener(() async {
+    await appsflyerSdk.start();
+  });
 }
 ```
 
@@ -104,8 +106,8 @@ If GDPR applies to the user, perform the following:
     `hasConsentForAdStorage: bool?` - (Optional) Indicates whether the user consents to storing ad-related data.
 3. Initialize the SDK using `appsflyerSdk.init(...)`.
 4. Call `appsflyerSdk.setConsentData(...)` before registering the session-ready listener.
-5. Register the session-ready listener and call `appsflyerSdk.start()` when
-   `onSessionReady` emits.
+5. Register the session-ready listener and call `appsflyerSdk.start()` from its
+   callback.
 
 ```dart
 // If the user is subject to GDPR - collect the consent data
@@ -113,10 +115,6 @@ If GDPR applies to the user, perform the following:
 // ...
 
 final appsflyerSdk = AppsFlyerSdk.instance;
-appsflyerSdk.onSessionReady.listen((_) async {
-  await appsflyerSdk.start();
-});
-
 await appsflyerSdk.init(
   devKey: 'your_dev_key',
   appId: '1234567890',
@@ -128,7 +126,9 @@ await appsflyerSdk.setConsentData(
   hasConsentForAdsPersonalization: false,
 );
 
-await appsflyerSdk.registerSessionReadyListener();
+await appsflyerSdk.registerSessionReadyListener(() async {
+  await appsflyerSdk.start();
+});
 ```
 
 ### When GDPR does not apply to the user
@@ -138,15 +138,11 @@ If GDPR doesn't apply to the user perform the following:
 1. Initialize the SDK using `appsflyerSdk.init(...)`.
 2. Call `setConsentData` with `isUserSubjectToGDPR: false`. Omit the
    GDPR-specific consent values.
-3. Register the session-ready listener and call `appsflyerSdk.start()` when
-   `onSessionReady` emits.
+3. Register the session-ready listener and call `appsflyerSdk.start()` from its
+   callback.
 
 ```dart
 final appsflyerSdk = AppsFlyerSdk.instance;
-appsflyerSdk.onSessionReady.listen((_) async {
-  await appsflyerSdk.start();
-});
-
 await appsflyerSdk.init(
   devKey: 'your_dev_key',
   appId: '1234567890',
@@ -156,7 +152,9 @@ await appsflyerSdk.setConsentData(
   isUserSubjectToGDPR: false,
 );
 
-await appsflyerSdk.registerSessionReadyListener();
+await appsflyerSdk.registerSessionReadyListener(() async {
+  await appsflyerSdk.start();
+});
 ```
 
 <a id="setconsentdata-recommended-api-for-manual-consent-collection"></a>

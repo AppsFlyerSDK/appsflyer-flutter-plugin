@@ -3,7 +3,7 @@
 <img src="https://massets.appsflyer.com/wp-content/uploads/2018/06/20092440/static-ziv_1TP.png" width="400">
 
 This release is a major API cleanup. It replaces callback flags, callback slots,
-and SDK-6 names with an explicit SDK-7 lifecycle, typed streams, correlated
+and SDK-6 names with an explicit SDK-7 lifecycle, typed callbacks, correlated
 `Future` results, and platform-aware models.
 
 Plugin `7.0.1` migrates to **AppsFlyer SDK 7** (Android and iOS `7.0.1`). This
@@ -57,32 +57,33 @@ and `start()` must be called **once per foreground cycle** (the native SDK reset
 | Map-based constructor and `AppsFlyerOptions` | `AppsFlyerSdk.instance` |
 | `initSdk(...)` | `init(devKey:, appId:)`; `appId` is required on iOS and optional on Android |
 | `void startSDK({onSuccess, onError})` | `Future<void> start({bool awaitResponse = false})`; await the Future and catch `AppsFlyerException` when requesting the native result |
-| `registerConversionDataCallback` init flag | `registerConversionListener()` |
-| `registerOnDeepLinkingCallback` init flag | `registerDeepLinkListener()` |
-| No session-readiness public API | `onSessionReady`, `registerSessionReadyListener()`, `unregisterSessionReadyListener()`, and `isSessionReady()` |
+| `registerConversionDataCallback` init flag | `registerConversionListener(onSuccess:, onFailure:)` |
+| `registerOnDeepLinkingCallback` init flag | `registerDeepLinkListener(onDeepLink)` |
+| No session-readiness public API | `registerSessionReadyListener(onReady)`, `unregisterSessionReadyListener()`, and `isSessionReady()` |
 
-Use `AppsFlyerSdk.instance`, initialize it with the developer key and, on iOS,
-the Apple app ID, apply runtime configuration through explicit setters,
-register the native listeners you need, and call `start()` from each
-`onSessionReady` event:
+Use `AppsFlyerSdk.instance`, register the deep-link listener if your app handles
+deep links, initialize it with the developer key and, on iOS, the Apple app ID,
+apply runtime configuration through explicit setters, register the remaining
+native listeners you need, and call `start()` from the session-ready callback:
 
 ```dart
 final appsflyer = AppsFlyerSdk.instance;
 
-appsflyer.onSessionReady.listen((_) async {
-  await appsflyer.start();
-});
-
+await appsflyer.enableDebug(true);
+// Before init(): Android skips deferred deep-link resolution, permanently for
+// that install, when no listener is registered while init() runs.
+await appsflyer.registerDeepLinkListener((result) { /* route the user */ });
 await appsflyer.init(
   devKey: '<DEV_KEY>',
   appId: '<APP_ID>',
 );
-await appsflyer.enableDebug(true);
-await appsflyer.registerSessionReadyListener();
+await appsflyer.registerSessionReadyListener(() async {
+  await appsflyer.start();
+});
 ```
 
 Gate the first session (consent, Customer User ID, ATT) by deferring the `start()` call
-inside the stream listener. Apply any configuration setters (e.g.
+inside the callback. Apply any configuration setters (e.g.
 `setCustomerUserId`, `setCurrencyCode`, `setConsentData`) **before** `start()`.
 
 > **Setter values are runtime-only on both platforms.** SDK 7 aligns Android with iOS:
@@ -95,8 +96,8 @@ inside the stream listener. Apply any configuration setters (e.g.
 
 | Removed API | Replacement |
 | --- | --- |
-| `onInstallConversionData(callback)` | `onConversionDataSuccess`, `onConversionDataFailure`, and `registerConversionListener()`; Android also exposes `unregisterConversionListener()` |
-| `onDeepLinking(callback)` | `onDeepLinkReceived` and `registerDeepLinkListener()` |
+| `onInstallConversionData(callback)` | `registerConversionListener(onSuccess:, onFailure:)`; Android also exposes `unregisterConversionListener()` |
+| `onDeepLinking(callback)` | `registerDeepLinkListener(onDeepLink)` |
 | global invite-link callbacks | `await generateInviteLink(...)` |
 | request success/error callbacks | `await` and catch `AppsFlyerException` |
 | `Status` | `DeepLinkStatus` |
@@ -109,7 +110,7 @@ inside the stream listener. Apply any configuration setters (e.g.
 | Removed Flutter API (v6) | Why | SDK 7 replacement / action |
 | --- | --- | --- |
 | Map constructor, `AppsFlyerOptions`, and `manualStart` | Configuration-object lifecycle removed | `AppsFlyerSdk.instance`, `init(...)`, then `start()` |
-| `onAppOpenAttribution`, `registerOnAppOpenAttributionCallback` | OAOA removed from both native SDKs | `onDeepLinkReceived` + `registerDeepLinkListener()` |
+| `onAppOpenAttribution`, `registerOnAppOpenAttributionCallback` | OAOA removed from both native SDKs | `registerDeepLinkListener(onDeepLink)` |
 | `performOnDeepLinking()` | Removed on Android (§5a), replaced on iOS | `performDeepLinking(url, {shouldTriggerSession})` |
 | `validateAndLogInAppAndroidPurchase` (V1) | Native V1 purchase validation removed | `validateAndLogInAppPurchase` with `AFAndroidPurchaseDetails` |
 | `validateAndLogInAppIosPurchase` (V1) | Native 6-param purchase validation removed (iOS §6) | `validateAndLogInAppPurchase` with `AFIOSPurchaseDetails` |
@@ -122,11 +123,12 @@ inside the stream listener. Apply any configuration setters (e.g.
 | `setSharingFilter`, `setSharingFilterForAllPartners` | Removed from both native SDKs | `setSharingFilterForPartners(["all"])` |
 | `AppsFlyerOptions.timeToWaitForATTUserAuthorization` | Removed from native SDK 7 | Control the timing of `start()` in application code |
 | `enableLocationCollection(bool)` | Removed in plugin `6.8.0` | No replacement |
-| Callback-slot helpers | Replaced by explicit listener registration | `registerConversionListener()`, `registerDeepLinkListener()`, and typed streams |
+| Callback-slot helpers | Replaced by explicit listener registration | `registerConversionListener(onSuccess:, onFailure:)` and `registerDeepLinkListener(onDeepLink)`, each taking a typed callback |
 
 `subscribeForDeepLink(listener, timeout)` was an Android native SDK overload,
 not a public Flutter v6 API. Its SDK 7 Flutter equivalent is to call
-`setDeepLinkTimeout(timeout)`, then `registerDeepLinkListener()`.
+`setDeepLinkTimeout(timeout)`, then `registerDeepLinkListener(onDeepLink)` —
+both before `init()`.
 
 The following are not simulated in Dart: use Unified Deep Linking, control the
 timing of `start()` in application code, and use only capabilities exposed by
@@ -198,7 +200,7 @@ Session model and deep linking:
 
 | API | Purpose |
 | --- | --- |
-| `onSessionReady`, `registerSessionReadyListener`, `unregisterSessionReadyListener`, `isSessionReady` | SDK 7 session-ready model |
+| `registerSessionReadyListener`, `unregisterSessionReadyListener`, `isSessionReady` | SDK 7 session-ready model |
 | `performDeepLinking(url, {shouldTriggerSession})` | Manual deep link resolution |
 | `setDeepLinkTimeout(timeout)` | Deep link resolution timeout |
 | `appendParametersToDeepLinkingURL(contains, parameters)` | Enrich matching deep-link URLs before resolution (Android + iOS) |

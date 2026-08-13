@@ -25,13 +25,20 @@ removed APIs, renames, lifecycle changes, and upgrade instructions.
 - Replaced `initSdk(...)` with `init(devKey:, appId:)`. `appId` is required on
   iOS, optional on Android, and is not sent to the Android SDK.
 - Replaced `startSDK(...)` with `await start()`. Initialization no longer sends
-  a session. Subscribe to `onSessionReady`, call
-  `registerSessionReadyListener()`, and call `start()` once for each readiness
-  event.
-- Replaced callback registration flags and callback slots with typed event
-  streams and explicit listener registration. Conversion data uses
-  `onConversionDataSuccess` / `onConversionDataFailure`; Unified Deep Linking
-  uses `onDeepLinkReceived`.
+  a session. Call `registerSessionReadyListener(onReady)` and call `start()`
+  once for each readiness event.
+- Replaced callback registration flags with explicit listener registration that
+  takes the callback as an argument: `registerConversionListener(onSuccess:,
+  onFailure:)`, `registerDeepLinkListener(onDeepLink)`, and
+  `registerSessionReadyListener(onReady)`. The plugin holds one callback per
+  event and replaces it on re-registration, matching the native SDKs; no event
+  stream is exposed, so a single native event cannot fan out to several
+  handlers in the app.
+- `registerDeepLinkListener(onDeepLink)` must be called **before** `init()`.
+  Android decides once per install, while `init()` processes the launch intent,
+  whether to send the deferred deep-link resolution request, and skips it when no
+  listener is registered yet. The other listeners are still registered after
+  `init()`.
 - Native and plugin failures from operations that await a result are surfaced as
   `AppsFlyerException` (`int? code`, `String message`). Non-numeric platform
   codes leave `code` as `null`. `MissingPluginException` is not converted.
@@ -103,12 +110,14 @@ replacement table.
 
 **Added**
 
-- Added `AppsFlyerSdk.instance`, `init(...)`, `onSessionReady`,
-  `registerSessionReadyListener()`, `unregisterSessionReadyListener()`,
+- Added `AppsFlyerSdk.instance`, `init(...)`,
+  `registerSessionReadyListener(onReady)`, `unregisterSessionReadyListener()`,
   `isSessionReady()`, and `start()` for the SDK 7 lifecycle.
 - Added the cross-platform `enableDebug(bool)` toggle and Android-only
   `setLogLevel(AFLogLevel)`.
-- Added typed event streams and `AppsFlyerException`.
+- Added typed event callbacks (`OnConversionDataSuccess`,
+  `OnConversionDataFailure`, `OnDeepLinkReceived`, `OnSessionReady`) and
+  `AppsFlyerException`.
 - Added hashed-PII setters `setUserEmail`, `setUserPhone`,
   `setUserFirstName`, and `setUserLastName`, plus integer
   `setUserFbLoginId` and `clearUserPii`.

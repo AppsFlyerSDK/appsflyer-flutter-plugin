@@ -69,23 +69,20 @@ For more Android integration tests, see [Here](https://dev.appsflyer.com/hc/docs
 ### No launch/session is sent ("SDK session not started")
 
 In SDK 7, `init()` only initializes the SDK — it does **not** send a session.
-`start()` must be called **once per foreground cycle**. Subscribe to
-`onSessionReady`, register the native session-ready listener, and call `start()`
-from the stream so every foreground (including
-background→foreground) reports a session:
+`start()` must be called **once per foreground cycle**. Register the native
+session-ready listener and call `start()` from its callback so every foreground
+(including background→foreground) reports a session:
 
 ```dart
 final appsflyerSdk = AppsFlyerSdk.instance;
-
-appsflyerSdk.onSessionReady.listen((_) async {
-  await appsflyerSdk.start();
-});
 
 await appsflyerSdk.init(
   devKey: afDevKey,
   appId: appId,
 );
-await appsflyerSdk.registerSessionReadyListener();
+await appsflyerSdk.registerSessionReadyListener(() async {
+  await appsflyerSdk.start();
+});
 ```
 
 See [Getting started → start](getting-started.md#start).
@@ -95,6 +92,18 @@ See [Getting started → start](getting-started.md#start).
 SDK 7 setters (`setCustomerUserId`, `setCurrencyCode`, `setConsentData`, …) are
 runtime-only. Re-apply them on every cold start **before** `start()` — see the
 setter-persistence note in [Getting started](getting-started.md#start).
+
+### Deferred deep link never arrives on Android (direct links work)
+
+Android decides whether to send the deferred deep-link resolution request while
+`init()` processes the launch intent, and skips it when no listener is registered
+at that moment. Call `registerDeepLinkListener()` **before** `init()` — see
+[Getting started → step 2](getting-started.md#deep-link-listener-before-init).
+
+The skip is persisted per install, so restarting the app does not retry it: after
+fixing the order, reinstall the app or clear its data before testing again. In
+`adb logcat`, a sent request logs `[DDL] Preparing request 1` followed by an
+`[HTTP Client] POST` to a `dlsdk` URL.
 
 ### Deep links stop working on Flutter 3.27+
 

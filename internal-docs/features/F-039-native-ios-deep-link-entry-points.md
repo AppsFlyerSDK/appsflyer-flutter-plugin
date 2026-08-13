@@ -66,7 +66,7 @@ Deep-link listener registration is no longer part of the init sequence. Dart reg
 | | |
 |--|--|
 | **Input** | `NSURL`/`NSDictionary` options (URI-scheme opens), `NSUserActivity` (Universal Links), or `UISceneConnectionOptions`/`UIOpenURLContext` sets (UIScene cold start/live events) — all supplied by iOS, not by Dart. |
-| **Output** | No direct Dart-facing output from this feature; it forwards the URL/activity data through `AppsFlyerRPCBridge` into the native SDK, which performs OneLink resolution and (if the deep-link listener is registered, F-037) surfaces a `DeepLinkResult` on the `onDeepLinkReceived` stream over the `af-events` EventChannel. |
+| **Output** | No direct Dart-facing output from this feature; it forwards the URL/activity data through `AppsFlyerRPCBridge` into the native SDK, which performs OneLink resolution and (if the deep-link listener is registered, F-037) surfaces a `DeepLinkResult` to the registered `registerDeepLinkListener` callback over the `af-events` EventChannel. |
 
 ---
 

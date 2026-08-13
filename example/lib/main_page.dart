@@ -17,12 +17,11 @@ class MainPage extends StatefulWidget {
 
 class MainPageState extends State<MainPage> {
   late final AppsFlyerSdk _appsflyerSdk;
-  final List<StreamSubscription<dynamic>> _subscriptions = [];
 
   // Unblocks the auto-run after the first install GCD callback. Must complete
   // before stop(true) so phase_1's is_first_launch check is not corrupted.
   final Completer<void> _gcdReady = Completer<void>();
-  // Unblocks post-start auto APIs after the first onSessionReady-driven start
+  // Unblocks post-start auto APIs after the first session-ready-driven start
   // callback (success or error) in this cold-start auto-run.
   final Completer<void> _firstStartDone = Completer<void>();
 
@@ -40,19 +39,21 @@ class MainPageState extends State<MainPage> {
       _appsflyerSdk = AppsFlyerSdk.instance;
       await _appsflyerSdk.enableDebug(true);
 
-      _registerCallbacks();
       await _runPreStartAutoApis();
 
+      // Before init(): the Android SDK runs its one-shot deferred deep-link
+      // resolution while init() replays the launch intent, and skips it when no
+      // listener is registered yet.
+      await _registerDeepLinkListener();
+
       // init() initializes only; start() sends the Launch and must be called
-      // from onSessionReady once per foreground cycle.
+      // from the session-ready callback once per foreground cycle.
       await _appsflyerSdk.init(
         devKey: dotenv.env['DEV_KEY']!,
         appId: dotenv.env['APP_ID']!,
       );
 
-      await _appsflyerSdk.registerDeepLinkListener();
-      await _appsflyerSdk.registerConversionListener();
-      await _appsflyerSdk.registerSessionReadyListener();
+      await _registerListeners();
 
       await _firstStartDone.future;
       await _runPostStartAutoApis();
@@ -77,9 +78,26 @@ class MainPageState extends State<MainPage> {
     }
   }
 
-  void _registerCallbacks() {
-    _subscriptions.add(
-      _appsflyerSdk.onConversionDataSuccess.listen((res) {
+  Future<void> _registerDeepLinkListener() async {
+    await _appsflyerSdk.registerDeepLinkListener((result) {
+      // Empty payload when the SDK didn't resolve a deep link, so the
+      // smoke runner's pattern check sees a stable `payload={}` shape.
+      final payload = result.deepLink == null ? const {} : result.toJson();
+      AfQaLogger.callback(
+        'onDeepLinking',
+        'status=${_deepLinkStatusForQaLog(result.status)}, '
+            'deepLinkValue=${result.deepLink?.deepLinkValue}, '
+            'payload=$payload',
+      );
+      if (mounted) {
+        setState(() => _deepLinkData = result.toJson());
+      }
+    });
+  }
+
+  Future<void> _registerListeners() async {
+    await _appsflyerSdk.registerConversionListener(
+      onSuccess: (res) {
         AfQaLogger.callback('onInstallConversionData', res);
         if (!_gcdReady.isCompleted) {
           _gcdReady.complete();
@@ -87,41 +105,22 @@ class MainPageState extends State<MainPage> {
         if (mounted) {
           setState(() => _gcd = _conversionPayloadForUi(res));
         }
-      }),
-    );
-    _subscriptions.add(
-      _appsflyerSdk.onConversionDataFailure.listen((error) {
+      },
+      onFailure: (error) {
         AfQaLogger.error('onInstallConversionData', error);
         if (!_gcdReady.isCompleted) {
           _gcdReady.complete();
         }
-      }),
-    );
-    _subscriptions.add(
-      _appsflyerSdk.onDeepLinkReceived.listen((result) {
-        // Empty payload when the SDK didn't resolve a deep link, so the
-        // smoke runner's pattern check sees a stable `payload={}` shape.
-        final payload = result.deepLink == null ? const {} : result.toJson();
-        AfQaLogger.callback(
-          'onDeepLinking',
-          'status=${_deepLinkStatusForQaLog(result.status)}, '
-              'deepLinkValue=${result.deepLink?.deepLinkValue}, '
-              'payload=$payload',
-        );
-        if (mounted) {
-          setState(() => _deepLinkData = result.toJson());
-        }
-      }),
+      },
     );
 
-    // onSessionReady fires once per foreground cycle after launch deep link
-    // resolution; issue start() here so every foreground sends a session.
-    _subscriptions.add(
-      _appsflyerSdk.onSessionReady.listen((_) {
-        AfQaLogger.callback('onSessionReady', null);
-        _startSdkForCurrentSession();
-      }),
-    );
+    // The session-ready callback fires once per foreground cycle after launch
+    // deep link resolution; issue start() here so every foreground sends a
+    // session.
+    await _appsflyerSdk.registerSessionReadyListener(() {
+      AfQaLogger.callback('onSessionReady', null);
+      _startSdkForCurrentSession();
+    });
   }
 
   /// Maps the SDK 7 deep-link status to the legacy QA log format.
@@ -139,22 +138,18 @@ class MainPageState extends State<MainPage> {
   }
 
   /// Extracts the conversion-data map for the example UI (`payload` envelope).
-  static Map<String, dynamic> _conversionPayloadForUi(dynamic res) {
-    if (res is! Map) {
-      return {};
-    }
+  static Map<String, dynamic> _conversionPayloadForUi(
+    Map<String, dynamic> res,
+  ) {
     final payload = res['payload'];
     if (payload is Map) {
       return Map<String, dynamic>.from(payload);
     }
-    return Map<String, dynamic>.from(res);
+    return res;
   }
 
   @override
   void dispose() {
-    for (final subscription in _subscriptions) {
-      subscription.cancel();
-    }
     _appsflyerSdk.unregisterSessionReadyListener();
     _appsflyerSdk.unregisterConversionListener();
     super.dispose();

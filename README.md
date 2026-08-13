@@ -35,22 +35,19 @@ Flutter API changed in this major release.
   `4.0.0`), Android API 21, and iOS 13.0.**
 
 Use `AppsFlyerSdk.instance`, call `init(devKey:, appId:)` (`appId` is required
-on iOS and optional on Android), subscribe to the event streams you need,
-register the matching listeners, and call `start()` from the `onSessionReady`
-stream:
+on iOS and optional on Android), register the listeners you need with their
+callbacks, and call `start()` from the session-ready callback:
 
 ```dart
 final appsflyerSdk = AppsFlyerSdk.instance;
-
-appsflyerSdk.onSessionReady.listen((_) async {
-  await appsflyerSdk.start();
-});
 
 await appsflyerSdk.init(
   devKey: '<DEV_KEY>',
   appId: '<APP_ID>',
 );
-await appsflyerSdk.registerSessionReadyListener();
+await appsflyerSdk.registerSessionReadyListener(() async {
+  await appsflyerSdk.start();
+});
 ```
 
 All removed APIs, renamed APIs, lifecycle changes, and upgrade instructions are

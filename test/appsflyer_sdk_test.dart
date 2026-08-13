@@ -14,6 +14,7 @@ void main() {
   late String? rpcMethod;
   late Map<String, dynamic>? rpcParams;
   late Object? rpcResult;
+  late List<String> eventChannelCalls;
   late AppsFlyerSdk androidSdk;
   late AppsFlyerSdk iosSdk;
 
@@ -21,6 +22,7 @@ void main() {
     rpcMethod = null;
     rpcParams = null;
     rpcResult = null;
+    eventChannelCalls = <String>[];
 
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
@@ -31,7 +33,10 @@ void main() {
       rpcParams = Map<String, dynamic>.from(args['params'] as Map);
       return rpcResult;
     });
-    messenger.setMockMethodCallHandler(eventMethodChannel, (_) async => null);
+    messenger.setMockMethodCallHandler(eventMethodChannel, (call) async {
+      eventChannelCalls.add(call.method);
+      return null;
+    });
 
     androidSdk = AppsFlyerSdk.private(
       methodChannel,
@@ -107,16 +112,16 @@ void main() {
     });
 
     test('listeners are registered explicitly', () async {
-      await androidSdk.registerConversionListener();
+      await androidSdk.registerConversionListener(onSuccess: (_) {});
       expect(rpcMethod, 'registerConversionListener');
 
-      await androidSdk.registerDeepLinkListener();
+      await androidSdk.registerDeepLinkListener((_) {});
       expect(rpcMethod, 'subscribeForDeepLink');
 
-      await iosSdk.registerDeepLinkListener();
+      await iosSdk.registerDeepLinkListener((_) {});
       expect(rpcMethod, 'registerDeeplinkListener');
 
-      await iosSdk.registerSessionReadyListener();
+      await iosSdk.registerSessionReadyListener(() {});
       expect(rpcMethod, 'registerSessionReadyListener');
     });
 
@@ -1120,56 +1125,102 @@ void main() {
   });
 
   group('event routing', () {
-    test('filters conversion events from the raw RPC stream', () async {
-      final result = androidSdk.onConversionDataSuccess.first;
+    test('subscribes to af-events only when the first listener is registered',
+        () async {
+      expect(eventChannelCalls, isEmpty);
+
+      await androidSdk.registerSessionReadyListener(() {});
       await pumpEventQueue();
+
+      expect(eventChannelCalls, ['listen']);
+
+      await androidSdk.registerConversionListener(onSuccess: (_) {});
+      await pumpEventQueue();
+
+      // One transport subscription for the whole plugin, not one per listener.
+      expect(eventChannelCalls, ['listen']);
+    });
+
+    test('delivers conversion data to the registered success callback',
+        () async {
+      final received = <Map<String, dynamic>>[];
+      await androidSdk.registerConversionListener(onSuccess: received.add);
       await _emitEvent({
         'event': 'onConversionDataSuccess',
         'data': {'media_source': 'organic'},
         'timestamp': 123,
         'origin': 'android',
       });
+      await pumpEventQueue();
 
-      expect(await result, {'media_source': 'organic'});
+      expect(received.single, {'media_source': 'organic'});
     });
 
     test(
-        'onConversionDataFailure passes through the raw native payload '
+        'the failure callback passes through the raw native payload '
         '(no synthesized RPC exception)', () async {
-      final result = androidSdk.onConversionDataFailure.first;
-      await pumpEventQueue();
+      final failures = <Map<String, dynamic>>[];
+      await androidSdk.registerConversionListener(
+        onSuccess: (_) {},
+        onFailure: failures.add,
+      );
       await _emitEvent({
         'event': 'onConversionDataFail',
         'data': {'error': 'Network unavailable'},
         'timestamp': 123,
         'origin': 'android',
       });
+      await pumpEventQueue();
 
       // Android never reports a numeric code — the payload is passed through
       // as-is rather than backfilled with a synthesized default.
-      expect(await result, {'error': 'Network unavailable'});
+      expect(failures.single, {'error': 'Network unavailable'});
     });
 
-    test('ignores transport-only envelope fields on conversion stream',
+    test('a conversion failure without a failure callback is not an error',
         () async {
-      final result = androidSdk.onConversionDataSuccess.first;
+      await androidSdk.registerConversionListener(onSuccess: (_) {});
+      await _emitEvent({
+        'event': 'onConversionDataFail',
+        'data': {'error': 'Network unavailable'},
+      });
       await pumpEventQueue();
+    });
+
+    test('ignores transport-only envelope fields on conversion events',
+        () async {
+      final received = <Map<String, dynamic>>[];
+      await androidSdk.registerConversionListener(onSuccess: received.add);
       await _emitEvent({
         'event': 'onConversionDataSuccess',
         'data': {'media_source': 'organic'},
         'timestamp': 999,
         'origin': 'android',
       });
+      await pumpEventQueue();
 
-      expect(await result, {'media_source': 'organic'});
+      expect(received.single, {'media_source': 'organic'});
     });
 
-    test('routes onSessionReady without a payload', () async {
-      var readyCount = 0;
-      final subscription = androidSdk.onSessionReady.listen((_) {
-        readyCount++;
+    test('re-registering replaces the callback instead of adding a second one',
+        () async {
+      final first = <Map<String, dynamic>>[];
+      final second = <Map<String, dynamic>>[];
+      await androidSdk.registerConversionListener(onSuccess: first.add);
+      await androidSdk.registerConversionListener(onSuccess: second.add);
+      await _emitEvent({
+        'event': 'onConversionDataSuccess',
+        'data': {'media_source': 'organic'},
       });
       await pumpEventQueue();
+
+      expect(first, isEmpty);
+      expect(second.single, {'media_source': 'organic'});
+    });
+
+    test('a session-ready event reaches the callback exactly once', () async {
+      var readyCount = 0;
+      await androidSdk.registerSessionReadyListener(() => readyCount++);
       await _emitEvent({
         'event': 'onSessionReady',
         'data': <String, dynamic>{},
@@ -1179,12 +1230,39 @@ void main() {
       await pumpEventQueue();
 
       expect(readyCount, 1);
-      await subscription.cancel();
+    });
+
+    test('re-registering the session-ready listener cannot double-start',
+        () async {
+      var startCount = 0;
+      await androidSdk.registerSessionReadyListener(() => startCount++);
+      await androidSdk.registerSessionReadyListener(() => startCount++);
+      await _emitEvent({
+        'event': 'onSessionReady',
+        'data': <String, dynamic>{},
+      });
+      await pumpEventQueue();
+
+      expect(startCount, 1);
+    });
+
+    test('unregistering the session-ready listener drops its callback',
+        () async {
+      var readyCount = 0;
+      await androidSdk.registerSessionReadyListener(() => readyCount++);
+      await androidSdk.unregisterSessionReadyListener();
+      await _emitEvent({
+        'event': 'onSessionReady',
+        'data': <String, dynamic>{},
+      });
+      await pumpEventQueue();
+
+      expect(readyCount, 0);
     });
 
     test('routes deep-link events with an object data payload', () async {
-      final result = iosSdk.onDeepLinkReceived.first;
-      await pumpEventQueue();
+      DeepLinkResult? result;
+      await iosSdk.registerDeepLinkListener((value) => result = value);
       await _emitEvent({
         'event': 'onDeepLinkReceived',
         'data': {
@@ -1192,21 +1270,16 @@ void main() {
           'deepLink': {'deep_link_value': 'home'},
         },
       });
+      await pumpEventQueue();
 
-      final deepLinkResult = await result;
-      expect(deepLinkResult.status, DeepLinkStatus.found);
-      expect(deepLinkResult.deepLink!.deepLinkValue, 'home');
+      expect(result!.status, DeepLinkStatus.found);
+      expect(result!.deepLink!.deepLinkValue, 'home');
     });
 
     test('drops malformed native events instead of surfacing an error',
         () async {
       final received = <Map<String, dynamic>>[];
-      final errors = <Object>[];
-      final subscription = androidSdk.onConversionDataSuccess.listen(
-        received.add,
-        onError: errors.add,
-      );
-      await pumpEventQueue();
+      await androidSdk.registerConversionListener(onSuccess: received.add);
 
       await _emitRaw('not-json-at-all');
       await _emitRaw(jsonEncode(<dynamic>['not', 'an', 'object']));
@@ -1225,7 +1298,6 @@ void main() {
       await pumpEventQueue();
 
       expect(received, isEmpty);
-      expect(errors, isEmpty);
 
       await _emitEvent({
         'event': 'onConversionDataSuccess',
@@ -1234,9 +1306,6 @@ void main() {
       await pumpEventQueue();
 
       expect(received.single, {'media_source': 'organic'});
-      expect(errors, isEmpty);
-
-      await subscription.cancel();
     });
 
     test('maps every deep-link status to DeepLinkStatus', () async {
@@ -1250,45 +1319,52 @@ void main() {
         'unexpected': DeepLinkStatus.unknown,
       };
 
+      DeepLinkResult? result;
+      await androidSdk.registerDeepLinkListener((value) => result = value);
+
       for (final entry in cases.entries) {
-        final result = androidSdk.onDeepLinkReceived.first;
-        await pumpEventQueue();
         await _emitEvent({
           'event': 'onDeepLinking',
           'data': {'status': entry.key},
         });
-        expect((await result).status, entry.value);
+        await pumpEventQueue();
+        expect(result!.status, entry.value);
       }
     });
 
+    // Both SDK instances share the 'af-events' channel name, so the most
+    // recently subscribed instance owns the test messenger's handler. Register
+    // and assert one platform at a time.
     test('deep-link errors use platform-specific failure fields', () async {
-      final androidResult = androidSdk.onDeepLinkReceived.first;
-      await pumpEventQueue();
+      DeepLinkResult? android;
+      await androidSdk.registerDeepLinkListener((value) => android = value);
       await _emitEvent({
         'event': 'onDeepLinking',
         'data': {'status': 'error', 'error': 'NETWORK'},
       });
-      final android = await androidResult;
-      expect(android.status, DeepLinkStatus.error);
-      expect(android.error!.type, 'NETWORK');
-      expect(android.error!.message, isNull);
-
-      final iosResult = iosSdk.onDeepLinkReceived.first;
       await pumpEventQueue();
+      expect(android!.status, DeepLinkStatus.error);
+      expect(android!.error!.type, 'NETWORK');
+      expect(android!.error!.message, isNull);
+
+      DeepLinkResult? ios;
+      await iosSdk.registerDeepLinkListener((value) => ios = value);
       await _emitEvent({
         'event': 'onDeepLinkReceived',
         'data': {'status': 'error', 'error': 'Timed out'},
       });
-      final ios = await iosResult;
-      expect(ios.status, DeepLinkStatus.error);
-      expect(ios.error!.message, 'Timed out');
-      expect(ios.error!.type, isNull);
+      await pumpEventQueue();
+      expect(ios!.status, DeepLinkStatus.error);
+      expect(ios!.error!.message, 'Timed out');
+      expect(ios!.error!.type, isNull);
     });
 
     test('normalizes Android and iOS deep-link status without hiding errors',
         () async {
-      final androidResult = androidSdk.onDeepLinkReceived.first;
-      await pumpEventQueue();
+      DeepLinkResult? androidResult;
+      await androidSdk.registerDeepLinkListener(
+        (value) => androidResult = value,
+      );
       await _emitEvent({
         'event': 'onDeepLinking',
         'data': {
@@ -1296,15 +1372,17 @@ void main() {
           'deepLink': '{"deep_link_value":"home","is_deferred":false}',
         },
       });
-      final android = await androidResult;
-
-      final iosResult = iosSdk.onDeepLinkReceived.first;
       await pumpEventQueue();
+      final android = androidResult!;
+
+      DeepLinkResult? iosResult;
+      await iosSdk.registerDeepLinkListener((value) => iosResult = value);
       await _emitEvent({
         'event': 'onDeepLinkReceived',
         'data': {'status': 'failure', 'error': 'Network unavailable'},
       });
-      final ios = await iosResult;
+      await pumpEventQueue();
+      final ios = iosResult!;
 
       expect(android.status, DeepLinkStatus.found);
       expect(android.deepLink!.deepLinkValue, 'home');

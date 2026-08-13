@@ -15,22 +15,20 @@ App-Open Attribution (OAOA) — the legacy `onAppOpenAttribution` / `registerOnA
 Per the [API Removal Rule](/doc/migration-guide.md#api-removal-rule), the plugin preserves SDK 7 behavior rather than SDK 6 APIs; OAOA is not kept as a no-op stub.
 
 ### Replacement
-Use **Unified Deep Linking (UDL)** — the `onDeepLinkReceived` stream plus an explicit `registerDeepLinkListener()` call (see F-037). There is no init-time callback flag: subscribe to the stream first, then register the native listener after `init()`.
+Use **Unified Deep Linking (UDL)** — an explicit `registerDeepLinkListener(onDeepLink)` call that takes the handling callback as its argument (see F-037). There is no init-time callback flag: register the native listener before `init()`, so Android's one-shot deferred-resolution gate sees it.
 
 ```dart
 final appsFlyer = AppsFlyerSdk.instance;
 
-appsFlyer.onDeepLinkReceived.listen((DeepLinkResult result) {
+await appsFlyer.registerDeepLinkListener((DeepLinkResult result) {
   // result.status, result.deepLink, result.error
 });
-
 await appsFlyer.init(devKey: 'YOUR_DEV_KEY', appId: 'YOUR_APP_ID');
-await appsFlyer.registerDeepLinkListener();
 ```
 
 `registerDeepLinkListener()` maps to `subscribeForDeepLink` on Android and `registerDeeplinkListener` on iOS, and delivers both direct (app already installed) and deferred deep links as a single `DeepLinkResult`, superseding the legacy OAOA path. Android also exposes `unregisterDeeplinkListener()`, a soft unsubscribe that drops further bridge deep-link events; on iOS the call is ignored with a logged warning and no RPC is dispatched.
 
-Install-time attribution/conversion data is still available via GCD (F-035), now as the `onConversionDataSuccess` and `onConversionDataFailure` streams with an explicit `registerConversionListener()` call — the SDK 6 `onInstallConversionData` callback no longer exists.
+Install-time attribution/conversion data is still available via GCD (F-035), now as the `onSuccess` and `onFailure` callbacks passed to an explicit `registerConversionListener()` call — the SDK 6 `onInstallConversionData` callback no longer exists.
 
 See the [migration guide](/doc/migration-guide.md) for the full removal/replacement details.
 

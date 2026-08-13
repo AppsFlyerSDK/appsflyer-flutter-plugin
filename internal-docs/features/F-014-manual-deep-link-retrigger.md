@@ -9,12 +9,12 @@ depends_on: ["F-037"]
 ---
 
 ## Business Purpose
-Apps that defer `start()` (SDK 7 session model) can miss deep-link resolution for a link that arrived from a non-standard source, or when the launch URL was captured before the SDK was ready. `performDeepLinking(url, ...)` lets the host app hand a specific URL (a full URL, a OneLink, or an Android intent-data string) to the native SDK on demand and route the resolved result through the `onDeepLinkReceived` stream. It works for both intent and non-intent sources (for example a URL pulled from Firebase Messaging), so a OneLink that the SDK's own lifecycle hooks did not resolve is still delivered to the app.
+Apps that defer `start()` (SDK 7 session model) can miss deep-link resolution for a link that arrived from a non-standard source, or when the launch URL was captured before the SDK was ready. `performDeepLinking(url, ...)` lets the host app hand a specific URL (a full URL, a OneLink, or an Android intent-data string) to the native SDK on demand and route the resolved result to the registered `registerDeepLinkListener` callback. It works for both intent and non-intent sources (for example a URL pulled from Firebase Messaging), so a OneLink that the SDK's own lifecycle hooks did not resolve is still delivered to the app.
 
 ---
 
 ## Trigger
-Awaited explicitly by the host app whenever it holds a URL it wants the SDK to resolve as a deep link — for example after extracting a link from a push payload handled outside the AppsFlyer flow, or when re-processing a launch URL after gating `start()` on consent or configuration. The app must already be subscribed to `onDeepLinkReceived` and have called `registerDeepLinkListener()`, otherwise the resolved result has nowhere to surface.
+Awaited explicitly by the host app whenever it holds a URL it wants the SDK to resolve as a deep link — for example after extracting a link from a push payload handled outside the AppsFlyer flow, or when re-processing a launch URL after gating `start()` on consent or configuration. The app must already have called `registerDeepLinkListener(onDeepLink)`, otherwise the resolved result has nowhere to surface.
 
 ---
 
@@ -33,7 +33,7 @@ AppsFlyerSdk.performDeepLinking(String url, {bool shouldTriggerSession = false})
   → successful reply completes Future<void>
   → PlatformException is converted to AppsFlyerException
 ```
-The resolved deep link surfaces asynchronously over the `af-events` EventChannel as a `_AppsFlyerEvent` (`onDeepLinking` on Android, `onDeepLinkReceived` on iOS), which `DeepLinkResult._fromEvent` maps onto the `onDeepLinkReceived` stream (see F-037). The `Future` returned by this method only reports acceptance of the request, not the resolution outcome.
+The resolved deep link surfaces asynchronously over the `af-events` EventChannel as a `_AppsFlyerEvent` (`onDeepLinking` on Android, `onDeepLinkReceived` on iOS), which `DeepLinkResult._fromEvent` maps and delivers to the registered `onDeepLink` callback (see F-037). The `Future` returned by this method only reports acceptance of the request, not the resolution outcome.
 
 ---
 
@@ -50,7 +50,7 @@ The resolved deep link surfaces asynchronously over the `af-events` EventChannel
 | | |
 |--|--|
 | **Input** | `url` (`String`, required) — full URL, OneLink, or Android intent-data string. `shouldTriggerSession` (`bool`, default `false`) — when `true`, Android also enqueues a Launch for re-engagement; the parameter is not included in the iOS RPC params. |
-| **Output** | `Future<void>` completes after native RPC validation and the synchronous SDK invocation; it does not report the resolution result. Validation or bridge failures throw `AppsFlyerException`. Any resolved deep link is delivered asynchronously on the `onDeepLinkReceived` stream (F-037). |
+| **Output** | `Future<void>` completes after native RPC validation and the synchronous SDK invocation; it does not report the resolution result. Validation or bridge failures throw `AppsFlyerException`. Any resolved deep link is delivered asynchronously to the registered `onDeepLink` callback (F-037). |
 
 ---
 
@@ -62,7 +62,7 @@ The resolved deep link surfaces asynchronously over the `af-events` EventChannel
 ## Known Limitations
 - **`shouldTriggerSession` is Android-only**: the default is `false`, so a bare `performDeepLinking(url)` does not trigger a session. On iOS the parameter is dropped before the RPC is sent, because `performOnAppAttributionWithURL` has no session-trigger option.
 - **Different native API per platform**: Android resolves via `performOnDeepLinking`; iOS via `performOnAppAttributionWithURL`. The Dart surface hides this, but the two native paths can differ in edge-case behavior.
-- **The awaited `Future` says nothing about resolution**: it completes as soon as the native RPC accepts the request. A URL that resolves to nothing, or fails resolution, is reported only through `onDeepLinkReceived` as `DeepLinkStatus.notFound` or `DeepLinkStatus.error`.
+- **The awaited `Future` says nothing about resolution**: it completes as soon as the native RPC accepts the request. A URL that resolves to nothing, or fails resolution, is reported only through the `onDeepLink` callback as `DeepLinkStatus.notFound` or `DeepLinkStatus.error`.
 
 ---
 

@@ -9,12 +9,12 @@ depends_on: ["F-001"]
 ---
 
 ## Business Purpose
-`AppsFlyerSdk.start` asks the native SDK 7 to send a session (Launch). The application is expected to call it after `onSessionReady` emits; neither Dart nor the RPC layer checks readiness before forwarding the call. Keeping initialization and session start separate lets the application defer a session for consent, Customer User ID, ATT, or another application condition.
+`AppsFlyerSdk.start` asks the native SDK 7 to send a session (Launch). The application is expected to call it from the callback registered with `registerSessionReadyListener`; neither Dart nor the RPC layer checks readiness before forwarding the call. Keeping initialization and session start separate lets the application defer a session for consent, Customer User ID, ATT, or another application condition.
 
 ---
 
 ## Trigger
-The host app subscribes to `onSessionReady`, calls `registerSessionReadyListener()` after `init()`, and awaits `start()` for each session-ready stream event. Configuration setters that must affect the Launch are applied before `start()`.
+The host app calls `registerSessionReadyListener(onReady)` after `init()` and awaits `start()` for each invocation of that callback. Configuration setters that must affect the Launch are applied before `start()`.
 
 ---
 
@@ -22,18 +22,20 @@ The host app subscribes to `onSessionReady`, calls `registerSessionReadyListener
 `start` forwards the public `awaitResponse` flag to the native RPC layer without calling `isSessionReady`. Default `false` is fire-and-forget; `true` waits for the native request completion callback.
 
 ```
-AppsFlyerSdk.onSessionReady.listen(...)
-AppsFlyerSdk.registerSessionReadyListener()
+AppsFlyerSdk.registerSessionReadyListener(onReady)
+  → _ensureEventsSubscribed() + _listeners.on('onSessionReady', …)
+      (one callback slot, replaced on re-registration)
   → RPC 'registerSessionReadyListener'
     → native listener retained across foreground cycles
       → after configuration and launch deep-link processing complete or time out
-        → native event 'onSessionReady' → EventChannel('af-events') → Stream<void>
+        → native event 'onSessionReady' → EventChannel('af-events')
+          → _AppsFlyerListenerRegistry.dispatch → onReady()
 
 AppsFlyerSdk.isSessionReady()
   → RPC 'isSessionReady' → current native readiness boolean; unexpected null throws AppsFlyerException
 
 AppsFlyerSdk.start({awaitResponse})                                   [lib/src/appsflyer_sdk.dart]
-  → no Dart or RPC readiness check; the app is responsible for onSessionReady ordering
+  → no Dart or RPC readiness check; the app is responsible for session-ready ordering
   → _invokeVoidRpc('start', {'awaitResponse': awaitResponse})
     → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
       → Android: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRpcHandler
@@ -56,7 +58,7 @@ AppsFlyerSdk.unregisterSessionReadyListener()
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `onSessionReady`, `registerSessionReadyListener`, and `start({bool awaitResponse = false})` |
+| `lib/src/appsflyer_sdk.dart` | `registerSessionReadyListener(onReady)`, the `OnSessionReady` typedef, and `start({bool awaitResponse = false})` |
 | `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Forwards `start` through the Android RPC handler |
 | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | Forwards `start` through the iOS RPC bridge |
 
@@ -66,19 +68,19 @@ AppsFlyerSdk.unregisterSessionReadyListener()
 | | |
 |--|--|
 | **Input** | Listener registration/unregistration and readiness query take no arguments. `start` takes `awaitResponse` (`bool`, named, default `false`) — when `true`, wait for the native request callback; when `false`, return after the native fire-and-forget method returns and RPC reports immediate success. |
-| **Output** | `registerSessionReadyListener()` and `unregisterSessionReadyListener()` return `Future<void>` after synchronous native registration state changes. `isSessionReady()` returns `Future<bool>`; an unexpected native null reply throws `AppsFlyerException` instead of being reported as `false`. `onSessionReady` emits `void` once per foreground cycle. For `start()`, the default fire-and-forget completion does not prove a Launch was sent; `awaitResponse: true` completes on the native request callback or throws `AppsFlyerException` for native errors/timeouts. |
+| **Output** | `registerSessionReadyListener()` and `unregisterSessionReadyListener()` return `Future<void>` after synchronous native registration state changes. `isSessionReady()` returns `Future<bool>`; an unexpected native null reply throws `AppsFlyerException` instead of being reported as `false`. The registered `onReady` callback is invoked once per foreground cycle. For `start()`, the default fire-and-forget completion does not prove a Launch was sent; `awaitResponse: true` completes on the native request callback or throws `AppsFlyerException` for native errors/timeouts. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` verifies registration/unregistration RPC names, the `isSessionReady` return value, routing of a payload-free `onSessionReady` event, the default `start()` payload, and explicit `awaitResponse: true`. Error tests verify shared `PlatformException` to `AppsFlyerException` conversion. Native session-readiness lifecycle tests live in the Android and iOS SDK repositories; no Flutter device test covers a full background-to-foreground cycle.
+`test/appsflyer_sdk_test.dart` verifies registration/unregistration RPC names, the `isSessionReady` return value, delivery of a payload-free `onSessionReady` event to the registered callback, that re-registering replaces the callback rather than adding a second one (so `start()` cannot be issued twice for one readiness event), that unregistering drops it, the default `start()` payload, and explicit `awaitResponse: true`. Error tests verify shared `PlatformException` to `AppsFlyerException` conversion. Native session-readiness lifecycle tests live in the Android and iOS SDK repositories; no Flutter device test covers a full background-to-foreground cycle.
 
 ---
 
 ## Known Limitations
-- The app must keep the `onSessionReady` stream subscription active and call `start()` for every emitted foreground-cycle signal.
-- Subscribe to `onSessionReady` before registration. Native plugins buffer events only until the shared `af-events` sink attaches; Dart's broadcast stream does not replay an event to a feature subscriber added later.
-- `isSessionReady()` is a snapshot, not a substitute for the per-cycle stream. The native readiness state resets when the app backgrounds, while the registered listener is retained until explicitly unregistered or the native state is torn down. On Android the listener outlives the Flutter engine, because the `AppsFlyerRpcHandler` holding it is process-scoped (`AppsFlyerRpcBridge`); the Dart subscription does not, so a recreated engine must resubscribe to `onSessionReady` and call `registerSessionReadyListener()` again.
+- The app must keep a session-ready listener registered and call `start()` for every invocation of its callback.
+- The plugin holds one session-ready callback, replaced on re-registration; there is no public stream, so two parts of an app cannot each trigger `start()` for the same readiness event. A readiness event arriving before `registerSessionReadyListener()` has run is logged and dropped.
+- `isSessionReady()` is a snapshot, not a substitute for the per-cycle callback. The native readiness state resets when the app backgrounds, while the registered listener is retained until explicitly unregistered or the native state is torn down. On Android the listener outlives the Flutter engine, because the `AppsFlyerRpcHandler` holding it is process-scoped (`AppsFlyerRpcBridge`); the Dart callback does not, so a recreated engine must call `registerSessionReadyListener()` again.
 - Neither the Flutter layer nor either RPC handler calls `isSessionReady` before forwarding `start`; correct ordering is the application's responsibility.
 - Android requires both prior initialization and a registered native session-ready listener. If either is missing, the native SDK logs a warning and returns without sending a Launch. With `awaitResponse: false`, Dart still receives the RPC's immediate success; with `awaitResponse: true`, no native callback arrives and the Android RPC reports its 5-second timeout. Android also ignores repeated `start()` calls within the same native session.
 - iOS `start` does not itself enforce session-ready listener registration or readiness. Its public native contract instructs callers to invoke it from the session-ready listener.

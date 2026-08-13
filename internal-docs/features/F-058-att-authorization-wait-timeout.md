@@ -13,7 +13,7 @@ This entry is retained as a tombstone for the former `AppsFlyerOptions.timeToWai
 
 The native-aligned SDK 7 Flutter API has **no** ATT surface at all: there is no `waitForATT` method, no ATT-wait-timeout parameter, and no init-time configuration object to carry one. `init()` accepts only `devKey` and `appId`.
 
-The replacement is the explicit SDK 7 session model documented by F-002. Because initialization no longer sends a session, the application controls exactly when the first session is sent: request ATT authorization in application code, and only then call `await AppsFlyerSdk.instance.start()` from the `onSessionReady` listener. This replaces an opaque native timer with ordering the app can observe and test.
+The replacement is the explicit SDK 7 session model documented by F-002. Because initialization no longer sends a session, the application controls exactly when the first session is sent: request ATT authorization in application code, and only then call `await AppsFlyerSdk.instance.start()` from the session-ready callback. This replaces an opaque native timer with ordering the app can observe and test.
 
 ---
 
@@ -26,7 +26,7 @@ None. No Dart API accepts an ATT wait interval, and neither platform implementat
 There is no current call chain. The replacement is application-controlled session timing, documented by F-002:
 
 ```
-AppsFlyerSdk.instance.onSessionReady.listen((_) async {
+await AppsFlyerSdk.instance.registerSessionReadyListener(() async {
   // application requests ATT authorization here, then:
   await AppsFlyerSdk.instance.start();
 });

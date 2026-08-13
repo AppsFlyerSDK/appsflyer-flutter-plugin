@@ -42,7 +42,7 @@ AppsFlyerSdk.handlePushNotification(pushPayload)                                
 
   → PlatformException is converted to AppsFlyerException
 ```
-Any OneLink URL found at the configured path (F-022) is resolved and delivered asynchronously over the `af-events` EventChannel and surfaces on the `onDeepLinkReceived` stream as a `DeepLinkResult` (F-037).
+Any OneLink URL found at the configured path (F-022) is resolved and delivered asynchronously over the `af-events` EventChannel and surfaces as a `DeepLinkResult` in the registered `registerDeepLinkListener` callback (F-037).
 
 ---
 
@@ -60,7 +60,7 @@ Any OneLink URL found at the configured path (F-022) is resolved and delivered a
 | | |
 |--|--|
 | **Input** | Android: named arguments `campaign` and `pid` (both required by the native SDK), plus optional `isRetargeting` and `additionalParameters`; sent as `{campaign, pid, isRetargeting, additionalParameters}`. iOS: the complete APNs notification `userInfo` dictionary, sent as `{pushPayload}`. |
-| **Output** | `Future<void>` for both. Each completes after native RPC validation and the synchronous SDK invocation; neither confirms attribution or deep-link resolution and neither has a request timeout. Validation or bridge failures throw `AppsFlyerException`. Called on the wrong platform, each logs a warning and returns without dispatching an RPC. If F-022 was configured and F-037 registered, a resolved OneLink URL arrives asynchronously on `onDeepLinkReceived`. |
+| **Output** | `Future<void>` for both. Each completes after native RPC validation and the synchronous SDK invocation; neither confirms attribution or deep-link resolution and neither has a request timeout. Validation or bridge failures throw `AppsFlyerException`. Called on the wrong platform, each logs a warning and returns without dispatching an RPC. If F-022 was configured and F-037 registered, a resolved OneLink URL arrives asynchronously in the registered `onDeepLink` callback. |
 
 ---
 
