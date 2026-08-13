@@ -291,19 +291,24 @@ jobs:
         working-directory: example
         run: flutter pub get
       
-      # Step 6: Update CocoaPods repo (ensures latest pod specs)
+      # Step 6: Regenerate iOS build settings (Flutter.podspec deployment target, etc.)
+      - name: Regenerate iOS project configuration
+        working-directory: example
+        run: flutter build ios --config-only
+
+      # Step 7: Update CocoaPods repo (ensures latest pod specs)
       # This can be slow, so we only update if needed
       - name: Update CocoaPods repo
         working-directory: example/ios
         run: pod repo update
       
-      # Step 7: Install CocoaPods dependencies
+      # Step 8: Install CocoaPods dependencies
       # This installs native iOS dependencies including AppsFlyer SDK
       - name: Install CocoaPods dependencies
         working-directory: example/ios
         run: pod install
       
-      # Step 8: Create dummy .env file for CI (not committed to repo)
+      # Step 9: Create dummy .env file for CI (not committed to repo)
       - name: Create dummy .env for CI build
         working-directory: example
         run: |
