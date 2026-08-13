@@ -19,11 +19,11 @@ The host app awaits `AppsFlyerSdk.instance.disableAppSetId()` during startup con
 ---
 
 ## Call Chain
-`disableAppSetId` is an awaitable Android-only RPC call. AppSet ID is a Google Play Services concept, so the Dart method is Android-only: on any other platform the call is ignored with a logged warning instead of dispatching an RPC.
+`disableAppSetId` is an awaitable Android-only RPC call. AppSet ID is a Google Play Services concept, so only Android implements it; the Dart method itself is not platform-gated, so on any other platform the RPC is still dispatched and comes back as `AppsFlyerException`.
 
 ```
 AppsFlyerSdk.disableAppSetId()                                        [lib/src/appsflyer_sdk.dart]
-  → not Android: log warning, return (no RPC dispatched)
+  → off Android: native RPC reports the method as unavailable → AppsFlyerException
   → _invokeVoidRpc('disableAppSetId')
     → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params: {}})
       → Android: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRpcHandler
@@ -36,7 +36,7 @@ AppsFlyerSdk.disableAppSetId()                                        [lib/src/a
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `disableAppSetId()` — no-argument, awaitable, guarded by an Android platform check |
+| `lib/src/appsflyer_sdk.dart` | `disableAppSetId()` — no-argument, awaitable, dispatched through RPC without a Dart platform check |
 | `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Forwards `disableAppSetId` through the Android RPC handler |
 | `doc/api-reference.md` | Documents the method as Android-only, "Disables AppSet ID collection." |
 
@@ -46,17 +46,17 @@ AppsFlyerSdk.disableAppSetId()                                        [lib/src/a
 | | |
 |--|--|
 | **Input** | None. The RPC is dispatched with an empty `params` map. |
-| **Output** | On Android, `Future<void>` completes after RPC validation and synchronous SDK invocation, with no native completion callback or timeout. Validation or bridge failures throw `AppsFlyerException`. Called off Android it completes without throwing after logging a warning and dispatching no RPC. |
+| **Output** | On Android, `Future<void>` completes after RPC validation and synchronous SDK invocation, with no native completion callback or timeout. Validation or bridge failures throw `AppsFlyerException`. Called off Android it dispatches the RPC anyway and throws `AppsFlyerException` once the native layer reports the method as unavailable. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` verifies in the Android-only RPC mapping test that `disableAppSetId` dispatches RPC method `disableAppSetId` with empty params. `'platform-only void calls are ignored without reaching the native RPC'` calls `disableAppSetId()` on iOS and asserts that no RPC method is dispatched.
+`test/appsflyer_sdk_test.dart` verifies in the Android-only RPC mapping test that `disableAppSetId` dispatches RPC method `disableAppSetId` with empty params. `'platform-only calls are forwarded to the native RPC instead of being swallowed in Dart'` calls `disableAppSetId()` on iOS and asserts that the `disableAppSetId` RPC is still dispatched rather than short-circuited in Dart.
 
 ---
 
 ## Known Limitations
-- **Android-only** by design — AppSet ID is a Google Play Services concept with no iOS equivalent. Calling the method on iOS is a no-op, but a logged one — the plugin emits a `debugPrint` warning and dispatches no RPC.
+- **Android-only** by design — AppSet ID is a Google Play Services concept with no iOS equivalent. Calling the method on iOS is not a no-op: the RPC is dispatched and the iOS layer's "unknown method" answer surfaces as `AppsFlyerException`, so shared startup code must branch on `Platform.isAndroid` or catch it.
 - There is no way to re-enable AppSet ID collection once disabled within the same process — the call is one-directional (opt-out only), matching the native SDK's own API shape.
 - No getter to confirm whether AppSet ID collection is currently disabled.
 

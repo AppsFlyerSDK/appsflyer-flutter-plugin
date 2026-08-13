@@ -26,7 +26,7 @@ await appsFlyer.registerDeepLinkListener((DeepLinkResult result) {
 await appsFlyer.init(devKey: 'YOUR_DEV_KEY', appId: 'YOUR_APP_ID');
 ```
 
-`registerDeepLinkListener()` maps to `subscribeForDeepLink` on Android and `registerDeeplinkListener` on iOS, and delivers both direct (app already installed) and deferred deep links as a single `DeepLinkResult`, superseding the legacy OAOA path. Android also exposes `unregisterDeeplinkListener()`, a soft unsubscribe that drops further bridge deep-link events; on iOS the call is ignored with a logged warning and no RPC is dispatched.
+`registerDeepLinkListener()` maps to `subscribeForDeepLink` on Android and `registerDeeplinkListener` on iOS, and delivers both direct (app already installed) and deferred deep links as a single `DeepLinkResult`, superseding the legacy OAOA path. Android also exposes `unregisterDeeplinkListener()`, a soft unsubscribe that drops further bridge deep-link events; on iOS it drops the Dart callback and then throws `AppsFlyerException`, because the iOS RPC layer does not implement the method.
 
 Install-time attribution/conversion data is still available via GCD (F-035), now as the `onSuccess` and `onFailure` callbacks passed to an explicit `registerConversionListener()` call — the SDK 6 `onInstallConversionData` callback no longer exists.
 

@@ -19,11 +19,11 @@ Awaited by the host app at startup, before `start()`, after it has determined (t
 ---
 
 ## Call Chain
-Generic RPC, Android-gated in Dart. Off Android the call is ignored with a logged warning, so no RPC is dispatched.
+Generic RPC with no Dart platform gate. Off Android the call is still dispatched, and the native RPC layer answers that it does not implement the method.
 
 ```
 AppsFlyerSdk.setIsUpdate(bool isUpdate)                               [lib/src/appsflyer_sdk.dart]
-  → not Android: log warning, return (no RPC dispatched)
+  → off Android: native RPC reports the method as unavailable → AppsFlyerException
   → _invokeVoidRpc('setIsUpdate', {'isUpdate': isUpdate})
     → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
       → Android: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRpcHandler
@@ -37,7 +37,7 @@ AppsFlyerSdk.setIsUpdate(bool isUpdate)                               [lib/src/a
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `setIsUpdate(bool isUpdate)` — guarded by an Android platform check |
+| `lib/src/appsflyer_sdk.dart` | `setIsUpdate(bool isUpdate)` — dispatched through RPC without a Dart platform check |
 | `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Generic `setIsUpdate` dispatch through the Android RPC handler |
 
 ---
@@ -46,17 +46,17 @@ AppsFlyerSdk.setIsUpdate(bool isUpdate)                               [lib/src/a
 | | |
 |--|--|
 | **Input** | `isUpdate` (`bool`), sent under the RPC param key `isUpdate`. |
-| **Output** | On Android, `Future<void>` completes after RPC validation and the synchronous SDK setter invocation; validation or bridge failures throw `AppsFlyerException`, with no native completion callback or timeout. On any non-Android platform the call is ignored with a logged warning and no RPC is dispatched. |
+| **Output** | On Android, `Future<void>` completes after RPC validation and the synchronous SDK setter invocation; validation or bridge failures throw `AppsFlyerException`, with no native completion callback or timeout. On any non-Android platform the call is still dispatched and throws `AppsFlyerException` once the native RPC layer reports the method as unavailable. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` → `'maps every Android-only API'` verifies that `setIsUpdate(true)` dispatches RPC method `setIsUpdate` with params `{'isUpdate': true}` on the Android-configured instance. `'platform-only void calls are ignored without reaching the native RPC'` asserts that `setIsUpdate` on iOS dispatches no RPC, and `'PlatformException becomes AppsFlyerException'` covers the shared error conversion. The tests inject the platform through `AppsFlyerSdk.private(..., platform: ...)`, so both branches are exercisable on the Dart test host.
+`test/appsflyer_sdk_test.dart` → `'maps every Android-only API'` verifies that `setIsUpdate(true)` dispatches RPC method `setIsUpdate` with params `{'isUpdate': true}` on the Android-configured instance. `'platform-only calls are forwarded to the native RPC instead of being swallowed in Dart'` asserts that `setIsUpdate` on iOS still dispatches the `setIsUpdate` RPC rather than being short-circuited, and `'PlatformException becomes AppsFlyerException'` covers the shared error conversion. The tests inject the platform through `AppsFlyerSdk.private(..., platform: ...)`, so both platforms are exercisable on the Dart test host.
 
 ---
 
 ## Known Limitations
-- **Android-only**: calling `setIsUpdate` on iOS is a logged no-op rather than a silent one — a warning is printed, no RPC is dispatched, and the `Future` completes normally.
+- **Android-only**: calling `setIsUpdate` on iOS is not short-circuited in Dart — the call reaches the native RPC layer, which does not implement the method, so the `Future` completes with an `AppsFlyerException`. Cross-platform call sites must branch on `Platform.isAndroid` or catch the exception.
 - No enforced ordering relative to `init()`/`start()` — the SDK's expectation that the flag is set before the first session is not validated by the plugin.
 
 ---

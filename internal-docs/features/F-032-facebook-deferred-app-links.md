@@ -38,7 +38,7 @@ AppsFlyerSdk.enableFacebookDeferredApplinks(bool isEnabled)                     
 The iOS-only companion routes the same way:
 ```
 AppsFlyerSdk.setFacebookDeferredAppLink(String? url)                                     [lib/src/appsflyer_sdk.dart]
-  → not iOS: log warning, return (no RPC dispatched)
+  → off iOS: native RPC reports the method as unavailable → AppsFlyerException
   → _invokeVoidRpc('setFacebookDeferredAppLink', {'url': url})
     → iOS: AppsFlyerRPCBridge / AFRPCRequestHandler → [AppsFlyerLib shared] (unsafe schemes rejected)
 ```
@@ -48,7 +48,7 @@ AppsFlyerSdk.setFacebookDeferredAppLink(String? url)                            
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `Future<void> enableFacebookDeferredApplinks(bool isEnabled)` — thin passthrough that sends the generic RPC `enableFacebookDeferredApplinks` with `{isEnabled}`. Also `Future<void> setFacebookDeferredAppLink(String? url)` — **iOS only**, guarded by an iOS platform check; sends the `setFacebookDeferredAppLink` RPC with `{url}`. |
+| `lib/src/appsflyer_sdk.dart` | `Future<void> enableFacebookDeferredApplinks(bool isEnabled)` — thin passthrough that sends the generic RPC `enableFacebookDeferredApplinks` with `{isEnabled}`. Also `Future<void> setFacebookDeferredAppLink(String? url)` — **iOS only**, but with no Dart platform check; sends the `setFacebookDeferredAppLink` RPC with `{url}`. |
 | `android/.../plugin_bridge` (native SDK, not the Flutter plugin) | `EnableFacebookDeferredApplinksRequest(isEnabled)`; handler → `AppsFlyerLib.getInstance().enableFacebookDeferredApplinks(isEnabled)` — `true`/`false` forwarded as-is |
 | `AppsFlyerRPC` framework (native iOS SDK, not the Flutter plugin) | `AFRPCEnableFacebookDeferredApplinksRequest(enable)`; `AFRPCDeepLinkHandler` maps `enable → NSClassFromString("FBSDKAppLinkUtility")` (true) / `nil` (false), then `sdk.enableFacebookDeferredApplinks(with:)` |
 | `android/.../AppsflyerSdkPlugin.kt` / `ios/.../AppsflyerSdkPlugin.swift` | No per-method handler — the generic `executeRpc` dispatch forwards the JSON envelope to the native RPC bridge above. |
@@ -59,12 +59,12 @@ AppsFlyerSdk.setFacebookDeferredAppLink(String? url)                            
 | | |
 |--|--|
 | **Input** | `enableFacebookDeferredApplinks`: `isEnabled` (bool). `setFacebookDeferredAppLink`: `url` (`String?`; `null` clears the current URL). |
-| **Output** | `Future<void>` — completes after native RPC validation and the synchronous SDK configuration call. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or timeout. On Android, `setFacebookDeferredAppLink` logs a warning and returns without dispatching an RPC. Any resolved data is delivered later through a separately registered conversion-data or UDL stream. |
+| **Output** | `Future<void>` — completes after native RPC validation and the synchronous SDK configuration call. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or timeout. On Android, `setFacebookDeferredAppLink` is still dispatched and throws `AppsFlyerException` once the Android RPC layer reports the method as unavailable. Any resolved data is delivered later through a separately registered conversion-data or UDL stream. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` → `'maps deep-link, sharing, push, and uninstall APIs'` verifies that `enableFacebookDeferredApplinks(true)` dispatches RPC method `enableFacebookDeferredApplinks` with `{'isEnabled': true}`, and that `setFacebookDeferredAppLink(null)` dispatches `setFacebookDeferredAppLink` with `{'url': null}` on iOS. `'platform-only void calls are ignored without reaching the native RPC'` covers `setFacebookDeferredAppLink` on Android and asserts that no RPC is dispatched. Native behavior (true→class / false→nil on iOS, bool forwarding on Android) is covered by the native SDK's own bridge tests.
+`test/appsflyer_sdk_test.dart` → `'maps deep-link, sharing, push, and uninstall APIs'` verifies that `enableFacebookDeferredApplinks(true)` dispatches RPC method `enableFacebookDeferredApplinks` with `{'isEnabled': true}`, and that `setFacebookDeferredAppLink(null)` dispatches `setFacebookDeferredAppLink` with `{'url': null}` on iOS. No test exercises `setFacebookDeferredAppLink` on Android; the shared off-platform contract is covered generically by `'platform-only calls are forwarded to the native RPC instead of being swallowed in Dart'` and `'platform-only setters surface the native error'`, which use other platform-only setters. Native behavior (true→class / false→nil on iOS, bool forwarding on Android) is covered by the native SDK's own bridge tests.
 
 ---
 
@@ -72,7 +72,7 @@ AppsFlyerSdk.setFacebookDeferredAppLink(String? url)                            
 - **No more disable asymmetry (RPC migration)**: both platforms now honor `false`. Android forwards the literal bool; the iOS RPC bridge maps `false → nil` and calls `enableFacebookDeferredApplinks(with: nil)`, so the feature can be turned back off on iOS. (The pre-RPC iOS handler treated `false` as a no-op — that limitation no longer applies.)
 - **iOS requires the Facebook SDK linked**: the iOS bridge resolves `FBSDKAppLinkUtility` via `NSClassFromString`, so if the Facebook SDK isn't linked into the app, enabling passes a `nil` class and is effectively a no-op. Android's flag is self-contained. This platform difference is called out in the Dart dartdoc.
 - The awaited `Future` confirms that the native RPC request succeeded, not that Facebook deferred-app-link interop actually engaged. A missing `FBSDKAppLinkUtility` class on iOS still resolves successfully.
-- `setFacebookDeferredAppLink` is iOS-only: on Android the call is ignored with a logged warning and no RPC is dispatched, so shared code can call it unconditionally but gets no feedback beyond the log line.
+- `setFacebookDeferredAppLink` is iOS-only: on Android the call reaches the RPC layer, which does not implement it, and throws `AppsFlyerException`. Shared code cannot call it unconditionally — it must branch on `Platform.isIOS` or catch the exception.
 
 ---
 

@@ -233,7 +233,18 @@ jobs:
           echo "DEV_KEY=dummy_dev_key" > .env
           echo "APP_ID=dummy_app_id" >> .env
 
-      # Step 8: Run the plugin's Android JVM unit tests
+      # Step 8: Materialize the Gradle wrapper
+      # `example/android/gradlew` and `gradle-wrapper.jar` are gitignored (the
+      # standard `flutter create` .gitignore), so a fresh checkout has neither
+      # and `flutter pub get` does not create them — it only writes
+      # local.properties. The wrapper is injected by the Flutter tool the first
+      # time it needs to invoke Gradle, and `--config-only` stops right after
+      # that injection, so this costs a couple of seconds instead of a build.
+      - name: Prepare Gradle wrapper
+        working-directory: example
+        run: flutter build apk --config-only
+
+      # Step 9: Run the plugin's Android JVM unit tests
       # The plugin is included in the example's Gradle build as `:appsflyer_sdk`
       # by the Flutter plugin loader, so this runs from example/android. Placed
       # ahead of the release build: it is the faster of the two and covers the
@@ -243,7 +254,7 @@ jobs:
         working-directory: example/android
         run: ./gradlew :appsflyer_sdk:testDebugUnitTest --console=plain
 
-      # Step 9: Publish the Gradle test report when the tests fail
+      # Step 10: Publish the Gradle test report when the tests fail
       - name: Upload Android test report
         if: failure()
         uses: actions/upload-artifact@v5
@@ -254,7 +265,7 @@ jobs:
             example/build/appsflyer_sdk/test-results/testDebugUnitTest
           retention-days: 7
 
-      # Step 10: Build Android App Bundle (release mode, no signing)
+      # Step 11: Build Android App Bundle (release mode, no signing)
       # App Bundle is the preferred format for Play Store. Catches R8/proguard
       # regressions a debug APK won't. Debug APK builds were removed because
       # android-e2e.yml already builds and runs `flutter build apk --debug`
@@ -263,7 +274,7 @@ jobs:
         working-directory: example
         run: flutter build appbundle --release
 
-      # Step 11: Upload App Bundle artifact (optional)
+      # Step 12: Upload App Bundle artifact (optional)
       # Useful for manual install testing and archiving release-mode output.
       - name: Upload App Bundle artifact
         if: success()

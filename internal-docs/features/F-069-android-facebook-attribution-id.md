@@ -37,7 +37,7 @@ AppsFlyerSdk.getAttributionId()                                      [lib/src/ap
 | **Output** | `Future<String?>` with the native value or `null`. Off Android it throws `AppsFlyerException` when the native RPC layer reports the method as unavailable. Bridge failures surface as `AppsFlyerException`. |
 
 ## Tests
-`test/appsflyer_sdk_test.dart` verifies the Android native-return mapping. `'symmetric platform-only getters surface RPC method-not-found off-platform'` covers the iOS wrong-platform path. Android handler tests verify the context-based SDK call.
+`test/appsflyer_sdk_test.dart` verifies the Android native-return mapping. `'platform-only getters surface the native method-not-found error'` covers the iOS wrong-platform path. Android handler tests verify the context-based SDK call.
 
 ## Known Limitations
 - `null` on Android means unavailable; wrong-platform calls throw `AppsFlyerException` instead of returning `null`.

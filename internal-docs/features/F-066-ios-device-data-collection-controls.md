@@ -18,7 +18,7 @@ Apply the app's selected values before the first `start()` they should affect. D
 ```
 AppsFlyerSdk.setDisableIDFVCollection(disable)
 AppsFlyerSdk.setShouldCollectDeviceName(collect)                      [lib/src/appsflyer_sdk.dart]
-  → non-iOS: log warning and return
+  → off iOS: native RPC reports the method as unavailable → AppsFlyerException
   → _invokeVoidRpc(method, {disable|collect})
     → iOS simple-config RPC handler → native SDK property assignment
 ```

@@ -307,45 +307,47 @@ void main() {
       }
     });
 
-    test('platform-only void calls are ignored without reaching the native RPC',
-        () async {
-      await iosSdk.setCollectAndroidID(true);
-      await iosSdk.setLogLevel(AFLogLevel.debug);
-      await iosSdk.unregisterDeeplinkListener();
-      await iosSdk.unregisterConversionListener();
-      await iosSdk.logSession();
-      await iosSdk.setOutOfStore('source');
-      await iosSdk.setIsUpdate(true);
-      await iosSdk.setPreinstallAttribution('media-source');
-      await iosSdk.setAppId('123');
-      await iosSdk.setDisableNetworkData(true);
-      await iosSdk.disableAppSetId();
-      await iosSdk.sendPushNotificationData(
-        campaign: 'campaign',
-        pid: 'media-source',
-      );
-
-      await androidSdk.setDisableSKAdNetwork(true);
-      await androidSdk.setDisableCollectASA(true);
-      await androidSdk.setDisableAppleAdsAttribution(true);
-      await androidSdk.setDisableIDFVCollection(true);
-      await androidSdk.setShouldCollectDeviceName(true);
-      await androidSdk.setCurrentDeviceLanguage('en');
-      await androidSdk.setFacebookDeferredAppLink('https://example.com');
-      await androidSdk.handlePushNotification({'aps': {}});
-
-      expect(rpcMethod, isNull);
-    });
-
-    test('platform-only value calls return a safe default off-platform',
-        () async {
-      expect(await iosSdk.isStopped(), isFalse);
-
-      expect(rpcMethod, isNull);
-    });
-
     test(
-        'symmetric platform-only getters surface RPC method-not-found off-platform',
+        'platform-only calls are forwarded to the native RPC instead of being '
+        'swallowed in Dart', () async {
+      // Which platform implements which method is the RPC contract's to know.
+      // Mirroring that list in Dart would silently go stale the moment a
+      // native SDK adds support, so every call is forwarded and the native
+      // layer decides.
+      final forwarded = <String, Future<void> Function()>{
+        'setCollectAndroidID': () => iosSdk.setCollectAndroidID(true),
+        'setLogLevel': () => iosSdk.setLogLevel(AFLogLevel.debug),
+        'logSession': () => iosSdk.logSession(),
+        'setOutOfStore': () => iosSdk.setOutOfStore('source'),
+        'setIsUpdate': () => iosSdk.setIsUpdate(true),
+        'setAppId': () => iosSdk.setAppId('123'),
+        'disableAppSetId': () => iosSdk.disableAppSetId(),
+        'setDisableSKAdNetwork': () => androidSdk.setDisableSKAdNetwork(true),
+        'setDisableCollectASA': () => androidSdk.setDisableCollectASA(true),
+        'setCurrentDeviceLanguage': () =>
+            androidSdk.setCurrentDeviceLanguage('en'),
+        'handlePushNotification': () =>
+            androidSdk.handlePushNotification({'aps': {}}),
+      };
+
+      for (final entry in forwarded.entries) {
+        rpcMethod = null;
+        await entry.value();
+        expect(rpcMethod, entry.key);
+      }
+    });
+
+    test('an off-platform getter forwards rather than fabricating a value',
+        () async {
+      // Returning a plausible `false` here would be indistinguishable from a
+      // genuine "not stopped" answer.
+      rpcResult = true;
+
+      expect(await iosSdk.isStopped(), isTrue);
+      expect(rpcMethod, 'isStopped');
+    });
+
+    test('platform-only getters surface the native method-not-found error',
         () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(methodChannel, (call) async {
@@ -363,6 +365,7 @@ void main() {
         iosSdk.getOutOfStore,
         iosSdk.getAttributionId,
         () => iosSdk.isPreInstalledApp(),
+        () => iosSdk.isStopped(),
       ]) {
         await expectLater(
           getter(),
@@ -379,8 +382,7 @@ void main() {
       }
     });
 
-    test('symmetric platform-only setters surface RPC errors off-platform',
-        () async {
+    test('platform-only setters surface the native error', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(methodChannel, (call) async {
         final args = Map<String, dynamic>.from(call.arguments as Map);
@@ -394,6 +396,8 @@ void main() {
       for (final setter in <Future<void> Function()>[
         () => androidSdk.setUseReceiptValidationSandbox(true),
         () => androidSdk.setUseUninstallSandbox(true),
+        () => androidSdk.setDisableIDFVCollection(true),
+        () => iosSdk.setCollectAndroidID(true),
       ]) {
         await expectLater(
           setter(),

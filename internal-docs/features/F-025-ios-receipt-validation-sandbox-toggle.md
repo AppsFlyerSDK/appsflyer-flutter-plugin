@@ -58,12 +58,12 @@ AppsFlyerSdk.setUseUninstallSandbox(bool sandbox)
 ## Tests
 `test/appsflyer_sdk_test.dart` — `maps every iOS-only API` asserts that `setUseReceiptValidationSandbox(true)` and `setUseUninstallSandbox(true)` each dispatch their own RPC method with `{'sandbox': true}`.
 
-`platform-only void calls are ignored without reaching the native RPC` still covers other iOS-only APIs. `'symmetric platform-only setters surface RPC errors off-platform'` covers both sandbox toggles on Android and expects `AppsFlyerException` with code `422`.
+`platform-only calls are forwarded to the native RPC instead of being swallowed in Dart` still covers other iOS-only APIs. `'platform-only setters surface the native error'` covers both sandbox toggles on Android and expects `AppsFlyerException` with code `422`.
 
 ---
 
 ## Known Limitations
-- iOS-only at the native RPC layer: calling either method on Android throws `AppsFlyerException` (code `422` interim) instead of logging and returning silently.
+- iOS-only at the native RPC layer: calling either method on Android throws `AppsFlyerException` (code `422` interim).
 - Use the sandbox toggles only for test/sandbox environments or when AppsFlyer support instructs you to do so; production builds normally leave both disabled.
 - Neither toggle has example-app coverage.
 - The flag is native SDK state with no read-back API, so the Flutter layer cannot report which endpoint is currently selected.

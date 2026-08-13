@@ -19,11 +19,11 @@ Called by the host app during startup configuration, before `start()`, when it n
 ---
 
 ## Call Chain
-`setCollectAndroidID` is a generic RPC, Android-gated in Dart (Android ID is an Android-only identifier, so on iOS the call is ignored with a logged warning).
+`setCollectAndroidID` is a generic RPC with no Dart platform gate (Android ID is an Android-only identifier, so on iOS the native RPC layer answers that it does not implement the method and the call throws `AppsFlyerException`).
 
 ```
 AppsFlyerSdk.setCollectAndroidID(isCollect)                           [lib/src/appsflyer_sdk.dart]
-  → not Android: log warning, return (no RPC dispatched)
+  → off Android: native RPC reports the method as unavailable → AppsFlyerException
   → _invokeVoidRpc('setCollectAndroidID', {isCollect})
     → af-api "executeRpc" {method:'setCollectAndroidID', params}
       → Android: dispatchRpc → AppsFlyerRpcHandler → AppsFlyerLib.setCollectAndroidID(isCollect)  [android/.../AppsflyerSdkPlugin.kt]
@@ -34,7 +34,7 @@ AppsFlyerSdk.setCollectAndroidID(isCollect)                           [lib/src/a
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `setCollectAndroidID(bool)` — guarded by an Android platform check |
+| `lib/src/appsflyer_sdk.dart` | `setCollectAndroidID(bool)` — dispatched through RPC without a Dart platform check |
 | `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | generic `setCollectAndroidID` RPC dispatch over `AppsFlyerRpcHandler` |
 
 ---
@@ -43,17 +43,17 @@ AppsFlyerSdk.setCollectAndroidID(isCollect)                           [lib/src/a
 | | |
 |--|--|
 | **Input** | `isCollect` (`bool`) — `true` enables Android ID collection and `false` opts out. The native SDK's stored opt-in flag defaults to `false`. RPC param key `isCollect`. |
-| **Output** | `Future<void>` — on Android, completes after RPC handling and the synchronous native setter invocation; it does not confirm that an Android ID was subsequently collected. RPC or bridge failures are exposed as `AppsFlyerException`. On iOS the call is ignored with a logged warning and never reaches the channel. |
+| **Output** | `Future<void>` — on Android, completes after RPC handling and the synchronous native setter invocation; it does not confirm that an Android ID was subsequently collected. RPC or bridge failures are exposed as `AppsFlyerException`. On iOS the call still reaches the channel and throws `AppsFlyerException`, because the iOS RPC layer does not implement the method. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` → `'maps every Android-only API'` verifies that `setCollectAndroidID(true)` dispatches RPC method `setCollectAndroidID` with `{'isCollect': true}`. `'platform-only void calls are ignored without reaching the native RPC'` asserts that calling it on iOS dispatches no RPC. The Flutter tests do not verify whether the native SDK subsequently collects an Android ID.
+`test/appsflyer_sdk_test.dart` → `'maps every Android-only API'` verifies that `setCollectAndroidID(true)` dispatches RPC method `setCollectAndroidID` with `{'isCollect': true}`. `'platform-only calls are forwarded to the native RPC instead of being swallowed in Dart'` asserts that calling it on iOS still dispatches the RPC, and `'platform-only setters surface the native error'` asserts that the resulting native failure reaches the caller as `AppsFlyerException`. The Flutter tests do not verify whether the native SDK subsequently collects an Android ID.
 
 ---
 
 ## Known Limitations
-- **Android-only** and Dart-guarded: calling it on iOS is a logged no-op rather than a silent one — a warning is printed and no RPC is dispatched.
+- **Android-only** but not Dart-gated: calling it on iOS reaches the native RPC layer, which does not implement the method, so the call throws `AppsFlyerException` instead of quietly doing nothing.
 - Calling the API before `start()` is recommended configuration ordering but is not enforced by Dart or RPC.
 
 ---

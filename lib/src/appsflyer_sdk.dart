@@ -140,10 +140,6 @@ class AppsFlyerSdk {
   /// This API is available only on Android. Call [registerConversionListener]
   /// again to resume receiving conversion-data events.
   Future<void> unregisterConversionListener() async {
-    if (!_isAndroid) {
-      _logUnsupportedPlatform('unregisterConversionListener', 'Android');
-      return;
-    }
     _listeners.off(_AppsFlyerConstants.EVENT_CONVERSION_DATA_SUCCESS);
     _listeners.off(_AppsFlyerConstants.EVENT_CONVERSION_DATA_FAIL);
     return _invokeVoidRpc('unregisterConversionListener');
@@ -175,10 +171,6 @@ class AppsFlyerSdk {
   /// Requests removal of the Unified Deep Linking listener on Android and drops
   /// the callback passed to [registerDeepLinkListener].
   Future<void> unregisterDeeplinkListener() async {
-    if (!_isAndroid) {
-      _logUnsupportedPlatform('unregisterDeeplinkListener', 'Android');
-      return;
-    }
     _listeners.off(_AppsFlyerConstants.EVENT_DEEP_LINKING);
     _listeners.off(_AppsFlyerConstants.EVENT_DEEP_LINK_RECEIVED);
     return _invokeVoidRpc('unsubscribeForDeepLink');
@@ -253,10 +245,6 @@ class AppsFlyerSdk {
   /// await AppsFlyerSdk.instance.setLogLevel(AFLogLevel.debug);
   /// ```
   Future<void> setLogLevel(AFLogLevel logLevel) async {
-    if (!_isAndroid) {
-      _logUnsupportedPlatform('setLogLevel', 'Android');
-      return;
-    }
     return _invokeVoidRpc(
       'setLogLevel',
       {'logLevel': logLevel.rpcValue},
@@ -340,10 +328,6 @@ class AppsFlyerSdk {
   /// Android only. For typical Flutter apps, call [start] from the
   /// [registerSessionReadyListener] callback instead.
   Future<void> logSession() async {
-    if (!_isAndroid) {
-      _logUnsupportedPlatform('logSession', 'Android');
-      return;
-    }
     return _invokeVoidRpc('logSession');
   }
 
@@ -492,10 +476,6 @@ class AppsFlyerSdk {
   ///
   /// Android only.
   Future<void> setOutOfStore(String sourceName) async {
-    if (!_isAndroid) {
-      _logUnsupportedPlatform('setOutOfStore', 'Android');
-      return;
-    }
     return _invokeVoidRpc('setOutOfStore', {'sourceName': sourceName});
   }
 
@@ -510,10 +490,6 @@ class AppsFlyerSdk {
   ///
   /// Android only.
   Future<void> setIsUpdate(bool isUpdate) async {
-    if (!_isAndroid) {
-      _logUnsupportedPlatform('setIsUpdate', 'Android');
-      return;
-    }
     return _invokeVoidRpc('setIsUpdate', {'isUpdate': isUpdate});
   }
 
@@ -521,10 +497,6 @@ class AppsFlyerSdk {
   ///
   /// iOS only.
   Future<void> setCurrentDeviceLanguage(String language) async {
-    if (!_isIOS) {
-      _logUnsupportedPlatform('setCurrentDeviceLanguage', 'iOS');
-      return;
-    }
     return _invokeVoidRpc(
       'setCurrentDeviceLanguage',
       {'language': language},
@@ -552,10 +524,6 @@ class AppsFlyerSdk {
     String campaign = '',
     String siteId = '',
   }) async {
-    if (!_isAndroid) {
-      _logUnsupportedPlatform('setPreinstallAttribution', 'Android');
-      return;
-    }
     return _invokeVoidRpc('setPreinstallAttribution', {
       'mediaSource': mediaSource,
       'campaign': campaign,
@@ -568,10 +536,6 @@ class AppsFlyerSdk {
   /// Android only. Call before [start]. Throws [AppsFlyerException] when
   /// [appId] is empty.
   Future<void> setAppId(String appId) async {
-    if (!_isAndroid) {
-      _logUnsupportedPlatform('setAppId', 'Android');
-      return;
-    }
     return _invokeVoidRpc('setAppId', {'appId': appId});
   }
 
@@ -622,10 +586,6 @@ class AppsFlyerSdk {
   ///
   /// Android only.
   Future<bool> isStopped() async {
-    if (!_isAndroid) {
-      _logUnsupportedPlatform('isStopped', 'Android');
-      return false;
-    }
     return _invokeRpc<bool>('isStopped');
   }
 
@@ -644,10 +604,6 @@ class AppsFlyerSdk {
   ///
   /// iOS only. Call before [start].
   Future<void> setDisableCollectASA(bool disable) async {
-    if (!_isIOS) {
-      _logUnsupportedPlatform('setDisableCollectASA', 'iOS');
-      return;
-    }
     return _invokeVoidRpc(
       'setDisableCollectASA',
       {'disable': disable},
@@ -659,10 +615,6 @@ class AppsFlyerSdk {
   /// Android only. Apps distributed through Google Play should follow Google
   /// Play policy when configuring this value.
   Future<void> setCollectAndroidID(bool isCollect) async {
-    if (!_isAndroid) {
-      _logUnsupportedPlatform('setCollectAndroidID', 'Android');
-      return;
-    }
     return _invokeVoidRpc('setCollectAndroidID', {'isCollect': isCollect});
   }
 
@@ -670,10 +622,6 @@ class AppsFlyerSdk {
   ///
   /// Android only.
   Future<void> setDisableNetworkData(bool isDisable) async {
-    if (!_isAndroid) {
-      _logUnsupportedPlatform('setDisableNetworkData', 'Android');
-      return;
-    }
     return _invokeVoidRpc(
       'setDisableNetworkData',
       {'isDisable': isDisable},
@@ -684,10 +632,6 @@ class AppsFlyerSdk {
   ///
   /// Android only.
   Future<void> disableAppSetId() async {
-    if (!_isAndroid) {
-      _logUnsupportedPlatform('disableAppSetId', 'Android');
-      return;
-    }
     return _invokeVoidRpc('disableAppSetId');
   }
 
@@ -695,10 +639,6 @@ class AppsFlyerSdk {
   ///
   /// iOS only. Pass `true` to disable SKAdNetwork.
   Future<void> setDisableSKAdNetwork(bool disable) async {
-    if (!_isIOS) {
-      _logUnsupportedPlatform('setDisableSKAdNetwork', 'iOS');
-      return;
-    }
     return _invokeVoidRpc(
       'setDisableSKAdNetwork',
       {'disable': disable},
@@ -709,10 +649,6 @@ class AppsFlyerSdk {
   ///
   /// iOS only. Call before [start].
   Future<void> setDisableAppleAdsAttribution(bool disable) async {
-    if (!_isIOS) {
-      _logUnsupportedPlatform('setDisableAppleAdsAttribution', 'iOS');
-      return;
-    }
     return _invokeVoidRpc(
       'setDisableAppleAdsAttribution',
       {'disable': disable},
@@ -723,10 +659,6 @@ class AppsFlyerSdk {
   ///
   /// iOS only. Call before [start].
   Future<void> setDisableIDFVCollection(bool disable) async {
-    if (!_isIOS) {
-      _logUnsupportedPlatform('setDisableIDFVCollection', 'iOS');
-      return;
-    }
     return _invokeVoidRpc(
       'setDisableIDFVCollection',
       {'disable': disable},
@@ -739,10 +671,6 @@ class AppsFlyerSdk {
   /// enable it only when your privacy policy covers collection of the device
   /// name.
   Future<void> setShouldCollectDeviceName(bool collect) async {
-    if (!_isIOS) {
-      _logUnsupportedPlatform('setShouldCollectDeviceName', 'iOS');
-      return;
-    }
     return _invokeVoidRpc(
       'setShouldCollectDeviceName',
       {'collect': collect},
@@ -978,10 +906,6 @@ class AppsFlyerSdk {
   /// schemes such as `javascript:` are rejected with an
   /// [AppsFlyerException].
   Future<void> setFacebookDeferredAppLink(String? url) async {
-    if (!_isIOS) {
-      _logUnsupportedPlatform('setFacebookDeferredAppLink', 'iOS');
-      return;
-    }
     return _invokeVoidRpc('setFacebookDeferredAppLink', {'url': url});
   }
 
@@ -994,10 +918,6 @@ class AppsFlyerSdk {
     bool isRetargeting = false,
     Map<String, dynamic>? additionalParameters,
   }) async {
-    if (!_isAndroid) {
-      _logUnsupportedPlatform('sendPushNotificationData', 'Android');
-      return;
-    }
     return _invokeVoidRpc('sendPushNotificationData', {
       'campaign': campaign,
       'pid': pid,
@@ -1012,10 +932,6 @@ class AppsFlyerSdk {
   Future<void> handlePushNotification(
     Map<String, dynamic> pushPayload,
   ) async {
-    if (!_isIOS) {
-      _logUnsupportedPlatform('handlePushNotification', 'iOS');
-      return;
-    }
     return _invokeVoidRpc(
       'handlePushNotification',
       {'pushPayload': pushPayload},
@@ -1105,13 +1021,5 @@ class AppsFlyerSdk {
       throw AppsFlyerException(message: '$method returned no value');
     }
     return result;
-  }
-
-  void _logIgnoredCall(String method, String reason) {
-    debugPrint('AppsFlyer: $method ignored — $reason.');
-  }
-
-  void _logUnsupportedPlatform(String method, String supportedPlatform) {
-    _logIgnoredCall(method, 'supported only on $supportedPlatform');
   }
 }

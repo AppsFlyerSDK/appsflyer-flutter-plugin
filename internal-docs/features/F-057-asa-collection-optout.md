@@ -14,16 +14,16 @@ The native iOS SDK automatically queries Apple's Search Ads Attribution API (ASA
 ---
 
 ## Trigger
-The host app calls `setDisableCollectASA(true)` and, when full Apple Ads attribution suppression is required, `setDisableAppleAdsAttribution(true)` before `start()`. Neither method requires `init()` to have run first. Both are iOS-only; on Android each is ignored with a logged warning and no RPC is dispatched.
+The host app calls `setDisableCollectASA(true)` and, when full Apple Ads attribution suppression is required, `setDisableAppleAdsAttribution(true)` before `start()`. Neither method requires `init()` to have run first. Both are iOS-only; on Android each is still dispatched and throws `AppsFlyerException`, because the Android RPC layer does not implement the method.
 
 ---
 
 ## Call Chain
-Both methods are ordinary fire-and-forget RPC setters that return `Future<void>`. The iOS platform guard runs in Dart before any channel call is made.
+Both methods are ordinary fire-and-forget RPC setters that return `Future<void>`. Neither is gated in Dart, so the channel call is made on every platform and the native RPC layer decides whether the method exists.
 
 ```
 AppsFlyerSdk.setDisableCollectASA(disable)                            [lib/src/appsflyer_sdk.dart]
-  → not iOS: log warning, return (no RPC dispatched)
+  → off iOS: native RPC reports the method as unavailable → AppsFlyerException
   → _invokeVoidRpc('setDisableCollectASA', {'disable': disable})
     → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
       → iOS: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRPCBridge.executeJson
@@ -32,7 +32,7 @@ AppsFlyerSdk.setDisableCollectASA(disable)                            [lib/src/a
 
 # iOS-only companion
 AppsFlyerSdk.setDisableAppleAdsAttribution(disable)                   [lib/src/appsflyer_sdk.dart]
-  → not iOS: log warning, return (no RPC dispatched)
+  → off iOS: native RPC reports the method as unavailable → AppsFlyerException
   → _invokeVoidRpc('setDisableAppleAdsAttribution', {'disable': disable})
 ```
 
@@ -41,7 +41,7 @@ AppsFlyerSdk.setDisableAppleAdsAttribution(disable)                   [lib/src/a
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `setDisableCollectASA(bool disable)` and `setDisableAppleAdsAttribution(bool disable)`, both guarded by an iOS platform check |
+| `lib/src/appsflyer_sdk.dart` | `setDisableCollectASA(bool disable)` and `setDisableAppleAdsAttribution(bool disable)`, both dispatched through RPC without a Dart platform check |
 | `lib/src/appsflyer_exception.dart` | `AppsFlyerException` for native failures |
 | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | Generic `executeRpc` → `dispatchRpc` forwarding to `AppsFlyerRPCBridge`; no per-method handler |
 
@@ -51,20 +51,20 @@ AppsFlyerSdk.setDisableAppleAdsAttribution(disable)                   [lib/src/a
 | | |
 |--|--|
 | **Input** | `disable` (`bool`) sent under the `disable` param key for both methods. |
-| **Output** | `Future<void>` completes after RPC validation and the synchronous native SDK setter invocation. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or timeout. On Android the call is ignored with a logged warning and no RPC is dispatched. |
+| **Output** | `Future<void>` completes after RPC validation and the synchronous native SDK setter invocation. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or timeout. On Android the call is still dispatched and throws `AppsFlyerException` once the RPC layer reports the method as unavailable. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` covers both the mapping and the platform guard:
+`test/appsflyer_sdk_test.dart` covers both the mapping and the off-platform behavior:
 - `iOS ASA collection is configured through an explicit setter` asserts that `iosSdk.setDisableCollectASA(true)` dispatches RPC method `setDisableCollectASA` with `{'disable': true}`.
 - `maps every iOS-only API` re-asserts the same mapping alongside `setDisableAppleAdsAttribution` with `{'disable': true}`.
-- `platform-only void calls are ignored without reaching the native RPC` asserts that `androidSdk.setDisableCollectASA(true)` and `androidSdk.setDisableAppleAdsAttribution(true)` dispatch no RPC.
+- `platform-only calls are forwarded to the native RPC instead of being swallowed in Dart` asserts that `androidSdk.setDisableCollectASA(true)` still dispatches the `setDisableCollectASA` RPC; the off-platform path of `setDisableAppleAdsAttribution` is not covered separately.
 
 ---
 
 ## Known Limitations
-- Apple Search Ads has no Android equivalent, so there is no Android behavior to configure; the Dart layer makes the Android call a logged no-op rather than a silent one — a warning is printed and no RPC is dispatched.
+- Apple Search Ads has no Android equivalent, so there is no Android behavior to configure; the Dart layer does not block the Android call, which therefore reaches the Android RPC layer and throws `AppsFlyerException` rather than doing nothing.
 - Fully suppressing ASA on iOS requires **both** `setDisableCollectASA(true)` and `setDisableAppleAdsAttribution(true)`.
 - No getter exists to confirm whether ASA collection is currently disabled.
 - The native API has no completion callback, so a completed `Future` confirms only that the RPC layer accepted the call.

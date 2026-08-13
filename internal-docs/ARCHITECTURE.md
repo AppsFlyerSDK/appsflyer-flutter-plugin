@@ -16,7 +16,7 @@ Historical SDK 6 behavior and upgrade instructions belong in [`doc/migration-gui
 The Flutter plugin is a thin, typed bridge over the native Android and iOS RPC modules.
 
 - `AppsFlyerSdk.instance` is the public singleton entry point.
-- Dart owns public naming, type safety, platform gates, event models, and error normalization.
+- Dart owns public naming, type safety, per-platform payload adaptation, event models, and error normalization.
 - Native SDK validation, persistence, lifecycle state, threading, and network behavior remain native responsibilities.
 - Every core Dart-to-native call uses one RPC transport method: `executeRpc` on `af-api`.
 - Native asynchronous SDK events use `af-events` and are demultiplexed into one application callback per event, registered through the `register*Listener` APIs. The plugin exposes no public `Stream`.
@@ -65,7 +65,7 @@ The stored platform is used only for bridge concerns:
 - short-circuiting APIs unsupported by the current native RPC layer;
 - serializing platform-specific models such as purchase details and mediation values.
 
-An explicitly platform-gated API is usually a deliberate no-op off-platform. Its guard logs through `_logUnsupportedPlatform`, returns a safe default (`null`, `false`, or nothing), and dispatches no RPC. Seven symmetric getters and setters (`getHostName`, `getHostPrefix`, `getOutOfStore`, `isPreInstalledApp`, `getAttributionId`, `setUseReceiptValidationSandbox`, `setUseUninstallSandbox`) omit that guard and route through `_invokeRpc` instead; wrong-platform calls surface as `AppsFlyerException` from the native RPC layer. Shared APIs are not guarded this way. The package registers native implementations only for Android and iOS, so invoking a shared API on another Flutter target can still produce `MissingPluginException`.
+A platform-only API is not gated in Dart. Every call routes through `_invokeRpc` regardless of the current platform, and the native RPC layer answers `unknown method` when it does not implement it; that surfaces to the caller as `AppsFlyerException`. Keeping a platform-support table in Dart was rejected deliberately — it duplicates knowledge the RPC contract already owns and goes stale the moment a native SDK adds support, silently blocking a method that now works. The trade-off is that the exception `code` comes from the native layer and is not yet aligned: Android reports `422` (`INVALID_PARAMETERS`, because its parser maps unknown methods through the generic parse-error path) and iOS reports `404`. Aligning Android on `404` is a native RPC change, not a plugin one. Shared APIs behave the same way, except that the package registers native implementations only for Android and iOS, so invoking one on another Flutter target produces `MissingPluginException` rather than `AppsFlyerException`.
 
 ### 2.2 RPC helpers
 
@@ -369,7 +369,7 @@ Purchase Connector is a separate optional native subsystem using `af-purchase-co
 ## 10. Error handling and state boundaries
 
 - Core RPC `PlatformException` values are converted to `AppsFlyerException`. `MissingPluginException` is left unwrapped — it is outside the RPC contract.
-- Most explicitly platform-gated calls are short-circuited with a logged warning before a channel request is sent. Seven symmetric getters and setters route through RPC and surface native `AppsFlyerException` values off-platform instead. Shared calls are not guaranteed to work outside Android/iOS.
+- Platform-only calls are not short-circuited in Dart; they reach the RPC and surface the native `AppsFlyerException` off-platform. Shared calls are not guaranteed to work outside Android/iOS.
 - Dart throws `ArgumentError` before transport for purchase details on the wrong platform. Most other input validation, including `init` parameters and `setConsentData` GDPR fields, remains in the typed native RPC request and SDK.
 - Android converts parser/validation failures to numeric `RpcResponse.Error` values. Unexpected plugin orchestration failures use plugin error strings such as `UNEXPECTED_ERROR` or `INIT_ERROR`.
 - iOS distinguishes protocol errors in the response `error` envelope from handler failures represented by `result.success == false`; the iOS plugin adapter converts both to `FlutterError` and unwraps successful values.
@@ -419,14 +419,14 @@ Different test levels protect different boundaries:
 
 | Level | Location | Responsibility |
 | --- | --- | --- |
-| Dart channel/unit tests | `test/appsflyer_sdk_test.dart` | Public method-to-RPC names, parameter maps, platform gates/defaults, exception normalization, typed event routing, malformed-event behavior |
+| Dart channel/unit tests | `test/appsflyer_sdk_test.dart` | Public method-to-RPC names, parameter maps, platform-only forwarding, exception normalization, typed event routing, malformed-event behavior |
 | Generated-model checks | `lib/appsflyer_sdk.g.dart` plus generator workflow | Purchase Connector JSON model conversion; regenerate after annotated model changes |
 | Android RPC tests | native Android SDK/RPC repository | Typed request parsing/validation, handler-to-SDK mapping, callbacks, response/error behavior, timeouts |
 | iOS RPC tests | native iOS SDK/RPC repository | Parser/router/domain handlers, state actor, event encoding, SDK timeout races, negative paths |
 | Platform adapter tests | `android/src/test/kotlin/com/appsflyer/appsflyersdk/AppsFlyerEventBusTest.kt`, `AppsFlyerRpcBridgeTest.kt`; otherwise no comprehensive suite in this repository | Android event buffering, replay ordering, sink attach/detach across engine recreation, concurrent publishing, and single-executor RPC bridge reuse across engine recreation are covered by JVM unit tests (`./gradlew :appsflyer_sdk:testDebugUnitTest` from `example/android`, run by the Android CI job). Channel registration, engine detach, Android activity/new-intent behavior, iOS AppDelegate/UIScene forwarding, and result unwrapping still require focused native tests or example-app verification |
 | Device/integration tests | `example/`, RC scenario scripts, real AppsFlyer dashboard/logs | Plugin registration, native dependency packaging, lifecycle sessions, deep links, attribution callbacks, push/uninstall paths, and network-visible behavior |
 
-The PR gate is `.github/workflows/lint-test-build.yml`: analyze, format check and `flutter test --coverage` on Linux, then a per-platform release build, with `./gradlew :appsflyer_sdk:testDebugUnitTest` running ahead of the build on the Android job. The iOS `RunnerTests` suite is not wired into CI: it re-implements the function under test rather than importing the plugin, so it pins Foundation behavior and would cover no plugin code in exchange for a simulator boot on a runner that bills at 10x. (`.travis.yml` still runs `flutter test test` and is redundant with the Dart job.) None of that loads a real device: it cannot prove lifecycle, packaging or network-visible behavior, and SPM resolution is not covered at all because `Package.swift` depends on the app-generated `FlutterFramework` path. Run the example on a device or emulator for platform changes and follow [`doc/testing-and-troubleshooting.md`](../doc/testing-and-troubleshooting.md). Purchase Connector changes need opt-in builds; iOS Core should be checked through both CocoaPods and SPM where applicable.
+The PR gate is `.github/workflows/lint-test-build.yml`: analyze, format check and `flutter test --coverage` on Linux, then a per-platform release build, with `./gradlew :appsflyer_sdk:testDebugUnitTest` running ahead of the build on the Android job (preceded by `flutter build apk --config-only`, because the Gradle wrapper is gitignored and a fresh checkout has none until the Flutter tool invokes Gradle). The iOS `RunnerTests` suite is not wired into CI: it re-implements the function under test rather than importing the plugin, so it pins Foundation behavior and would cover no plugin code in exchange for a simulator boot on a runner that bills at 10x. (`.travis.yml` still runs `flutter test test` and is redundant with the Dart job.) None of that loads a real device: it cannot prove lifecycle, packaging or network-visible behavior, and SPM resolution is not covered at all because `Package.swift` depends on the app-generated `FlutterFramework` path. Run the example on a device or emulator for platform changes and follow [`doc/testing-and-troubleshooting.md`](../doc/testing-and-troubleshooting.md). Purchase Connector changes need opt-in builds; iOS Core should be checked through both CocoaPods and SPM where applicable.
 
 ## 14. Adding or changing capabilities
 
@@ -434,7 +434,7 @@ The PR gate is `.github/workflows/lint-test-build.yml`: analyze, format check an
 
 1. Confirm the capability exists in the pinned Android and/or iOS RPC catalog. If it does not, add and release the native RPC capability first; do not reproduce native SDK business logic in Dart.
 2. Define the public Dart signature and platform availability in `lib/src/appsflyer_sdk.dart`. Add a small model only when it gives callers type safety or isolates a real platform-shape difference.
-3. Map the public call to the exact native method name and parameter keys. Add an explicit platform gate or adapter when only one side supports it; do not silently send an iOS contract to Android or vice versa.
+3. Map the public call to the exact native method name and parameter keys. Adapt the payload when the two contracts differ; do not silently send an iOS contract to Android or vice versa. Do not add a platform gate when only one side supports the method — forward it and let the RPC reject it.
 4. Decide the completion contract: RPC acceptance, awaited native callback, returned value, or asynchronous event. Keep a request result on its originating MethodChannel reply; reserve `af-events` for unsolicited/repeating SDK events.
 5. Update iOS result unwrapping when the public API expects data from an iOS nested response. Add plugin orchestration only for cross-layer duties such as initialization ordering or opening a returned URL.
 6. Test Dart mappings for both platforms, including nulls/defaults, exceptions, and off-platform behavior. Add or update native RPC parser/handler tests in the owning native repository and run device coverage for lifecycle or packaging changes.
@@ -454,7 +454,7 @@ Keep platform-only behavior visibly gated in Dart and documented as such. Purcha
 
 ## 15. Known constraints and trade-offs
 
-- Android and iOS are the only registered Flutter targets. Explicit platform gates return safe defaults, but shared calls on other targets can throw `MissingPluginException`.
+- Android and iOS are the only registered Flutter targets. Platform-only calls throw `AppsFlyerException` off-platform; calls on other targets can throw `MissingPluginException`.
 - Public/native compatibility is checked by tests and review, not generated from a shared cross-platform schema. Android and iOS RPC method names and parameter shapes can drift independently.
 - Android runs fast RPCs inline on the platform thread. Only awaited-callback RPCs use a dedicated blocking executor, so a slow validation or invite-link wait does not stall unrelated setters/getters. iOS permits unrelated requests to overlap, so ordering must still be expressed by awaiting calls.
 - Native timeout errors do not cancel SDK work. Fire-and-forget completion is acceptance, not network delivery.
@@ -470,7 +470,7 @@ Keep platform-only behavior visibly gated in Dart and documented as such. Purcha
 | Layer | File | Responsibility |
 | --- | --- | --- |
 | Public library | `lib/appsflyer_sdk.dart` | Library exports |
-| Dart SDK | `lib/src/appsflyer_sdk.dart` | Public API, platform gates, RPC invocation, typed event callbacks |
+| Dart SDK | `lib/src/appsflyer_sdk.dart` | Public API, per-platform payload adaptation, RPC invocation, typed event callbacks |
 | Event model | `lib/src/appsflyer_event.dart` | Native event decoding and normalization |
 | Listener registry | `lib/src/appsflyer_listener_registry.dart` | Private one-callback-per-event dispatch for `af-events` |
 | Errors | `lib/src/appsflyer_exception.dart` | Public SDK exceptions |

@@ -298,15 +298,30 @@ For Samsung / Xiaomi / Huawei store referrers, see §11 of the same guide.
 
 ## Platform behavior
 
-Calling a guarded platform-only method outside its supported mobile platform is
-a logged no-op. The plugin prints a warning naming the API and its supported
-platform, skips the native call, and returns `null`, `false`, or nothing
-depending on the return type. APIs invoked on unsupported Flutter targets such
-as web or desktop throw `MissingPluginException`. Native failures on Android
-and iOS are surfaced as `AppsFlyerException` with an optional numeric `code`
-and `message`. Existing Android/iOS call sites for platform-only APIs keep
-working without platform branches; check your logs for
-`AppsFlyer: <method> ignored` while migrating.
+Calling a platform-only method outside its supported mobile platform throws an
+`AppsFlyerException`. The plugin does not decide this itself — the call is
+forwarded and the native RPC layer reports that it has no such method — so the
+`code` differs by platform: Android reports `422`, iOS reports `404`. Identify
+platform-only APIs by the _(Android only)_ / _(iOS only)_ marker in the
+[API reference](api-reference.md#platform-only-apis), not by the code.
+
+**This is a behavior change.** In plugin v6 most of these calls were a logged
+no-op off-platform, so cross-platform code could call them unconditionally. Any
+such call site now needs a guard:
+
+```dart
+if (Platform.isAndroid) {
+  await appsflyerSdk.setCollectAndroidID(true);
+}
+```
+
+To find affected call sites, search your code for the APIs marked
+_(Android only)_ or _(iOS only)_ in the API reference; the v6 log line
+`AppsFlyer: <method> ignored` no longer exists.
+
+APIs invoked on unsupported Flutter targets such as web or desktop throw
+`MissingPluginException`. Other native failures on Android and iOS are also
+surfaced as `AppsFlyerException` with an optional numeric `code` and `message`.
 
 - Android purchase validation requires a Play purchase token.
 - iOS purchase validation requires an App Store transaction ID.

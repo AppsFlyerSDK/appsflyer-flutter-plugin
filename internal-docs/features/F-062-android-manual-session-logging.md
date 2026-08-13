@@ -17,7 +17,7 @@ Called explicitly on Android only when an integration has a verified need to inv
 ## Call Chain
 ```
 AppsFlyerSdk.logSession()                                             [lib/src/appsflyer_sdk.dart]
-  → non-Android: log warning and return
+  → off Android: native RPC reports the method as unavailable → AppsFlyerException
   → _invokeVoidRpc('logSession', {})
     → Android AppsflyerSdkPlugin generic RPC forwarding
       → AppsFlyerRpcHandler → AppsFlyerLib.logSession(context)
@@ -26,7 +26,7 @@ AppsFlyerSdk.logSession()                                             [lib/src/a
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | Public Android-guarded method |
+| `lib/src/appsflyer_sdk.dart` | Public Android-only method, dispatched through RPC without a Dart platform check |
 | `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Generic RPC forwarding |
 | Android `plugin_bridge/.../AppsFlyerRpcHandler.kt` | Invokes `AppsFlyerLib.logSession(context)` |
 
@@ -34,10 +34,10 @@ AppsFlyerSdk.logSession()                                             [lib/src/a
 | | |
 |--|--|
 | **Input** | None; the RPC params map is empty. |
-| **Output** | On Android, `Future<void>` completes after synchronous native SDK invocation, with no delivery callback or timeout. Bridge failures surface as `AppsFlyerException`. Off Android the call logs a warning, dispatches nothing, and completes normally. |
+| **Output** | On Android, `Future<void>` completes after synchronous native SDK invocation, with no delivery callback or timeout. Bridge failures surface as `AppsFlyerException`. Off Android the call is still dispatched and throws `AppsFlyerException` once the native RPC layer reports the method as unavailable. |
 
 ## Tests
-`test/appsflyer_sdk_test.dart` verifies the Android RPC name/empty params and the non-Android no-op guard. Native handler tests cover forwarding.
+`test/appsflyer_sdk_test.dart` verifies the Android RPC name/empty params and, in `'platform-only calls are forwarded to the native RPC instead of being swallowed in Dart'`, that a non-Android call still reaches the RPC layer. Native handler tests cover forwarding.
 
 ## Known Limitations
 - The Flutter layer cannot tell whether the native SDK accepted or sent the manual session.

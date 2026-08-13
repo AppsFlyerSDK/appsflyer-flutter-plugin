@@ -19,7 +19,7 @@ The host app awaits `AppsFlyerSdk.instance.stop(...)` at any point — typically
 ---
 
 ## Call Chain
-`stop` is an awaitable RPC setter on both platforms. `isStopped` is an awaitable Android-only getter guarded by an Android platform check.
+`stop` is an awaitable RPC setter on both platforms. `isStopped` is an awaitable getter that only Android implements, but it is not gated in Dart.
 
 ```
 AppsFlyerSdk.stop(shouldStop)                                         [lib/src/appsflyer_sdk.dart]
@@ -31,7 +31,7 @@ AppsFlyerSdk.stop(shouldStop)                                         [lib/src/a
   → PlatformException is converted to AppsFlyerException
 
 AppsFlyerSdk.isStopped()                                              [Android only]
-  → not Android: log warning, return false (no RPC dispatched)
+  → off Android: native RPC reports the method as unavailable → AppsFlyerException
   → _invokeRpc<bool>('isStopped')
     → Android: dispatchRpc → AppsFlyerRpcHandler → AppsFlyerLib.isStopped()
 ```
@@ -41,7 +41,7 @@ AppsFlyerSdk.isStopped()                                              [Android o
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `stop(bool shouldStop)` on both platforms; `isStopped()` guarded by an Android platform check |
+| `lib/src/appsflyer_sdk.dart` | `stop(bool shouldStop)` on both platforms; `isStopped()` routed through RPC without a Dart platform check |
 | `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Forwards `stop` and `isStopped` through the Android RPC handler |
 | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | Forwards `stop` through the iOS RPC bridge |
 
@@ -51,17 +51,17 @@ AppsFlyerSdk.isStopped()                                              [Android o
 | | |
 |--|--|
 | **Input** | `stop`: `shouldStop` (`bool`) — `true` halts all SDK network activity, `false` re-enables it. RPC param key `shouldStop`. `isStopped()`: no parameters. |
-| **Output** | `stop` → `Future<void>` that completes after RPC validation and the synchronous native setter invocation; it has no completion callback or timeout. `isStopped()` → `Future<bool>` on Android; an unexpected native null reply throws `AppsFlyerException`. Calling it off Android logs a warning and returns `false` without dispatching an RPC. Bridge or validation failures surface as `AppsFlyerException`. |
+| **Output** | `stop` → `Future<void>` that completes after RPC validation and the synchronous native setter invocation; it has no completion callback or timeout. `isStopped()` → `Future<bool>` on Android; an unexpected native null reply throws `AppsFlyerException`. Calling it off Android dispatches the RPC anyway and throws `AppsFlyerException` rather than returning a fabricated `false`. Bridge or validation failures surface as `AppsFlyerException`. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` verifies in the cross-platform RPC mapping test that `stop(true)` dispatches RPC method `stop` with `{'shouldStop': true}`, and in the native-return-value test that `isStopped()` dispatches `isStopped` and returns the native `true`. `'platform-only value calls return a safe default off-platform'` asserts that `isStopped()` on iOS returns `false` without dispatching an RPC.
+`test/appsflyer_sdk_test.dart` verifies in the cross-platform RPC mapping test that `stop(true)` dispatches RPC method `stop` with `{'shouldStop': true}`, and in the native-return-value test that `isStopped()` dispatches `isStopped` and returns the native `true`. `'an off-platform getter forwards rather than fabricating a value'` asserts that `isStopped()` on iOS still dispatches the `isStopped` RPC and returns the native value instead of a fabricated `false`, and `'platform-only getters surface the native method-not-found error'` covers the same call throwing `AppsFlyerException` when the native layer reports the method as unavailable.
 
 ---
 
 ## Known Limitations
-- `isStopped()` is Android-only. On iOS it logs a warning and returns `false` without dispatching an RPC, so the value cannot be distinguished from a genuine "not stopped" state.
+- `isStopped()` is implemented only on Android. On iOS the call is still dispatched and throws `AppsFlyerException` instead of returning a `false` that could not be distinguished from a genuine "not stopped" state.
 - Distinct from `anonymizeUser` (F-013): `stop` disables the entire SDK instance for all users/sessions, while `anonymizeUser` scopes an opt-out to the current user only.
 - `stop(false)` resumes SDK operation, but does not itself send a Launch. Normal per-foreground `start()` handling still applies after resumption.
 

@@ -180,8 +180,9 @@ void dispose() {
 
 Where the unregister call reaches the native SDK it also drops the callback you
 passed at registration. On iOS, `unregisterConversionListener()` and
-`unregisterDeeplinkListener()` are ignored with a logged warning, so their
-callbacks stay registered.
+`unregisterDeeplinkListener()` drop your callback and then throw
+`AppsFlyerException`, because the iOS SDK has no matching native call — guard
+them with `Platform.isAndroid` or catch the exception.
 
 On Android the native listener also outlives the Flutter engine, which is
 destroyed on its own schedule (a back press, or a Flutter screen leaving an

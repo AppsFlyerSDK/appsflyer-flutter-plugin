@@ -100,6 +100,24 @@
 
 ---
 
+## Platform-only APIs
+
+Some methods below are marked _(Android only)_ or _(iOS only)_ because only one
+native SDK implements them.
+
+Calling one on the other platform throws an
+[`AppsFlyerException`](#AppsFlyerException). The plugin does not keep its own
+list of which platform supports what — every call is forwarded and the native
+RPC layer answers, so the API surface stays correct as the native SDKs change.
+The exception's `code` therefore comes from the native layer and currently
+differs between them: Android reports `422`, iOS reports `404`. Match on the
+platform-only marker in this document rather than on the code.
+
+Guard these calls with `Platform.isAndroid` / `Platform.isIOS`, or let the
+exception propagate if the call is not essential on that platform.
+
+---
+
 ##### <a id="appsflyer-options"> **`AppsFlyerSdk.instance`**
 
 `AppsFlyerSdk` is the cross-platform SDK entry point. Use its shared
@@ -228,8 +246,9 @@ await appsflyerSdk.enableDebug(true);
 ---
 **<a id="setLogLevel"> `Future<void> setLogLevel(AFLogLevel logLevel)`** — **Android only**
 
-Sets the Android SDK logging level. On iOS the call is ignored with a logged
-warning. Use [`enableDebug`](#enableDebug) for a cross-platform debug toggle.
+Sets the Android SDK logging level. On iOS the call throws an
+`AppsFlyerException` — see [Platform-only APIs](#platform-only-apis). Use
+[`enableDebug`](#enableDebug) for a cross-platform debug toggle.
 
 ```dart
 await appsflyerSdk.setLogLevel(AFLogLevel.debug);
@@ -279,8 +298,9 @@ native listener; iOS has no corresponding unregister operation.
 
 Unregisters the native Android conversion-data listener and drops the callbacks
 passed to `registerConversionListener()`. Call `registerConversionListener()`
-again to resume receiving conversion-data events. On iOS the call is ignored with
-a logged warning and the callbacks are retained.
+again to resume receiving conversion-data events. On iOS the Dart callbacks are
+dropped and the call then throws an `AppsFlyerException` — see
+[Platform-only APIs](#platform-only-apis).
 
 ```dart
 await appsflyerSdk.unregisterConversionListener();
@@ -320,8 +340,9 @@ Calling this again replaces the callback.
 Requests that Android stop forwarding Unified Deep Linking events and drops the
 callback passed to `registerDeepLinkListener()`. In the
 current Android integration, subsequent events may still be delivered; do not
-rely on this method to disable deep-link handling. On iOS the call is ignored
-with a logged warning.
+rely on this method to disable deep-link handling. On iOS the Dart callback is
+dropped and the call then throws an `AppsFlyerException` — see
+[Platform-only APIs](#platform-only-apis).
 
 ```dart
 await appsflyerSdk.unregisterDeeplinkListener();
@@ -425,7 +446,8 @@ await appsflyerSdk.logLocation(
 Manually logs a session on Android. For typical Flutter apps, call
 [`start`](#start) from the
 [`registerSessionReadyListener`](#registerSessionReadyListener) callback instead.
-**Android only**; on iOS the call is ignored with a logged warning.
+**Android only**; on iOS the call throws an `AppsFlyerException` — see
+[Platform-only APIs](#platform-only-apis).
 
 ```dart
 await appsflyerSdk.logSession();
@@ -1241,7 +1263,8 @@ await appsFlyerSdk.enableFacebookDeferredApplinks(true);
 **<a id="setFacebookDeferredAppLink"> `Future<void> setFacebookDeferredAppLink(String? url)`** _(iOS only)_
 
 Manually sets — or, with `null`, clears — the Facebook deferred app-link URL.
-On Android the call is ignored with a logged warning.
+On Android the call throws an `AppsFlyerException` — see
+[Platform-only APIs](#platform-only-apis).
 
 Use this only when you already hold the deferred link and want to skip the Facebook SDK lookup; otherwise prefer `enableFacebookDeferredApplinks(true)`.
 
@@ -1256,8 +1279,8 @@ await appsFlyerSdk.setFacebookDeferredAppLink(
 **<a id="setDisableSKAdNetwork"> `Future<void> setDisableSKAdNetwork(bool disable)`** — **iOS only**
 
 Use this API in order to disable the SK Ad network (request will be sent but
-the rules won't be returned). On Android the call is ignored with a logged
-warning.
+the rules won't be returned). On Android the call throws an `AppsFlyerException`
+— see [Platform-only APIs](#platform-only-apis).
 
 _Example:_
 ```dart
@@ -1269,8 +1292,8 @@ await appsFlyerSdk.setDisableSKAdNetwork(true);
 
 Disables Apple Ads (Apple Search Ads) attribution via the AdServices framework
 — pass `true` to stop the SDK from calling
-`AAAttribution.attributionToken` (iOS 14.3+). On Android the call is ignored
-with a logged warning.
+`AAAttribution.attributionToken` (iOS 14.3+). On Android the call throws an
+`AppsFlyerException` — see [Platform-only APIs](#platform-only-apis).
 
 _Example:_
 ```dart
@@ -1283,8 +1306,8 @@ if (Platform.isIOS) {
 **<a id="setDisableIDFVCollection"> `Future<void> setDisableIDFVCollection(bool disable)`** — **iOS only**
 
 Disables collection of the IDFV (Identifier for Vendor) — pass `true` to stop
-the SDK from collecting it. Set it before `start()`. On Android the call is
-ignored with a logged warning.
+the SDK from collecting it. Set it before `start()`. On Android the call throws
+an `AppsFlyerException` — see [Platform-only APIs](#platform-only-apis).
 
 _Example:_
 ```dart
@@ -1298,7 +1321,8 @@ if (Platform.isIOS) {
 Enables collection of the device name (e.g. `"John's iPhone"`). This is an
 **opt-in** — collection is **off by default** and the device name is personal
 data (PII), so only enable it if your privacy policy covers it. Pass `true` to
-start collecting it. On Android the call is ignored with a logged warning.
+start collecting it. On Android the call throws an `AppsFlyerException` — see
+[Platform-only APIs](#platform-only-apis).
 
 _Example:_
 ```dart
@@ -1375,7 +1399,8 @@ await appsFlyerSdk.setInstallId("install-123");
 Attributes the install to a device preinstall (OEM / manufacturer) deal, declaring that the app shipped preinstalled and attributing the install to the given `mediaSource`, `campaign`, and `siteId`. Call it **before** `start()`.
 
 **Android only** — the iOS SDK does not provide this programmatic
-preinstall-attribution API. On iOS the call is ignored with a logged warning.
+preinstall-attribution API. On iOS the call throws an `AppsFlyerException` — see
+[Platform-only APIs](#platform-only-apis).
 
 _Example:_
 ```dart
@@ -1393,7 +1418,8 @@ Android SDK rejects an empty `appId`, and the returned Future throws
 `AppsFlyerException`.
 
 **Android only** — on iOS the app ID is provided through `init()` and the
-iOS SDK has no `setAppId`, so the call is ignored with a logged warning.
+iOS SDK has no `setAppId`, so the call throws an `AppsFlyerException` — see
+[Platform-only APIs](#platform-only-apis).
 
 _Example:_
 ```dart
@@ -1443,8 +1469,8 @@ await appsFlyerSdk.setDisableAdvertisingIdentifiers(true);
 ---
 **<a id="setDisableCollectASA"> `Future<void> setDisableCollectASA(bool disable)`** — **iOS only**
 
-Controls collection of Apple Search Ads attribution data. On Android the call is
-ignored with a logged warning.
+Controls collection of Apple Search Ads attribution data. On Android the call
+throws an `AppsFlyerException` — see [Platform-only APIs](#platform-only-apis).
 
 ```dart
 if (Platform.isIOS) {

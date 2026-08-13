@@ -38,7 +38,7 @@ AppsFlyerSdk.setLogLevel(logLevel)                                    [Android o
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `enableDebug(bool enabled)` — maps to the `isDebug` RPC; `setLogLevel(AFLogLevel logLevel)` — Android-only, guarded by an Android platform check |
+| `lib/src/appsflyer_sdk.dart` | `enableDebug(bool enabled)` — maps to the `isDebug` RPC; `setLogLevel(AFLogLevel logLevel)` — Android-only, dispatched through RPC without a Dart platform check |
 | `lib/src/appsflyer_constants.dart` | `AFLogLevel` (`none`, `error`, `warning`, `info`, `debug`, `verbose`) and its uppercase `rpcValue` |
 | `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | No per-method handler — generic `executeRpc` → `dispatchRpc` forwards `isDebug` / `setLogLevel` to `AppsFlyerRpcHandler` |
 | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | No per-method handler — generic `executeRpc` → `dispatchRpc` forwards `isDebug` to `AppsFlyerRPCBridge` |
@@ -50,7 +50,7 @@ AppsFlyerSdk.setLogLevel(logLevel)                                    [Android o
 | | |
 |--|--|
 | **Input** | `enabled` (`bool`) sent as the `isDebug` RPC parameter. Android only: `logLevel` (`AFLogLevel`) sent as its uppercase name. |
-| **Output** | `Future<void>` completes after native RPC validation and the synchronous SDK logging setter invocation. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or timeout. Off Android, `setLogLevel` is ignored with a logged warning and no RPC is dispatched. |
+| **Output** | `Future<void>` completes after native RPC validation and the synchronous SDK logging setter invocation. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or timeout. Off Android, `setLogLevel` is still dispatched and throws `AppsFlyerException` once the native RPC layer reports the method as unavailable. |
 
 ---
 
@@ -58,7 +58,7 @@ AppsFlyerSdk.setLogLevel(logLevel)                                    [Android o
 `test/appsflyer_sdk_test.dart`:
 - `enableDebug maps to the isDebug RPC method` — asserts the RPC method is `isDebug` with params `{'isDebug': true}`.
 - `maps every Android-only API` — asserts `setLogLevel` dispatches `setLogLevel` with the uppercase value for every `AFLogLevel`.
-- `platform-only void calls are ignored without reaching the native RPC` — asserts `setLogLevel(AFLogLevel.debug)` on iOS dispatches no RPC method.
+- `platform-only calls are forwarded to the native RPC instead of being swallowed in Dart` — asserts `setLogLevel(AFLogLevel.debug)` on iOS still dispatches the `setLogLevel` RPC.
 
 ---
 

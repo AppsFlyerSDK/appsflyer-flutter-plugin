@@ -45,7 +45,7 @@ Native deep link resolved (via F-039 iOS entry points / F-040 Android intent han
         → onDeepLink(DeepLinkResult)
 ```
 
-Android also exposes `unregisterDeeplinkListener()`, which dispatches `unsubscribeForDeepLink`; on iOS the call is ignored with a logged warning and no RPC is dispatched.
+Android also exposes `unregisterDeeplinkListener()`, which dispatches `unsubscribeForDeepLink`; on iOS it still drops the Dart callback first and then throws `AppsFlyerException`, because the iOS RPC layer does not implement the method.
 
 ---
 
@@ -77,7 +77,7 @@ Android also exposes `unregisterDeeplinkListener()`, which dispatches `unsubscri
 - `normalizes Android and iOS deep-link status without hiding errors` — builds `DeepLinkResult._fromEvent` from an Android `onDeepLinking` envelope (`FOUND` + JSON-string `deepLink`) and an iOS `onDeepLinkReceived` failure envelope, asserting the mapped `DeepLinkStatus`, `deepLinkValue`, `isDeferred`, and that the iOS failure carries a `message` but no `type`.
 - `listeners are registered explicitly` — asserts `registerDeepLinkListener(onDeepLink)` dispatches `subscribeForDeepLink` on Android and `registerDeeplinkListener` on iOS.
 - `maps every Android-only API` — asserts `unregisterDeeplinkListener` dispatches `unsubscribeForDeepLink`.
-- `platform-only void calls are ignored without reaching the native RPC` — asserts `unregisterDeeplinkListener` on iOS dispatches no RPC.
+No test covers `unregisterDeeplinkListener` on iOS; the shared off-platform contract is exercised generically by `platform-only calls are forwarded to the native RPC instead of being swallowed in Dart`.
 
 `test/appsflyer_sdk_test.dart` — `routes deep-link events with an object data payload` covers an `onDeepLinkReceived` envelope whose `data` is a JSON object.
 
@@ -89,7 +89,7 @@ Android also exposes `unregisterDeeplinkListener()`, which dispatches `unsubscri
 - Failure detail is asymmetric by design: Android populates `DeepLinkFailure.type` (a stable error type) and iOS populates `DeepLinkFailure.message` (a localized string). Neither platform fills both.
 - Android RPC 7.0.1 serializes the native click event via `org.json.JSONObject.toString()`, which is valid JSON. `_decodeDeepLink` decodes it directly with `jsonDecode` (types, including `is_deferred`, are preserved); a malformed/non-JSON string is treated as "no deep link" (`null`) rather than partially parsed.
 - **`DeepLink.isDeferred` is unreliable on iOS**: the native `AppsFlyerDeepLink.clickEvent` dictionary never includes an `is_deferred` key (the flag lives on a separate native `isDeferred` property that the iOS RPC bridge's `didResolveDeepLink` does not forward). `isDeferred` always returns `null` for iOS deep links regardless of the actual deferred/direct outcome. Android reliably sets `is_deferred` on every resolved deep link. Fixing this requires a native iOS RPC change (forwarding `deepLink.isDeferred` alongside `clickEvent`) — out of scope for the Flutter plugin.
-- `unregisterDeeplinkListener()` is an Android-only soft unsubscribe: the native SDK keeps its listener (it exposes no public unsubscribe API) and the RPC bridge drops subsequent deep-link events. Because the handler holding that reference is process-scoped on Android, the soft unsubscribe also outlives the engine that requested it — an app that unsubscribes on teardown must call `registerDeepLinkListener()` again after the next engine attaches.
+- `unregisterDeeplinkListener()` is an Android-only soft unsubscribe: the native SDK keeps its listener (it exposes no public unsubscribe API) and the RPC bridge drops subsequent deep-link events. Because the handler holding that reference is process-scoped on Android, the soft unsubscribe also outlives the engine that requested it — an app that unsubscribes on teardown must call `registerDeepLinkListener()` again after the next engine attaches. On iOS the call is not inert either: the Dart callback is dropped locally before the RPC is dispatched, so deep links stop reaching the app *and* the call throws `AppsFlyerException`.
 - **Registration order is unenforced.** Nothing in the plugin prevents an app from calling `registerDeepLinkListener()` after `init()`, and nothing reports the resulting loss of Android deferred deep linking: the native gate fails silently (no `[DDL]` log covers the listener-null case) and `ddl_sent` makes it permanent for that install, so reproducing a fix requires a reinstall or a data wipe. Only the documentation and the example app express the requirement.
 - Both platforms buffer native events until Dart attaches to `af-events` (RD-65582) and replay them on attach. Dart attaches that single subscription lazily on the first `register*Listener()` call, and `_AppsFlyerListenerRegistry` holds replayed events whose listener has not registered yet, so the replay is not drained into nothing. Android buffers in the process-scoped `AppsFlyerEventBus`, so a deep link resolved while the Flutter engine is torn down (back press, then a link tap) survives engine recreation. iOS buffers per plugin instance and removes its bridge handler on engine detach (only if that instance still owns the bridge's single handler slot), so it has no equivalent cross-engine replay. Both buffers hold at most 64 events and drop the oldest beyond that.
 

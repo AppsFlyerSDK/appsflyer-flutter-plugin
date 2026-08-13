@@ -42,7 +42,7 @@ Native conversion data arrives (Android RpcEventNotifier / iOS AFRPCBridge event
             → onFailure(Map<String, dynamic>) (raw payload, not an RPC exception)
 ```
 
-Android also exposes `unregisterConversionListener()`; on iOS the call is ignored with a logged warning and no RPC is dispatched.
+Android also exposes `unregisterConversionListener()`; on iOS it still drops the Dart callbacks first and then throws `AppsFlyerException`, because the iOS RPC layer does not implement the method.
 
 ---
 
@@ -76,7 +76,7 @@ Android also exposes `unregisterConversionListener()`; on iOS the call is ignore
 - `subscribes to af-events only when the first listener is registered` — asserts the `listen` handshake is sent on the first registration and not repeated for later ones.
 - `listeners are registered explicitly` — asserts `registerConversionListener(onSuccess:)` dispatches the `registerConversionListener` RPC.
 - `maps every Android-only API` — asserts `unregisterConversionListener` dispatches the matching RPC with no params.
-- `platform-only void calls are ignored without reaching the native RPC` — asserts `unregisterConversionListener` on iOS dispatches no RPC.
+No test covers `unregisterConversionListener` on iOS; the shared off-platform contract is exercised generically by `platform-only calls are forwarded to the native RPC instead of being swallowed in Dart`.
 
 `test/appsflyer_sdk_test.dart` — `ignores transport-only envelope fields on conversion events` covers the `onConversionDataSuccess` envelope shape (`event`, `data`).
 
@@ -88,7 +88,7 @@ Android also exposes `unregisterConversionListener()`; on iOS the call is ignore
 - Both platforms buffer native events until Dart attaches to `af-events` (RD-65582), so an install-conversion event emitted before the stream is attached is not lost at the native layer. Android buffers in the process-scoped `AppsFlyerEventBus`, which also covers conversion data arriving while the Flutter engine is torn down; iOS buffers per plugin instance for the lifetime of the engine. Both buffers hold at most 64 events and drop the oldest beyond that.
 - Engine recreation does not carry the Dart callbacks: the app must call `registerConversionListener()` again once a new engine attaches. On Android the `AppsFlyerRpcHandler` behind that call is process-scoped (`AppsFlyerRpcBridge`), so re-registration reuses the listener already registered on `AppsFlyerLib` instead of building a new one against an SDK that is already configured.
 - `onFailure` receives the raw native payload unchanged: on Android it never carries a `code` field (the native delegate only supplies an error message), while on iOS it does. Callers that need a `code` must handle its absence on Android rather than relying on a synthesized default.
-- `unregisterConversionListener()` is Android-only; iOS integrations cannot stop conversion-data delivery through the RPC bridge.
+- `unregisterConversionListener()` is Android-only; iOS integrations cannot stop conversion-data delivery through the RPC bridge. Calling it on iOS is also not free of side effects: the Dart callbacks are dropped locally before the RPC is dispatched, so the app stops receiving conversion data *and* the call throws `AppsFlyerException`.
 
 ---
 

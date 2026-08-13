@@ -70,7 +70,7 @@ flutter pub run build_runner build   # Regenerate JSON serialization code
 
 ## Testing
 - Run `flutter test test` for the Dart unit test suite.
-- Run `./gradlew :appsflyer_sdk:testDebugUnitTest` from `example/android` for the Android native tests.
+- Run `./gradlew :appsflyer_sdk:testDebugUnitTest` from `example/android` for the Android native tests. On a fresh clone, run `flutter build apk --config-only` from `example/` first: the Gradle wrapper is gitignored and is only written once the Flutter tool invokes Gradle.
 - Run `xcodebuild test -workspace ios/Runner.xcworkspace -scheme Runner -destination "id=<simulator-udid>"` from `example/` for the iOS native tests.
 - Integration testing requires running the `example/` app on a device/emulator.
 - CI is GitHub Actions (`.github/workflows/lint-test-build.yml`): the Dart suite on Linux, plus the Android native tests inside the Android build job. The iOS XCTest suite is not run in CI — run it locally.

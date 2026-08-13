@@ -74,12 +74,15 @@ removed APIs, renames, lifecycle changes, and upgrade instructions.
   `setCustomerIdAndLogSession`.
 - Runtime configuration setters must be re-applied on every cold start before
   `start()`.
-- Most guarded platform-only methods log and return a safe default when called
-  outside their supported platform. Seven symmetric getters and setters
-  (`getHostName`, `getHostPrefix`, `getOutOfStore`, `isPreInstalledApp`,
-  `getAttributionId`, `setUseReceiptValidationSandbox`,
-  `setUseUninstallSandbox`) route through the native RPC layer instead and throw
-  `AppsFlyerException` when the method is unavailable on that platform.
+- Every platform-only method now throws `AppsFlyerException` when called outside
+  its supported platform, instead of some logging a warning and returning a safe
+  default while others threw. The plugin no longer keeps its own table of which
+  platform implements what — calls are forwarded and the native RPC layer
+  answers, so the surface stays correct as the native SDKs change. Code that
+  relied on an off-platform call being a silent no-op must guard it with
+  `Platform.isAndroid` / `Platform.isIOS` or catch the exception. The exception
+  `code` comes from the native layer and currently differs: Android reports
+  `422`, iOS reports `404`.
 - `getHostName()` and `getHostPrefix()` now return non-nullable `Future<String>`
   on Android; unexpected native null replies throw `AppsFlyerException` instead
   of surfacing as `null`.
