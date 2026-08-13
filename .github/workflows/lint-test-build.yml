@@ -9,9 +9,15 @@
 #
 # What it does:
 # 1. Lints + format-checks + runs Dart/Flutter unit tests with coverage.
-# 2. Builds Android example app (release App Bundle).
-# 3. Builds iOS example app (no-codesign release IPA).
+# 2. Runs the Android native (JVM) unit tests, then builds the Android example
+#    app (release App Bundle).
+# 3. Builds the iOS example app (no-codesign release IPA).
 # 4. Caches dependencies for faster subsequent runs.
+#
+# Note on native tests: the Android JVM tests live in the Android job rather
+# than the Dart `test` job because they need that job's toolchain (Android SDK
+# plus JDK for Gradle), so running them there reuses a setup the job already
+# pays for. The iOS XCTest suite is not run in CI — see the Job 3 header.
 #
 # Note on debug builds: debug-mode Android APK and iOS simulator builds used
 # to live here, but they duplicate exactly what ios-e2e.yml / android-e2e.yml
@@ -166,9 +172,10 @@ jobs:
           fail_ci_if_error: false  # Don't fail CI if coverage upload fails
 
   # ===========================================================================
-  # Job 2: Build Android Example App
+  # Job 2: Android Native Tests + Build Example App
   # ===========================================================================
-  # Builds the example app for Android to ensure plugin integration works
+  # Runs the plugin's Android JVM unit tests, then builds the example app to
+  # ensure plugin integration works
   # Uses: Ubuntu runner with Java 17
   # ===========================================================================
   
@@ -226,7 +233,28 @@ jobs:
           echo "DEV_KEY=dummy_dev_key" > .env
           echo "APP_ID=dummy_app_id" >> .env
 
-      # Step 8: Build Android App Bundle (release mode, no signing)
+      # Step 8: Run the plugin's Android JVM unit tests
+      # The plugin is included in the example's Gradle build as `:appsflyer_sdk`
+      # by the Flutter plugin loader, so this runs from example/android. Placed
+      # ahead of the release build: it is the faster of the two and covers the
+      # engine-lifecycle logic (AppsFlyerEventBus, AppsFlyerRpcBridge) that an
+      # appbundle build cannot exercise.
+      - name: Run Android native unit tests
+        working-directory: example/android
+        run: ./gradlew :appsflyer_sdk:testDebugUnitTest --console=plain
+
+      # Step 9: Publish the Gradle test report when the tests fail
+      - name: Upload Android test report
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: android-native-test-report
+          path: |
+            example/build/appsflyer_sdk/reports/tests/testDebugUnitTest
+            example/build/appsflyer_sdk/test-results/testDebugUnitTest
+          retention-days: 7
+
+      # Step 10: Build Android App Bundle (release mode, no signing)
       # App Bundle is the preferred format for Play Store. Catches R8/proguard
       # regressions a debug APK won't. Debug APK builds were removed because
       # android-e2e.yml already builds and runs `flutter build apk --debug`
@@ -235,7 +263,7 @@ jobs:
         working-directory: example
         run: flutter build appbundle --release
 
-      # Step 9: Upload App Bundle artifact (optional)
+      # Step 11: Upload App Bundle artifact (optional)
       # Useful for manual install testing and archiving release-mode output.
       - name: Upload App Bundle artifact
         if: success()
@@ -248,7 +276,14 @@ jobs:
   # ===========================================================================
   # Job 3: Build iOS Example App
   # ===========================================================================
-  # Builds the example app for iOS to ensure plugin integration works
+  # Builds the example app to ensure plugin integration works
+  #
+  # The plugin's XCTest suite is deliberately not run here. It covers Foundation
+  # behavior rather than plugin code (`RunnerTests` re-implements the function
+  # under test instead of importing it), so a simulator boot and a second, debug
+  # build of the app would buy no coverage on a runner that bills at 10x. Wire
+  # it in once there are XCTests that exercise `AppsflyerSdkPlugin` /
+  # `AFRPCBridge` directly.
   # Uses: macOS runner (required for Xcode and iOS builds)
   # Note: macOS runners consume 10x minutes on private repos
   # ===========================================================================
@@ -315,7 +350,7 @@ jobs:
           echo "DEV_KEY=dummy_dev_key" > .env
           echo "APP_ID=dummy_app_id" >> .env
 
-      # Step 9: Build iOS IPA without code signing (release mode)
+      # Step 10: Build iOS IPA without code signing (release mode)
       # Validates a full release build without requiring certificates. Catches
       # archive bundling and signing-config issues a simulator-debug build
       # won't. The simulator-debug build that used to live here was dropped
@@ -325,7 +360,7 @@ jobs:
         working-directory: example
         run: flutter build ipa --release --no-codesign
 
-      # Step 10: Upload build artifacts (optional)
+      # Step 11: Upload build artifacts (optional)
       - name: Upload iOS build artifact
         if: success()
         uses: actions/upload-artifact@v5
@@ -352,9 +387,9 @@ jobs:
           echo "==================================="
           echo "Lint, Test & Build summary"
           echo "==================================="
-          echo "Test Job:      ${{ needs.test.result }}"
-          echo "Android Build: ${{ needs.build-android.result }}"
-          echo "iOS Build:     ${{ needs.build-ios.result }}"
+          echo "Dart unit/lint:              ${{ needs.test.result }}"
+          echo "Android native tests + build: ${{ needs.build-android.result }}"
+          echo "iOS build:                    ${{ needs.build-ios.result }}"
           echo "==================================="
 
           # 'skipped' is acceptable for any of the three jobs (skip_unit=true
@@ -370,7 +405,7 @@ jobs:
             exit 1
           fi
           if [[ "$android_result" != "success" && "$android_result" != "skipped" ]]; then
-            echo "❌ Android release build failed"
+            echo "❌ Android native tests or release build failed"
             exit 1
           fi
           if [[ "$ios_result" != "success" && "$ios_result" != "skipped" ]]; then
