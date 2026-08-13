@@ -176,6 +176,14 @@ void main() {
   });
 
   group('requests and errors', () {
+    test('void RPC calls always send an empty params map', () async {
+      await androidSdk.disableAppSetId();
+
+      expect(rpcMethod, 'disableAppSetId');
+      expect(rpcParams, isNotNull);
+      expect(rpcParams, isEmpty);
+    });
+
     test('logEvent is fire-and-forget by default', () async {
       await androidSdk.logEvent(
         'af_purchase',

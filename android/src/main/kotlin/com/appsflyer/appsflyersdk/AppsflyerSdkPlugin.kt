@@ -189,13 +189,11 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
     private fun executeRpc(call: MethodCall, result: Result) {
         // Internal transport contract (_invokeRpc): {method: String, params: Map}. Apps must not
-        // call this channel directly; a malformed envelope is an integration error and throws here.
-        val arguments = call.arguments as Map<String, Any?>
-        val method = arguments["method"] as String
-        val params = JSONObject(arguments["params"] as Map<*, *>)
+        // call this channel directly; a malformed envelope is an integration error and is rejected
+        // by [RpcEnvelopeParser] before dispatch (fail-fast, not UNEXPECTED_ERROR).
+        val (method, params) = RpcEnvelopeParser.parse(call)
 
         try {
             if (RPC_METHOD_INIT == method) {

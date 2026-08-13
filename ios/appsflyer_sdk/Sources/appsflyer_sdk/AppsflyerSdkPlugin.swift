@@ -193,19 +193,40 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
                                                       details: nil))
             return
         }
-        // Internal transport contract (_invokeRpc): {method: String, params: Map}. Apps must not
-        // call this channel directly; a malformed envelope is an integration error and traps here.
-        let arguments = call.arguments as! NSDictionary
-        let method = arguments["method"] as! String
-        let params = arguments["params"] as! NSDictionary
+        // Internal transport contract (_invokeRpc): {method, params}. Apps must not call this
+        // channel directly; a malformed envelope is an integration error and is rejected by
+        // parseEnvelope before dispatch (fail-fast, not FlutterError).
+        let envelope = parseEnvelope(call)
 
-        if kRpcInit == method {
-            initFromRpc(params, result: result)
-        } else if kRpcLogAndOpenStore == method {
-            logAndOpenStoreFromRpc(params, result: result)
+        if kRpcInit == envelope.method {
+            initFromRpc(envelope.params, result: result)
+        } else if kRpcLogAndOpenStore == envelope.method {
+            logAndOpenStoreFromRpc(envelope.params, result: result)
         } else {
-            dispatchRpc(method, params: params, result: result)
+            dispatchRpc(envelope.method, params: envelope.params, result: result)
         }
+    }
+
+    private struct RpcEnvelope {
+        let method: String
+        let params: NSDictionary
+    }
+
+    private func parseEnvelope(_ call: FlutterMethodCall) -> RpcEnvelope {
+        guard let arguments = call.arguments as? NSDictionary else {
+            rpcEnvelopeViolation("arguments must be Map")
+        }
+        guard let method = arguments["method"] as? String else {
+            rpcEnvelopeViolation("method must be String")
+        }
+        guard let params = arguments["params"] as? NSDictionary else {
+            rpcEnvelopeViolation("params must be Map")
+        }
+        return RpcEnvelope(method: method, params: params)
+    }
+
+    private func rpcEnvelopeViolation(_ detail: String) -> Never {
+        preconditionFailure("RPC envelope contract violation: \(detail)")
     }
 
     // ============================================================================
