@@ -41,6 +41,9 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
         let params: NSDictionary
     }
 
+    /// All mutable state below is confined to the main thread. Channel handlers and UIKit callbacks
+    /// already arrive there, `AFRPCBridge` normalizes RPC completions and events onto it, and
+    /// `tearDownForEngineDetach()` hops onto it — so none of it needs its own lock.
     private var eventChannel: FlutterEventChannel?
     private var eventSink: FlutterEventSink?
     private var pendingEvents: [String] = []
@@ -106,17 +109,37 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
         tearDownForEngineDetach()
     }
 
+    /// Engine detach is the one lifecycle callback that can arrive off the main thread — every other
+    /// writer of this instance's state (`onListen`, `onCancel`, `deliverEvent`, and the RPC
+    /// completions that read `isEngineDetached`) already runs there. Hopping serializes teardown
+    /// against them instead of mutating `pendingEvents` and `eventSink` underneath a concurrent
+    /// `deliverEvent`, mirroring `AppsFlyerAttribution.onMain`.
+    ///
+    /// `self` is captured strongly so teardown still completes if the engine releases the plugin
+    /// first: both the bridge's handler slot and `AppsFlyerAttribution`'s queue are keyed on this
+    /// instance's identity, and a released owner would leave the bridge holding a handler no
+    /// detaching instance can claim.
     private func tearDownForEngineDetach() {
-        isEngineDetached = true
-        eventSink = nil
-        pendingEvents.removeAll()
-        eventHandlerRegistered = false
-        // Ownership-checked: in a multi-engine host this instance may no longer hold the bridge's
-        // single event-handler slot, and tearing down must not cut events off from the engine that
-        // does. See `AFRPCBridge.eventHandlerOwner`.
-        AFRPCBridge.removeEventHandler(owner: self)
-        eventChannel?.setStreamHandler(nil)
-        AppsFlyerAttribution.shared().resetBridgeStateIfOwned(by: self)
+        onMain { [self] in
+            isEngineDetached = true
+            eventSink = nil
+            pendingEvents.removeAll()
+            eventHandlerRegistered = false
+            // Ownership-checked: in a multi-engine host this instance may no longer hold the bridge's
+            // single event-handler slot, and tearing down must not cut events off from the engine that
+            // does. See `AFRPCBridge.eventHandlerOwner`.
+            AFRPCBridge.removeEventHandler(owner: self)
+            eventChannel?.setStreamHandler(nil)
+            AppsFlyerAttribution.shared().resetBridgeStateIfOwned(by: self)
+        }
+    }
+
+    private func onMain(_ body: @escaping () -> Void) {
+        if Thread.isMainThread {
+            body()
+        } else {
+            DispatchQueue.main.async(execute: body)
+        }
     }
 
     /// `eventHandlerRegistered` only keeps the second call site (`initFromRpc`) from re-registering
