@@ -405,8 +405,7 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
         case "getAppsFlyerUID":
             return data?["uid"]
         case "isSessionReady":
-            // Read the current key and retain the bridge's alternate `ready` key.
-            return data?["isSessionReady"] ?? data?["ready"]
+            return data?["isSessionReady"]
         case "validateAndLogInAppPurchase":
             return data ?? [:]
         case "generateInviteLink":

@@ -107,12 +107,6 @@ object AppsFlyerPurchaseConnector : FlutterPlugin {
         val logInApps = call.getBoolean(LOG_IN_APP_KEY)
         val sandbox = call.getBoolean(SANDBOX_KEY)
 
-        android.util.Log.d(
-            "AppsFlyer_PC_Config",
-            "Native received - logSubs: $logSubs, logInApps: $logInApps, sandbox: $sandbox"
-        )
-        android.util.Log.d("AppsFlyer_PC_Config", "Arguments received: ${call.arguments}")
-
         attachment.connectorWrapper = ConnectorWrapper(
             context,
             logSubs,
@@ -170,13 +164,11 @@ object AppsFlyerPurchaseConnector : FlutterPlugin {
 
     private fun MethodCall.getBoolean(key: String, defValue: Boolean = false): Boolean {
         return try {
-            val value = argument<Boolean>(key)
-            android.util.Log.d("AppsFlyer_PC_Config", "Extracted $key = $value")
-            value ?: defValue
+            argument<Boolean>(key) ?: defValue
         } catch (e: Exception) {
             android.util.Log.w(
-                "AppsFlyer_PC_Config",
-                "Failed to extract $key, using default $defValue. Error: ${e.message}"
+                AF_PLUGIN_TAG,
+                "Purchase Connector: failed to read '$key', using default $defValue: ${e.message}"
             )
             defValue
         }
