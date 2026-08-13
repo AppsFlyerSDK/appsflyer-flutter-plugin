@@ -55,7 +55,6 @@ android {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'androidx.appcompat:appcompat:1.7.1'
 
     implementation platform("com.appsflyer:af-android-sdk-bom:7.0.1")
     implementation "com.appsflyer:af-android-sdk"
