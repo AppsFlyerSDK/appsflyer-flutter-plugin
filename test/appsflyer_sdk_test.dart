@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
@@ -1258,6 +1259,120 @@ void main() {
       await pumpEventQueue();
 
       expect(readyCount, 0);
+    });
+
+    test(
+        'an event replayed before its listener is registered is delivered '
+        'once that listener registers', () async {
+      // Both platforms flush their whole native buffer as soon as Dart
+      // attaches, which the first register*Listener call triggers. The
+      // documented startup order registers the deep-link listener first, so
+      // every other buffered event arrives before its callback exists.
+      await androidSdk.registerDeepLinkListener((_) {});
+      await _emitEvent({
+        'event': 'onConversionDataSuccess',
+        'data': {'media_source': 'organic'},
+      });
+      await pumpEventQueue();
+
+      final received = <Map<String, dynamic>>[];
+      await androidSdk.registerConversionListener(onSuccess: received.add);
+      await pumpEventQueue();
+
+      expect(received.single, {'media_source': 'organic'});
+    });
+
+    test('held events replay in arrival order', () async {
+      await androidSdk.registerDeepLinkListener((_) {});
+      for (var i = 0; i < 3; i++) {
+        await _emitEvent({
+          'event': 'onConversionDataSuccess',
+          'data': {'index': i},
+        });
+      }
+      await pumpEventQueue();
+
+      final received = <Map<String, dynamic>>[];
+      await androidSdk.registerConversionListener(onSuccess: received.add);
+      await pumpEventQueue();
+
+      expect(received.map((data) => data['index']), [0, 1, 2]);
+    });
+
+    test('a held event is replayed before a live event that follows it',
+        () async {
+      await androidSdk.registerDeepLinkListener((_) {});
+      await _emitEvent({
+        'event': 'onConversionDataSuccess',
+        'data': {'index': 0},
+      });
+      await pumpEventQueue();
+
+      final received = <Map<String, dynamic>>[];
+      // Not awaited: the live event is emitted while the replay is still
+      // pending, so this pins the replay ahead of it.
+      unawaited(androidSdk.registerConversionListener(onSuccess: received.add));
+      await _emitEvent({
+        'event': 'onConversionDataSuccess',
+        'data': {'index': 1},
+      });
+      await pumpEventQueue();
+
+      expect(received.map((data) => data['index']), [0, 1]);
+    });
+
+    test('re-registering before the replay runs does not deliver twice',
+        () async {
+      await androidSdk.registerDeepLinkListener((_) {});
+      await _emitEvent({
+        'event': 'onConversionDataSuccess',
+        'data': {'media_source': 'organic'},
+      });
+      await pumpEventQueue();
+
+      final received = <Map<String, dynamic>>[];
+      unawaited(androidSdk.registerConversionListener(onSuccess: received.add));
+      unawaited(androidSdk.registerConversionListener(onSuccess: received.add));
+      await pumpEventQueue();
+
+      expect(received.single, {'media_source': 'organic'});
+    });
+
+    test('unregistering discards events held for that listener', () async {
+      var readyCount = 0;
+      await androidSdk.registerSessionReadyListener(() => readyCount++);
+      await androidSdk.unregisterSessionReadyListener();
+      await _emitEvent({
+        'event': 'onSessionReady',
+        'data': <String, dynamic>{},
+      });
+      await pumpEventQueue();
+
+      // Re-registering resumes future events; it does not resurrect events
+      // that arrived while the app had explicitly unregistered.
+      await androidSdk.registerSessionReadyListener(() => readyCount++);
+      await pumpEventQueue();
+
+      expect(readyCount, 0);
+    });
+
+    test('holding is bounded and drops the oldest event first', () async {
+      await androidSdk.registerDeepLinkListener((_) {});
+      for (var i = 0; i < 65; i++) {
+        await _emitEvent({
+          'event': 'onConversionDataSuccess',
+          'data': {'index': i},
+        });
+      }
+      await pumpEventQueue();
+
+      final received = <Map<String, dynamic>>[];
+      await androidSdk.registerConversionListener(onSuccess: received.add);
+      await pumpEventQueue();
+
+      expect(received.length, 64);
+      expect(received.first['index'], 1);
+      expect(received.last['index'], 64);
     });
 
     test('routes deep-link events with an object data payload', () async {

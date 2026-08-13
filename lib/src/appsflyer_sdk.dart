@@ -66,10 +66,11 @@ class AppsFlyerSdk {
 
   /// Attaches the plugin's single `af-events` subscription on first use.
   ///
-  /// Deferred until the first registration on purpose: both platforms buffer
-  /// native events until Dart attaches and replay them on attach, so
-  /// subscribing before a callback slot exists would drain the buffer into
-  /// nothing.
+  /// Deferred until the first registration so nothing is read from the native
+  /// buffers before the app has asked for events. Both platforms replay their
+  /// whole buffer on attach, including events for listeners registered later in
+  /// the sequence; [_AppsFlyerListenerRegistry] holds those until their
+  /// callback arrives.
   void _ensureEventsSubscribed() {
     _eventSubscription ??=
         _eventChannel.receiveBroadcastStream().listen(_handleNativeEvent);
