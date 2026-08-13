@@ -50,7 +50,7 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     private var eventHandlerRegistered = false
     /// Set in `tearDownForEngineDetach()` so in-flight `executeJson` completions and nested
     /// `DispatchQueue.main.async` work from `logAndOpenStoreFromRpc` do not call `FlutterResult` or
-    /// `markBridgeReady()` after this engine's channel is gone.
+    /// `markBridgeReady(markedBy:)` after this engine's channel is gone.
     private var isEngineDetached = false
 
     // ============================================================================

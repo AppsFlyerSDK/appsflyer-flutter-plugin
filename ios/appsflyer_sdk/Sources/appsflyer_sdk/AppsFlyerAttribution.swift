@@ -80,18 +80,13 @@ public class AppsFlyerAttribution: NSObject {
         ])
     }
 
-    @objc(markBridgeReady)
-    public func markBridgeReady() {
-        onMain { [self] in
-            applyBridgeReady(recordOwner: false, owner: nil)
-        }
-    }
-
     /// Called from `AppsflyerSdkPlugin` after `init()` completes so detach can reset this singleton
-    /// only for the engine that marked it ready.
+    /// only for the engine that marked it ready. Not exposed on the `@objc` surface: a parameterless
+    /// variant would open the gate without recording an owner and `resetBridgeStateIfOwned(by:)` could
+    /// not clear stale state on engine detach.
     func markBridgeReady(markedBy owner: AnyObject) {
         onMain { [self] in
-            applyBridgeReady(recordOwner: true, owner: owner)
+            applyBridgeReady(owner: owner)
         }
     }
 
@@ -107,10 +102,8 @@ public class AppsFlyerAttribution: NSObject {
         }
     }
 
-    private func applyBridgeReady(recordOwner: Bool, owner: AnyObject?) {
-        if recordOwner {
-            bridgeReadyOwner = owner
-        }
+    private func applyBridgeReady(owner: AnyObject) {
+        bridgeReadyOwner = owner
         isBridgeReady = true
         let requests = pendingRequests
         pendingRequests.removeAll()
