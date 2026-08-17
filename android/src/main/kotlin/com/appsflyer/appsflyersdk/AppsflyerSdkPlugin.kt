@@ -62,15 +62,15 @@ import io.flutter.plugin.common.PluginRegistry
  * with `applicationContext` so it retains neither an Activity nor an engine.
  *
  * Fast RPCs (setters, getters, and fire-and-forget calls) run inline on the platform thread.
- * Awaited-callback RPCs (`start`, `logEvent`, purchase validation, invite links when
- * `awaitResponse` is true) run on [blockingRpcExecutor] so a slow native latch wait does not
- * head-of-line block unrelated fast calls on the platform thread.
+ * `init` and awaited-callback RPCs (`start`, `logEvent`, purchase validation, invite links when
+ * `awaitResponse` is true) run on [blockingRpcExecutor] so cold-start bootstrap and slow native
+ * latch waits do not block the platform thread.
  *
- * `init` instead runs on a throwaway executor built around the current Activity
- * ([createRpcExecutor] straight from [executeRpcSync]), because
+ * `init` alone uses an ephemeral handler built around the current [Activity] when one is attached
+ * ([createRpcExecutor] via [executeRpcSync]), because
  * `AndroidLifecycleManagerImpl.registerLifecycleListener` triggers `onActivityResumed` manually
  * when it receives an `Activity` — that is what lets SDK 7 inspect the launch intent of a cold
- * start, which is already resumed by the time Dart calls `init()`. That executor is deliberately
+ * start, which is already resumed by the time Dart calls `init()`. That handler is deliberately
  * not cached: keeping it would pin the Activity for the lifetime of the process.
  */
 open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
@@ -262,7 +262,7 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
             return
         }
 
-        runRpc(result, "init failed", "INIT_ERROR") {
+        runOnBlockingRpcExecutor(result, "init failed", "INIT_ERROR") {
             // Identify the Flutter integration before init so the plugin name reaches the
             // first session. Result ignored: the plugin name is a compile-time constant, so
             // this can't fail in practice.
@@ -279,12 +279,13 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
                 jsonOf("devKey", afDevKey),
                 initContext
             )
-            if (init is RpcResponse.Error) {
-                deliverRpcResult(init, result, null)
-                return@runRpc
+            uiThreadHandler.post {
+                if (init is RpcResponse.Error) {
+                    deliverRpcResult(init, result, null)
+                } else {
+                    deliverRpcResult(RpcResponse.VoidSuccess, result, null)
+                }
             }
-
-            deliverRpcResult(RpcResponse.VoidSuccess, result, null)
         }
     }
 

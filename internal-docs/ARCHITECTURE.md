@@ -148,11 +148,11 @@ Flutter public method
 `AppsflyerSdkPlugin.kt` forwards every method except plugin-orchestrated `init` to `AppsFlyerRpcHandler`.
 
 - Fast RPCs (setters, getters, and fire-and-forget `start` / `logEvent` / purchase validation / invite generation when `awaitResponse` is `false`) run inline on the platform thread and complete the Flutter `Result` immediately.
-- Awaited-callback RPCs (`start`, `logEvent`, `validateAndLogInAppPurchase`, or `generateInviteLink` when `awaitResponse` is `true`) run on a dedicated single-thread `blockingRpcExecutor` so a slow native latch wait does not head-of-line block unrelated fast calls.
+- `init` and awaited-callback RPCs (`start`, `logEvent`, `validateAndLogInAppPurchase`, or `generateInviteLink` when `awaitResponse` is `true`) run on a dedicated single-thread `blockingRpcExecutor` so cold-start bootstrap and slow native latch waits do not block the platform thread.
 - The handler uses `JsonRpcRequestParser` and the typed Android RPC request catalog.
 - SDK callbacks required for awaitable RPC operations are converted into the corresponding RPC response.
 - Flutter results are delivered on the main thread.
-- The RPC handler is process-scoped. `AppsFlyerRpcBridge` holds one handler behind an `AppsFlyerRpcExecutor`, built with `applicationContext` so it retains neither a destroyed `Activity` nor a torn-down engine. Because `AppsFlyerLib` is itself a process-wide singleton that keeps its configuration and registered listeners, reusing the handler means a recreated engine reattaches to a bridge that still matches the native SDK instead of building one with no memory of the listeners registered on it. The `init` RPC alone runs on an ephemeral executor built around the current `Activity` when one is attached, so SDK 7 can replay the cold-start launch intent for deep linking.
+- The RPC handler is process-scoped. `AppsFlyerRpcBridge` holds one handler behind an `AppsFlyerRpcExecutor`, built with `applicationContext` so it retains neither a destroyed `Activity` nor a torn-down engine. Because `AppsFlyerLib` is itself a process-wide singleton that keeps its configuration and registered listeners, reusing the handler means a recreated engine reattaches to a bridge that still matches the native SDK instead of building one with no memory of the listeners registered on it. The `init` RPC alone uses an ephemeral handler built around the current `Activity` when one is attached (scheduled on `blockingRpcExecutor`, not inline on the platform thread), so SDK 7 can replay the cold-start launch intent for deep linking without blocking cold start.
 - Awaited native callbacks block only the dedicated blocking executor until completion or timeout. Fast calls are not queued behind them.
 - The process-scoped `AppsFlyerRpcHandler` can be entered from both the platform thread (fast RPCs) and `blockingRpcExecutor` (awaited RPCs). That overlap is intentional: fast setters/getters must not wait behind a slow `await start()`. Listener bookkeeping inside the handler is not synchronized; if tighter guarantees are needed, they belong in the Android RPC module (`plugin_bridge`), not by serializing every plugin RPC on one executor.
 - The `executeRpc` envelope `{method, params}` is parsed by `RpcEnvelopeParser` before dispatch. Both `method` and `params` are required; `params` may be empty but must be a `Map`. Dart's `_invokeNullableRpc` always supplies `params: params ?? {}`. A malformed envelope from anything other than that path is an integration error: Android throws `IllegalStateException` with message prefix `RPC envelope contract violation:` outside the dispatch `try/catch`; iOS calls `preconditionFailure` with the same prefix. Neither path is converted to a user-facing `AppsFlyerException` by design.
@@ -230,8 +230,8 @@ Future<void> init({required String devKey, String? appId});
 Android initialization sequence:
 
 ```text
-setPluginInfo(plugin: flutter, pluginVersion)
-  → init(devKey)
+setPluginInfo(plugin: flutter, pluginVersion)   // on blockingRpcExecutor
+  → init(devKey)                                // Activity-scoped handler when attached
   → complete the originating Flutter result on the main thread
 ```
 
