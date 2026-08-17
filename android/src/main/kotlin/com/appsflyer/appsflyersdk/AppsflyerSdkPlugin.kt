@@ -122,14 +122,20 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
 
     private fun createEventSink(events: EventChannel.EventSink): AppsFlyerEventSink =
         AppsFlyerEventSink { eventJson ->
+            if (isEngineDetached) {
+                // Stop using this sink while teardown is in progress. EventChannel.success() often
+                // returns normally even when FlutterJNI is already detached, which would make the bus
+                // pop the event as delivered while Dart never receives it.
+                return@AppsFlyerEventSink EventSendResult.RETRY_LATER
+            }
             try {
                 events.success(eventJson)
-                true
+                EventSendResult.DELIVERED
             } catch (t: Throwable) {
                 // EventChannel.success() rarely throws. When it does, the bus drops that event and
                 // continues with the rest of the buffer on the next attach.
                 Log.w(AF_PLUGIN_TAG, "af-events sink refused an event: ${t.message}")
-                false
+                EventSendResult.DROP
             }
         }
 

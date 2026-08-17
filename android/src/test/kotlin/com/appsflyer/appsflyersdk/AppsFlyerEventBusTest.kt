@@ -20,9 +20,13 @@ private class RecordingSink(private val acceptLimit: Int = Int.MAX_VALUE) : Apps
 
     val received: MutableList<String> = Collections.synchronizedList(mutableListOf())
 
-    override fun send(eventJson: String): Boolean {
+    override fun send(eventJson: String): EventSendResult {
         received += eventJson
-        return received.size <= acceptLimit
+        return if (received.size <= acceptLimit) {
+            EventSendResult.DELIVERED
+        } else {
+            EventSendResult.DROP
+        }
     }
 }
 
@@ -31,12 +35,12 @@ private class ContentRefusingSink(private val refusedPayload: String) : AppsFlye
 
     val received: MutableList<String> = Collections.synchronizedList(mutableListOf())
 
-    override fun send(eventJson: String): Boolean {
+    override fun send(eventJson: String): EventSendResult {
         if (eventJson == refusedPayload) {
-            return false
+            return EventSendResult.DROP
         }
         received += eventJson
-        return true
+        return EventSendResult.DELIVERED
     }
 }
 
@@ -218,6 +222,29 @@ class AppsFlyerEventBusTest {
     // region refusing sinks
 
     @Test
+    fun publish_whenSinkRequestsRetry_keepsEventBufferedAndDetachesSink() {
+        val retrySink = AppsFlyerEventSink { EventSendResult.RETRY_LATER }
+        AppsFlyerEventBus.attach(retrySink)
+
+        AppsFlyerEventBus.publish(EVENT_A)
+
+        assertEquals(1, AppsFlyerEventBus.pendingCount())
+    }
+
+    @Test
+    fun attach_afterSinkRequestedRetry_replaysBufferedEventOnNextAttach() {
+        val retrySink = AppsFlyerEventSink { EventSendResult.RETRY_LATER }
+        AppsFlyerEventBus.attach(retrySink)
+        AppsFlyerEventBus.publish(EVENT_A)
+
+        val recoveredSink = RecordingSink()
+        AppsFlyerEventBus.attach(recoveredSink)
+
+        assertEquals(listOf(EVENT_A), recoveredSink.received)
+        assertEquals(0, AppsFlyerEventBus.pendingCount())
+    }
+
+    @Test
     fun publish_whenSinkRefuses_dropsEventAndDetachesSink() {
         val refusingSink = RecordingSink(acceptLimit = 0)
         AppsFlyerEventBus.attach(refusingSink)
@@ -376,7 +403,7 @@ class AppsFlyerEventBusTest {
                     repeat(eventsPerThread) {
                         val sink = AppsFlyerEventSink { eventJson ->
                             deliveries += eventJson
-                            true
+                            EventSendResult.DELIVERED
                         }
                         AppsFlyerEventBus.attach(sink)
                         AppsFlyerEventBus.detach(sink)

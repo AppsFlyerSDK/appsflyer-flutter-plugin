@@ -11,14 +11,26 @@ import androidx.annotation.VisibleForTesting
  */
 private const val MAX_PENDING_EVENTS = 64
 
+/** Result of attempting to deliver one buffered event through an [AppsFlyerEventSink]. */
+internal enum class EventSendResult {
+    /** The sink accepted the event; remove it from the head of the buffer. */
+    DELIVERED,
+
+    /**
+     * The sink cannot take events right now but the event itself is fine — keep it buffered for
+     * the next attach (for example while this engine is tearing down).
+     */
+    RETRY_LATER,
+
+    /** The event itself could not be sent; drop it and detach the sink. */
+    DROP,
+}
+
 /**
  * Destination for native event JSON on its way to the Dart `af-events` stream.
- *
- * [send] returns `false` when this sink refuses an event. The bus drops that event, detaches the
- * sink, and leaves the rest of the buffer for the next attach.
  */
 internal fun interface AppsFlyerEventSink {
-    fun send(eventJson: String): Boolean
+    fun send(eventJson: String): EventSendResult
 }
 
 /**
@@ -90,14 +102,18 @@ internal object AppsFlyerEventBus {
     private fun drain() {
         val target = sink ?: return
         while (pendingEvents.isNotEmpty()) {
-            val event = pendingEvents.first()
-            if (target.send(event)) {
-                pendingEvents.removeFirst()
-                continue
+            when (target.send(pendingEvents.first())) {
+                EventSendResult.DELIVERED -> pendingEvents.removeFirst()
+                EventSendResult.RETRY_LATER -> {
+                    sink = null
+                    return
+                }
+                EventSendResult.DROP -> {
+                    pendingEvents.removeFirst()
+                    sink = null
+                    return
+                }
             }
-            pendingEvents.removeFirst()
-            sink = null
-            return
         }
     }
 
