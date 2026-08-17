@@ -26,6 +26,20 @@ private class RecordingSink(private val acceptLimit: Int = Int.MAX_VALUE) : Apps
     }
 }
 
+/** Refuses one specific payload regardless of how many events the sink has already accepted. */
+private class ContentRefusingSink(private val refusedPayload: String) : AppsFlyerEventSink {
+
+    val received: MutableList<String> = Collections.synchronizedList(mutableListOf())
+
+    override fun send(eventJson: String): Boolean {
+        if (eventJson == refusedPayload) {
+            return false
+        }
+        received += eventJson
+        return true
+    }
+}
+
 class AppsFlyerEventBusTest {
 
     @Before
@@ -204,18 +218,18 @@ class AppsFlyerEventBusTest {
     // region refusing sinks
 
     @Test
-    fun publish_whenSinkRefuses_keepsEventBufferedAndDropsSink() {
+    fun publish_whenSinkRefuses_dropsEventAndDetachesSink() {
         val refusingSink = RecordingSink(acceptLimit = 0)
         AppsFlyerEventBus.attach(refusingSink)
 
         AppsFlyerEventBus.publish(EVENT_A)
 
         assertEquals(listOf(EVENT_A), refusingSink.received)
-        assertEquals(1, AppsFlyerEventBus.pendingCount())
+        assertEquals(0, AppsFlyerEventBus.pendingCount())
     }
 
     @Test
-    fun publish_afterSinkRefused_doesNotReachThatSinkAgain() {
+    fun publish_afterSinkRefused_buffersLaterEventsForTheNextEngine() {
         val refusingSink = RecordingSink(acceptLimit = 0)
         AppsFlyerEventBus.attach(refusingSink)
         AppsFlyerEventBus.publish(EVENT_A)
@@ -223,11 +237,11 @@ class AppsFlyerEventBusTest {
         AppsFlyerEventBus.publish(EVENT_B)
 
         assertEquals(listOf(EVENT_A), refusingSink.received)
-        assertEquals(2, AppsFlyerEventBus.pendingCount())
+        assertEquals(1, AppsFlyerEventBus.pendingCount())
     }
 
     @Test
-    fun attach_afterSinkRefused_replaysEveryUndeliveredEventInOrder() {
+    fun attach_afterSinkRefused_skipsRefusedEventAndReplaysTheRestOnNextAttach() {
         AppsFlyerEventBus.publish(EVENT_A)
         AppsFlyerEventBus.publish(EVENT_B)
         AppsFlyerEventBus.publish(EVENT_C)
@@ -238,7 +252,20 @@ class AppsFlyerEventBusTest {
         AppsFlyerEventBus.attach(recoveredSink)
 
         assertEquals(listOf(EVENT_A, EVENT_B), partialSink.received)
-        assertEquals(listOf(EVENT_B, EVENT_C), recoveredSink.received)
+        assertEquals(listOf(EVENT_C), recoveredSink.received)
+        assertEquals(0, AppsFlyerEventBus.pendingCount())
+    }
+
+    @Test
+    fun attach_afterContentRefused_skipsPoisonAndDeliversTheRestOnNextAttach() {
+        AppsFlyerEventBus.publish(EVENT_POISON)
+        AppsFlyerEventBus.publish(EVENT_B)
+
+        AppsFlyerEventBus.attach(ContentRefusingSink(EVENT_POISON))
+        val recoveredSink = RecordingSink()
+        AppsFlyerEventBus.attach(recoveredSink)
+
+        assertEquals(listOf(EVENT_B), recoveredSink.received)
         assertEquals(0, AppsFlyerEventBus.pendingCount())
     }
 
@@ -426,6 +453,7 @@ class AppsFlyerEventBusTest {
         private const val EVENT_A = """{"name":"onDeepLinking","data":{"status":"FOUND"}}"""
         private const val EVENT_B = """{"name":"onConversionDataSuccess","data":{}}"""
         private const val EVENT_C = """{"name":"onSessionReady"}"""
+        private const val EVENT_POISON = """{"name":"onPoison"}"""
 
         // Mirrors MAX_PENDING_EVENTS in AppsFlyerEventBus.kt, which is file-private there.
         private const val MAX_PENDING_EVENTS = 64

@@ -14,8 +14,8 @@ private const val MAX_PENDING_EVENTS = 64
 /**
  * Destination for native event JSON on its way to the Dart `af-events` stream.
  *
- * [send] returns `false` when this sink can no longer accept events — the bus then keeps the
- * event buffered and stops using the sink, so a torn-down engine cannot swallow events.
+ * [send] returns `false` when this sink refuses an event. The bus drops that event, detaches the
+ * sink, and leaves the rest of the buffer for the next attach.
  */
 internal fun interface AppsFlyerEventSink {
     fun send(eventJson: String): Boolean
@@ -90,13 +90,14 @@ internal object AppsFlyerEventBus {
     private fun drain() {
         val target = sink ?: return
         while (pendingEvents.isNotEmpty()) {
-            if (!target.send(pendingEvents.first())) {
-                // The sink belongs to an engine that can no longer take events. Keep the event
-                // queued so the next attach replays it.
-                sink = null
-                return
+            val event = pendingEvents.first()
+            if (target.send(event)) {
+                pendingEvents.removeFirst()
+                continue
             }
             pendingEvents.removeFirst()
+            sink = null
+            return
         }
     }
 

@@ -126,8 +126,8 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
                 events.success(eventJson)
                 true
             } catch (t: Throwable) {
-                // Reached when the engine behind this sink is already gone. Reporting the refusal
-                // lets the bus keep the event for the next subscriber instead of losing it.
+                // EventChannel.success() rarely throws. When it does, the bus drops that event and
+                // continues with the rest of the buffer on the next attach.
                 Log.w(AF_PLUGIN_TAG, "af-events sink refused an event: ${t.message}")
                 false
             }

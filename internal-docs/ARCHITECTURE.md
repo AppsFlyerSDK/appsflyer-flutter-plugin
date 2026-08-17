@@ -195,7 +195,7 @@ void _ensureEventsSubscribed() {
 
 Transport-only envelope fields (`timestamp`, `origin`) are ignored on the Dart side.
 
-The Android and iOS plugins each keep an in-memory FIFO of event JSON strings while no Dart event sink is attached, then flush it from `onListen`. Both queues are capped at 64 events and drop the oldest on overflow; Android's `AppsFlyerEventBus` is process-scoped, iOS's `pendingEvents` is engine-scoped. Nothing is persisted, so events that occur before plugin registration, after engine teardown, or before the native RPC event handler exists are not recoverable.
+The Android and iOS plugins each keep an in-memory FIFO of event JSON strings while no Dart event sink is attached, then flush it from `onListen`. Both queues are capped at 64 events and drop the oldest on overflow; Android's `AppsFlyerEventBus` is process-scoped, iOS's `pendingEvents` is engine-scoped. On Android, when an attached sink refuses the head event the bus drops that event and detaches the sink so the rest of the buffer can be replayed on the next attach instead of blocking behind one bad payload. Nothing is persisted, so events that occur before plugin registration, after engine teardown, or before the native RPC event handler exists are not recoverable.
 
 `_AppsFlyerListenerRegistry` (`lib/src/appsflyer_listener_registry.dart`) maps each native event name to the single callback registered for it, replacing that callback on re-registration — the same contract as the native SDKs, which hold one listener reference per event type.
 
