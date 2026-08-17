@@ -297,10 +297,12 @@ void main() {
     test('unexpected null RPC result throws AppsFlyerException', () async {
       rpcResult = null;
 
-      for (final call in <Future<bool> Function()>[
+      for (final call in <Future<Object?> Function()>[
         iosSdk.isSessionReady,
         androidSdk.isStopped,
         androidSdk.isPreInstalledApp,
+        androidSdk.getHostName,
+        androidSdk.getHostPrefix,
       ]) {
         await expectLater(
           call(),
