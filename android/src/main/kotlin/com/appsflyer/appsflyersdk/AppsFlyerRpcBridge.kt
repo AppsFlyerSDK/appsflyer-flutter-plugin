@@ -30,8 +30,8 @@ internal fun interface AppsFlyerRpcExecutor {
  * are released in `onDetachedFromEngine`.
  *
  * This does not carry Dart state across the gap. The application's callbacks lived in the
- * destroyed isolate, so it still has to subscribe to the streams and call the `register*Listener`
- * APIs again after a new engine attaches; reusing the executor only makes that re-registration
+ * destroyed isolate, so it still has to call the `register*Listener` APIs again after
+ * a new engine attaches; reusing the executor only makes that re-registration
  * reuse the existing listeners instead of building new ones.
  *
  * **Threading**: creation is synchronized, so concurrent engines resolve to the same executor.

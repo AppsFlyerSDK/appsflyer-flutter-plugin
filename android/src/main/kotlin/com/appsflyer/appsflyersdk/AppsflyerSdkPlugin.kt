@@ -52,8 +52,8 @@ import io.flutter.plugin.common.PluginRegistry
  *   the already configured native bridge and still receives events emitted while no engine was
  *   attached (RD-65582).
  *
- * Dart state never survives: the application resubscribes to the streams and calls the
- * `register*Listener` APIs again after a new engine attaches. Reusing the handler only makes that
+ * Dart state never survives: the application calls the `register*Listener` APIs again
+ * after a new engine attaches. Reusing the handler only makes that
  * re-registration reuse the listeners already registered on `AppsFlyerLib`.
  *
  * ## Two executors
