@@ -131,11 +131,12 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
             try {
                 events.success(eventJson)
                 EventSendResult.DELIVERED
-            } catch (t: Throwable) {
-                // EventChannel.success() rarely throws. When it does, the bus drops that event and
-                // continues with the rest of the buffer on the next attach.
-                Log.w(AF_PLUGIN_TAG, "af-events sink refused an event: ${t.message}")
-                EventSendResult.DROP
+            } catch (e: RuntimeException) {
+                // Flutter's EventSink.success() does not document throws for cancel/detach; inactive
+                // sinks and detached JNI usually return silently. Log and buffer for the next attach
+                // if the embedding does throw (for example off-main-thread RuntimeException).
+                Log.e(AF_PLUGIN_TAG, "af-events delivery failed unexpectedly", e)
+                EventSendResult.RETRY_LATER
             }
         }
 
