@@ -209,6 +209,12 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
     }
 
     private fun executeRpc(call: MethodCall, result: Result) {
+        if (isEngineDetached) {
+            // Synchronous entry after detach: complete the Dart Future with PLUGIN_DETACHED.
+            // deliverRpcResult intentionally no-ops here for async completions.
+            result.error(PLUGIN_DETACHED, PLUGIN_DETACHED_MSG, null)
+            return
+        }
         // Internal transport contract (_invokeRpc): {method: String, params: Map}. Apps must not
         // call this channel directly; a malformed envelope is an integration error and is rejected
         // by [RpcEnvelopeParser] before dispatch (fail-fast, not UNEXPECTED_ERROR).
@@ -393,7 +399,8 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
         // onDetachedFromEngine. Only awaited RPCs can: shutdown() lets the in-flight task run to
         // completion, so its latch can resolve after the engine is gone. Replying then is not fatal
         // — Flutter drops the response with a "FlutterJNI was detached" warning — but the warning is
-        // misleading in customer bug reports, so the result is dropped here instead.
+        // misleading in customer bug reports, so the result is dropped here instead. A synchronous
+        // post-detach executeRpc entry completes with PLUGIN_DETACHED directly in executeRpc instead.
         if (isEngineDetached) {
             Log.d(AF_PLUGIN_TAG, "Dropping RPC result after engine detach")
             return

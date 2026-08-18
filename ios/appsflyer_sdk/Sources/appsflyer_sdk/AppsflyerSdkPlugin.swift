@@ -188,9 +188,11 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     /// plugin orchestration; every other method is forwarded to AppsFlyerRPC as-is.
     private func executeRpc(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         guard !isEngineDetached else {
-            deliverFlutterResult(result, FlutterError(code: kPluginDetached,
-                                                      message: kPluginDetachedMessage,
-                                                      details: nil))
+            // Synchronous entry after detach: complete the Dart Future with PLUGIN_DETACHED.
+            // deliverFlutterResult intentionally no-ops here for async completions.
+            result(FlutterError(code: kPluginDetached,
+                                message: kPluginDetachedMessage,
+                                details: nil))
             return
         }
         // Internal transport contract (_invokeRpc): {method, params}. Apps must not call this
@@ -337,7 +339,8 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     }
 
     /// Invokes `FlutterResult` only while this engine instance is still attached. After detach the
-    /// isolate may already be gone; skipping is safer than replying on a dead channel.
+    /// isolate may already be gone; skipping is safer than replying on a dead channel. The
+    /// synchronous post-detach entry guard in `executeRpc` calls `result(...)` directly instead.
     private func deliverFlutterResult(_ result: @escaping FlutterResult, _ value: Any?) {
         guard !isEngineDetached else {
             return
