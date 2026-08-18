@@ -51,9 +51,14 @@ internal fun interface AppsFlyerEventSink {
  * Delivery is FIFO: events are queued first and flushed in publish order, so a replayed event
  * always precedes one published after it.
  *
- * **Threading**: every entry point is synchronized, so publishing from an SDK callback thread is
- * safe. Delivery runs on the caller's thread and `EventChannel.EventSink` may only be used on the
- * platform main thread, so callers publish from there — see [AppsflyerSdkPlugin].
+ * **Threading**: [publish], [attach], and [detach] synchronize the buffer and sink reference so
+ * concurrent callers cannot corrupt internal state. They do not hop threads: [drain] invokes
+ * [AppsFlyerEventSink.send] on the caller's thread, and the production sink calls
+ * [io.flutter.plugin.common.EventChannel.EventSink.success], which must run on the Android main
+ * thread. [AppsflyerSdkPlugin] therefore posts [publish] onto the main looper from
+ * [AppsflyerSdkPlugin.rpcEventNotifier], and [attach]/[detach] run from [onListen]/[onCancel] on
+ * the platform thread. Do not call [publish] or [attach] with a production sink directly from a
+ * background thread.
  */
 internal object AppsFlyerEventBus {
 
