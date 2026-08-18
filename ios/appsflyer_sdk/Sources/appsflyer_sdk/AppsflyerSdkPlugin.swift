@@ -436,7 +436,13 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
         }
         pendingEvents.append(argsJson)
         if pendingEvents.count > kMaxPendingEvents {
-            pendingEvents.removeFirst(pendingEvents.count - kMaxPendingEvents)
+            let dropped = pendingEvents.count - kMaxPendingEvents
+            pendingEvents.removeFirst(dropped)
+            NSLog(
+                "AppsFlyer_FlutterPlugin: pending event buffer dropped %d oldest event(s); buffer cap is %d",
+                dropped,
+                kMaxPendingEvents
+            )
         }
     }
 

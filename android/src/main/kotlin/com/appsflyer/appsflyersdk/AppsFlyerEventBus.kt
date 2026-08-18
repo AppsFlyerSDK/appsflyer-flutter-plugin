@@ -1,5 +1,6 @@
 package com.appsflyer.appsflyersdk
 
+import android.util.Log
 import androidx.annotation.VisibleForTesting
 
 /**
@@ -65,8 +66,17 @@ internal object AppsFlyerEventBus {
     fun publish(eventJson: String) {
         synchronized(lock) {
             pendingEvents.addLast(eventJson)
+            var dropped = 0
             while (pendingEvents.size > MAX_PENDING_EVENTS) {
                 pendingEvents.removeFirst()
+                dropped++
+            }
+            if (dropped > 0) {
+                Log.w(
+                    AF_PLUGIN_TAG,
+                    "AppsFlyerEventBus dropped $dropped oldest pending event(s); " +
+                        "buffer cap is $MAX_PENDING_EVENTS"
+                )
             }
             drain()
         }
