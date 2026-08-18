@@ -1226,7 +1226,8 @@ void main() {
       expect(sessionReadyCount, 0);
     });
 
-    test('continues delivering events when a listener callback throws', () async {
+    test('continues delivering events when a listener callback throws',
+        () async {
       final received = <Map<String, dynamic>>[];
       var callCount = 0;
       await androidSdk.registerConversionListener(

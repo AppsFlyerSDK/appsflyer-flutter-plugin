@@ -15,8 +15,8 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
-/** Stands in for the executor wrapping `AppsFlyerRpcHandler`, which needs a real Android context. */
-private class FakeRpcExecutor : AppsFlyerRpcExecutor {
+/** Stands in for the runner wrapping `AppsFlyerRpcHandler`, which needs a real Android context. */
+private class FakeRpcRequestRunner : RpcRequestRunner {
     override fun execute(requestJson: String): RpcResponse = RpcResponse.VoidSuccess
 }
 
@@ -30,51 +30,51 @@ class AppsFlyerRpcBridgeTest {
     @After
     fun tearDown() = AppsFlyerRpcBridge.reset()
 
-    private fun createExecutor(): AppsFlyerRpcExecutor {
+    private fun createRunner(): RpcRequestRunner {
         created.incrementAndGet()
-        return FakeRpcExecutor()
+        return FakeRpcRequestRunner()
     }
 
     @Test
-    fun shared_withoutAnExecutor_createsOne() {
-        val executor = AppsFlyerRpcBridge.shared(::createExecutor)
+    fun shared_withoutARunner_createsOne() {
+        val runner = AppsFlyerRpcBridge.shared(::createRunner)
 
         assertEquals(1, created.get())
-        assertEquals(RpcResponse.VoidSuccess, executor.execute(REQUEST))
+        assertEquals(RpcResponse.VoidSuccess, runner.execute(REQUEST))
     }
 
     @Test
-    fun shared_repeatedCalls_reuseTheSameExecutor() {
-        val first = AppsFlyerRpcBridge.shared(::createExecutor)
-        val second = AppsFlyerRpcBridge.shared(::createExecutor)
+    fun shared_repeatedCalls_reuseTheSameRunner() {
+        val first = AppsFlyerRpcBridge.shared(::createRunner)
+        val second = AppsFlyerRpcBridge.shared(::createRunner)
 
         assertSame(first, second)
         assertEquals(1, created.get())
     }
 
     @Test
-    fun shared_afterEngineRecreation_reusesTheExecutorOfThePreviousEngine() {
-        // The plugin instance goes away with its engine; the executor belongs to the process, so
+    fun shared_afterEngineRecreation_reusesTheRunnerOfThePreviousEngine() {
+        // The plugin instance goes away with its engine; the runner belongs to the process, so
         // the engine built after a back press reattaches to the already configured bridge.
-        val firstEngine = AppsFlyerRpcBridge.shared(::createExecutor)
+        val firstEngine = AppsFlyerRpcBridge.shared(::createRunner)
 
-        val secondEngine = AppsFlyerRpcBridge.shared(::createExecutor)
+        val secondEngine = AppsFlyerRpcBridge.shared(::createRunner)
 
         assertSame(firstEngine, secondEngine)
         assertEquals(1, created.get())
     }
 
     @Test
-    fun shared_fromConcurrentEngines_createsExactlyOneExecutor() {
+    fun shared_fromConcurrentEngines_createsExactlyOneRunner() {
         val start = CountDownLatch(1)
         val done = CountDownLatch(ENGINES)
-        val resolved = Collections.synchronizedList(mutableListOf<AppsFlyerRpcExecutor>())
+        val resolved = Collections.synchronizedList(mutableListOf<RpcRequestRunner>())
         val pool = Executors.newFixedThreadPool(ENGINES)
 
         repeat(ENGINES) {
             pool.execute {
                 start.await()
-                resolved += AppsFlyerRpcBridge.shared(::createExecutor)
+                resolved += AppsFlyerRpcBridge.shared(::createRunner)
                 done.countDown()
             }
         }
@@ -87,11 +87,11 @@ class AppsFlyerRpcBridgeTest {
     }
 
     @Test
-    fun reset_dropsTheExecutorSoTheNextCallBuildsANewOne() {
-        val first = AppsFlyerRpcBridge.shared(::createExecutor)
+    fun reset_dropsTheRunnerSoTheNextCallBuildsANewOne() {
+        val first = AppsFlyerRpcBridge.shared(::createRunner)
 
         AppsFlyerRpcBridge.reset()
-        val second = AppsFlyerRpcBridge.shared(::createExecutor)
+        val second = AppsFlyerRpcBridge.shared(::createRunner)
 
         assertNotSame(first, second)
         assertEquals(2, created.get())

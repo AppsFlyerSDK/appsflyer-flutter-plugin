@@ -56,9 +56,9 @@ import io.flutter.plugin.common.PluginRegistry
  * after a new engine attaches. Reusing the handler only makes that
  * re-registration reuse the listeners already registered on `AppsFlyerLib`.
  *
- * ## Two executors
+ * ## RPC dispatch vs background pool
  *
- * [sharedRpcExecutor] serves every RPC but `init`. It resolves the one process-wide handler, built
+ * [sharedRpcRunner] serves every RPC but `init`. It resolves the one process-wide handler, built
  * with `applicationContext` so it retains neither an Activity nor an engine.
  *
  * Fast RPCs (setters, getters, and fire-and-forget calls) run inline on the platform thread.
@@ -67,7 +67,7 @@ import io.flutter.plugin.common.PluginRegistry
  * latch waits do not block the platform thread.
  *
  * `init` alone uses an ephemeral handler built around the current [Activity] when one is attached
- * ([createRpcExecutor] via [executeRpcSync]), because
+ * ([createRpcRunner] via [executeRpcSync]), because
  * `AndroidLifecycleManagerImpl.registerLifecycleListener` triggers `onActivityResumed` manually
  * when it receives an `Activity` — that is what lets SDK 7 inspect the launch intent of a cold
  * start, which is already resumed by the time Dart calls `init()`. That handler is deliberately
@@ -238,22 +238,22 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
      * It always uses [Context.getApplicationContext], which outlives both this engine and the
      * Activity.
      */
-    private fun sharedRpcExecutor(): AppsFlyerRpcExecutor =
-        AppsFlyerRpcBridge.shared { createRpcExecutor(requireApplicationContext().applicationContext) }
+    private fun sharedRpcRunner(): RpcRequestRunner =
+        AppsFlyerRpcBridge.shared { createRpcRunner(requireApplicationContext().applicationContext) }
 
     /**
      * SDK 7 replays the cold-start launch intent when init() receives an [Activity] (see
      * AndroidLifecycleManagerImpl.registerLifecycleListener), so [RPC_METHOD_INIT] runs on an
      * ephemeral executor built around that Activity instead of the shared one.
      */
-    private fun createRpcExecutor(context: Context): AppsFlyerRpcExecutor {
+    private fun createRpcRunner(context: Context): RpcRequestRunner {
         val handler = AppsFlyerRpcHandler(
             context,
             rpcEventNotifier,
             AppsFlyerLib.getInstance(),
             JsonRpcRequestParser()
         )
-        return AppsFlyerRpcExecutor { requestJson -> handler.execute(requestJson) }
+        return RpcRequestRunner { requestJson -> handler.execute(requestJson) }
     }
 
     private fun requireApplicationContext(): Context {
@@ -384,9 +384,9 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
             request.put("method", method)
             request.put("params", params)
             val executor = if (initContext != null) {
-                createRpcExecutor(initContext)
+                createRpcRunner(initContext)
             } else {
-                sharedRpcExecutor()
+                sharedRpcRunner()
             }
             executor.execute(request.toString())
         } catch (e: JSONException) {
