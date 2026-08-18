@@ -66,10 +66,12 @@ object AppsFlyerPurchaseConnector : FlutterPlugin {
         attachment.methodChannel.setMethodCallHandler { call, result ->
             handleMethodCall(attachment, call, result)
         }
-        synchronized(attachmentsLock) {
-            attachments.remove(binding)?.dispose()
+        val stale = synchronized(attachmentsLock) {
+            val previous = attachments.remove(binding)
             attachments[binding] = attachment
+            previous
         }
+        stale?.dispose()
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {

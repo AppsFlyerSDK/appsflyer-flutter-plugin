@@ -40,6 +40,9 @@ afPurchaseClient.stopObservingTransactions()
     → Android: connectorWrapper.stopObservingTransactions()
     → iOS: connector.stopObservingTransactions()
 
+Flutter engine attach (no Dart call involved)
+  → Android: AppsFlyerPurchaseConnector.onAttachedToEngine(binding) → replace any stale `EngineAttachment` for that binding under `attachmentsLock`, then `dispose()` the removed attachment outside the lock (`stopObservingTransactions` may block on Play Billing)
+
 Flutter engine detach (no Dart call involved)
   → Android: AppsflyerSdkPlugin.onDetachedFromEngine → AppsFlyerPurchaseConnector.onDetachedFromEngine(binding) → EngineAttachment.dispose()
   → iOS: AppsflyerSdkPlugin.detachFromEngineForRegistrar: → PurchaseConnectorPlugin.tearDownForEngineDetach(registrar:)   [skipped unless that registrar still owns the channel]
