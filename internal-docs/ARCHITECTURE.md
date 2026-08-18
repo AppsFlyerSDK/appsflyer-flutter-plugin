@@ -201,7 +201,7 @@ On Android, the no-loss-across-engine-teardown guarantee (RD-65582) comes from e
 
 `_AppsFlyerListenerRegistry` (`lib/src/appsflyer_listener_registry.dart`) maps each native event name to the single callback registered for it, replacing that callback on re-registration — the same contract as the native SDKs, which hold one listener reference per event type.
 
-An event that arrives before its listener has ever been registered is held in a FIFO capped at 64 — the same bound as each native buffer, since the held events are that buffer's replay — and delivered in a microtask when the listener registers. Holding covers the startup window only. Once a listener has been registered, an event arriving while no callback is installed (because the application unregistered) is logged and dropped rather than replayed on re-registration; `off` also discards anything still held for that event name.
+An event that arrives before its listener has ever been registered is held in a FIFO capped at 64 — the same bound as each native buffer, since the held events are that buffer's replay — and delivered in a microtask when the listener registers. Holding covers the startup window only. Once a listener has been registered, an event arriving while no callback is installed (because the application unregistered) is logged and dropped rather than replayed on re-registration; `off` also discards anything still held for that event name. A throwing app callback is logged and skipped without aborting the `af-events` subscription or dropping later events in the same replay batch.
 
 | Registration API | Callback | Native event names |
 | --- | --- | --- |

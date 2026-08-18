@@ -64,7 +64,7 @@ class _AppsFlyerListenerRegistry {
   void dispatch(_AppsFlyerEvent event) {
     final callback = _callbacks[event.name];
     if (callback != null) {
-      callback(event);
+      _invokeListener(callback, event);
       return;
     }
     if (_everRegistered.contains(event.name)) {
@@ -102,7 +102,20 @@ class _AppsFlyerListenerRegistry {
       if (callback == null) {
         return;
       }
+      _invokeListener(callback, event);
+    }
+  }
+
+  void _invokeListener(
+    void Function(_AppsFlyerEvent) callback,
+    _AppsFlyerEvent event,
+  ) {
+    try {
       callback(event);
+    } catch (error, stack) {
+      debugPrint(
+        'AppsFlyer: listener for ${event.name} threw: $error\n$stack',
+      );
     }
   }
 }

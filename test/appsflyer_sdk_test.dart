@@ -1226,6 +1226,63 @@ void main() {
       expect(sessionReadyCount, 0);
     });
 
+    test('continues delivering events when a listener callback throws', () async {
+      final received = <Map<String, dynamic>>[];
+      var callCount = 0;
+      await androidSdk.registerConversionListener(
+        onSuccess: (data) {
+          callCount++;
+          if (callCount == 1) {
+            throw StateError('listener failed');
+          }
+          received.add(data);
+        },
+      );
+
+      await _emitEvent({
+        'event': 'onConversionDataSuccess',
+        'data': {'id': 1},
+      });
+      await _emitEvent({
+        'event': 'onConversionDataSuccess',
+        'data': {'id': 2},
+      });
+      await pumpEventQueue();
+
+      expect(callCount, 2);
+      expect(received.single, {'id': 2});
+    });
+
+    test('continues replaying held events when a listener callback throws',
+        () async {
+      await androidSdk.registerDeepLinkListener((_) {});
+      await _emitEvent({
+        'event': 'onConversionDataSuccess',
+        'data': {'id': 1},
+      });
+      await _emitEvent({
+        'event': 'onConversionDataSuccess',
+        'data': {'id': 2},
+      });
+      await pumpEventQueue();
+
+      final received = <Map<String, dynamic>>[];
+      var callCount = 0;
+      await androidSdk.registerConversionListener(
+        onSuccess: (data) {
+          callCount++;
+          if (callCount == 1) {
+            throw StateError('listener failed');
+          }
+          received.add(data);
+        },
+      );
+      await pumpEventQueue();
+
+      expect(callCount, 2);
+      expect(received.single, {'id': 2});
+    });
+
     test('delivers conversion data to the registered success callback',
         () async {
       final received = <Map<String, dynamic>>[];
