@@ -131,7 +131,7 @@ class AppsFlyerSdk {
   Future<void> registerConversionListener({
     required OnConversionDataSuccess onSuccess,
     OnConversionDataFailure? onFailure,
-  }) {
+  }) async {
     _ensureEventsSubscribed();
     _listeners.on(
       _AppsFlyerConstants.EVENT_CONVERSION_DATA_SUCCESS,
@@ -141,7 +141,13 @@ class AppsFlyerSdk {
       _AppsFlyerConstants.EVENT_CONVERSION_DATA_FAIL,
       (event) => onFailure?.call(event.data),
     );
-    return _invokeVoidRpc('registerConversionListener');
+    try {
+      await _invokeVoidRpc('registerConversionListener');
+    } catch (error) {
+      _listeners.off(_AppsFlyerConstants.EVENT_CONVERSION_DATA_SUCCESS);
+      _listeners.off(_AppsFlyerConstants.EVENT_CONVERSION_DATA_FAIL);
+      rethrow;
+    }
   }
 
   /// Unregisters the native Android conversion-data listener and drops the
@@ -166,16 +172,22 @@ class AppsFlyerSdk {
   /// never sent for that install, and the skipped state persists across
   /// launches. Direct links are unaffected. Registration before [init] is
   /// supported on both platforms.
-  Future<void> registerDeepLinkListener(OnDeepLinkReceived onDeepLink) {
+  Future<void> registerDeepLinkListener(OnDeepLinkReceived onDeepLink) async {
     _ensureEventsSubscribed();
     void dispatch(_AppsFlyerEvent event) =>
         onDeepLink(DeepLinkResult._fromEvent(event, platform: _platform));
     // Android emits onDeepLinking, iOS emits onDeepLinkReceived.
     _listeners.on(_AppsFlyerConstants.EVENT_DEEP_LINKING, dispatch);
     _listeners.on(_AppsFlyerConstants.EVENT_DEEP_LINK_RECEIVED, dispatch);
-    return _invokeVoidRpc(
-      _isAndroid ? 'subscribeForDeepLink' : 'registerDeeplinkListener',
-    );
+    try {
+      await _invokeVoidRpc(
+        _isAndroid ? 'subscribeForDeepLink' : 'registerDeeplinkListener',
+      );
+    } catch (error) {
+      _listeners.off(_AppsFlyerConstants.EVENT_DEEP_LINKING);
+      _listeners.off(_AppsFlyerConstants.EVENT_DEEP_LINK_RECEIVED);
+      rethrow;
+    }
   }
 
   /// Requests removal of the Unified Deep Linking listener on Android and drops
@@ -197,13 +209,18 @@ class AppsFlyerSdk {
   ///
   /// Calling this again replaces the callback, so [start] is never issued twice
   /// for one readiness event.
-  Future<void> registerSessionReadyListener(OnSessionReady onReady) {
+  Future<void> registerSessionReadyListener(OnSessionReady onReady) async {
     _ensureEventsSubscribed();
     _listeners.on(
       _AppsFlyerConstants.EVENT_SESSION_READY,
       (_) => onReady(),
     );
-    return _invokeVoidRpc('registerSessionReadyListener');
+    try {
+      await _invokeVoidRpc('registerSessionReadyListener');
+    } catch (error) {
+      _listeners.off(_AppsFlyerConstants.EVENT_SESSION_READY);
+      rethrow;
+    }
   }
 
   /// Removes the listener registered by [registerSessionReadyListener] and

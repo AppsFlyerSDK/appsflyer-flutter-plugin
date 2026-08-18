@@ -74,6 +74,7 @@ Android also exposes `unregisterConversionListener()`; on iOS it still drops the
 - `a conversion failure without a failure callback is not an error` — asserts a failure event with no `onFailure` registered is a no-op.
 - `re-registering replaces the callback instead of adding a second one` — asserts the second registration's callback receives the event and the first does not.
 - `subscribes to af-events only when the first listener is registered` — asserts the `listen` handshake is sent on the first registration and not repeated for later ones.
+- `rolls back Dart callbacks when native registration RPC fails` — asserts failed `registerConversionListener`, `registerDeepLinkListener`, and `registerSessionReadyListener` RPCs rethrow and leave no Dart callback receiving events.
 - `listeners are registered explicitly` — asserts `registerConversionListener(onSuccess:)` dispatches the `registerConversionListener` RPC.
 - `maps every Android-only API` — asserts `unregisterConversionListener` dispatches the matching RPC with no params.
 No test covers `unregisterConversionListener` on iOS; the shared off-platform contract is exercised generically by `platform-only calls are forwarded to the native RPC instead of being swallowed in Dart`.

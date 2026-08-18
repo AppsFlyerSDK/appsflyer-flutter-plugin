@@ -1156,6 +1156,76 @@ void main() {
       expect(eventChannelCalls, ['listen']);
     });
 
+    test('rolls back Dart callbacks when native registration RPC fails',
+        () async {
+      Future<Object?> failingRegistrationHandler(MethodCall call) async {
+        expect(call.method, 'executeRpc');
+        final args = Map<String, dynamic>.from(call.arguments as Map);
+        final method = args['method'] as String;
+        rpcMethod = method;
+        rpcParams = Map<String, dynamic>.from(args['params'] as Map);
+        if (method == 'registerConversionListener' ||
+            method == 'subscribeForDeepLink' ||
+            method == 'registerDeeplinkListener' ||
+            method == 'registerSessionReadyListener') {
+          throw PlatformException(
+            code: '500',
+            message: 'Listener registration failed',
+          );
+        }
+        return rpcResult;
+      }
+
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(
+        methodChannel,
+        failingRegistrationHandler,
+      );
+
+      final conversionData = <Map<String, dynamic>>[];
+      await expectLater(
+        androidSdk.registerConversionListener(onSuccess: conversionData.add),
+        throwsA(
+          isA<AppsFlyerException>().having(
+            (error) => error.message,
+            'message',
+            'Listener registration failed',
+          ),
+        ),
+      );
+      await _emitEvent({
+        'event': 'onConversionDataSuccess',
+        'data': {'media_source': 'organic'},
+      });
+      await pumpEventQueue();
+      expect(conversionData, isEmpty);
+
+      var deepLinkCount = 0;
+      await expectLater(
+        androidSdk.registerDeepLinkListener((_) => deepLinkCount++),
+        throwsA(isA<AppsFlyerException>()),
+      );
+      await _emitEvent({
+        'event': 'onDeepLinking',
+        'data': {'status': 'FOUND'},
+      });
+      await pumpEventQueue();
+      expect(deepLinkCount, 0);
+
+      var sessionReadyCount = 0;
+      await expectLater(
+        androidSdk.registerSessionReadyListener(() => sessionReadyCount++),
+        throwsA(isA<AppsFlyerException>()),
+      );
+      await _emitEvent({
+        'event': 'onSessionReady',
+        'data': null,
+      });
+      await pumpEventQueue();
+      expect(sessionReadyCount, 0);
+    });
+
     test('delivers conversion data to the registered success callback',
         () async {
       final received = <Map<String, dynamic>>[];

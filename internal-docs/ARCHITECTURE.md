@@ -210,7 +210,7 @@ An event that arrives before its listener has ever been registered is held in a 
 | `registerDeepLinkListener` | `onDeepLink` | `onDeepLinking` or `onDeepLinkReceived` |
 | `registerSessionReadyListener` | `onReady` | `onSessionReady` |
 
-Because the callback is an argument to the registration call, it is always in place before the RPC is dispatched, and no public `Stream` exists for an application to attach additional subscribers to. A single native event therefore cannot fan out to several handlers — `start()` cannot be issued twice for one session-ready event.
+Because the callback is an argument to the registration call, it is always in place before the RPC is dispatched, and no public `Stream` exists for an application to attach additional subscribers to. A single native event therefore cannot fan out to several handlers — `start()` cannot be issued twice for one session-ready event. If the native registration RPC throws, the Dart callback slots registered in that call are rolled back with `_listeners.off(...)` so Dart state cannot outlive a failed native registration.
 
 ## 6. Initialization and session lifecycle
 
