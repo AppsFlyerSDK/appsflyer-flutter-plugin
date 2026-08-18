@@ -41,6 +41,13 @@ callbacks, and call `start()` from the session-ready callback:
 ```dart
 final appsflyerSdk = AppsFlyerSdk.instance;
 
+// If your app handles deep links, register before init(). Android decides once
+// per install, while init() processes the launch intent, whether to request the
+// deferred deep link — registering later skips it for that install permanently.
+await appsflyerSdk.registerDeepLinkListener((result) {
+  print('Deep link: ${result.deepLink?.deepLinkValue}');
+});
+
 await appsflyerSdk.init(
   devKey: '<DEV_KEY>',
   appId: '<APP_ID>',

@@ -59,6 +59,31 @@ class _AppsFlyerListenerRegistry {
     _pending.removeWhere((event) => event.name == eventName);
   }
 
+  /// Drops the callbacks registered for [eventNames] and returns the ones that
+  /// were installed, so a caller can put them back with [restore].
+  ///
+  /// The `unregister*Listener` APIs use this pair to stay atomic: the callbacks
+  /// come out before the native call and go back if it fails, so a throw leaves
+  /// Dart exactly as it was. Nothing held is lost in between — [_hold] only
+  /// keeps events for a listener that has never registered, and these have.
+  Map<String, void Function(_AppsFlyerEvent)> take(
+      Iterable<String> eventNames) {
+    final taken = <String, void Function(_AppsFlyerEvent)>{};
+    for (final eventName in eventNames) {
+      final callback = _callbacks[eventName];
+      if (callback != null) {
+        taken[eventName] = callback;
+      }
+      off(eventName);
+    }
+    return taken;
+  }
+
+  /// Reinstates the callbacks returned by [take].
+  void restore(Map<String, void Function(_AppsFlyerEvent)> callbacks) {
+    callbacks.forEach(on);
+  }
+
   /// Delivers [event] to its registered callback, holding it for replay if that
   /// listener has never been registered.
   void dispatch(_AppsFlyerEvent event) {

@@ -155,10 +155,21 @@ class AppsFlyerSdk {
   ///
   /// This API is available only on Android. Call [registerConversionListener]
   /// again to resume receiving conversion-data events.
+  ///
+  /// Throws [AppsFlyerException] when the native call fails, including on iOS,
+  /// where the SDK has no matching operation. The callbacks are left in place in
+  /// that case, so a failed call changes nothing.
   Future<void> unregisterConversionListener() async {
-    _listeners.off(_AppsFlyerConstants.EVENT_CONVERSION_DATA_SUCCESS);
-    _listeners.off(_AppsFlyerConstants.EVENT_CONVERSION_DATA_FAIL);
-    return _invokeVoidRpc('unregisterConversionListener');
+    final restore = _listeners.take(const [
+      _AppsFlyerConstants.EVENT_CONVERSION_DATA_SUCCESS,
+      _AppsFlyerConstants.EVENT_CONVERSION_DATA_FAIL,
+    ]);
+    try {
+      await _invokeVoidRpc('unregisterConversionListener');
+    } catch (error) {
+      _listeners.restore(restore);
+      rethrow;
+    }
   }
 
   /// Registers the Unified Deep Linking listener.
@@ -192,10 +203,21 @@ class AppsFlyerSdk {
 
   /// Requests removal of the Unified Deep Linking listener on Android and drops
   /// the callback passed to [registerDeepLinkListener].
+  ///
+  /// Throws [AppsFlyerException] when the native call fails, including on iOS,
+  /// where the SDK has no matching operation. The callback is left in place in
+  /// that case, so a failed call changes nothing.
   Future<void> unregisterDeeplinkListener() async {
-    _listeners.off(_AppsFlyerConstants.EVENT_DEEP_LINKING);
-    _listeners.off(_AppsFlyerConstants.EVENT_DEEP_LINK_RECEIVED);
-    return _invokeVoidRpc('unsubscribeForDeepLink');
+    final restore = _listeners.take(const [
+      _AppsFlyerConstants.EVENT_DEEP_LINKING,
+      _AppsFlyerConstants.EVENT_DEEP_LINK_RECEIVED,
+    ]);
+    try {
+      await _invokeVoidRpc('unsubscribeForDeepLink');
+    } catch (error) {
+      _listeners.restore(restore);
+      rethrow;
+    }
   }
 
   /// Registers the session-ready listener.
@@ -225,9 +247,19 @@ class AppsFlyerSdk {
 
   /// Removes the listener registered by [registerSessionReadyListener] and
   /// drops its callback.
-  Future<void> unregisterSessionReadyListener() {
-    _listeners.off(_AppsFlyerConstants.EVENT_SESSION_READY);
-    return _invokeVoidRpc('unregisterSessionReadyListener');
+  ///
+  /// Throws [AppsFlyerException] when the native call fails, leaving the
+  /// callback in place, so a failed call changes nothing.
+  Future<void> unregisterSessionReadyListener() async {
+    final restore = _listeners.take(const [
+      _AppsFlyerConstants.EVENT_SESSION_READY,
+    ]);
+    try {
+      await _invokeVoidRpc('unregisterSessionReadyListener');
+    } catch (error) {
+      _listeners.restore(restore);
+      rethrow;
+    }
   }
 
   /// Whether all session-readiness conditions are currently met.

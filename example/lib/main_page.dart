@@ -151,7 +151,13 @@ class MainPageState extends State<MainPage> {
   @override
   void dispose() {
     _appsflyerSdk.unregisterSessionReadyListener();
-    _appsflyerSdk.unregisterConversionListener();
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      // Android-only native calls; on iOS both throw AppsFlyerException.
+      _appsflyerSdk.unregisterConversionListener();
+      // Soft unsubscribe: Android keeps its native listener and the plugin
+      // stops forwarding, so this cannot disable deep-link handling.
+      _appsflyerSdk.unregisterDeeplinkListener();
+    }
     super.dispose();
   }
 

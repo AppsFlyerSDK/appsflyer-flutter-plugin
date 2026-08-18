@@ -163,11 +163,17 @@ Registration is native state, and the plugin never infers that a listener has
 gone stale — your app decides when delivery should stop and start again:
 
 ```dart
+import 'dart:io' show Platform;
+
 @override
 void dispose() {
   // Stop native delivery when this part of the app no longer consumes it.
   appsflyerSdk.unregisterSessionReadyListener();
-  appsflyerSdk.unregisterConversionListener();
+  if (Platform.isAndroid) {
+    // Android only — see the availability table below.
+    appsflyerSdk.unregisterConversionListener();
+    appsflyerSdk.unregisterDeeplinkListener();
+  }
   super.dispose();
 }
 ```
@@ -180,9 +186,10 @@ void dispose() {
 
 Where the unregister call reaches the native SDK it also drops the callback you
 passed at registration. On iOS, `unregisterConversionListener()` and
-`unregisterDeeplinkListener()` drop your callback and then throw
-`AppsFlyerException`, because the iOS SDK has no matching native call — guard
-them with `Platform.isAndroid` or catch the exception.
+`unregisterDeeplinkListener()` throw `AppsFlyerException` because the iOS SDK has
+no matching native call — guard them with `Platform.isAndroid` or catch the
+exception. A failed unregister leaves your callback in place, so the call is
+all-or-nothing.
 
 On Android the native listener also outlives the Flutter engine, which is
 destroyed on its own schedule (a back press, or a Flutter screen leaving an

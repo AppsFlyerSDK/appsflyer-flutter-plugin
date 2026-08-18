@@ -33,7 +33,8 @@ removed APIs, renames, lifecycle changes, and upgrade instructions.
   `registerSessionReadyListener(onReady)`. The plugin holds one callback per
   event and replaces it on re-registration, matching the native SDKs; no event
   stream is exposed, so a single native event cannot fan out to several
-  handlers in the app.
+  handlers in the app. Registering and unregistering are all-or-nothing: when the
+  native call fails, the Dart callbacks are left exactly as they were.
 - `registerDeepLinkListener(onDeepLink)` must be called **before** `init()`.
   Android decides once per install, while `init()` processes the launch intent,
   whether to send the deferred deep-link resolution request, and skips it when no

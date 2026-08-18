@@ -333,9 +333,9 @@ native listener; iOS has no corresponding unregister operation.
 
 Unregisters the native Android conversion-data listener and drops the callbacks
 passed to `registerConversionListener()`. Call `registerConversionListener()`
-again to resume receiving conversion-data events. On iOS the Dart callbacks are
-dropped and the call then throws an `AppsFlyerException` — see
-[Platform-only APIs](#platform-only-apis).
+again to resume receiving conversion-data events. On iOS it throws an
+`AppsFlyerException` — see [Platform-only APIs](#platform-only-apis). A failed
+call leaves the callbacks in place, so nothing changes.
 
 ```dart
 await appsflyerSdk.unregisterConversionListener();
@@ -375,9 +375,9 @@ Calling this again replaces the callback.
 Requests that Android stop forwarding Unified Deep Linking events and drops the
 callback passed to `registerDeepLinkListener()`. In the
 current Android integration, subsequent events may still be delivered; do not
-rely on this method to disable deep-link handling. On iOS the Dart callback is
-dropped and the call then throws an `AppsFlyerException` — see
-[Platform-only APIs](#platform-only-apis).
+rely on this method to disable deep-link handling. On iOS it throws an
+`AppsFlyerException` — see [Platform-only APIs](#platform-only-apis). A failed
+call leaves the callback in place, so nothing changes.
 
 ```dart
 await appsflyerSdk.unregisterDeeplinkListener();
@@ -615,8 +615,7 @@ await widget.appsFlyerSdk.stop(true);
 ---
 **<a id="isStopped"> `Future<bool> isStopped()`** — **Android only**
 
-Returns whether the SDK is currently stopped (see `stop`). On iOS it logs a
-warning and returns `false`.
+Returns whether the SDK is currently stopped (see `stop`).
 
 _Example:_
 ```dart

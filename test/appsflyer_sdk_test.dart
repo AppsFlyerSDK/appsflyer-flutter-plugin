@@ -1226,6 +1226,54 @@ void main() {
       expect(sessionReadyCount, 0);
     });
 
+    test('keeps Dart callbacks when the native unregister RPC fails', () async {
+      final conversionData = <Map<String, dynamic>>[];
+      var deepLinkCount = 0;
+      var sessionReadyCount = 0;
+      await androidSdk.registerConversionListener(
+        onSuccess: conversionData.add,
+      );
+      await androidSdk.registerDeepLinkListener((_) => deepLinkCount++);
+      await androidSdk.registerSessionReadyListener(() => sessionReadyCount++);
+
+      // Stands in for iOS, where none of the unregister RPCs are mapped.
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(methodChannel, (call) async {
+        throw PlatformException(code: '404', message: 'Method not found');
+      });
+
+      await expectLater(
+        androidSdk.unregisterConversionListener(),
+        throwsA(isA<AppsFlyerException>()),
+      );
+      await expectLater(
+        androidSdk.unregisterDeeplinkListener(),
+        throwsA(isA<AppsFlyerException>()),
+      );
+      await expectLater(
+        androidSdk.unregisterSessionReadyListener(),
+        throwsA(isA<AppsFlyerException>()),
+      );
+
+      await _emitEvent({
+        'event': 'onConversionDataSuccess',
+        'data': {'media_source': 'organic'},
+      });
+      await _emitEvent({
+        'event': 'onDeepLinking',
+        'data': {'status': 'FOUND'},
+      });
+      await _emitEvent({
+        'event': 'onSessionReady',
+        'data': null,
+      });
+      await pumpEventQueue();
+
+      expect(conversionData.single, {'media_source': 'organic'});
+      expect(deepLinkCount, 1);
+      expect(sessionReadyCount, 1);
+    });
+
     test('continues delivering events when a listener callback throws',
         () async {
       final received = <Map<String, dynamic>>[];
