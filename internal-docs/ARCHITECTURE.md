@@ -312,7 +312,7 @@ The plugin registers AppDelegate and, when available, UIScene lifecycle delegate
 
 - URL-scheme links map to `handleOpenUrl` or `handleOpenURL` according to the native callback shape.
 - Universal Links map to `continueUserActivity`.
-- launch options are retained until the RPC bridge is initialized;
+- launch options are forwarded at cold start through the interim `handleLaunchOptions` JSON-RPC hop (no `initialize` dependency); serialization and RPC failures are logged via `os_log`, matching `AppsFlyerAttribution`;
 - `AppsFlyerAttribution` queues early URL/Universal Link requests and replays them after plugin-internal `markBridgeReady(markedBy:)`. Queue state is serialized on the main queue inside the singleton (interim until the RPC lifecycle-callback wrapper absorbs it). Serialization and RPC failures are logged via `os_log`; the host app still learns deep-link outcomes only through `af-events` (F-037). That call records the owning plugin instance so `resetBridgeStateIfOwned(by:)` on engine detach clears `isBridgeReady` / `pendingRequests` without affecting a live second engine. A parameterless `@objc markBridgeReady` is intentionally not exposed: it would open the gate without an owner and break detach cleanup.
 
 These lifecycle RPC calls are implementation details and are not public Dart methods.

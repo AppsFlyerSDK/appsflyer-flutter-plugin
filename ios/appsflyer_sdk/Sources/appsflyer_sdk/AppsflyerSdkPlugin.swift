@@ -6,6 +6,7 @@
 import Foundation
 import UIKit
 import Flutter
+import os
 
 // Plugin version
 private let kAppsFlyerPluginVersion = "7.0.1"
@@ -33,6 +34,9 @@ private let kPluginDetachedMessage = "Plugin is not attached to a Flutter engine
 
 @objc(AppsflyerSdkPlugin)
 public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
+
+    private static let lifecycleLog = OSLog(subsystem: "com.appsflyer.appsflyer_sdk",
+                                            category: "AppsflyerSdkPlugin")
 
     /// One entry of the ordered `init` RPC sequence. Built and consumed inside this class only —
     /// each entry's `params` is forwarded to the RPC layer as the untouched Foundation payload.
@@ -534,7 +538,14 @@ extension AppsflyerSdkPlugin {
         // no dependency on `initialize`. It must run before `registerSessionReadyListener`, which
         // Dart registers after `init()` — forwarding here satisfies that earlier than caching did.
         executeJson(forMethod: "handleLaunchOptions",
-                    params: ["launchOptions": jsonSafeOptions]) { _, _ in }
+                    params: ["launchOptions": jsonSafeOptions]) { _, error in
+            if let error = error {
+                os_log(.error,
+                         log: Self.lifecycleLog,
+                         "handleLaunchOptions failed: %{public}@",
+                         String(describing: error))
+            }
+        }
         return false
     }
 
