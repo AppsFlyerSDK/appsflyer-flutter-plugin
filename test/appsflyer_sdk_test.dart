@@ -456,7 +456,8 @@ void main() {
       });
     });
 
-    test('setConsentData sends an unset GDPR flag as null, not false', () async {
+    test('setConsentData sends an unset GDPR flag as null, not false',
+        () async {
       await androidSdk.setConsentData(hasConsentForDataUsage: true);
 
       expect(rpcMethod, 'setConsentData');
