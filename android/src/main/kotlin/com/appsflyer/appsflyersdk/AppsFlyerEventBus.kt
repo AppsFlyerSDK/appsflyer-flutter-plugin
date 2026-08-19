@@ -46,7 +46,7 @@ internal fun interface AppsFlyerEventSink {
  *
  * - an event emitted by a listener still bound to a detached engine reaches the live sink;
  * - an event emitted while no sink is attached is replayed on the next attach instead of landing
- *   in the buffer of an unreachable plugin instance (RD-65582).
+ *   in the buffer of an unreachable plugin instance.
  *
  * Delivery is FIFO: events are queued first and flushed in publish order, so a replayed event
  * always precedes one published after it.

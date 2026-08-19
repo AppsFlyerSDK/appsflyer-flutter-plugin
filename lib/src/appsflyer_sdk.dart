@@ -110,7 +110,7 @@ class AppsFlyerSdk {
   /// this method; the other `register*Listener` methods are called after it.
   ///
   /// [appId] is required by the native iOS SDK and is not sent to Android.
-  /// Input validation is performed by the native RPC layer.
+  /// Input validation is performed by the native layer.
   Future<void> init({
     required String devKey,
     String? appId,
@@ -285,6 +285,15 @@ class AppsFlyerSdk {
   /// does not cancel the native request, which may still succeed later.
   Future<void> start({bool awaitResponse = false}) {
     return _invokeVoidRpc('start', {'awaitResponse': awaitResponse});
+  }
+
+  /// Collects the open/web referrer from the launcher activity's intent.
+  ///
+  /// **Android only.** Call before [start] so the referrer reaches the first
+  /// session. Requires an attached activity: when the plugin has none, the
+  /// native layer rejects the call with [AppsFlyerException] (code `422`).
+  Future<void> collectDataFromLauncherActivity() {
+    return _invokeVoidRpc('collectDataFromLauncherActivity');
   }
 
   /// Enables or disables SDK debug logging.
@@ -523,7 +532,8 @@ class AppsFlyerSdk {
   /// partners.
   ///
   /// Pass `null` or an empty list to clear the filter. The plugin normalizes
-  /// an empty list to `null` before sending the RPC request.
+  /// an empty list to `null` before sending the native request, so the two are
+  /// interchangeable.
   Future<void> setSharingFilterForPartners(List<String>? partners) {
     return _invokeVoidRpc(
       'setSharingFilterForPartners',
@@ -602,9 +612,10 @@ class AppsFlyerSdk {
   ///
   /// Provide the current consent on every app start before [start]. Consent
   /// values are not persisted across sessions. Validation is performed by the
-  /// native RPC layer where enforced. [hasConsentForAdStorage] is optional.
+  /// native layer where enforced. Every field is optional; an omitted value is
+  /// forwarded as unset rather than as `false`.
   Future<void> setConsentData({
-    required bool isUserSubjectToGDPR,
+    bool? isUserSubjectToGDPR,
     bool? hasConsentForDataUsage,
     bool? hasConsentForAdsPersonalization,
     bool? hasConsentForAdStorage,
@@ -742,26 +753,18 @@ class AppsFlyerSdk {
   /// instance for the current platform.
   /// [additionalParameters] contains optional values to include with the
   /// validation request.
-  /// By default, Android waits for the native validation result. Set
-  /// [awaitResponse] to `false` to start validation without a result callback
-  /// and return an empty map. On iOS, [awaitResponse] is ignored and validation
-  /// always completes before the [Future] resolves.
   ///
-  /// When the native result is awaited, completes with the validation result
-  /// or throws [AppsFlyerException] when validation fails. On Android with
-  /// `awaitResponse: false`, native validation failures are not reported.
+  /// Both platforms always wait for the native validation result: the [Future]
+  /// completes with that result, or throws [AppsFlyerException] when validation
+  /// fails. Android times out after 5 seconds, iOS after 30.
   Future<Map<String, dynamic>> validateAndLogInAppPurchase(
     AFPurchaseDetails purchase, {
     Map<String, String>? additionalParameters,
-    bool awaitResponse = true,
   }) async {
     final params = purchase.toRpcMap(
       platform: _platform,
       additionalParameters: additionalParameters,
     );
-    if (_isAndroid) {
-      params['awaitResponse'] = awaitResponse;
-    }
     final result = await _invokeNullableRpc<Map<Object?, Object?>?>(
       'validateAndLogInAppPurchase',
       params,

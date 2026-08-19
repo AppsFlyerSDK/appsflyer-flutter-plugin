@@ -175,13 +175,12 @@ The unified purchase validation API that works across both Android and iOS platf
 Future<Map<String, dynamic>> validateAndLogInAppPurchase(
   AFPurchaseDetails purchase, {
   Map<String, String>? additionalParameters,
-  bool awaitResponse = true,
 })
 ```
 
-`awaitResponse` defaults to `true`. On Android, `false` starts validation
-without waiting for a result and returns an empty map. On iOS, validation
-always waits for completion.
+Both platforms always wait for the validation result: the Future completes with
+it or throws `AppsFlyerException`. Android times out after 5 seconds, iOS after
+30.
 
 **AFPurchaseDetails interface and platform implementations:**
 ```dart
@@ -222,7 +221,6 @@ try {
   Map<String, dynamic> result = await appsFlyerSdk.validateAndLogInAppPurchase(
     purchaseDetails,
     additionalParameters: {"custom_param": "value"},
-    awaitResponse: true,
   );
   print("Validation successful: $result");
 } on AppsFlyerException catch (error) {

@@ -32,6 +32,7 @@
 - [logEvent](#logEvent)
 - [logLocation](#logLocation)
 - [logSession](#logSession)
+- [collectDataFromLauncherActivity](#collectDataFromLauncherActivity)
 - [anonymizeUser](#anonymizeUser)
 - [setMinTimeBetweenSessions](#setMinTimeBetweenSessions)
 - [stop](#stop)
@@ -108,9 +109,9 @@ native SDK implements them.
 Calling one on the other platform throws an
 [`AppsFlyerException`](#AppsFlyerException). The plugin does not keep its own
 list of which platform supports what — every call is forwarded and the native
-RPC layer answers, so the API surface stays correct as the native SDKs change.
-The exception's `code` therefore comes from the native layer and currently
-differs between them: Android reports `422`, iOS reports `404`. Match on the
+layer answers, so the API surface stays correct as the native SDKs change.
+The exception's `code` therefore comes from the native layer, which reports
+`404` for a method it does not implement on both platforms. Match on the
 platform-only marker in this document rather than on the code.
 
 Guard these calls with `Platform.isAndroid` / `Platform.isIOS`, or let the
@@ -123,7 +124,7 @@ exception propagate if the call is not essential on that platform.
 <a id="multi-engine-hosts"></a>
 
 The native AppsFlyer SDK is **process-scoped**. The Flutter plugin keeps one
-native RPC handler, one `af-events` transport subscription, and one native
+native bridge, one `af-events` transport subscription, and one native
 listener reference per event type for the whole process — the same contract as
 the native SDKs themselves.
 
@@ -223,18 +224,18 @@ not forward an `is_deferred` flag on the click event, so it always returns
 ##### <a id="AppsFlyerException"> **`AppsFlyerException`**
 
 Contains an optional numeric error code and message. Native failures can use
-HTTP-style codes (`400`, `422`, `500`, …). When the platform supplies a
+HTTP-style codes (`400`, `404`, `422`, `500`, …). When the platform supplies a
 non-numeric code, `code` is `null` and [message] carries the failure text.
 Plugin transport failures such as `SERIALIZATION_ERROR` and `RPC_PARSE_ERROR` use
 non-numeric codes, so [code] is `null`. On iOS, `SERIALIZATION_ERROR` is raised
-when an RPC payload cannot be encoded as JSON (for example non-finite `double`
-values in `eventValues`). Android does not use that code today — the same
-payload may surface as `UNEXPECTED_ERROR` or a numeric RPC error instead.
+when a request payload cannot be encoded as JSON (for example non-finite
+`double` values in `eventValues`). Android does not use that code today — the
+same payload may surface as `UNEXPECTED_ERROR` or a numeric native error instead.
 
 Calling a platform-only API on the wrong platform throws
 [`AppsFlyerException`](#AppsFlyerException). The plugin forwards every call to
-the native RPC layer; the exception's `code` comes from the native layer and
-currently differs between platforms: Android reports `422`, iOS reports `404`.
+the native layer, which reports `404` for an unimplemented method on both
+platforms. `422` means the method exists but rejected its parameters.
 Match on the platform-only marker in this document rather than on the code.
 See [Platform-only APIs](#platform-only-apis).
 
@@ -247,9 +248,9 @@ See [Platform-only APIs](#platform-only-apis).
 Initializes the native SDK without sending a session. `appId` is the Apple App
 ID required by the native iOS SDK. It is optional and is not sent to the native SDK on Android.
 
-Invalid `devKey` or `appId` values are validated by the native RPC layer and
-reported as `AppsFlyerException` (typically code `422`) when the RPC rejects
-the request.
+Invalid `devKey` or `appId` values are validated by the native layer and
+reported as `AppsFlyerException` (typically code `422`) when the native layer
+rejects the request.
 
 _Example:_
 
@@ -412,7 +413,7 @@ Gate the first session by deferring the `start()` call inside the callback.
 
 ---
 
-**<a id="getAttributionId"> `Future<String?> getAttributionId()`** — returns the Facebook (Katana) attribution ID the SDK reads from the installed Facebook app's on-device content provider (also attached to attribution payloads automatically). Most apps never need it directly; exposed for parity with the native SDK. **Android only** — calling it on iOS throws `AppsFlyerException` when the native RPC layer reports the method as unavailable.
+**<a id="getAttributionId"> `Future<String?> getAttributionId()`** — returns the Facebook (Katana) attribution ID the SDK reads from the installed Facebook app's on-device content provider (also attached to attribution payloads automatically). Most apps never need it directly; exposed for parity with the native SDK. **Android only** — calling it on iOS throws `AppsFlyerException` when the native layer reports the method as unavailable.
 
 _Example:_
 ```dart
@@ -433,7 +434,7 @@ appsFlyerSdk.getAttributionId().then((id) {
 | parameter       | type     | description                                                                                                                                                                       |
 | --------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `eventName`     | `String` | Use descriptive, action-based names (e.g., "purchase", "add_to_cart", "level_completed"), keep names concise but meaningful, use lowercase with underscores for consistency and avoid special characters and spaces. See the [recommended event list by business](https://support.appsflyer.com/hc/en-us/articles/115005544169-In-app-events-Overview#recommended-events-by-business-vertical). |
-| `eventValues`   | `Map<String, dynamic>?` | Optional named event details. Values must be JSON-serializable. Non-finite numbers (`double.nan`, `double.infinity`) are rejected on **iOS** with `AppsFlyerException` (`SERIALIZATION_ERROR`, `code` is `null`). On **Android** the same payload may fail with a different code (`UNEXPECTED_ERROR` or a numeric RPC error). Validate with `value.isFinite` before sending. |
+| `eventValues`   | `Map<String, dynamic>?` | Optional named event details. Values must be JSON-serializable. Non-finite numbers (`double.nan`, `double.infinity`) are rejected on **iOS** with `AppsFlyerException` (`SERIALIZATION_ERROR`, `code` is `null`). On **Android** the same payload may fail with a different code (`UNEXPECTED_ERROR` or a numeric native error). Validate with `value.isFinite` before sending. |
 | `awaitResponse` | `bool` | Optional named parameter. Defaults to `false`. When `true`, wait for the native request callback. When `false`, return when the native SDK accepts the request. |
 
 _Example:_
@@ -486,6 +487,23 @@ Manually logs a session on Android. For typical Flutter apps, call
 
 ```dart
 await appsflyerSdk.logSession();
+```
+
+---
+
+##### <a id="collectDataFromLauncherActivity"> **`Future<void> collectDataFromLauncherActivity()`**
+
+Collects the open/web referrer from the launcher activity's intent. Call it
+before [`start`](#start) so the referrer reaches the first session.
+**Android only**; on iOS the call throws an `AppsFlyerException` — see
+[Platform-only APIs](#platform-only-apis).
+
+Requires an attached activity. When the plugin has none — for example in a
+headless or background engine — the native layer rejects the call with
+`AppsFlyerException` (code `422`).
+
+```dart
+await appsflyerSdk.collectDataFromLauncherActivity();
 ```
 
 ---
@@ -646,7 +664,7 @@ await appsFlyerSdk.enableTCFDataCollection(true);
 ```
 ---
 <a id="setConsentDataV2"></a>
-**<a id="setConsentData"> `Future<void> setConsentData({required bool isUserSubjectToGDPR, bool? hasConsentForDataUsage, bool? hasConsentForAdsPersonalization, bool? hasConsentForAdStorage})`**
+**<a id="setConsentData"> `Future<void> setConsentData({bool? isUserSubjectToGDPR, bool? hasConsentForDataUsage, bool? hasConsentForAdsPersonalization, bool? hasConsentForAdStorage})`**
 
 ### Sets user consent preferences for GDPR and ad personalization
 
@@ -674,9 +692,13 @@ await appsflyerSdk.setConsentData(
 
 When GDPR applies, supply `hasConsentForDataUsage` and
 `hasConsentForAdsPersonalization` before the first `start()`. The iOS native
-RPC layer rejects incomplete consent as `AppsFlyerException`; Android
+layer rejects incomplete consent as `AppsFlyerException`; Android
 forwards the payload as supplied. The optional `hasConsentForAdStorage` value
 represents whether the user consented to ad-related storage.
+
+Every field is nullable, matching the native consent object. An omitted field is
+forwarded as unset rather than as `false`, so pass `isUserSubjectToGDPR`
+explicitly whenever you know the answer.
 
 To reflect consent in the conversion payload, configure either
 `enableTCFDataCollection` or `setConsentData` after initialization and
@@ -783,7 +805,7 @@ await appsFlyerSdk.updateServerUninstallToken(token);
 
 ***Cross-platform API:***
 
-**<a id="validateAndLogInAppPurchase"> `Future<Map<String, dynamic>> validateAndLogInAppPurchase(AFPurchaseDetails purchase, {Map<String, String>? additionalParameters, bool awaitResponse = true})`**
+**<a id="validateAndLogInAppPurchase"> `Future<Map<String, dynamic>> validateAndLogInAppPurchase(AFPurchaseDetails purchase, {Map<String, String>? additionalParameters})`**
 
 The unified purchase validation API works across Android and iOS. Use the
 purchase-details implementation for the current platform.
@@ -792,12 +814,11 @@ purchase-details implementation for the current platform.
 |-----------|------|-------------|
 | `purchase` | `AFPurchaseDetails` | An `AFAndroidPurchaseDetails` or `AFIOSPurchaseDetails` instance |
 | `additionalParameters` | `Map<String, String>?` | Optional additional parameters |
-| `awaitResponse` | `bool` | Optional. Defaults to `true`. Android honors this value; iOS always waits for completion. |
 
-With `awaitResponse: true`, the Future waits for the native validation result.
-On Android, `awaitResponse: false` starts validation without a result callback
-and the Future completes with an empty map. On iOS, validation always waits for
-completion and returns its result.
+Both platforms always wait for the native validation result, so the Future
+completes with that result or throws `AppsFlyerException` when validation fails.
+Android times out after 5 seconds, iOS after 30. When the native reply carries no
+payload, the Future completes with an empty map.
 
 <a id="AFPurchaseDetails"></a>
 **AFPurchaseDetails interface:**
@@ -846,7 +867,6 @@ try {
   Map<String, dynamic> result = await appsFlyerSdk.validateAndLogInAppPurchase(
     purchaseDetails,
     additionalParameters: {"custom_param": "value"},
-    awaitResponse: true,
   );
   print("Validation successful: $result");
 } on AppsFlyerException catch (error) {
@@ -1397,7 +1417,7 @@ print(appsFlyerSdk.pluginVersion);
 **<a id="isPreInstalledApp"> `Future<bool> isPreInstalledApp()`** — **Android only**
 
 Returns whether the app install was a device preinstall (OEM/manufacturer). On
-iOS the native RPC layer reports the method as unavailable and the call throws
+iOS the native layer reports the method as unavailable and the call throws
 `AppsFlyerException`. See also `setPreinstallAttribution`.
 
 _Example:_
@@ -1473,10 +1493,8 @@ await appsFlyerSdk.setSharingFilterForPartners(
 ```
 
 Passing `null` or an empty list clears the filter; the plugin normalizes
-both to the same native request, so the two are interchangeable. On Android
-the current RPC bridge rejects a clear request with `AppsFlyerException`
-until the native RPC validation is fixed; the call is forwarded rather than
-silently ignored.
+both to the same native request, so the two are interchangeable and clear the
+filter on Android and iOS alike.
 
 ---
 **<a id="setOneLinkCustomDomain"> `Future<void> setOneLinkCustomDomain(List<String> domains)`**

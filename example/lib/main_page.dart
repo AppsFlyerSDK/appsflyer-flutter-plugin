@@ -409,7 +409,6 @@ class MainPageState extends State<MainPage> {
           'validation_source': 'flutter_example',
           'app_version': '1.0.0',
         },
-        awaitResponse: true,
       );
 
       AfQaLogger.result('validatePurchase', result);

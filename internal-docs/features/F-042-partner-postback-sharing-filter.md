@@ -4,7 +4,7 @@ name: Partner Postback Sharing Filter
 type: platformIntegration
 platform: both
 status: active
-last_verified: 2026-08-10
+last_verified: 2026-08-19
 depends_on: []
 ---
 
@@ -21,7 +21,7 @@ Called by the host app during startup configuration or in direct response to a u
 ## Call Chain
 Awaitable RPC call over the single `executeRpc` entry point. (The legacy `setSharingFilter`/`setSharingFilterForAllPartners` Dart methods no longer exist — SDK 7 exposes only `setSharingFilterForPartners`.)
 
-Clearing the filter — passing `null` or an empty list — is expressed on the wire as `partners: null`. Dart normalizes an empty list to `null` before dispatch so `null` and `[]` are interchangeable for callers. The plugin forwards every call to the native RPC layer and does not short-circuit clear requests in Dart.
+Clearing the filter — passing `null` or an empty list — is expressed on the wire as `partners: null`. Dart normalizes an empty list to `null` before dispatch so `null` and `[]` are interchangeable for callers. The plugin forwards every call to the native layer and does not short-circuit clear requests in Dart.
 
 ```
 AppsFlyerSdk.setSharingFilterForPartners(List<String>? partners)         [lib/src/appsflyer_sdk.dart]
@@ -33,7 +33,7 @@ AppsFlyerSdk.setSharingFilterForPartners(List<String>? partners)         [lib/sr
   → PlatformException is converted to AppsFlyerException
 ```
 
-On iOS, `null` clears the filter. On Android, the native SDK accepts a clear, but the current Android RPC request model rejects an empty partner list with validation error `422`; once that RPC-layer bug is fixed, the same Dart call will clear on Android without further plugin changes.
+`null` clears the filter on both platforms. Android RPC 7.0.12 dropped the `require(partners.isNotEmpty())` guard from `SetSharingFilterForPartnersRequest`, so a `null` partner list parses to an empty list and the handler calls the SDK setter with no arguments, which clears the filter.
 
 ---
 
@@ -50,18 +50,17 @@ On iOS, `null` clears the filter. On Android, the native SDK accepts a clear, bu
 | | |
 |--|--|
 | **Input** | `partners` (`List<String>?`) — partner ID strings (e.g. `'facebook_int'`, `'googleadwords_int'`), or the literal `'all'` to block every partner. `null` or an empty list clears the filter; both are sent as `null` under the `partners` param key. |
-| **Output** | `Future<void>` completes after native RPC validation and the synchronous SDK setter invocation. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or timeout. A clear request on Android currently throws from the RPC bridge until the native validation fix lands. |
+| **Output** | `Future<void>` completes after native validation and the synchronous SDK setter invocation. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or timeout. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` → `'maps cross-platform configuration and identity APIs'` verifies that `setSharingFilterForPartners(['partner'])` dispatches RPC method `setSharingFilterForPartners` with `{'partners': ['partner']}`, and that both `null` and `[]` on iOS dispatch `{'partners': null}` — pinning the empty-to-null normalization. `'Android clear requests reach the native RPC layer'` verifies that both `null` and `[]` on Android dispatch `{'partners': null}` and surface the RPC bridge validation error as `AppsFlyerException`.
+`test/appsflyer_sdk_test.dart` → `'maps cross-platform configuration and identity APIs'` verifies that `setSharingFilterForPartners(['partner'])` dispatches RPC method `setSharingFilterForPartners` with `{'partners': ['partner']}`, and that both `null` and `[]` on iOS dispatch `{'partners': null}` — pinning the empty-to-null normalization. `'Android clear requests reach the native layer'` verifies that both `null` and `[]` on Android dispatch `{'partners': null}` and complete successfully.
 
 ---
 
 ## Known Limitations
 - Dart and the RPC request models do not verify that individual partner IDs are recognized. The native SDK can ignore or filter unsupported values without returning a per-ID result, so a typo is not observable through the completed Future.
-- Clearing the filter on Android is blocked today by `SetSharingFilterForPartnersRequest` enforcing `require(partners.isNotEmpty())`, so the bridge rejects the only payload that expresses a clear. The native Android SDK's own `SharingFilter` does accept an empty set, so this is an RPC-layer gap rather than an SDK limitation. The plugin forwards the clear request so the failure is visible as `AppsFlyerException` instead of being swallowed in Dart.
 
 ---
 

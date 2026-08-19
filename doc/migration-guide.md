@@ -114,7 +114,7 @@ inside the callback. Apply any configuration setters (e.g.
 | `performOnDeepLinking()` | Removed on Android (§5a), replaced on iOS | `performDeepLinking(url, {shouldTriggerSession})` |
 | `validateAndLogInAppAndroidPurchase` (V1) | Native V1 purchase validation removed | `validateAndLogInAppPurchase` with `AFAndroidPurchaseDetails` |
 | `validateAndLogInAppIosPurchase` (V1) | Native 6-param purchase validation removed (iOS §6) | `validateAndLogInAppPurchase` with `AFIOSPurchaseDetails` |
-| `onPurchaseValidation` | Legacy validation callback removed | `validateAndLogInAppPurchase` with `awaitResponse` |
+| `onPurchaseValidation` | Legacy validation callback removed | awaiting `validateAndLogInAppPurchase` |
 | `setPushNotification(bool)` | Removed from both native SDKs | Android: `sendPushNotificationData(...)`; iOS: `handlePushNotification(pushPayload)` |
 | `enableUninstallTracking(String)` | Legacy device-token flow removed | `updateServerUninstallToken(String)` |
 | `setCollectIMEI(bool)` | Removed from native SDK 7 (§9) | IMEI auto-collection removed; no replacement |
@@ -250,13 +250,12 @@ All SDK setters now return `Future<void>`. For a fire-and-forget operation, a
 completed `Future` means the native SDK accepted the call; it does not confirm
 network delivery.
 
-`start({awaitResponse})`, `logEvent(..., {awaitResponse})`,
-`validateAndLogInAppPurchase(..., awaitResponse: ...)`, and
+`start({awaitResponse})`, `logEvent(..., {awaitResponse})`, and
 `generateInviteLink(..., awaitResponse: ...)` let the app choose whether to
 wait for a native result where supported. `awaitResponse` defaults to `false`
-for `start` and `logEvent`, and to `true` for purchase validation and invite-link
-generation. On iOS, purchase validation and invite-link generation always wait
-for their result.
+for `start` and `logEvent`, and to `true` for invite-link generation, which
+always waits on iOS. `validateAndLogInAppPurchase` exposes no such flag —
+both platforms always wait for the validation result.
 
 ---
 
@@ -357,9 +356,9 @@ the project **will not compile** after upgrading to plugin 7.
 
 Calling a platform-only method outside its supported mobile platform throws an
 `AppsFlyerException`. The plugin does not decide this itself — the call is
-forwarded and the native RPC layer reports that it has no such method — so the
-`code` differs by platform: Android reports `422`, iOS reports `404`. Identify
-platform-only APIs by the _(Android only)_ / _(iOS only)_ marker in the
+forwarded and the native layer reports that it has no such method, with `code`
+`404` on both platforms. Identify platform-only APIs by the _(Android only)_ /
+_(iOS only)_ marker in the
 [API reference](api-reference.md#platform-only-apis), not by the code.
 
 **This is a behavior change.** In plugin v6 most of these calls were a logged
@@ -383,10 +382,8 @@ surfaced as `AppsFlyerException` with an optional numeric `code` and `message`.
 - Android purchase validation requires a Play purchase token.
 - iOS purchase validation requires an App Store transaction ID.
 - Clearing partner-sharing filters (`setSharingFilterForPartners(null)` or
-  `[]`) works on iOS. On Android the call is forwarded to the native RPC
-  layer and currently surfaces as `AppsFlyerException` until the Android RPC
-  validation is fixed — it is not silently ignored.
-- Passing an empty partner list is normalized to `null` before the RPC call.
+  `[]`) works on Android and iOS alike.
+- Passing an empty partner list is normalized to `null` before the native call.
 - On Android, `unregisterDeeplinkListener()` does not reliably stop subsequent
   deep-link events. Do not rely on it to disable deep-link handling.
 - `setInstallId` has different native ordering rules: iOS configures it before

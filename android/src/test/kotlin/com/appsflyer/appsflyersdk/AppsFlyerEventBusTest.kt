@@ -149,7 +149,6 @@ class AppsFlyerEventBusTest {
         assertEquals(1, AppsFlyerEventBus.pendingCount())
     }
 
-    /** The regression this class exists for: an event emitted while no engine is attached. */
     @Test
     fun engineRecreation_eventPublishedWhileDetached_reachesTheNewEngine() {
         val firstEngineSink = RecordingSink()

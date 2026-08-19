@@ -328,6 +328,8 @@ void main() {
         'setCollectAndroidID': () => iosSdk.setCollectAndroidID(true),
         'setLogLevel': () => iosSdk.setLogLevel(AFLogLevel.debug),
         'logSession': () => iosSdk.logSession(),
+        'collectDataFromLauncherActivity': () =>
+            iosSdk.collectDataFromLauncherActivity(),
         'setOutOfStore': () => iosSdk.setOutOfStore('source'),
         'setIsUpdate': () => iosSdk.setIsUpdate(true),
         'setAppId': () => iosSdk.setAppId('123'),
@@ -431,31 +433,9 @@ void main() {
       expect(rpcParams, {'disable': true});
     });
 
-    test('Android clear requests reach the native RPC layer', () async {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(methodChannel, (call) async {
-        final args = Map<String, dynamic>.from(call.arguments as Map);
-        rpcMethod = args['method'] as String;
-        rpcParams = Map<String, dynamic>.from(args['params'] as Map);
-        throw PlatformException(
-          code: '422',
-          message: 'partners must not be empty',
-        );
-      });
-
+    test('Android clear requests reach the native layer', () async {
       for (final partners in <List<String>?>[null, []]) {
-        await expectLater(
-          androidSdk.setSharingFilterForPartners(partners),
-          throwsA(
-            isA<AppsFlyerException>()
-                .having((error) => error.code, 'code', 422)
-                .having(
-                  (error) => error.message,
-                  'message',
-                  'partners must not be empty',
-                ),
-          ),
-        );
+        await androidSdk.setSharingFilterForPartners(partners);
         expect(rpcMethod, 'setSharingFilterForPartners');
         expect(rpcParams, {'partners': null});
       }
@@ -463,7 +443,7 @@ void main() {
   });
 
   group('models and platform payloads', () {
-    test('setConsentData forwards incomplete GDPR payloads to native RPC',
+    test('setConsentData forwards incomplete GDPR payloads to the native layer',
         () async {
       await androidSdk.setConsentData(isUserSubjectToGDPR: true);
 
@@ -471,6 +451,18 @@ void main() {
       expect(rpcParams, {
         'isUserSubjectToGDPR': true,
         'hasConsentForDataUsage': null,
+        'hasConsentForAdsPersonalization': null,
+        'hasConsentForAdStorage': null,
+      });
+    });
+
+    test('setConsentData sends an unset GDPR flag as null, not false', () async {
+      await androidSdk.setConsentData(hasConsentForDataUsage: true);
+
+      expect(rpcMethod, 'setConsentData');
+      expect(rpcParams, {
+        'isUserSubjectToGDPR': null,
+        'hasConsentForDataUsage': true,
         'hasConsentForAdsPersonalization': null,
         'hasConsentForAdStorage': null,
       });
@@ -518,7 +510,6 @@ void main() {
         'purchaseToken': 'token',
         'productId': 'sku',
         'additionalParameters': null,
-        'awaitResponse': true,
       });
     });
 
@@ -551,16 +542,12 @@ void main() {
       );
 
       expect(
-        await androidSdk.validateAndLogInAppPurchase(
-          purchase,
-          awaitResponse: false,
-        ),
+        await androidSdk.validateAndLogInAppPurchase(purchase),
         isEmpty,
       );
     });
 
-    test('purchase validation forwards awaitResponse only to Android',
-        () async {
+    test('purchase validation never sends awaitResponse', () async {
       rpcResult = <String, dynamic>{};
 
       await androidSdk.validateAndLogInAppPurchase(
@@ -569,9 +556,8 @@ void main() {
           productId: 'android-sku',
           purchaseToken: 'token',
         ),
-        awaitResponse: false,
       );
-      expect(rpcParams!['awaitResponse'], isFalse);
+      expect(rpcParams, isNot(contains('awaitResponse')));
 
       await iosSdk.validateAndLogInAppPurchase(
         const AFIOSPurchaseDetails(
@@ -579,7 +565,6 @@ void main() {
           productId: 'ios-sku',
           transactionId: 'transaction',
         ),
-        awaitResponse: false,
       );
       expect(rpcParams, isNot(contains('awaitResponse')));
     });
@@ -981,6 +966,11 @@ void main() {
       );
 
       await expectVoidRpc(androidSdk.logSession, 'logSession', {});
+      await expectVoidRpc(
+        androidSdk.collectDataFromLauncherActivity,
+        'collectDataFromLauncherActivity',
+        {},
+      );
       await expectVoidRpc(
         () => androidSdk.setOutOfStore('amazon'),
         'setOutOfStore',

@@ -44,10 +44,11 @@ removed APIs, renames, lifecycle changes, and upgrade instructions.
   `AppsFlyerException` (`int? code`, `String message`). Non-numeric platform
   codes leave `code` as `null`. `MissingPluginException` is not converted.
   Failures from fire-and-forget calls are not reported.
-- `start`, `logEvent`, `generateInviteLink`, and
-  `validateAndLogInAppPurchase` expose `awaitResponse` where the native SDK
-  supports waiting for a completion callback. It defaults to `false` for `start`
-  and `logEvent`, and to `true` for the two result-producing APIs.
+- `start`, `logEvent`, and `generateInviteLink` expose `awaitResponse` where the
+  native SDK supports waiting for a completion callback. It defaults to `false`
+  for `start` and `logEvent`, and to `true` for invite-link generation.
+  `validateAndLogInAppPurchase` has no such flag: both platforms always wait for
+  the validation result.
 - Removed OAOA callbacks and registration. Use Unified Deep Linking.
 - Replaced `performOnDeepLinking()` with
   `performDeepLinking(url, {shouldTriggerSession})`.
@@ -78,25 +79,30 @@ removed APIs, renames, lifecycle changes, and upgrade instructions.
 - Every platform-only method now throws `AppsFlyerException` when called outside
   its supported platform, instead of some logging a warning and returning a safe
   default while others threw. The plugin no longer keeps its own table of which
-  platform implements what — calls are forwarded and the native RPC layer
+  platform implements what — calls are forwarded and the native layer
   answers, so the surface stays correct as the native SDKs change. Code that
   relied on an off-platform call being a silent no-op must guard it with
   `Platform.isAndroid` / `Platform.isIOS` or catch the exception. The exception
-  `code` comes from the native layer and currently differs: Android reports
-  `422`, iOS reports `404`.
+  `code` comes from the native layer, which reports `404` for an unimplemented
+  method on both platforms.
 - `getHostName()` and `getHostPrefix()` now return non-nullable `Future<String>`
   on Android; unexpected native null replies throw `AppsFlyerException` instead
   of surfacing as `null`.
-- RPC helpers split into `_invokeNullableRpc` and `_invokeRpc<T extends Object>`;
-  bool getters such as `isSessionReady`, `isStopped`, and `isPreInstalledApp`
-  no longer coerce an unexpected native `null` to `false`.
-- `setSharingFilterForPartners(null)` and `setSharingFilterForPartners([])` on
-  Android are forwarded to the native RPC layer instead of being ignored in Dart.
-  Clearing currently surfaces as `AppsFlyerException` from the Android RPC bridge
-  until the native validation fix lands.
+- Bool getters such as `isSessionReady`, `isStopped`, and `isPreInstalledApp` no
+  longer coerce an unexpected native `null` to `false`; they throw
+  `AppsFlyerException` instead.
+- `setSharingFilterForPartners(null)` and `setSharingFilterForPartners([])` are
+  forwarded to the native layer instead of being ignored in Dart, and clear the
+  filter on Android and iOS alike.
 - `setConsentData` no longer validates GDPR-required fields in Dart; incomplete
-  payloads are forwarded to the native RPC layer (iOS rejects them today;
-  Android validation is tracked separately).
+  payloads are forwarded to the native layer (iOS rejects them today; Android
+  validation is tracked separately). Every field is nullable, including
+  `isUserSubjectToGDPR`, so an omitted value is forwarded as unset rather than
+  as `false`.
+- Added Android-only `collectDataFromLauncherActivity()`, which collects the
+  open/web referrer from the launcher activity's intent. Call it before
+  `start()`. It requires an attached activity and otherwise fails with
+  `AppsFlyerException` (code `422`).
 - `setInstallId()` requires `AppsFlyerAllowCustomInstallId=YES` in iOS
   `Info.plist` and must be called before `init()` on iOS. Android requires
   `APPSFLYER_ALLOW_CUSTOM_INSTALL_ID=true` in `AndroidManifest.xml` and the call

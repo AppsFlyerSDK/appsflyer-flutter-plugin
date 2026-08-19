@@ -40,6 +40,7 @@ SDK lifecycle, identity, privacy/consent, and low-level configuration.
 | F-062 | Android Manual Session Logging | active | android |
 | F-063 | Custom Install ID | active | both |
 | F-066 | iOS Device Data Collection Controls | active | ios |
+| F-070 | Android Launcher Activity Referrer Collection | active | android |
 
 ## eventsAndRevenue
 

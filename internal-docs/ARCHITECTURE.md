@@ -1,9 +1,10 @@
 # AppsFlyer Flutter Plugin — Architecture (Flutter ↔ RPC ↔ Native SDK)
 
 **Status:** Current implementation  
-**Last verified:** 2026-08-10  
+**Last verified:** 2026-08-19  
 **Flutter plugin:** 7.0.1  
-**Android SDK / RPC:** 7.0.1  
+**Android SDK:** 7.0.1
+**Android RPC:** 7.0.12  
 **iOS SDK:** 7.0.1  
 **iOS RPC:** 7.0.12
 
@@ -65,7 +66,7 @@ The stored platform is used only for bridge concerns:
 - short-circuiting APIs unsupported by the current native RPC layer;
 - serializing platform-specific models such as purchase details and mediation values.
 
-A platform-only API is not gated in Dart. Every call routes through `_invokeRpc` regardless of the current platform, and the native RPC layer answers `unknown method` when it does not implement it; that surfaces to the caller as `AppsFlyerException`. Keeping a platform-support table in Dart was rejected deliberately — it duplicates knowledge the RPC contract already owns and goes stale the moment a native SDK adds support, silently blocking a method that now works. The trade-off is that the exception `code` comes from the native layer and is not yet aligned: Android reports `422` (`INVALID_PARAMETERS`, because its parser maps unknown methods through the generic parse-error path) and iOS reports `404`. Aligning Android on `404` is a native RPC change, not a plugin one. Shared APIs behave the same way, except that the package registers native implementations only for Android and iOS, so invoking one on another Flutter target produces `MissingPluginException` rather than `AppsFlyerException`.
+A platform-only API is not gated in Dart. Every call routes through `_invokeRpc` regardless of the current platform, and the native RPC layer answers `unknown method` when it does not implement it; that surfaces to the caller as `AppsFlyerException`. Keeping a platform-support table in Dart was rejected deliberately — it duplicates knowledge the RPC contract already owns and goes stale the moment a native SDK adds support, silently blocking a method that now works. The exception `code` comes from the native layer and is aligned on `404` across both platforms: Android RPC 7.0.12 introduced `MethodNotFoundException` so its parser no longer maps unknown methods through the generic parse-error path, which previously produced `422`. A `422` now means the method exists and rejected its parameters. Shared APIs behave the same way, except that the package registers native implementations only for Android and iOS, so invoking one on another Flutter target produces `MissingPluginException` rather than `AppsFlyerException`.
 
 ### 2.2 RPC helpers
 
@@ -111,7 +112,7 @@ Public APIs use the delivery style supported by the underlying capability:
 | Immediate Dart getter | `pluginVersion` | Reads local package metadata; no RPC |
 | Registered callback | conversion data, UDL, session readiness | Delivered through `af-events` and dispatched to the single callback passed to the matching `register*Listener` |
 
-`start`, `logEvent`, `generateInviteLink`, and `validateAndLogInAppPurchase` expose a public `awaitResponse` parameter. It defaults to `false` for `start` and `logEvent`, and to `true` for the two result-producing APIs. The flag is forwarded to both platforms for `start` and `logEvent`, but only Android exposes it for invite generation and purchase validation.
+`start`, `logEvent`, and `generateInviteLink` expose a public `awaitResponse` parameter. It defaults to `false` for `start` and `logEvent`, and to `true` for `generateInviteLink`. The flag is forwarded to both platforms for `start` and `logEvent`, but only Android exposes it for invite generation. `validateAndLogInAppPurchase` exposes no such flag and always awaits validation on both platforms — see §7.1.
 
 ## 3. Flutter platform channels
 
@@ -147,12 +148,14 @@ Flutter public method
 
 `AppsflyerSdkPlugin.kt` forwards every method except plugin-orchestrated `init` to `AppsFlyerRpcHandler`.
 
-- Fast RPCs (setters, getters, and fire-and-forget `start` / `logEvent` / purchase validation / invite generation when `awaitResponse` is `false`) run inline on the platform thread and complete the Flutter `Result` immediately.
-- `init` and awaited-callback RPCs (`start`, `logEvent`, `validateAndLogInAppPurchase`, or `generateInviteLink` when `awaitResponse` is `true`) run on a dedicated single-thread `blockingRpcExecutor` so cold-start bootstrap and slow native latch waits do not block the platform thread.
+- Fast RPCs (setters, getters, and fire-and-forget `start` / `logEvent` / invite generation when `awaitResponse` is `false`) run inline on the platform thread and complete the Flutter `Result` immediately.
+- `init`, `validateAndLogInAppPurchase`, and awaited-callback RPCs (`start`, `logEvent`, or `generateInviteLink` when `awaitResponse` is `true`) run on a dedicated single-thread `blockingRpcExecutor` so cold-start bootstrap and slow native latch waits do not block the platform thread. Purchase validation is unconditional here because Android RPC 7.0.12 always awaits its callback.
 - The handler uses `JsonRpcRequestParser` and the typed Android RPC request catalog.
 - SDK callbacks required for awaitable RPC operations are converted into the corresponding RPC response.
 - Flutter results are delivered on the main thread.
-- The RPC handler is process-scoped. `AppsFlyerRpcBridge` holds one handler behind an `RpcRequestRunner`, built with `applicationContext` so it retains neither a destroyed `Activity` nor a torn-down engine. Because `AppsFlyerLib` is itself a process-wide singleton that keeps its configuration and registered listeners, reusing the handler means a recreated engine reattaches to a bridge that still matches the native SDK instead of building one with no memory of the listeners registered on it. The `init` RPC alone uses an ephemeral handler built around the current `Activity` when one is attached (scheduled on `blockingRpcExecutor`, not inline on the platform thread), so SDK 7 can replay the cold-start launch intent for deep linking without blocking cold start.
+- The RPC handler is process-scoped and there is exactly one. `AppsFlyerRpcBridge` holds it behind an `RpcRequestRunner`. Since Android RPC 7.0.12 the handler takes a `contextProvider: () -> Context` and resolves a lazy `applicationContext` for most SDK calls, invoking the provider directly only where an `Activity` is required (`init`, `collectDataFromLauncherActivity`). The plugin supplies `AppsFlyerContextHolder::current`, a process-scoped holder that returns the most recently attached `Activity` when there is one and the application context otherwise. That is what lets a single handler serve both kinds of call without being built around one context, and it retains neither a destroyed `Activity` (the holder drops it on detach) nor a torn-down engine. The holder keys `Activity` attachments by the plugin instance that attached them rather than keeping a single slot, because an add-to-app host can have two engines attached to the same `Activity`; with one slot the first engine to detach would clear an `Activity` the second is still using, and `init` and `collectDataFromLauncherActivity` would silently fall back to the application context while a live `Activity` was attached. Each engine removes only its own entry, on both `onDetachedFromActivity` and `onDetachedFromEngine`, so a missed callback on one path is still covered by the other. The provider must be a reference to the holder and not a lambda over the plugin's own `activity` field: the handler outlives every engine, so capturing the plugin instance would pin one that Android already destroyed — the same hazard the `rpcEventNotifier` comment describes for the event side.
+- Because `AppsFlyerLib` is itself a process-wide singleton that keeps its configuration and registered listeners, one handler means a recreated engine reattaches to a bridge that still matches the native SDK instead of building one with no memory of the listeners registered on it. It also means the listener state the handler keeps (`conversionListener`, `deepLinkListener`, `sessionReadyListener`) has a single owner, so `init` — which Android RPC 7.0.12 now forwards to `AppsFlyerLib.init()` as its conversion listener — sees the listener registered through `registerConversionListener`.
+- `init` still runs on `blockingRpcExecutor` rather than inline, so cold-start bootstrap does not block the platform thread. Its `Activity` is read from the holder when the handler runs rather than when the request is dispatched, so an `Activity` that detaches in between leaves `init` and `collectDataFromLauncherActivity` with the application context. For `init` that costs the cold-start launch-intent replay; for `collectDataFromLauncherActivity` the native handler answers `422` and that message reaches the caller. Both are the same fallback as launching with no `Activity` attached.
 - Awaited native callbacks and the `init` sequence block only the dedicated blocking executor until completion or timeout. Fast calls are not queued behind them.
 - The process-scoped `AppsFlyerRpcHandler` can be entered from both the platform thread (fast RPCs) and `blockingRpcExecutor` (`init` and awaited RPCs). That overlap is intentional: fast setters/getters must not wait behind a slow `await start()`. Listener bookkeeping inside the handler is not synchronized; if tighter guarantees are needed, they belong in the Android RPC module (`plugin_bridge`), not by serializing every plugin RPC on one executor.
 - The `executeRpc` envelope `{method, params}` is parsed by `RpcEnvelopeParser` before dispatch. Both `method` and `params` are required; `params` may be empty but must be a `Map`. Dart's `_invokeNullableRpc` always supplies `params: params ?? {}`. A malformed envelope from anything other than that path is an integration error: Android throws `IllegalStateException` with message prefix `RPC envelope contract violation:` outside the dispatch `try/catch`; iOS calls `preconditionFailure` with the same prefix. Neither path is converted to a user-facing `AppsFlyerException` by design.
@@ -277,7 +280,7 @@ await appsFlyer.registerSessionReadyListener(() async {
 });
 ```
 
-`start({awaitResponse})` and `logEvent(..., {awaitResponse})` forward the public flag (default `false`) to both native RPC layers. `true` completes the `Future<void>` on native request success and `false` completes after RPC acceptance. `generateInviteLink(..., awaitResponse: ...)` and `validateAndLogInAppPurchase(..., awaitResponse: ...)` default to `true` and forward the flag to Android RPC. Android returns a synchronous long link for `generateInviteLink(awaitResponse: false)` and an empty validation-result map for `validateAndLogInAppPurchase(awaitResponse: false)`. The current iOS RPC 7.0.12 does not expose the flag for those two APIs and always awaits their callbacks.
+`start({awaitResponse})` and `logEvent(..., {awaitResponse})` forward the public flag (default `false`) to both native RPC layers. `true` completes the `Future<void>` on native request success and `false` completes after RPC acceptance. `generateInviteLink(..., awaitResponse: ...)` defaults to `true` and forwards the flag to Android RPC, which returns a synchronous long link for `false`; the current iOS RPC 7.0.12 does not expose the flag and always awaits the callback. `validateAndLogInAppPurchase` exposes no flag: Android RPC 7.0.12 removed its fire-and-forget branch and always awaits validation, matching iOS. Because the Android handler now always blocks on a latch, the platform adapter classifies that method as unconditionally blocking (`isBlockingRpc`) so it never runs inline on the platform thread.
 
 Listener registration can cause readiness or attribution work promptly, so application code must apply consent/identity settings that must affect the first Launch before registering the session-ready listener. The wrapper does not maintain an initialized/started state machine or reject out-of-order calls; it relies on the application to await required sequencing and on native RPC/SDK validation for unsupported states. Most configuration is native runtime state and must be re-applied after a cold process start.
 
@@ -285,7 +288,7 @@ Listener registration can cause readiness or attribution work promptly, so appli
 
 Timeouts belong to the native RPC layers, not Dart. They bound how long a Flutter request waits; they do not cancel native work, so a late native operation may still complete after Dart has received an error.
 
-| Awaited operation | Android RPC 7.0.1 | iOS RPC 7.0.12 |
+| Awaited operation | Android RPC 7.0.12 | iOS RPC 7.0.12 |
 | --- | ---: | ---: |
 | `start` | 5 s | 10 s |
 | `logEvent` | 5 s | 10 s |
@@ -304,7 +307,7 @@ The plugin is `ActivityAware` and registers a `NewIntentListener`.
 - On a warm-start intent, it calls `activity.setIntent(intent)` and returns `false`; it does not invoke `performDeepLinking` itself or claim exclusive handling.
 - The SDK 7 lifecycle integration inspects the activity's current intent on resume after `subscribeForDeepLink`, so keeping that intent current enables native UDL resolution.
 - There is no plugin-owned Android URL queue. If no activity is attached when the new intent arrives, the plugin does not retain it.
-- The `init` RPC uses the active `Activity` when one is attached so the Android SDK can inspect cold-start lifecycle state; application context is the fallback. Every other RPC runs on the process-scoped executor, which always uses application context.
+- The `init` and `collectDataFromLauncherActivity` RPCs use the active `Activity` when one is attached so the Android SDK can inspect cold-start lifecycle state and the launcher intent; application context is the fallback. Every other RPC resolves the handler's lazy application context. All of them go through the one process-scoped handler, which reads `AppsFlyerContextHolder` per call. With more than one engine attached to different `Activity` instances the holder answers with the most recently attached one, since that is the `Activity` the user is in; a single handler cannot tell which engine issued the call, so per-engine `Activity` precision is not available by design.
 
 ### 7.2 iOS
 
@@ -352,7 +355,7 @@ Important differences that affect design and testing:
 
 - `AFAndroidPurchaseDetails` sends `purchaseType`, `productId`, `purchaseToken`, and `additionalParameters`.
 - `AFIOSPurchaseDetails` sends the nested `product` and `transaction` objects expected by the iOS RPC.
-- `AppsFlyerSdk.validateAndLogInAppPurchase` appends the public `awaitResponse` value only to the Android payload; the iOS RPC does not expose that field.
+- `AppsFlyerSdk.validateAndLogInAppPurchase` sends no `awaitResponse` field: Android RPC 7.0.12 removed it and the iOS RPC never exposed it. Both always await validation.
 - Supplying a model for the wrong current platform throws `ArgumentError` before crossing the channel.
 
 ### 9.2 Purchase Connector
@@ -482,7 +485,8 @@ Keep platform-only behavior visibly gated in Dart and documented as such. Purcha
 | Android plugin | `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Channels, RPC dispatch, lifecycle forwarding, `af-events` sink adapter |
 | Android event relay | `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsFlyerEventBus.kt` | Process-scoped event buffering, FIFO replay, synchronized buffer/sink state (`drain()` calls the sink on the caller's thread — main-thread delivery is enforced in `AppsflyerSdkPlugin`), `EventSendResult` delivery (`DELIVERED` / `RETRY_LATER` / `DROP` in `drain()`), and sink attach/detach across engine recreation; production `createEventSink` uses `DELIVERED` and `RETRY_LATER` only |
 | Android RPC bridge owner | `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsFlyerRpcBridge.kt` | Process-scoped `AppsFlyerRpcHandler` behind `RpcRequestRunner`, so engine recreation reattaches to the configured native bridge |
-| Android dependencies | `android/build.gradle` | SDK/RPC BOM, optional connector source set, Android compatibility |
+| Android RPC context source | `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsFlyerContextHolder.kt` | Process-scoped `contextProvider` backing for the handler: most recently attached `Activity` when there is one, application context otherwise, with `Activity` attachments tracked per plugin instance so one engine's detach cannot drop another's |
+| Android dependencies | `android/build.gradle` | Pinned SDK/RPC versions, optional connector source set, Android compatibility |
 | iOS plugin | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | Channels, RPC dispatch, lifecycle forwarding, result unwrapping |
 | iOS attribution adapter | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsFlyerAttribution.swift` | Queues and forwards early URL/Universal Link RPC calls |
 | iOS RPC bridge access | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AFRPCBridge.swift` | Main-actor-checked access to the `@MainActor`-isolated `AppsFlyerRPCBridge` from the plugin's non-isolated contexts |

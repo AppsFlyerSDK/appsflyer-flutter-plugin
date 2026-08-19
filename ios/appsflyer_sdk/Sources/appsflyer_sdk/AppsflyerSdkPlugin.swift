@@ -552,7 +552,7 @@ extension AppsflyerSdkPlugin {
     // Spelled with the protocol's own Swift name (`open:`) because Objective-C selector
     // `application:openURL:options:` may only be provided by the declaration that satisfies the
     // `FlutterApplicationLifeCycleDelegate` requirement. The typed option keys are unwrapped back to
-    // their raw strings so the payload matches the NSDictionary the Objective-C code forwarded.
+    // their raw strings because the forwarded payload is keyed by those raw values.
     public func application(_ application: UIApplication,
                             open url: URL,
                             options: [UIApplication.OpenURLOptionsKey: Any]) -> Bool {

@@ -14,7 +14,7 @@ The legacy V1 in-app purchase validation APIs — `validateAndLogInAppAndroidPur
 
 There is no separate V1 result listener either; the legacy notification-based callback is tombstoned as F-038.
 
-**Replacement:** `validateAndLogInAppPurchase(AFPurchaseDetails purchase, {Map<String, String>? additionalParameters, bool awaitResponse = true})` (F-024) — a single cross-platform call that returns the validation result directly on its `Future` by default and throws `AppsFlyerException` on failure when the native RPC reports it.
+**Replacement:** `validateAndLogInAppPurchase(AFPurchaseDetails purchase, {Map<String, String>? additionalParameters})` (F-024) — a single cross-platform call that returns the validation result directly on its `Future` and throws `AppsFlyerException` on failure when the native RPC reports it.
 
 See [`doc/migration-guide.md`](/doc/migration-guide.md#removed-apis-and-their-replacements) and the [CHANGELOG](/CHANGELOG.md).
 

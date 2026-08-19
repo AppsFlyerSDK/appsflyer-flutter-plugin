@@ -29,7 +29,7 @@ AppsFlyerSdk.setUseReceiptValidationSandbox(bool sandbox)              [lib/src/
     → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
       → iOS: AppsflyerSdkPlugin.executeRpc → dispatchRpc:method:@"setUseReceiptValidationSandbox"
         → [AppsFlyerRPCBridge shared] executeJson:completion: → AFRPCRequestHandler → SDK
-      → Android: unknown method → AppsFlyerException (422 interim)
+      → Android: unknown method → AppsFlyerException (404)
   → successful per-call reply completes Future<void>
   → PlatformException is converted to AppsFlyerException
 
@@ -51,7 +51,7 @@ AppsFlyerSdk.setUseUninstallSandbox(bool sandbox)
 | | |
 |--|--|
 | **Input** | `sandbox` (`bool`), sent under the `sandbox` params key |
-| **Output** | `Future<void>` completes after RPC validation and the synchronous native SDK property assignment. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or request timeout. On a non-iOS platform the call reaches the Android RPC dispatcher and throws `AppsFlyerException` (code `422` interim until the native RPC fix lands). The effect is a stateful flag on the native iOS SDK that changes subsequent `validateAndLogInAppPurchase` (F-024) or uninstall-measurement behavior. |
+| **Output** | `Future<void>` completes after RPC validation and the synchronous native SDK property assignment. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or request timeout. On a non-iOS platform the call reaches the Android RPC dispatcher and throws `AppsFlyerException` (code `404` since Android RPC 7.0.12 reports unknown methods as `METHOD_NOT_FOUND`). The effect is a stateful flag on the native iOS SDK that changes subsequent `validateAndLogInAppPurchase` (F-024) or uninstall-measurement behavior. |
 
 ---
 

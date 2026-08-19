@@ -4,7 +4,7 @@ part of appsflyer_sdk;
 class AppsFlyerException implements Exception {
   /// The numeric error code reported by the native SDK, when available.
   ///
-  /// Native RPC failures use HTTP-style codes (`400`, `422`, `500`, …). When the
+  /// Native failures use HTTP-style codes (`400`, `404`, `422`, `500`, …). When the
   /// platform supplies a non-numeric code, [code] is `null` and [message]
   /// carries the failure text.
   final int? code;

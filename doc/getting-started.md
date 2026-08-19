@@ -204,7 +204,7 @@ a new one.
 ## Add-to-app and multiple Flutter engines
 
 The AppsFlyer **native SDK is process-scoped** — one `AppsFlyerLib` instance per
-app process. The Flutter plugin mirrors that on the native side: one RPC handler,
+app process. The Flutter plugin mirrors that on the native side: one bridge,
 one `af-events` delivery path, and one native listener slot per event type
 (`registerConversionListener`, `registerDeepLinkListener`, and so on all replace
 the previous registration).
