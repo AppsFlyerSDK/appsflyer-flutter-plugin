@@ -568,6 +568,9 @@ await appsFlyerSdk.setCurrencyCode("EUR");
 await appsFlyerSdk.setAdditionalData({"tenant": "eu"});
 await appsFlyerSdk.setConsentData(
   isUserSubjectToGDPR: false,
+  hasConsentForDataUsage: false,
+  hasConsentForAdsPersonalization: false,
+  hasConsentForAdStorage: false,
 );
 ```
 
@@ -664,7 +667,7 @@ await appsFlyerSdk.enableTCFDataCollection(true);
 ```
 ---
 <a id="setConsentDataV2"></a>
-**<a id="setConsentData"> `Future<void> setConsentData({bool? isUserSubjectToGDPR, bool? hasConsentForDataUsage, bool? hasConsentForAdsPersonalization, bool? hasConsentForAdStorage})`**
+**<a id="setConsentData"> `Future<void> setConsentData({required bool isUserSubjectToGDPR, required bool hasConsentForDataUsage, required bool hasConsentForAdsPersonalization, required bool hasConsentForAdStorage})`**
 
 ### Sets user consent preferences for GDPR and ad personalization
 
@@ -687,18 +690,14 @@ await appsflyerSdk.setConsentData(
 ```dart
 await appsflyerSdk.setConsentData(
   isUserSubjectToGDPR: false,
+  hasConsentForDataUsage: false,
+  hasConsentForAdsPersonalization: false,
+  hasConsentForAdStorage: false,
 );
 ```
 
 When GDPR applies, supply `hasConsentForDataUsage` and
-`hasConsentForAdsPersonalization` before the first `start()`. The iOS native
-layer rejects incomplete consent as `AppsFlyerException`; Android
-forwards the payload as supplied. The optional `hasConsentForAdStorage` value
-represents whether the user consented to ad-related storage.
-
-Every field is nullable, matching the native consent object. An omitted field is
-forwarded as unset rather than as `false`, so pass `isUserSubjectToGDPR`
-explicitly whenever you know the answer.
+`hasConsentForAdsPersonalization` before the first `start()`.
 
 To reflect consent in the conversion payload, configure either
 `enableTCFDataCollection` or `setConsentData` after initialization and
@@ -715,6 +714,7 @@ await appsflyerSdk.setConsentData(
   isUserSubjectToGDPR: true,
   hasConsentForDataUsage: true,
   hasConsentForAdsPersonalization: true,
+  hasConsentForAdStorage: true,
 );
 
 await appsflyerSdk.registerSessionReadyListener(() async {

@@ -44,7 +44,7 @@ On iOS, `AFRPCSetConsentDataRequest` rejects incomplete GDPR consent as a valida
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `setConsentData({bool? isUserSubjectToGDPR, bool? hasConsentForDataUsage, bool? hasConsentForAdsPersonalization, bool? hasConsentForAdStorage})` forwards the flat RPC payload |
+| `lib/src/appsflyer_sdk.dart` | `setConsentData({required bool isUserSubjectToGDPR, required bool hasConsentForDataUsage, required bool hasConsentForAdsPersonalization, required bool hasConsentForAdStorage})` |
 | `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Generic `executeRpc` → `dispatchRpc` routing `setConsentData` to `AppsFlyerRpcHandler` |
 | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | Generic `executeRpc` → `dispatchRpc` forwarding `setConsentData` to `AppsFlyerRPCBridge` |
 | `doc/consent-dma.md` | Integration guide for both the CMP-automatic (F-011) and manual (this feature) consent paths |
@@ -55,7 +55,7 @@ On iOS, `AFRPCSetConsentDataRequest` rejects incomplete GDPR consent as a valida
 ## Input / Output
 | | |
 |--|--|
-| **Input** | All four fields are `bool?`, where `null` means "not supplied", matching the nullable native `AppsFlyerConsent`. Android RPC 7.0.12 parses `isUserSubjectToGDPR` through `optNullableBoolean`, so an absent value is no longer coerced to `false`. Dart constructs all four keys and forwards them without pre-validation. Android's JSON conversion omits null-valued entries, while iOS transports them as JSON null. Both native request models interpret absent optional values accordingly. |
+| **Input** | All four fields are required `bool` values. |
 | **Output** | `Future<void>` completes after native RPC validation and the synchronous SDK setter invocation. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or request timeout. |
 
 ---
@@ -63,8 +63,7 @@ On iOS, `AFRPCSetConsentDataRequest` rejects incomplete GDPR consent as a valida
 ## Tests
 `test/appsflyer_sdk_test.dart` covers both the mapping and the forward-only behavior:
 - `maps cross-platform configuration and identity APIs` asserts that a fully populated call dispatches RPC method `setConsentData` with `{'isUserSubjectToGDPR': true, 'hasConsentForDataUsage': true, 'hasConsentForAdsPersonalization': false, 'hasConsentForAdStorage': true}`.
-- `setConsentData forwards incomplete GDPR payloads to the native layer` asserts that `setConsentData(isUserSubjectToGDPR: true)` dispatches the RPC with null consent fields instead of throwing in Dart.
-- `setConsentData sends an unset GDPR flag as null, not false` asserts that omitting `isUserSubjectToGDPR` forwards it as `null`.
+- `setConsentData forwards all four consent fields to the native layer` asserts that a fully populated call dispatches RPC method `setConsentData` with all four boolean fields.
 
 ---
 

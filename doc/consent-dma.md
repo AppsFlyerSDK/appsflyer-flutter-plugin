@@ -124,6 +124,7 @@ await appsflyerSdk.setConsentData(
   isUserSubjectToGDPR: true,
   hasConsentForDataUsage: true,
   hasConsentForAdsPersonalization: false,
+  hasConsentForAdStorage: true,
 );
 
 await appsflyerSdk.registerSessionReadyListener(() async {
@@ -136,8 +137,9 @@ await appsflyerSdk.registerSessionReadyListener(() async {
 If GDPR doesn't apply to the user perform the following:
 
 1. Initialize the SDK using `appsflyerSdk.init(...)`.
-2. Call `setConsentData` with `isUserSubjectToGDPR: false`. Omit the
-   GDPR-specific consent values.
+2. Call `setConsentData` with all four consent fields. When GDPR does not apply,
+   set `isUserSubjectToGDPR` to `false` and supply explicit values for the
+   remaining fields.
 3. Register the session-ready listener and call `appsflyerSdk.start()` from its
    callback.
 
@@ -150,6 +152,9 @@ await appsflyerSdk.init(
 
 await appsflyerSdk.setConsentData(
   isUserSubjectToGDPR: false,
+  hasConsentForDataUsage: false,
+  hasConsentForAdsPersonalization: false,
+  hasConsentForAdStorage: false,
 );
 
 await appsflyerSdk.registerSessionReadyListener(() async {
@@ -167,17 +172,16 @@ The `setConsentData` API provides structured consent data to the AppsFlyer SDK.
 It uses named parameters to distinguish GDPR and non-GDPR users:</br>
 ✅ **Simple and Intuitive:** Uses clear parameter names for each consent choice.</br>
 ✅ **Includes an Additional Consent Parameter:** Now supports hasConsentForAdStorage to give users more granular control over their data.</br>
-✅ **Enhanced Clarity**: Allows nullable boolean values, indicating when users have not provided consent instead of forcing defaults.</br>
 ✅ **Future-Proof:** Designed to be aligned with evolving privacy regulations and best practices.</br>
 
 📌 **API Reference**
 
 ```dart
 Future<void> setConsentData({
-  bool? isUserSubjectToGDPR,
-  bool? hasConsentForDataUsage,
-  bool? hasConsentForAdsPersonalization,
-  bool? hasConsentForAdStorage,
+  required bool isUserSubjectToGDPR,
+  required bool hasConsentForDataUsage,
+  required bool hasConsentForAdsPersonalization,
+  required bool hasConsentForAdStorage,
 })
 ```
 
@@ -185,14 +189,13 @@ Future<void> setConsentData({
 
 | Parameter | Type | Description |
 | -------- | -------- | -------- |
-| isUserSubjectToGDPR            | bool?     | Indicates if the user is subject to GDPR regulations. Omit it only when your app cannot determine this; an omitted value is forwarded as unset, not as `false`. |
-| hasConsentForDataUsage         | bool?     | Determines if the user consents to data usage. Supply when `isUserSubjectToGDPR` is `true`. |
-| hasConsentForAdsPersonalization | bool?     | Determines if the user consents to personalized ads. Supply when `isUserSubjectToGDPR` is `true`. |
-| hasConsentForAdStorage         | bool?     | Determines if the user consents to storing ad-related data. Optional. |
+| isUserSubjectToGDPR            | bool (required) | Indicates if the user is subject to GDPR regulations. |
+| hasConsentForDataUsage         | bool (required) | Determines if the user consents to data usage. |
+| hasConsentForAdsPersonalization | bool (required) | Determines if the user consents to personalized ads. |
+| hasConsentForAdStorage         | bool (required) | Determines if the user consents to storing ad-related data. |
 
-- When `isUserSubjectToGDPR` is `true`, supply both usage and ads-personalization values before the first `start()`. The iOS native layer validates them; the plugin forwards the payload without Dart-side checks.
-- When `isUserSubjectToGDPR` is `false`, omit the GDPR-specific values.
-- For an `hasConsentForAdStorage` value of `null`, the user has **not explicitly provided consent** for that option.
+- When `isUserSubjectToGDPR` is `true`, supply meaningful values for all four fields before the first `start()`.
+- When `isUserSubjectToGDPR` is `false`, still pass explicit `bool` values for the remaining fields.
 - These values should be collected from the user via an appropriate **UI or consent prompt** before calling this method.
 
 📌 **Example Usage**
@@ -208,7 +211,7 @@ await appsflyerSdk.setConsentData(
   isUserSubjectToGDPR: true,
   hasConsentForDataUsage: true,
   hasConsentForAdsPersonalization: false,
-  hasConsentForAdStorage: null,
+  hasConsentForAdStorage: true,
 );
 ```  
 

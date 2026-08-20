@@ -443,29 +443,21 @@ void main() {
   });
 
   group('models and platform payloads', () {
-    test('setConsentData forwards incomplete GDPR payloads to the native layer',
+    test('setConsentData forwards all four consent fields to the native layer',
         () async {
-      await androidSdk.setConsentData(isUserSubjectToGDPR: true);
+      await androidSdk.setConsentData(
+        isUserSubjectToGDPR: true,
+        hasConsentForDataUsage: true,
+        hasConsentForAdsPersonalization: false,
+        hasConsentForAdStorage: true,
+      );
 
       expect(rpcMethod, 'setConsentData');
       expect(rpcParams, {
         'isUserSubjectToGDPR': true,
-        'hasConsentForDataUsage': null,
-        'hasConsentForAdsPersonalization': null,
-        'hasConsentForAdStorage': null,
-      });
-    });
-
-    test('setConsentData sends an unset GDPR flag as null, not false',
-        () async {
-      await androidSdk.setConsentData(hasConsentForDataUsage: true);
-
-      expect(rpcMethod, 'setConsentData');
-      expect(rpcParams, {
-        'isUserSubjectToGDPR': null,
         'hasConsentForDataUsage': true,
-        'hasConsentForAdsPersonalization': null,
-        'hasConsentForAdStorage': null,
+        'hasConsentForAdsPersonalization': false,
+        'hasConsentForAdStorage': true,
       });
     });
 

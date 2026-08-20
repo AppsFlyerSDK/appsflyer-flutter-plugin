@@ -94,11 +94,7 @@ removed APIs, renames, lifecycle changes, and upgrade instructions.
 - `setSharingFilterForPartners(null)` and `setSharingFilterForPartners([])` are
   forwarded to the native layer instead of being ignored in Dart, and clear the
   filter on Android and iOS alike.
-- `setConsentData` no longer validates GDPR-required fields in Dart; incomplete
-  payloads are forwarded to the native layer (iOS rejects them today; Android
-  validation is tracked separately). Every field is nullable, including
-  `isUserSubjectToGDPR`, so an omitted value is forwarded as unset rather than
-  as `false`.
+- `setConsentData` no longer validates consent fields in Dart. All four parameters are required `bool` values.
 - Added Android-only `collectDataFromLauncherActivity()`, which collects the
   open/web referrer from the launcher activity's intent. Call it before
   `start()`. It requires an attached activity and otherwise fails with
