@@ -9,7 +9,7 @@ part of 'appsflyer_sdk.dart';
 SubscriptionPurchase _$SubscriptionPurchaseFromJson(
         Map<String, dynamic> json) =>
     SubscriptionPurchase(
-      json['acknowledgementState'] as String,
+      json['acknowledgementState'] as String?,
       json['canceledStateContext'] == null
           ? null
           : CanceledStateContext.fromJson(
@@ -18,10 +18,10 @@ SubscriptionPurchase _$SubscriptionPurchaseFromJson(
           ? null
           : ExternalAccountIdentifiers.fromJson(
               json['externalAccountIdentifiers'] as Map<String, dynamic>),
-      json['kind'] as String,
-      json['latestOrderId'] as String,
-      (json['lineItems'] as List<dynamic>)
-          .map((e) =>
+      json['kind'] as String?,
+      json['latestOrderId'] as String?,
+      (json['lineItems'] as List<dynamic>?)
+          ?.map((e) =>
               SubscriptionPurchaseLineItem.fromJson(e as Map<String, dynamic>))
           .toList(),
       json['linkedPurchaseToken'] as String?,
@@ -29,13 +29,13 @@ SubscriptionPurchase _$SubscriptionPurchaseFromJson(
           ? null
           : PausedStateContext.fromJson(
               json['pausedStateContext'] as Map<String, dynamic>),
-      json['regionCode'] as String,
-      json['startTime'] as String,
+      json['regionCode'] as String?,
+      json['startTime'] as String?,
       json['subscribeWithGoogleInfo'] == null
           ? null
           : SubscribeWithGoogleInfo.fromJson(
               json['subscribeWithGoogleInfo'] as Map<String, dynamic>),
-      json['subscriptionState'] as String,
+      json['subscriptionState'] as String?,
       json['testPurchase'] == null
           ? null
           : TestPurchase.fromJson(json['testPurchase'] as Map<String, dynamic>),
@@ -120,7 +120,7 @@ UserInitiatedCancellation _$UserInitiatedCancellationFromJson(
           ? null
           : CancelSurveyResult.fromJson(
               json['cancelSurveyResult'] as Map<String, dynamic>),
-      json['cancelTime'] as String,
+      json['cancelTime'] as String?,
     );
 
 Map<String, dynamic> _$UserInitiatedCancellationToJson(
@@ -132,8 +132,8 @@ Map<String, dynamic> _$UserInitiatedCancellationToJson(
 
 CancelSurveyResult _$CancelSurveyResultFromJson(Map<String, dynamic> json) =>
     CancelSurveyResult(
-      json['reason'] as String,
-      json['reasonUserInput'] as String,
+      json['reason'] as String?,
+      json['reasonUserInput'] as String?,
     );
 
 Map<String, dynamic> _$CancelSurveyResultToJson(CancelSurveyResult instance) =>
@@ -145,9 +145,9 @@ Map<String, dynamic> _$CancelSurveyResultToJson(CancelSurveyResult instance) =>
 ExternalAccountIdentifiers _$ExternalAccountIdentifiersFromJson(
         Map<String, dynamic> json) =>
     ExternalAccountIdentifiers(
-      json['externalAccountId'] as String,
-      json['obfuscatedExternalAccountId'] as String,
-      json['obfuscatedExternalProfileId'] as String,
+      json['externalAccountId'] as String?,
+      json['obfuscatedExternalAccountId'] as String?,
+      json['obfuscatedExternalProfileId'] as String?,
     );
 
 Map<String, dynamic> _$ExternalAccountIdentifiersToJson(
@@ -169,14 +169,14 @@ SubscriptionPurchaseLineItem _$SubscriptionPurchaseLineItemFromJson(
           ? null
           : DeferredItemReplacement.fromJson(
               json['deferredItemReplacement'] as Map<String, dynamic>),
-      json['expiryTime'] as String,
+      json['expiryTime'] as String?,
       json['offerDetails'] == null
           ? null
           : OfferDetails.fromJson(json['offerDetails'] as Map<String, dynamic>),
       json['prepaidPlan'] == null
           ? null
           : PrepaidPlan.fromJson(json['prepaidPlan'] as Map<String, dynamic>),
-      json['productId'] as String,
+      json['productId'] as String?,
     );
 
 Map<String, dynamic> _$SubscriptionPurchaseLineItemToJson(
@@ -192,7 +192,7 @@ Map<String, dynamic> _$SubscriptionPurchaseLineItemToJson(
 
 OfferDetails _$OfferDetailsFromJson(Map<String, dynamic> json) => OfferDetails(
       (json['offerTags'] as List<dynamic>?)?.map((e) => e as String).toList(),
-      json['basePlanId'] as String,
+      json['basePlanId'] as String?,
       json['offerId'] as String?,
     );
 
@@ -221,12 +221,12 @@ Map<String, dynamic> _$AutoRenewingPlanToJson(AutoRenewingPlan instance) =>
 SubscriptionItemPriceChangeDetails _$SubscriptionItemPriceChangeDetailsFromJson(
         Map<String, dynamic> json) =>
     SubscriptionItemPriceChangeDetails(
-      json['expectedNewPriceChargeTime'] as String,
+      json['expectedNewPriceChargeTime'] as String?,
       json['newPrice'] == null
           ? null
           : Money.fromJson(json['newPrice'] as Map<String, dynamic>),
-      json['priceChangeMode'] as String,
-      json['priceChangeState'] as String,
+      json['priceChangeMode'] as String?,
+      json['priceChangeState'] as String?,
     );
 
 Map<String, dynamic> _$SubscriptionItemPriceChangeDetailsToJson(
@@ -239,9 +239,9 @@ Map<String, dynamic> _$SubscriptionItemPriceChangeDetailsToJson(
     };
 
 Money _$MoneyFromJson(Map<String, dynamic> json) => Money(
-      json['currencyCode'] as String,
-      (json['nanos'] as num).toInt(),
-      (json['units'] as num).toInt(),
+      json['currencyCode'] as String?,
+      (json['nanos'] as num?)?.toInt(),
+      (json['units'] as num?)?.toInt(),
     );
 
 Map<String, dynamic> _$MoneyToJson(Money instance) => <String, dynamic>{
@@ -253,7 +253,7 @@ Map<String, dynamic> _$MoneyToJson(Money instance) => <String, dynamic>{
 DeferredItemReplacement _$DeferredItemReplacementFromJson(
         Map<String, dynamic> json) =>
     DeferredItemReplacement(
-      json['productId'] as String,
+      json['productId'] as String?,
     );
 
 Map<String, dynamic> _$DeferredItemReplacementToJson(
@@ -273,7 +273,7 @@ Map<String, dynamic> _$PrepaidPlanToJson(PrepaidPlan instance) =>
 
 PausedStateContext _$PausedStateContextFromJson(Map<String, dynamic> json) =>
     PausedStateContext(
-      json['autoResumeTime'] as String,
+      json['autoResumeTime'] as String?,
     );
 
 Map<String, dynamic> _$PausedStateContextToJson(PausedStateContext instance) =>
@@ -284,11 +284,11 @@ Map<String, dynamic> _$PausedStateContextToJson(PausedStateContext instance) =>
 SubscribeWithGoogleInfo _$SubscribeWithGoogleInfoFromJson(
         Map<String, dynamic> json) =>
     SubscribeWithGoogleInfo(
-      json['emailAddress'] as String,
-      json['familyName'] as String,
-      json['givenName'] as String,
-      json['profileId'] as String,
-      json['profileName'] as String,
+      json['emailAddress'] as String?,
+      json['familyName'] as String?,
+      json['givenName'] as String?,
+      json['profileId'] as String?,
+      json['profileName'] as String?,
     );
 
 Map<String, dynamic> _$SubscribeWithGoogleInfoToJson(
@@ -346,20 +346,20 @@ Map<String, dynamic> _$InAppPurchaseValidationResultMapToJson(
 
 ProductPurchase _$ProductPurchaseFromJson(Map<String, dynamic> json) =>
     ProductPurchase(
-      json['kind'] as String,
-      json['purchaseTimeMillis'] as String,
-      (json['purchaseState'] as num).toInt(),
-      (json['consumptionState'] as num).toInt(),
-      json['developerPayload'] as String,
-      json['orderId'] as String,
-      (json['purchaseType'] as num).toInt(),
-      (json['acknowledgementState'] as num).toInt(),
-      json['purchaseToken'] as String,
-      json['productId'] as String,
-      (json['quantity'] as num).toInt(),
-      json['obfuscatedExternalAccountId'] as String,
-      json['obfuscatedExternalProfileId'] as String,
-      json['regionCode'] as String,
+      json['kind'] as String?,
+      json['purchaseTimeMillis'] as String?,
+      (json['purchaseState'] as num?)?.toInt(),
+      (json['consumptionState'] as num?)?.toInt(),
+      json['developerPayload'] as String?,
+      json['orderId'] as String?,
+      (json['purchaseType'] as num?)?.toInt(),
+      (json['acknowledgementState'] as num?)?.toInt(),
+      json['purchaseToken'] as String?,
+      json['productId'] as String?,
+      (json['quantity'] as num?)?.toInt(),
+      json['obfuscatedExternalAccountId'] as String?,
+      json['obfuscatedExternalProfileId'] as String?,
+      json['regionCode'] as String?,
     );
 
 Map<String, dynamic> _$ProductPurchaseToJson(ProductPurchase instance) =>
@@ -420,8 +420,8 @@ Map<String, dynamic> _$SubscriptionValidationResultMapToJson(
 ValidationFailureData _$ValidationFailureDataFromJson(
         Map<String, dynamic> json) =>
     ValidationFailureData(
-      (json['status'] as num).toInt(),
-      json['description'] as String,
+      (json['status'] as num?)?.toInt(),
+      json['description'] as String?,
     );
 
 Map<String, dynamic> _$ValidationFailureDataToJson(
@@ -432,9 +432,9 @@ Map<String, dynamic> _$ValidationFailureDataToJson(
     };
 
 JVMThrowable _$JVMThrowableFromJson(Map<String, dynamic> json) => JVMThrowable(
-      json['type'] as String,
-      json['message'] as String,
-      json['stacktrace'] as String,
+      json['type'] as String?,
+      json['message'] as String?,
+      json['stacktrace'] as String?,
       json['cause'] == null
           ? null
           : JVMThrowable.fromJson(json['cause'] as Map<String, dynamic>),
@@ -449,9 +449,9 @@ Map<String, dynamic> _$JVMThrowableToJson(JVMThrowable instance) =>
     };
 
 IosError _$IosErrorFromJson(Map<String, dynamic> json) => IosError(
-      json['localizedDescription'] as String,
-      json['domain'] as String,
-      (json['code'] as num).toInt(),
+      json['localizedDescription'] as String?,
+      json['domain'] as String?,
+      (json['code'] as num?)?.toInt(),
     );
 
 Map<String, dynamic> _$IosErrorToJson(IosError instance) => <String, dynamic>{

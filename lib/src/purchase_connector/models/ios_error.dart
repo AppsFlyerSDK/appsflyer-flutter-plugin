@@ -2,9 +2,9 @@ part of appsflyer_sdk;
 
 @JsonSerializable()
 class IosError {
-  String localizedDescription;
-  String domain;
-  int code;
+  String? localizedDescription;
+  String? domain;
+  int? code;
 
   IosError(this.localizedDescription, this.domain, this.code);
 

@@ -277,6 +277,43 @@ Connector. See [Purchase Connector](purchase-connector.md) for setup details.
 
 ---
 
+## Purchase Connector validation models are nullable
+
+Every field of the validation-result models is nullable in `7.0.1`:
+`ProductPurchase`, `SubscriptionPurchase` and the types it nests,
+`ValidationFailureData`, `JVMThrowable` and `IosError`. Only `success` on the
+two result classes and the `result` maps stay non-nullable.
+
+These models mirror Google Play Developer API resources. The API documents
+several fields as conditionally present — `purchaseToken` and `productId` as
+"May not be present", `quantity` as "If not present, the quantity is 1",
+`purchaseType` as "only set if this purchase was not made using the standard
+in-app billing flow", and the obfuscated identifiers as "Only present if
+specified ... when the purchase was made" — and it omits any remaining field
+that is left at its default value. Declaring those fields non-nullable made a
+payload that omits one unparseable, and the resulting error was raised inside a
+platform-message handler, where it reached neither `onResponse` nor `onFailure`
+and could not be caught by the app.
+
+Update any code that reads a field directly:
+
+```dart
+// Before
+final id = result['token']!.productPurchase!.orderId;
+
+// After
+final id = result['token']?.productPurchase?.orderId;
+if (id == null) {
+  // Play omitted the order id — free and test purchases have none.
+}
+```
+
+`onFailure` now also fires when a payload cannot be parsed at all. The `result`
+string in that case names the callback and the error type; it never contains
+the payload, which holds purchase and account identifiers.
+
+---
+
 ## Android: remove legacy install-referrer receivers
 
 SDK 7 removed `SingleInstallBroadcastReceiver` and `MultipleInstallBroadcastReceiver`.

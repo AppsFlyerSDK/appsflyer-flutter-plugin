@@ -150,7 +150,23 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
   }
 
   /// Method call handler for different operations. Called by the _methodChannel.
+  ///
+  /// Every branch below parses a payload the native layer built from a Google
+  /// Play or StoreKit response. A parse failure must never escape: this is an
+  /// async platform-message handler, so a throw here becomes an unhandled
+  /// asynchronous error that no `try`/`catch` in the host app can intercept,
+  /// and the app is left with neither a success nor a failure callback. Parse
+  /// failures are routed to the listener's `onFailure` instead — see
+  /// [_reportParseFailure].
   Future<void> _methodCallHandler(MethodCall call) async {
+    try {
+      _dispatchMethodCall(call);
+    } catch (error) {
+      _reportParseFailure(call.method, error);
+    }
+  }
+
+  void _dispatchMethodCall(MethodCall call) {
     // Native may send either a JSON string or an already-decoded Map; handle both.
     final dynamic rawArgs = call.arguments;
     final dynamic callMap = rawArgs is String ? jsonDecode(rawArgs) : rawArgs;
@@ -233,6 +249,35 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
     }
   }
 
+  /// Routes a payload that could not be parsed to the failure callback of the
+  /// listener the call was addressed to, so a malformed payload surfaces as a
+  /// reported failure rather than as silence.
+  ///
+  /// The message carries the callback name and the error type only. The payload
+  /// itself is never interpolated: it holds purchase and account identifiers,
+  /// and this string reaches the host app's log in release builds.
+  void _reportParseFailure(String method, Object error) {
+    final message =
+        'PurchaseConnector: could not parse the payload for $method '
+        '(${error.runtimeType})';
+    debugPrint(message);
+    switch (method) {
+      case _AppsFlyerConstants
+            .SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_RESPONSE:
+      case _AppsFlyerConstants
+            .SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_FAILURE:
+        _arsOnFailure?.call(message, null);
+        break;
+      case _AppsFlyerConstants.IN_APP_VALIDATION_RESULT_LISTENER_ON_RESPONSE:
+      case _AppsFlyerConstants.IN_APP_VALIDATION_RESULT_LISTENER_ON_FAILURE:
+        _viapOnFailure?.call(message, null);
+        break;
+      case _AppsFlyerConstants.DID_RECEIVE_PURCHASE_REVENUE_VALIDATION_INFO:
+        _didReceivePurchaseRevenueValidationInfo?.call(null, null);
+        break;
+    }
+  }
+
   /// Handles the response for a validation result listener.
   ///
   /// [callbackData] is the callback data expected in the form of a map.
@@ -252,7 +297,11 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
   /// [onFailureCallback] is a function to be called on failure.
   void _handleValidationResultListenerOnFailure(
       dynamic callbackData, OnFailure? onFailureCallback) {
-    var resultMsg = callbackData[_AppsFlyerConstants.RESULT] as String;
+    // A failure payload that is itself malformed must still reach the app: the
+    // native layer is already reporting an error, so losing this call would
+    // hide the very failure it announces.
+    var resultMsg = callbackData[_AppsFlyerConstants.RESULT] as String? ??
+        'PurchaseConnector: validation failed, no description supplied';
     var errorMap =
         callbackData[_AppsFlyerConstants.ERROR] as Map<String, dynamic>?;
     var error = errorMap != null ? JVMThrowable.fromJson(errorMap) : null;

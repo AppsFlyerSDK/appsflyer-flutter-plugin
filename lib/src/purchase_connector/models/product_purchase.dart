@@ -2,20 +2,20 @@ part of appsflyer_sdk;
 
 @JsonSerializable()
 class ProductPurchase {
-  String kind;
-  String purchaseTimeMillis;
-  int purchaseState;
-  int consumptionState;
-  String developerPayload;
-  String orderId;
-  int purchaseType;
-  int acknowledgementState;
-  String purchaseToken;
-  String productId;
-  int quantity;
-  String obfuscatedExternalAccountId;
-  String obfuscatedExternalProfileId;
-  String regionCode;
+  String? kind;
+  String? purchaseTimeMillis;
+  int? purchaseState;
+  int? consumptionState;
+  String? developerPayload;
+  String? orderId;
+  int? purchaseType;
+  int? acknowledgementState;
+  String? purchaseToken;
+  String? productId;
+  int? quantity;
+  String? obfuscatedExternalAccountId;
+  String? obfuscatedExternalProfileId;
+  String? regionCode;
 
   ProductPurchase(
       this.kind,

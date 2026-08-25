@@ -306,7 +306,14 @@ By splitting the callbacks, you can ensure platform-specific responses and tailo
 | Listener Method               | Description  |
 |-------------------------------|--------------|
 | `onResponse(result: Result?)` | Invoked when we got 200 OK response from the server (INVALID purchase is considered to be successful response and will be returned to this callback) |
-|`onFailure(result: String, error: Throwable?)`|Invoked when we got some network exception or non 200/OK response from the server.|
+|`onFailure(result: String, error: Throwable?)`|Invoked when we got some network exception or non 200/OK response from the server, or when a validation payload cannot be parsed.|
+
+Every field of the validation-result models is nullable, because the Google Play
+Developer API omits any field that is absent or left at its default value. Read
+them with `?.` rather than `!`. If a payload cannot be parsed at all, `onFailure`
+is invoked with a `result` string naming the callback and the error type — the
+payload itself is never included, since it carries purchase and account
+identifiers.
 
 ### <a id="ars-validation-callbacks"> Android - Subscription Validation Result Listener
 

@@ -2,8 +2,8 @@ part of appsflyer_sdk;
 
 @JsonSerializable()
 class ValidationFailureData {
-  int status;
-  String description;
+  int? status;
+  String? description;
 
   ValidationFailureData(this.status, this.description);
 
