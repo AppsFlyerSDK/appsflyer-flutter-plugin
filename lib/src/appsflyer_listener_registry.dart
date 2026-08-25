@@ -136,7 +136,7 @@ class _AppsFlyerListenerRegistry {
       return;
     }
     if (_everRegistered.contains(event.name)) {
-      debugPrint(
+      _log(
         'AppsFlyer: no listener registered for ${event.name}; event dropped.',
       );
       return;
@@ -147,7 +147,7 @@ class _AppsFlyerListenerRegistry {
   void _hold(_AppsFlyerEvent event) {
     if (_pending.length >= _maxPendingEvents) {
       final dropped = _pending.removeAt(0);
-      debugPrint(
+      _log(
         'AppsFlyer: pending event buffer full ($_maxPendingEvents); '
         'dropped the oldest held ${dropped.name}.',
       );
@@ -181,7 +181,7 @@ class _AppsFlyerListenerRegistry {
     try {
       callback(event);
     } catch (error, stack) {
-      debugPrint('AppsFlyer: listener for ${event.name} threw: $error\n$stack');
+      _log('AppsFlyer: listener for ${event.name} threw: $error\n$stack');
     }
   }
 }

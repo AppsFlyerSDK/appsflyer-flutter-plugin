@@ -172,6 +172,11 @@ replacement table.
 
 **Fixed**
 
+- `enableDebug` now controls the plugin's own diagnostics as well as native SDK
+  logging. The plugin printed through `debugPrint`, which Flutter does not
+  compile out of release builds, so those lines reached production logs whatever
+  the app had passed to `enableDebug`. Release builds are quiet by default and
+  print again after `enableDebug(true)`; debug builds always print.
 - Calling the SDK from a background isolate — a push handler, a `workmanager`
   task, `compute()` — now throws a catchable `AppsFlyerException` naming the
   cause. Platform channels are bound to the main isolate, and the underlying

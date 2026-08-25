@@ -107,7 +107,7 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
       );
       _instance = _PurchaseConnectorImpl._internal(methodChannel, config);
     } else if (_instance != null && config != null) {
-      debugPrint(_AppsFlyerConstants.RE_CONFIGURE_ERROR_MSG);
+      _log(_AppsFlyerConstants.RE_CONFIGURE_ERROR_MSG);
     }
 
     return _instance!;
@@ -204,7 +204,7 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
       default:
         // Unknown callback name — log instead of throwing inside a platform
         // message handler (an uncaught throw here becomes an unhandled async error).
-        debugPrint("PurchaseConnector: unknown method ${call.method}");
+        _log("PurchaseConnector: unknown method ${call.method}");
     }
   }
 
@@ -275,7 +275,7 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
     final message =
         'PurchaseConnector: could not parse the payload for $method '
         '(${error.runtimeType})';
-    debugPrint(message);
+    _log(message);
     switch (method) {
       case _AppsFlyerConstants
           .SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_RESPONSE:

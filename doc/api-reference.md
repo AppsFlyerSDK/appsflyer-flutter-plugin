@@ -277,9 +277,14 @@ their corresponding registration methods.
 ---
 **<a id="enableDebug"> `Future<void> enableDebug(bool enabled)`**
 
-Enables or disables native SDK debug logging. Enable it only for development
-and troubleshooting. May be called before [`init`](#init); call before
-[`start`](#start) so the first session uses the selected setting.
+Enables or disables debug logging, in the native SDK and in the plugin alike.
+Enable it only for development and troubleshooting. May be called before
+[`init`](#init); call before [`start`](#start) so the first session uses the
+selected setting.
+
+In release builds the plugin's own diagnostics are printed only after
+`enableDebug(true)`. Debug builds always print them. The setting applies to the
+isolate that calls it.
 
 ```dart
 await appsflyerSdk.enableDebug(true);

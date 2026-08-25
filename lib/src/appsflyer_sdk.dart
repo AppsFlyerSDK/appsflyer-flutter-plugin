@@ -15,6 +15,23 @@ typedef OnDeepLinkReceived = void Function(DeepLinkResult result);
 /// Called once per foreground cycle when the SDK is ready to send a session.
 typedef OnSessionReady = void Function();
 
+/// Whether the plugin's own diagnostics are printed.
+///
+/// Debug builds print them. Release builds stay quiet until the app opts in
+/// through [AppsFlyerSdk.enableDebug], the same switch that turns on native SDK
+/// logging, so both layers answer to one setting.
+bool _pluginLoggingEnabled = false;
+
+/// Prints [message] when plugin logging is on.
+///
+/// `debugPrint` itself is not compiled out of release builds, so every call site
+/// goes through here instead.
+void _log(String message) {
+  if (kDebugMode || _pluginLoggingEnabled) {
+    debugPrint(message);
+  }
+}
+
 /// Throws [AppsFlyerException] when this isolate cannot reach the platform
 /// channels.
 ///
@@ -112,7 +129,7 @@ class AppsFlyerSdk {
     _eventSubscription ??= _eventChannel.receiveBroadcastStream().listen(
       _handleNativeEvent,
       onError: (Object error, StackTrace stackTrace) {
-        debugPrint('AppsFlyer: event stream error (${_describeError(error)}).');
+        _log('AppsFlyer: event stream error (${_describeError(error)}).');
       },
     );
   }
@@ -127,7 +144,7 @@ class AppsFlyerSdk {
       }
       event = _AppsFlyerEvent.fromNative(value);
     } catch (error) {
-      debugPrint(
+      _log(
         'AppsFlyer: dropped malformed native event (${_describeError(error)}).',
       );
       return;
@@ -364,11 +381,15 @@ class AppsFlyerSdk {
     return _invokeVoidRpc('collectDataFromLauncherActivity');
   }
 
-  /// Enables or disables SDK debug logging.
+  /// Enables or disables SDK debug logging, native and plugin alike.
   ///
   /// May be called before [init]. Call before [start] so the first session
   /// uses the selected setting.
+  ///
+  /// The plugin's own diagnostics follow this setting in release builds; debug
+  /// builds always print them. The setting applies to the calling isolate.
   Future<void> enableDebug(bool enabled) {
+    _pluginLoggingEnabled = enabled;
     return _invokeVoidRpc('isDebug', {'isDebug': enabled});
   }
 
