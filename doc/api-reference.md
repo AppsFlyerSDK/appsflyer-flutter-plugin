@@ -25,7 +25,7 @@
 - [registerConversionListener](#registerConversionListener)
 - [unregisterConversionListener](#unregisterConversionListener)
 - [registerDeepLinkListener](#registerDeepLinkListener)
-- [unregisterDeeplinkListener](#unregisterDeeplinkListener)
+- [unregisterDeepLinkListener](#unregisterDeepLinkListener)
 - [registerSessionReadyListener](#registerSessionReadyListener)
 - [unregisterSessionReadyListener](#unregisterSessionReadyListener)
 - [isSessionReady](#isSessionReady)
@@ -226,11 +226,12 @@ not forward an `is_deferred` flag on the click event, so it always returns
 Contains an optional numeric error code and message. Native failures can use
 HTTP-style codes (`400`, `404`, `422`, `500`, …). When the platform supplies a
 non-numeric code, `code` is `null` and [message] carries the failure text.
-Plugin transport failures such as `SERIALIZATION_ERROR` and `RPC_PARSE_ERROR` use
-non-numeric codes, so [code] is `null`. On iOS, `SERIALIZATION_ERROR` is raised
-when a request payload cannot be encoded as JSON (for example non-finite
-`double` values in `eventValues`). Android does not use that code today — the
-same payload may surface as `UNEXPECTED_ERROR` or a numeric native error instead.
+Plugin transport failures such as `SERIALIZATION_ERROR` and malformed native
+response payloads use non-numeric codes, so [code] is `null`. On iOS,
+`SERIALIZATION_ERROR` is raised when a request payload cannot be encoded as JSON
+(for example non-finite `double` values in `eventValues`). Android does not use
+that code today — the same payload may surface as `UNEXPECTED_ERROR` or a
+numeric native error instead.
 
 Calling a platform-only API on the wrong platform throws
 [`AppsFlyerException`](#AppsFlyerException). The plugin forwards every call to
@@ -291,15 +292,15 @@ await appsflyerSdk.setLogLevel(AFLogLevel.debug);
 ```
 
 ---
-**<a id="registerConversionListener"> `Future<void> registerConversionListener({required OnConversionDataSuccess onSuccess, OnConversionDataFailure? onFailure})`**
+**<a id="registerConversionListener"> `Future<void> registerConversionListener({OnConversionDataSuccess? onConversionDataSuccess, OnConversionDataFailure? onConversionDataFail})`**
 
 Registers the native conversion-data listener and the callbacks that receive its
 results.
 
 | Parameter | Type | Description |
 | --------- | ---- | ----------- |
-| `onSuccess` | `void Function(Map<String, dynamic> data)` | Required. Receives the conversion data (GCD). |
-| `onFailure` | `void Function(Map<String, dynamic> error)?` | Optional. Receives conversion-data retrieval failures. |
+| `onConversionDataSuccess` | `void Function(Map<String, dynamic> data)?` | Optional. Receives the conversion data (GCD). |
+| `onConversionDataFail` | `void Function(Map<String, dynamic> error)?` | Optional. Receives conversion-data retrieval failures. |
 
 <a id="onInstallConversionData"></a>
 <a id="onConversionDataSuccess"></a>
@@ -307,10 +308,10 @@ results.
 
 ```dart
 await appsflyerSdk.registerConversionListener(
-  onSuccess: (data) {
+  onConversionDataSuccess: (data) {
     print("conversion data: $data");
   },
-  onFailure: (error) {
+  onConversionDataFail: (error) {
     print("conversion data failed: $error");
   },
 );
@@ -321,7 +322,7 @@ The plugin holds **one callback per event** and replaces it when
 is no stream to subscribe to, so one native event can never be delivered to two
 places in your app.
 
-`onFailure` is independent of the registration result: this call can succeed
+`onConversionDataFail` is independent of the registration result: this call can succeed
 while the native SDK still fails to retrieve conversion data. The failure payload
 shape differs by platform — Android reports `{"error": String}` with no error
 code; iOS reports `{"error": String, "code": int}`. Android also exposes
@@ -343,20 +344,20 @@ await appsflyerSdk.unregisterConversionListener();
 ```
 
 ---
-**<a id="registerDeepLinkListener"> `Future<void> registerDeepLinkListener(OnDeepLinkReceived onDeepLink)`**
+**<a id="registerDeepLinkListener"> `Future<void> registerDeepLinkListener({OnDeepLinkReceived? onDeepLinking})`**
 
 Registers the native Unified Deep Linking listener and the callback that receives
 its results.
 
 | Parameter | Type | Description |
 | --------- | ---- | ----------- |
-| `onDeepLink` | `void Function(DeepLinkResult result)` | Required. Receives every resolved deep link, deferred or direct. |
+| `onDeepLinking` | `void Function(DeepLinkResult result)?` | Optional. Receives every resolved deep link, deferred or direct. Omit it to register the native listener without a handler. |
 
 <a id="onDeepLinking"></a>
 <a id="onDeepLinkReceived"></a>
 
 ```dart
-await appsflyerSdk.registerDeepLinkListener((result) {
+await appsflyerSdk.registerDeepLinkListener(onDeepLinking: (result) {
   print("result: $result");
 });
 ```
@@ -371,7 +372,7 @@ platforms.
 Calling this again replaces the callback.
 
 ---
-**<a id="unregisterDeeplinkListener"> `Future<void> unregisterDeeplinkListener()`** — **Android only**
+**<a id="unregisterDeepLinkListener"> `Future<void> unregisterDeepLinkListener()`** — **Android only**
 
 Requests that Android stop forwarding Unified Deep Linking events and drops the
 callback passed to `registerDeepLinkListener()`. In the
@@ -381,7 +382,7 @@ rely on this method to disable deep-link handling. On iOS it throws an
 call leaves the callback in place, so nothing changes.
 
 ```dart
-await appsflyerSdk.unregisterDeeplinkListener();
+await appsflyerSdk.unregisterDeepLinkListener();
 ```
 
 ---
@@ -634,7 +635,7 @@ _Example:_
 await widget.appsFlyerSdk.stop(true);
 ```
 ---
-**<a id="isStopped"> `Future<bool> isStopped()`** — **Android only**
+**<a id="isStopped"> `Future<bool> isStopped()`**
 
 Returns whether the SDK is currently stopped (see `stop`).
 
@@ -667,7 +668,7 @@ await appsFlyerSdk.enableTCFDataCollection(true);
 ```
 ---
 <a id="setConsentDataV2"></a>
-**<a id="setConsentData"> `Future<void> setConsentData({required bool isUserSubjectToGDPR, required bool hasConsentForDataUsage, required bool hasConsentForAdsPersonalization, required bool hasConsentForAdStorage})`**
+**<a id="setConsentData"> `Future<void> setConsentData({required bool isUserSubjectToGDPR, bool? hasConsentForDataUsage, bool? hasConsentForAdsPersonalization, bool? hasConsentForAdStorage})`**
 
 ### Sets user consent preferences for GDPR and ad personalization
 
@@ -690,11 +691,10 @@ await appsflyerSdk.setConsentData(
 ```dart
 await appsflyerSdk.setConsentData(
   isUserSubjectToGDPR: false,
-  hasConsentForDataUsage: false,
-  hasConsentForAdsPersonalization: false,
-  hasConsentForAdStorage: false,
 );
 ```
+
+The three consent fields may be omitted or `null` when GDPR does not apply.
 
 When GDPR applies, supply `hasConsentForDataUsage` and
 `hasConsentForAdsPersonalization` before the first `start()`.
@@ -768,7 +768,9 @@ _Example:_
 await appsFlyerSdk.setHost("pref", "my-host");
 ```
 ---
-**<a id="getHostName"> `Future<String> getHostName()`** — **Android only**
+**<a id="getHostName"> `Future<String> getHostName()`**
+
+Returns an empty string on iOS when `setHost` has not been called.
 
 _Example:_
 ```dart
@@ -777,7 +779,9 @@ appsFlyerSdk.getHostName().then((name) {
        });
 ```
 ---
-**<a id="getHostPrefix"> `Future<String> getHostPrefix()`** — **Android only**
+**<a id="getHostPrefix"> `Future<String> getHostPrefix()`**
+
+Returns an empty string on iOS when `setHost` has not been called.
 
 _Example:_
 ```dart
@@ -1033,7 +1037,7 @@ to find the OneLink URL in your push payload.
 await appsFlyerSdk.addPushNotificationDeepLinkPath(
   ["deeply", "nested", "deep_link"],
 );
-await appsFlyerSdk.registerDeepLinkListener((result) {
+await appsFlyerSdk.registerDeepLinkListener(onDeepLinking: (result) {
   // Handle deep-link navigation here.
 });
 await appsFlyerSdk.init(
@@ -1083,7 +1087,8 @@ Future<void> initializeAppsFlyer() async {
   );
 
   // STEP 2: Enable native deep-link events and handle them. Also before init().
-  await appsFlyerSdk.registerDeepLinkListener((DeepLinkResult result) {
+  await appsFlyerSdk.registerDeepLinkListener(
+      onDeepLinking: (DeepLinkResult result) {
     if (result.status == DeepLinkStatus.found) {
       print("Deep link found: ${result.deepLink?.deepLinkValue}");
       // Handle deep-link navigation here.
@@ -1632,7 +1637,8 @@ link is always resolved without an extra managed session.
 Future<void> configureAppsFlyer() async {
   final appsflyerSdk = AppsFlyerSdk.instance;
 
-  await appsflyerSdk.registerDeepLinkListener((DeepLinkResult result) {
+  await appsflyerSdk.registerDeepLinkListener(
+      onDeepLinking: (DeepLinkResult result) {
     switch (result.status) {
       case DeepLinkStatus.found:
         print(result.deepLink);
@@ -1656,7 +1662,7 @@ Future<void> configureAppsFlyer() async {
   );
 
   await appsflyerSdk.registerConversionListener(
-    onSuccess: (data) {
+    onConversionDataSuccess: (data) {
       print("conversion data: $data");
     },
   );

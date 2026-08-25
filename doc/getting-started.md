@@ -42,12 +42,12 @@ final AppsFlyerSdk appsflyerSdk = AppsFlyerSdk.instance;
 
 ## <a id="deep-link-listener-before-init"></a> 2. Register the deep-link listener
 
-`Future<void> registerDeepLinkListener(OnDeepLinkReceived onDeepLink)`
+`Future<void> registerDeepLinkListener({OnDeepLinkReceived? onDeepLinking})`
 
 If your app handles deep links, register this listener **before** `init(...)`:
 
 ```dart
-await appsflyerSdk.registerDeepLinkListener((result) {
+await appsflyerSdk.registerDeepLinkListener(onDeepLinking: (result) {
   print('Deep-link result: $result');
 });
 ```
@@ -127,10 +127,10 @@ listener last:
 ```dart
 // Optional: conversion data (GCD).
 await appsflyerSdk.registerConversionListener(
-  onSuccess: (data) {
+  onConversionDataSuccess: (data) {
     print('Conversion data: $data');
   },
-  onFailure: (error) {
+  onConversionDataFail: (error) {
     print('Conversion data error: $error');
   },
 );
@@ -148,8 +148,8 @@ await appsflyerSdk.registerSessionReadyListener(() async {
 
 | Registration method | Event |
 |---|---|
-| `registerConversionListener(onSuccess:, onFailure:)` | Enables [GCD](https://dev.appsflyer.com/hc/docs/conversion-data) success and failure events. |
-| `registerDeepLinkListener(onDeepLink)` | Enables [UDL](https://dev.appsflyer.com/hc/docs/unified-deep-linking-udl) results. Register it before `init(...)` — see [step 2](#deep-link-listener-before-init). |
+| `registerConversionListener(onConversionDataSuccess:, onConversionDataFail:)` | Enables [GCD](https://dev.appsflyer.com/hc/docs/conversion-data) success and failure events. |
+| `registerDeepLinkListener(onDeepLinking:)` | Enables [UDL](https://dev.appsflyer.com/hc/docs/unified-deep-linking-udl) results. Register it before `init(...)` — see [step 2](#deep-link-listener-before-init). |
 | `registerSessionReadyListener(onReady)` | Enables one session-ready event per foreground cycle. |
 
 The plugin keeps **one callback per event** and replaces it when you register
@@ -172,7 +172,7 @@ void dispose() {
   if (Platform.isAndroid) {
     // Android only — see the availability table below.
     appsflyerSdk.unregisterConversionListener();
-    appsflyerSdk.unregisterDeeplinkListener();
+    appsflyerSdk.unregisterDeepLinkListener();
   }
   super.dispose();
 }
@@ -181,12 +181,12 @@ void dispose() {
 | Unregister method | Availability |
 |---|---|
 | `unregisterConversionListener()` | Android only |
-| `unregisterDeeplinkListener()` | Android only, and a soft unsubscribe — the native SDK keeps its listener, so events are dropped rather than never delivered |
+| `unregisterDeepLinkListener()` | Android only, and a soft unsubscribe — the native SDK keeps its listener, so events are dropped rather than never delivered |
 | `unregisterSessionReadyListener()` | Android and iOS |
 
 Where the unregister call reaches the native SDK it also drops the callback you
 passed at registration. On iOS, `unregisterConversionListener()` and
-`unregisterDeeplinkListener()` throw `AppsFlyerException` because the iOS SDK has
+`unregisterDeepLinkListener()` throw `AppsFlyerException` because the iOS SDK has
 no matching native call — guard them with `Platform.isAndroid` or catch the
 exception. A failed unregister leaves your callback in place, so the call is
 all-or-nothing.
@@ -271,7 +271,7 @@ session-ready callback before calling `start()`.
 
 `registerConversionListener(...)` only enables the callbacks. The conversion-data
 request is sent after `start()` reports the Launch, and its result is delivered
-to `onSuccess` or `onFailure`.
+to `onConversionDataSuccess` or `onConversionDataFail`.
 
 The `Future` returned by `start()` is not the conversion-data result. Always use
 the conversion-data callbacks to receive GCD data.
@@ -292,7 +292,7 @@ Future<void> configureAppsFlyer() async {
   await appsflyerSdk.enableDebug(true); // Testing only.
 
   // Register before init() so Android can resolve a deferred deep link.
-  await appsflyerSdk.registerDeepLinkListener((result) {
+  await appsflyerSdk.registerDeepLinkListener(onDeepLinking: (result) {
     print('Deep-link result: $result');
   });
 
@@ -305,10 +305,10 @@ Future<void> configureAppsFlyer() async {
   await appsflyerSdk.setCustomerUserId('<CUSTOMER_USER_ID>');
 
   await appsflyerSdk.registerConversionListener(
-    onSuccess: (data) {
+    onConversionDataSuccess: (data) {
       print('Conversion data: $data');
     },
-    onFailure: (error) {
+    onConversionDataFail: (error) {
       print('Conversion data error: $error');
     },
   );

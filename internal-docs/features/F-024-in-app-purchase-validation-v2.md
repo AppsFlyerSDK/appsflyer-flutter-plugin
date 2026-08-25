@@ -4,7 +4,7 @@ name: In-App Purchase Validation V2 (cross-platform)
 type: purchaseValidation
 platform: both
 status: active
-last_verified: 2026-08-19
+last_verified: 2026-08-25
 depends_on: []
 ---
 
@@ -39,7 +39,7 @@ AppsFlyerSdk.validateAndLogInAppPurchase(                                  [lib/
         → AppsFlyerRpcHandler.execute(json) → AppsFlyerLib.validateAndLogInAppPurchase(...)
       → iOS: AppsflyerSdkPlugin.executeRpc → dispatchRpc:method:@"validateAndLogInAppPurchase"
         → [AppsFlyerRPCBridge shared] executeJson:completion: → AFRPCRequestHandler → SDK
-        → unwrapValueForMethod: returns the `data` map (or {}) for this method
+        → forwards `resultObj["data"]` to Dart unchanged (validation-result map under AppsFlyerRPC 7.0.13+)
   → successful per-call reply completes the Future with the validation-result map
   → PlatformException is converted to AppsFlyerException
 ```
@@ -54,7 +54,7 @@ A `null` native reply is normalized to an empty map rather than propagated as `n
 | `lib/src/appsflyer_sdk.dart` | `validateAndLogInAppPurchase(AFPurchaseDetails purchase, {Map<String, String>? additionalParameters})` → `Future<Map<String, dynamic>>`; delegates purchase parameter building to the model and invokes the RPC |
 | `lib/src/af_purchase_details.dart` | `sealed class AFPurchaseDetails` (closed to `AFAndroidPurchaseDetails` and `AFIOSPurchaseDetails`), `AFPurchaseType`, and the per-platform `toRpcMap` contracts |
 | `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | No per-method handler — generic `executeRpc` → `dispatchRpc('validateAndLogInAppPurchase', ...)` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | No per-method handler; generic dispatch, with `unwrapValueForMethod:` returning the `data` map for `validateAndLogInAppPurchase` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | No per-method handler; generic dispatch forwards `resultObj["data"]` unchanged (map or empty when absent) |
 
 ---
 
@@ -62,7 +62,7 @@ A `null` native reply is normalized to an empty map rather than propagated as `n
 | | |
 |--|--|
 | **Input** | `purchase` (`AFPurchaseDetails`) — `AFAndroidPurchaseDetails(purchaseType, productId, purchaseToken)` for Google Play or `AFIOSPurchaseDetails(purchaseType, productId, transactionId)` for the App Store; `additionalParameters` (`Map<String, String>?`, optional). `AFPurchaseType` serializes as `"one_time_purchase"` / `"subscription"` on Android and `"oneTimePurchase"` / `"subscription"` on iOS. |
-| **Output** | `Future<Map<String, dynamic>>` — completes with the native validation-result map, or an empty map when the native reply carries no payload. Android RPC 7.0.12 always awaits the callback and waits up to 5 seconds; iOS RPC 7.0.12 also always awaits and uses a 30-second timeout. Native and bridge failures throw `AppsFlyerException`. Passing the wrong platform's model throws `ArgumentError`, including on a non-mobile platform. |
+| **Output** | `Future<Map<String, dynamic>>` — completes with the native validation-result map, or an empty map when the native reply carries no payload. Android RPC 7.0.12 always awaits the callback and waits up to 5 seconds; iOS RPC 7.0.13 also always awaits and uses a 30-second timeout. Native and bridge failures throw `AppsFlyerException`. Passing the wrong platform's model throws `ArgumentError`, including on a non-mobile platform. |
 
 ---
 

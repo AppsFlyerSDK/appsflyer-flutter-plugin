@@ -60,7 +60,7 @@ Any OneLink URL found at the configured path (F-022) is resolved and delivered a
 | | |
 |--|--|
 | **Input** | Android: named arguments `campaign` and `pid` (both required by the native SDK), plus optional `isRetargeting` and `additionalParameters`; sent as `{campaign, pid, isRetargeting, additionalParameters}`. iOS: the complete APNs notification `userInfo` dictionary, sent as `{pushPayload}`. |
-| **Output** | `Future<void>` for both. Each completes after native RPC validation and the synchronous SDK invocation; neither confirms attribution or deep-link resolution and neither has a request timeout. Validation or bridge failures throw `AppsFlyerException`. Called on the wrong platform, each is still dispatched and throws `AppsFlyerException` once the native RPC layer reports the method as unavailable. If F-022 was configured and F-037 registered, a resolved OneLink URL arrives asynchronously in the registered `onDeepLink` callback. |
+| **Output** | `Future<void>` for both. Each completes after native RPC validation and the synchronous SDK invocation; neither confirms attribution or deep-link resolution and neither has a request timeout. Validation or bridge failures throw `AppsFlyerException`. Called on the wrong platform, each is still dispatched and throws `AppsFlyerException` once the native RPC layer reports the method as unavailable. If F-022 was configured and F-037 registered, a resolved OneLink URL arrives asynchronously in the registered `onDeepLinking` callback. |
 
 ---
 

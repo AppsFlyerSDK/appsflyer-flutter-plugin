@@ -131,7 +131,7 @@ The plugin forwards URL-scheme callbacks the same way. See AppsFlyer's
 
 1. Complete [Getting started](getting-started.md) — `init()`, listener
    registration, and `start()` from the session-ready callback.
-2. Call `registerDeepLinkListener(onDeepLink)` **before** `init()`, passing the
+2. Call `registerDeepLinkListener(onDeepLinking:)` **before** `init()`, passing the
    callback that handles the result.
 
 > ⚠️ **Register before `init()`.** On Android, `init()` hands the launch intent
@@ -168,7 +168,8 @@ links (after install) through the same `registerDeepLinkListener` callback.
 Platform references: [Android UDL](https://dev.appsflyer.com/docs/android-unified-deep-linking), [iOS UDL](https://dev.appsflyer.com/docs/ios-unified-deep-linking).
 
 ```dart
-await appsflyerSdk.registerDeepLinkListener((DeepLinkResult result) {
+await appsflyerSdk.registerDeepLinkListener(
+    onDeepLinking: (DeepLinkResult result) {
   switch (result.status) {
     case DeepLinkStatus.found:
       print(result.deepLink);

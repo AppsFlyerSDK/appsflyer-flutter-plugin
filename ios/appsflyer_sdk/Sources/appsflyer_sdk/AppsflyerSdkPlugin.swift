@@ -326,7 +326,7 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     }
 
     // ============================================================================
-    // Generic RPC dispatch + response unwrapping
+    // Generic RPC dispatch
     // ============================================================================
 
     private func dispatchRpc(_ method: String, params: NSDictionary, result: @escaping FlutterResult) {
@@ -338,7 +338,10 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
                 self.deliverFlutterResult(result, error)
                 return
             }
-            self.deliverFlutterResult(result, self.unwrapValue(forMethod: method, resultObj: resultObj))
+            // AppsFlyerRPC returns each value as a bare `data` payload, matching Android's
+            // RpcResponse.Success(value), so no per-method unwrapping is needed. Void setters
+            // omit `data`, which Dart receives as null.
+            self.deliverFlutterResult(result, resultObj?["data"])
         }
     }
 
@@ -398,30 +401,6 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
                 return
             }
             completion(resultObj, nil)
-        }
-    }
-
-    /// Extracts the primitive/map value Dart expects from the RPC `result` object. The iOS RPC returns
-    /// data under nested keys (e.g. {data:{version}}); Android returns the bare value, so we unwrap here
-    /// to keep the Dart return shape identical across platforms. Setters/void calls return nil.
-    private func unwrapValue(forMethod method: String, resultObj: [String: Any]?) -> Any? {
-        let data = resultObj?["data"] as? [String: Any]
-        switch method {
-        case "getSdkVersion":
-            return data?["version"]
-        case "getAppsFlyerUID":
-            return data?["uid"]
-        case "isSessionReady":
-            return data?["isSessionReady"]
-        case "validateAndLogInAppPurchase":
-            return data ?? [:]
-        case "generateInviteLink":
-            return data?["url"]
-        default:
-            // Void setters have no `data` and correctly return nil. Unlisted getters that return a
-            // map payload surface it here instead of silently nil — scalar getters with named-key
-            // nesting still need explicit cases until the RPC envelope matches Android's flat shape.
-            return data
         }
     }
 

@@ -123,23 +123,24 @@ class AppsFlyerSdk {
 
   /// Registers the install and attribution conversion-data listener.
   ///
-  /// [onSuccess] receives the conversion data (GCD). [onFailure] receives
-  /// retrieval failures: this registration can succeed while the native SDK
-  /// still fails to retrieve conversion data.
+  /// [onConversionDataSuccess] receives the conversion data (GCD).
+  /// [onConversionDataFail] receives retrieval failures: this registration can
+  /// succeed while the native SDK still fails to retrieve conversion data.
   ///
-  /// Calling this again replaces both callbacks.
+  /// Both callbacks are optional; pass the ones you need. Calling this again
+  /// replaces both.
   Future<void> registerConversionListener({
-    required OnConversionDataSuccess onSuccess,
-    OnConversionDataFailure? onFailure,
+    OnConversionDataSuccess? onConversionDataSuccess,
+    OnConversionDataFailure? onConversionDataFail,
   }) async {
     _ensureEventsSubscribed();
     _listeners.on(
       _AppsFlyerConstants.EVENT_CONVERSION_DATA_SUCCESS,
-      (event) => onSuccess(event.data),
+      (event) => onConversionDataSuccess?.call(event.data),
     );
     _listeners.on(
       _AppsFlyerConstants.EVENT_CONVERSION_DATA_FAIL,
-      (event) => onFailure?.call(event.data),
+      (event) => onConversionDataFail?.call(event.data),
     );
     try {
       await _invokeVoidRpc('registerConversionListener');
@@ -174,8 +175,9 @@ class AppsFlyerSdk {
 
   /// Registers the Unified Deep Linking listener.
   ///
-  /// [onDeepLink] receives every resolved deep link, deferred or direct.
-  /// Calling this again replaces the callback.
+  /// [onDeepLinking] receives every resolved deep link, deferred or direct. It
+  /// is optional, so the native listener can be registered on its own. Calling
+  /// this again replaces the callback.
   ///
   /// Call this **before** [init]. On Android, [init] hands the launch intent to
   /// the native SDK, which decides once per install whether to send the deferred
@@ -183,10 +185,13 @@ class AppsFlyerSdk {
   /// never sent for that install, and the skipped state persists across
   /// launches. Direct links are unaffected. Registration before [init] is
   /// supported on both platforms.
-  Future<void> registerDeepLinkListener(OnDeepLinkReceived onDeepLink) async {
+  Future<void> registerDeepLinkListener({
+    OnDeepLinkReceived? onDeepLinking,
+  }) async {
     _ensureEventsSubscribed();
-    void dispatch(_AppsFlyerEvent event) =>
-        onDeepLink(DeepLinkResult._fromEvent(event, platform: _platform));
+    void dispatch(_AppsFlyerEvent event) => onDeepLinking?.call(
+          DeepLinkResult._fromEvent(event, platform: _platform),
+        );
     // Android emits onDeepLinking, iOS emits onDeepLinkReceived.
     _listeners.on(_AppsFlyerConstants.EVENT_DEEP_LINKING, dispatch);
     _listeners.on(_AppsFlyerConstants.EVENT_DEEP_LINK_RECEIVED, dispatch);
@@ -207,7 +212,7 @@ class AppsFlyerSdk {
   /// Throws [AppsFlyerException] when the native call fails, including on iOS,
   /// where the SDK has no matching operation. The callback is left in place in
   /// that case, so a failed call changes nothing.
-  Future<void> unregisterDeeplinkListener() async {
+  Future<void> unregisterDeepLinkListener() async {
     final restore = _listeners.take(const [
       _AppsFlyerConstants.EVENT_DEEP_LINKING,
       _AppsFlyerConstants.EVENT_DEEP_LINK_RECEIVED,
@@ -484,14 +489,14 @@ class AppsFlyerSdk {
 
   /// Returns the configured host name.
   ///
-  /// Android only.
+  /// Returns an empty string on iOS when [setHost] has not been called.
   Future<String> getHostName() {
     return _invokeRpc<String>('getHostName');
   }
 
   /// Returns the configured host prefix.
   ///
-  /// Android only.
+  /// Returns an empty string on iOS when [setHost] has not been called.
   Future<String> getHostPrefix() {
     return _invokeRpc<String>('getHostPrefix');
   }
@@ -612,11 +617,16 @@ class AppsFlyerSdk {
   ///
   /// Provide the current consent on every app start before [start]. Consent
   /// values are not persisted across sessions.
+  ///
+  /// [isUserSubjectToGDPR] is always required. When it is `false`, the other
+  /// three fields may be omitted or `null` (non-GDPR users). When it is `true`,
+  /// supply meaningful values for the consent fields before the first
+  /// [start].
   Future<void> setConsentData({
     required bool isUserSubjectToGDPR,
-    required bool hasConsentForDataUsage,
-    required bool hasConsentForAdsPersonalization,
-    required bool hasConsentForAdStorage,
+    bool? hasConsentForDataUsage,
+    bool? hasConsentForAdsPersonalization,
+    bool? hasConsentForAdStorage,
   }) {
     return _invokeVoidRpc('setConsentData', {
       'isUserSubjectToGDPR': isUserSubjectToGDPR,
@@ -651,8 +661,6 @@ class AppsFlyerSdk {
   }
 
   /// Whether the SDK is currently stopped.
-  ///
-  /// Android only.
   Future<bool> isStopped() async {
     return _invokeRpc<bool>('isStopped');
   }
@@ -881,7 +889,7 @@ class AppsFlyerSdk {
     bool shouldTriggerSession = false,
   }) {
     return _invokeVoidRpc(
-      _isAndroid ? 'performDeepLinking' : 'performOnAppAttributionWithURL',
+      'performDeepLinking',
       _isAndroid
           ? {
               'url': url,

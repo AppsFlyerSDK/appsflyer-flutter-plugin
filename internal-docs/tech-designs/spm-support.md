@@ -8,7 +8,7 @@ implemented_feature_doc: F-060
 
 # Tech Design: Swift Package Manager (SPM) Support
 
-> **⚠️ Superseded — historical design record (do not treat as current).** This plans SPM support for the SDK **6.18.0** line (DELIVERY-125462): `AppsFlyerFramework` 6.18.0, iOS 12.0, the old `ios/Classes/` layout, and files such as `AppsFlyerStreamHandler.*` / `FlutterAppDelegate+AppsFlyerStreamHandler.h`. The SDK 7 RPC migration replaced all of this: the iOS plugin now vendors the **AppsFlyerRPC 7.0.12** static xcframework as a `binaryTarget` (→ AppsFlyerFramework 7.0.1), targets **iOS 13.0**, and the stream-handler files above no longer exist. For the current setup see `ios/appsflyer_sdk/Package.swift`, `internal-docs/features/F-060-swift-package-manager-support.md`, and `internal-docs/ARCHITECTURE.md`. Retained for design context only.
+> **⚠️ Superseded — historical design record (do not treat as current).** This plans SPM support for the SDK **6.18.0** line (DELIVERY-125462): `AppsFlyerFramework` 6.18.0, iOS 12.0, the old `ios/Classes/` layout, and files such as `AppsFlyerStreamHandler.*` / `FlutterAppDelegate+AppsFlyerStreamHandler.h`. The SDK 7 RPC migration replaced all of this: the iOS plugin now vendors the **AppsFlyerRPC 7.0.13** static xcframework as a `binaryTarget` (→ AppsFlyerFramework 7.0.2), targets **iOS 13.0**, and the stream-handler files above no longer exist. For the current setup see `ios/appsflyer_sdk/Package.swift`, `internal-docs/features/F-060-swift-package-manager-support.md`, and `internal-docs/ARCHITECTURE.md`. Retained for design context only.
 
 ## Context table
 

@@ -6,7 +6,7 @@ This release is a major API cleanup. It replaces callback flags, callback slots,
 and SDK-6 names with an explicit SDK-7 lifecycle, typed callbacks, correlated
 `Future` results, and platform-aware models.
 
-Plugin `7.0.1` migrates to **AppsFlyer SDK 7** (Android and iOS `7.0.1`). This
+Plugin `7.0.1` migrates to **AppsFlyer SDK 7** (Android `7.0.1`, iOS `7.0.2`). This
 is a major release with intentional breaking changes. Purchase Connector
 dependency changes are described later in this guide.
 
@@ -57,8 +57,8 @@ and `start()` must be called **once per foreground cycle** (the native SDK reset
 | Map-based constructor and `AppsFlyerOptions` | `AppsFlyerSdk.instance` |
 | `initSdk(...)` | `init(devKey:, appId:)`; `appId` is required on iOS and optional on Android |
 | `void startSDK({onSuccess, onError})` | `Future<void> start({bool awaitResponse = false})`; await the Future and catch `AppsFlyerException` when requesting the native result |
-| `registerConversionDataCallback` init flag | `registerConversionListener(onSuccess:, onFailure:)` |
-| `registerOnDeepLinkingCallback` init flag | `registerDeepLinkListener(onDeepLink)` |
+| `registerConversionDataCallback` init flag | `registerConversionListener(onConversionDataSuccess:, onConversionDataFail:)` |
+| `registerOnDeepLinkingCallback` init flag | `registerDeepLinkListener(onDeepLinking:)` |
 | No session-readiness public API | `registerSessionReadyListener(onReady)`, `unregisterSessionReadyListener()`, and `isSessionReady()` |
 
 Use `AppsFlyerSdk.instance`, register the deep-link listener if your app handles
@@ -72,7 +72,8 @@ final appsflyer = AppsFlyerSdk.instance;
 await appsflyer.enableDebug(true);
 // Before init(): Android skips deferred deep-link resolution, permanently for
 // that install, when no listener is registered while init() runs.
-await appsflyer.registerDeepLinkListener((result) { /* route the user */ });
+await appsflyer.registerDeepLinkListener(
+    onDeepLinking: (result) { /* route the user */ });
 await appsflyer.init(
   devKey: '<DEV_KEY>',
   appId: '<APP_ID>',
@@ -96,8 +97,8 @@ inside the callback. Apply any configuration setters (e.g.
 
 | Removed API | Replacement |
 | --- | --- |
-| `onInstallConversionData(callback)` | `registerConversionListener(onSuccess:, onFailure:)`; Android also exposes `unregisterConversionListener()` |
-| `onDeepLinking(callback)` | `registerDeepLinkListener(onDeepLink)` |
+| `onInstallConversionData(callback)` | `registerConversionListener(onConversionDataSuccess:, onConversionDataFail:)`; Android also exposes `unregisterConversionListener()` |
+| `onDeepLinking(callback)` | `registerDeepLinkListener(onDeepLinking:)` |
 | global invite-link callbacks | `await generateInviteLink(...)` |
 | request success/error callbacks | `await` and catch `AppsFlyerException` |
 | `Status` | `DeepLinkStatus` |
@@ -110,7 +111,7 @@ inside the callback. Apply any configuration setters (e.g.
 | Removed Flutter API (v6) | Why | SDK 7 replacement / action |
 | --- | --- | --- |
 | Map constructor, `AppsFlyerOptions`, and `manualStart` | Configuration-object lifecycle removed | `AppsFlyerSdk.instance`, `init(...)`, then `start()` |
-| `onAppOpenAttribution`, `registerOnAppOpenAttributionCallback` | OAOA removed from both native SDKs | `registerDeepLinkListener(onDeepLink)` |
+| `onAppOpenAttribution`, `registerOnAppOpenAttributionCallback` | OAOA removed from both native SDKs | `registerDeepLinkListener(onDeepLinking:)` |
 | `performOnDeepLinking()` | Removed on Android (§5a), replaced on iOS | `performDeepLinking(url, {shouldTriggerSession})` |
 | `validateAndLogInAppAndroidPurchase` (V1) | Native V1 purchase validation removed | `validateAndLogInAppPurchase` with `AFAndroidPurchaseDetails` |
 | `validateAndLogInAppIosPurchase` (V1) | Native 6-param purchase validation removed (iOS §6) | `validateAndLogInAppPurchase` with `AFIOSPurchaseDetails` |
@@ -123,11 +124,11 @@ inside the callback. Apply any configuration setters (e.g.
 | `setSharingFilter`, `setSharingFilterForAllPartners` | Removed from both native SDKs | `setSharingFilterForPartners(["all"])` |
 | `AppsFlyerOptions.timeToWaitForATTUserAuthorization` | Removed from native SDK 7 | Control the timing of `start()` in application code |
 | `enableLocationCollection(bool)` | Removed in plugin `6.8.0` | No replacement |
-| Callback-slot helpers | Replaced by explicit listener registration | `registerConversionListener(onSuccess:, onFailure:)` and `registerDeepLinkListener(onDeepLink)`, each taking a typed callback |
+| Callback-slot helpers | Replaced by explicit listener registration | `registerConversionListener(onConversionDataSuccess:, onConversionDataFail:)` and `registerDeepLinkListener(onDeepLinking:)`, each taking a typed callback |
 
 `subscribeForDeepLink(listener, timeout)` was an Android native SDK overload,
 not a public Flutter v6 API. Its SDK 7 Flutter equivalent is to call
-`setDeepLinkTimeout(timeout)`, then `registerDeepLinkListener(onDeepLink)` —
+`setDeepLinkTimeout(timeout)`, then `registerDeepLinkListener(onDeepLinking:)` —
 both before `init()`.
 
 The following are not simulated in Dart: use Unified Deep Linking, control the
@@ -177,7 +178,7 @@ plugin removes them from its public API:
 | Concrete Android-shaped `AFPurchaseDetails(purchaseType:, purchaseToken:, productId:)` | `AFAndroidPurchaseDetails(...)` or `AFIOSPurchaseDetails(...)`, both implementing `AFPurchaseDetails` |
 | string ad-mediation value | `AFMediationNetwork` |
 | `logAdRevenue(AdRevenueData)` | `logAdRevenue(monetizationNetwork: ..., mediationNetwork: ..., currencyIso4217Code: ..., revenue: ..., additionalParameters: ...)` |
-| `setConsentDataV2(...)` or `setConsentData(AppsFlyerConsent)` | `setConsentData(isUserSubjectToGDPR: ..., hasConsentForDataUsage: ..., hasConsentForAdsPersonalization: ..., hasConsentForAdStorage: ...)` |
+| `setConsentDataV2(...)` or `setConsentData(AppsFlyerConsent)` | `setConsentData(isUserSubjectToGDPR: ..., hasConsentForDataUsage: ..., hasConsentForAdsPersonalization: ..., hasConsentForAdStorage: ...)` — only `isUserSubjectToGDPR` is required; the three consent fields are optional `bool?` (omit or `null` when GDPR does not apply) |
 | `setCollectAndroidId(bool isCollect)` | `setCollectAndroidID(bool isCollect)` |
 | `setDisableNetworkData(bool disable)` | `setDisableNetworkData(bool isDisable)` |
 | `disableSKAdNetwork(bool isEnabled)` | `setDisableSKAdNetwork(bool disable)` |
@@ -223,13 +224,13 @@ New parity APIs exposed in the plugin (already present in the native SDK 7):
 | `logSession()` | Manually log a session on Android | Android only; use `start()` for typical Flutter apps |
 | `setLogLevel(level)` | Set native log verbosity | Android only |
 | `setInstallId(installId)` | Correlate the install with your own id | Android + iOS |
-| `isStopped()` | Query whether the SDK is stopped | Android only |
+| `isStopped()` | Query whether the SDK is stopped | Android + iOS |
 | `isPreInstalledApp()` | Query whether the install was an OEM preinstall | Android only |
 | `getAttributionId()` | Read the Facebook (Katana) attribution id | Android only |
 | `setPreinstallAttribution(mediaSource, {campaign, siteId})` | Attribute an OEM preinstall | Android only |
 | `setAppId(appId)` | Override the reported app id | Android only |
 | `unregisterConversionListener()` | Unregister the conversion-data listener | Android only |
-| `unregisterDeeplinkListener()` | Unregister the deep-link listener | Android only |
+| `unregisterDeepLinkListener()` | Unregister the deep-link listener | Android only |
 | `setDisableAppleAdsAttribution(disable)` | Disable Apple Ads (ASA) attribution via AdServices | iOS only |
 | `setDisableIDFVCollection(disable)` | Disable IDFV collection | iOS only |
 | `setShouldCollectDeviceName(collect)` | Opt in to device-name collection | iOS only |
@@ -384,7 +385,7 @@ surfaced as `AppsFlyerException` with an optional numeric `code` and `message`.
 - Clearing partner-sharing filters (`setSharingFilterForPartners(null)` or
   `[]`) works on Android and iOS alike.
 - Passing an empty partner list is normalized to `null` before the native call.
-- On Android, `unregisterDeeplinkListener()` does not reliably stop subsequent
+- On Android, `unregisterDeepLinkListener()` does not reliably stop subsequent
   deep-link events. Do not rely on it to disable deep-link handling.
 - `setInstallId` has different native ordering rules: iOS configures it before
   initialization and requires `AppsFlyerAllowCustomInstallId=YES` in

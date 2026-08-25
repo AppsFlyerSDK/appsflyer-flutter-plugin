@@ -2,8 +2,9 @@
 
 ## Overview
 Flutter plugin providing mobile attribution and analytics for iOS and Android.
-The core bridge uses native AppsFlyer SDK 7.0.1, Android RPC 7.0.12, and iOS
-AppsFlyerRPC 7.0.12. It requires Flutter 3.24+ and Dart 3.5+.
+The core bridge uses native AppsFlyer SDK 7.0.1 on Android and 7.0.2 on iOS
+(pinned by AppsFlyerRPC), Android RPC 7.0.12, and iOS AppsFlyerRPC 7.0.13. It
+requires Flutter 3.24+ and Dart 3.5+.
 
 ## Starting a feature
 

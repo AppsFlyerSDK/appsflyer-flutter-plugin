@@ -1,12 +1,12 @@
 # AppsFlyer Flutter Plugin — Architecture (Flutter ↔ RPC ↔ Native SDK)
 
 **Status:** Current implementation  
-**Last verified:** 2026-08-19  
+**Last verified:** 2026-08-25  
 **Flutter plugin:** 7.0.1  
 **Android SDK:** 7.0.1
 **Android RPC:** 7.0.12  
-**iOS SDK:** 7.0.1  
-**iOS RPC:** 7.0.12
+**iOS SDK:** 7.0.2  
+**iOS RPC:** 7.0.13
 
 This document describes the current implementation of the `appsflyer_sdk` Flutter plugin. Its scope is the cross-platform wrapper, its Flutter channels, the Android and iOS RPC integrations, and the optional Purchase Connector. The native SDKs remain separately versioned systems; this repository adapts their supported RPC capabilities rather than reimplementing attribution, persistence, or networking.
 
@@ -169,7 +169,7 @@ Flutter public method
 - The `executeRpc` envelope `{method, params}` is parsed by `parseEnvelope` before dispatch, matching Android's `RpcEnvelopeParser` contract. Both keys are required; `params` may be empty but must be a `Map`. Dart's `_invokeNullableRpc` always supplies `params: params ?? {}`. A malformed envelope from anything other than that path is an integration error: iOS calls `preconditionFailure` with message prefix `RPC envelope contract violation:`; Android throws `IllegalStateException` with the same prefix. Neither path is converted to a user-facing `AppsFlyerException` by design. Dispatch-time serialization still validates every RPC payload with `JSONSerialization.isValidJSONObject` in `jsonString(from:)` before writing, which rejects the non-finite doubles that would otherwise raise `NSInvalidArgumentException`; such calls fail with a `SERIALIZATION_ERROR` `FlutterError`. `example/ios/RunnerTests` pins that serialization behavior.
 - Native completion-handler APIs are invoked on the main queue and bridged into Swift concurrency. RPC state used to gate listeners is held in an actor.
 - JSON protocol errors and SDK failures become `FlutterError` values.
-- iOS-specific nested result envelopes are unwrapped into the primitive or map shape expected by Dart. Scalar getters with named-key nesting (`getSdkVersion`, `getAppsFlyerUID`, `isSessionReady`, `generateInviteLink`) have explicit cases until the RPC module aligns with Android's flat shape; everything else returns the `data` map when present (void setters correctly get `nil`).
+- The successful response `data` payload is handed to Dart unchanged. AppsFlyerRPC 7.0.13 flattened every scalar getter to a bare value in `data`, matching Android's `RpcResponse.Success(value)`, so the plugin needs no per-method unwrapping; void setters omit `data` and correctly get `nil`. Against an earlier iOS RPC, which nested scalars under named keys such as `data.version`, these getters would fail.
 - `logAndOpenStore` is the only non-init public call requiring plugin orchestration because the plugin opens the returned store URL.
 
 ### 4.4 iOS Swift Package Manager (Core)
@@ -208,10 +208,14 @@ An event that arrives before its listener has ever been registered is held in a 
 
 | Registration API | Callback | Native event names |
 | --- | --- | --- |
-| `registerConversionListener` | `onSuccess` | `onConversionDataSuccess` |
-| `registerConversionListener` | `onFailure` | `onConversionDataFail` |
-| `registerDeepLinkListener` | `onDeepLink` | `onDeepLinking` or `onDeepLinkReceived` |
+| `registerConversionListener` | `onConversionDataSuccess` | `onConversionDataSuccess` |
+| `registerConversionListener` | `onConversionDataFail` | `onConversionDataFail` |
+| `registerDeepLinkListener` | `onDeepLinking` | `onDeepLinking` or `onDeepLinkReceived` |
 | `registerSessionReadyListener` | `onReady` | `onSessionReady` |
+
+Callback names are the canonical `publicApi.callbacks` names from
+`appsflyer-plugins-rpc-schema`, shared by every AppsFlyer plugin; the platform
+event-name divergence for deep linking is resolved by the schema's `mappings`.
 
 Because the callback is an argument to the registration call, it is always in place before the RPC is dispatched, and no public `Stream` exists for an application to attach additional subscribers to. A single native event therefore cannot fan out to several handlers — `start()` cannot be issued twice for one session-ready event. If the native registration RPC throws, the Dart callback slots registered in that call are rolled back with `_listeners.off(...)` so Dart state cannot outlive a failed native registration.
 
@@ -257,15 +261,15 @@ Native listeners are registered explicitly, each with its own ordering relative 
 
 | Flutter API | Android RPC | iOS RPC | Order |
 | --- | --- | --- | --- |
-| `registerDeepLinkListener(onDeepLink)` | `subscribeForDeepLink` | `registerDeeplinkListener` | Before `init()` |
-| `registerConversionListener(onSuccess:, onFailure:)` | `registerConversionListener` | `registerConversionListener` | After `init()` |
+| `registerDeepLinkListener(onDeepLinking:)` | `subscribeForDeepLink` | `registerDeeplinkListener` | Before `init()` |
+| `registerConversionListener(onConversionDataSuccess:, onConversionDataFail:)` | `registerConversionListener` | `registerConversionListener` | After `init()` |
 | `registerSessionReadyListener(onReady)` | `registerSessionReadyListener` | `registerSessionReadyListener` | After `init()`, last |
 
 The deep-link listener is the exception because Android's deferred-resolution gate runs inside `init()`: the plugin passes the `Activity` as the init context (§7.1), which makes the native SDK replay the launch intent immediately, and `AFDeepLinkManager` sends the deferred resolution request only if a listener is already attached — a one-shot decision persisted per install. See F-037.
 
-Android additionally exposes `unregisterConversionListener` and the RPC soft-unsubscribe mapped by `unregisterDeeplinkListener`. Session-ready unregister is supported on both platforms.
+Android additionally exposes `unregisterConversionListener` and the RPC soft-unsubscribe mapped by `unregisterDeepLinkListener`. Session-ready unregister is supported on both platforms.
 
-Registration is native state with an explicit contract: the application decides when delivery stops and resumes, and the plugin never infers that a listener has gone stale. Applications call the matching `unregister*Listener()` at the point in their own lifecycle where they no longer consume the events, and register again afterwards. Each `unregister*Listener()` is atomic: it takes the Dart callback slots out before the RPC and puts them back if the RPC fails, mirroring the rollback the `register*Listener()` APIs perform. On iOS, `unregisterConversionListener` and `unregisterDeeplinkListener` have no RPC mapping, so they throw `AppsFlyerException` and leave the callback registered. Because Android's RPC handler is process-scoped (§4.2), a registration — and an `unregisterDeeplinkListener` soft unsubscribe — outlives the engine that requested it, while the Dart callbacks do not; a recreated engine therefore repeats the registration sequence of a cold start. See [`doc/getting-started.md`](../doc/getting-started.md) for the integrator-facing version of this contract.
+Registration is native state with an explicit contract: the application decides when delivery stops and resumes, and the plugin never infers that a listener has gone stale. Applications call the matching `unregister*Listener()` at the point in their own lifecycle where they no longer consume the events, and register again afterwards. Each `unregister*Listener()` is atomic: it takes the Dart callback slots out before the RPC and puts them back if the RPC fails, mirroring the rollback the `register*Listener()` APIs perform. On iOS, `unregisterConversionListener` and `unregisterDeepLinkListener` have no RPC mapping, so they throw `AppsFlyerException` and leave the callback registered. Because Android's RPC handler is process-scoped (§4.2), a registration — and an `unregisterDeepLinkListener` soft unsubscribe — outlives the engine that requested it, while the Dart callbacks do not; a recreated engine therefore repeats the registration sequence of a cold start. See [`doc/getting-started.md`](../doc/getting-started.md) for the integrator-facing version of this contract.
 
 ### 6.3 Session start
 
@@ -280,7 +284,7 @@ await appsFlyer.registerSessionReadyListener(() async {
 });
 ```
 
-`start({awaitResponse})` and `logEvent(..., {awaitResponse})` forward the public flag (default `false`) to both native RPC layers. `true` completes the `Future<void>` on native request success and `false` completes after RPC acceptance. `generateInviteLink(..., awaitResponse: ...)` defaults to `true` and forwards the flag to Android RPC, which returns a synchronous long link for `false`; the current iOS RPC 7.0.12 does not expose the flag and always awaits the callback. `validateAndLogInAppPurchase` exposes no flag: Android RPC 7.0.12 removed its fire-and-forget branch and always awaits validation, matching iOS. Because the Android handler now always blocks on a latch, the platform adapter classifies that method as unconditionally blocking (`isBlockingRpc`) so it never runs inline on the platform thread.
+`start({awaitResponse})` and `logEvent(..., {awaitResponse})` forward the public flag (default `false`) to both native RPC layers. `true` completes the `Future<void>` on native request success and `false` completes after RPC acceptance. `generateInviteLink(..., awaitResponse: ...)` defaults to `true` and forwards the flag to Android RPC, which returns a synchronous long link for `false`; the current iOS RPC 7.0.13 does not expose the flag and always awaits the callback. `validateAndLogInAppPurchase` exposes no flag: Android RPC 7.0.12 removed its fire-and-forget branch and always awaits validation, matching iOS. Because the Android handler now always blocks on a latch, the platform adapter classifies that method as unconditionally blocking (`isBlockingRpc`) so it never runs inline on the platform thread.
 
 Listener registration can cause readiness or attribution work promptly, so application code must apply consent/identity settings that must affect the first Launch before registering the session-ready listener. The wrapper does not maintain an initialized/started state machine or reject out-of-order calls; it relies on the application to await required sequencing and on native RPC/SDK validation for unsupported states. Most configuration is native runtime state and must be re-applied after a cold process start.
 
@@ -288,7 +292,7 @@ Listener registration can cause readiness or attribution work promptly, so appli
 
 Timeouts belong to the native RPC layers, not Dart. They bound how long a Flutter request waits; they do not cancel native work, so a late native operation may still complete after Dart has received an error.
 
-| Awaited operation | Android RPC 7.0.12 | iOS RPC 7.0.12 |
+| Awaited operation | Android RPC 7.0.12 | iOS RPC 7.0.13 |
 | --- | ---: | ---: |
 | `start` | 5 s | 10 s |
 | `logEvent` | 5 s | 10 s |
@@ -341,7 +345,7 @@ Important differences that affect design and testing:
 | --- | --- | --- |
 | Core request scheduling | Fast RPCs inline on the platform thread; `init` and awaited-callback RPCs on one blocking executor | Independent async tasks through a `@MainActor` bridge |
 | Native request catalog | Kotlin sealed requests parsed by `JsonRpcRequestParser` | Swift typed requests parsed by `AFRPCParser` and routed by domain |
-| Result shape | Bare `RpcResponse.Success` value or void | JSON response envelope with plugin-side unwrapping |
+| Result shape | Bare `RpcResponse.Success` value or void | JSON response envelope carrying the same bare value in `data` |
 | UDL subscribe/unsubscribe | `subscribeForDeepLink`; soft unsubscribe drops future callbacks because the SDK has no native unsubscribe | `registerDeeplinkListener`; no public unregister mapping |
 | Warm link entry | Current `Activity` intent consumed by SDK lifecycle | AppDelegate/UIScene callbacks explicitly forwarded through RPC |
 | iOS app ID | Not used | Required by Dart `init` |
@@ -378,7 +382,7 @@ Purchase Connector is a separate optional native subsystem using `af-purchase-co
 - Platform-only calls are not short-circuited in Dart; they reach the RPC and surface the native `AppsFlyerException` off-platform. Shared calls are not guaranteed to work outside Android/iOS.
 - Dart throws `ArgumentError` before transport for purchase details on the wrong platform. Most other input validation, including `init` parameters and `setConsentData` GDPR fields, remains in the typed native RPC request and SDK.
 - Android converts parser/validation failures to numeric `RpcResponse.Error` values. Unexpected plugin orchestration failures use plugin error strings such as `UNEXPECTED_ERROR` or `INIT_ERROR`.
-- iOS distinguishes protocol errors in the response `error` envelope from handler failures represented by `result.success == false`; the iOS plugin adapter converts both to `FlutterError` and unwraps successful values.
+- iOS distinguishes protocol errors in the response `error` envelope from handler failures represented by `result.success == false`; the iOS plugin adapter converts both to `FlutterError` and forwards the successful `data` payload as-is.
 - A malformed native event is logged and dropped by Dart. It never reaches an application callback and does not fail the `af-events` subscription. Conversion-data failure and UDL failure are normal event payloads, not failed MethodChannel requests.
 - Android splits teardown by lifetime. The Dart-facing half is engine-scoped: `onDetachedFromEngine` sets `isEngineDetached` first, then clears the channel handlers, detaches this engine's `af-events` sink via `releaseEventSink()` (which also runs from `onCancel`), and shuts down the blocking-RPC executor. Setting `isEngineDetached` before `releaseEventSink()` lets any in-flight `af-events` delivery return `RETRY_LATER` instead of calling `EventChannel.success()` on a detached embedding. That detach is what keeps the process-scoped `AppsFlyerEventBus` buffering events for the next engine; it is not inferred from `EventChannel.EventSink.success()` throwing. Clearing the method-call handler is what stops new calls — teardown and `onMethodCall` both run on the platform thread, so a post-detach `executeRpc` entry is rare; if one still reaches the plugin, it completes with `PLUGIN_DETACHED` directly while async completions still drop in `deliverRpcResult`. Only awaited RPCs outlive teardown, because `shutdown()` lets the in-flight task run to completion: its latch can resolve seconds later, and `deliverRpcResult` then drops the `Flutter Result` rather than replying on a dead channel. Replying would not crash — Flutter discards the response with a `FlutterJNI was detached` warning — but that warning is misleading in customer bug reports. The native-facing half is process-scoped and deliberately survives: `AppsFlyerEventBus` keeps its buffer and `AppsFlyerRpcBridge` keeps the RPC handler, so a recreated engine reattaches to the configured bridge. Dart state does not survive either way — the application calls the `register*Listener` APIs again after a new engine attaches, and reusing the handler only makes that re-registration reuse the existing listeners instead of building new ones.
 - iOS registers its RPC event handler during plugin construction and tears it down in `detachFromEngineForRegistrar:` (after `publish:` in `registerWithRegistrar:`), clearing `eventSink`, `pendingEvents`, and the bridge event handler when the `FlutterEngine` is deallocated. `AppsFlyerRPCBridge` holds one handler per process while plugin instances are per engine, so `AFRPCBridge` records the registering instance as the slot's owner and removes the handler only for that owner — a detaching engine cannot silence events for an engine that registered after it and is still alive. This mirrors the `this.sink === sink` guard in `AppsFlyerEventBus.detach`; on both platforms the newest registration owns event delivery. `isEngineDetached` is set first in teardown so any in-flight `executeJson` completion (including the `init` sequence and `logAndOpenStore`) skips `FlutterResult` and `markBridgeReady(markedBy:)` instead of replying on a dead channel or flushing `AppsFlyerAttribution`'s process-scoped queue for a torn-down engine. A synchronous `executeRpc` that still reaches the plugin after detach completes with `PLUGIN_DETACHED` instead; `deliverFlutterResult` remains the drop path for async completions only. Teardown runs the whole block on the main queue, hopping when `detachFromEngineForRegistrar:` arrives off it: every other writer of the plugin's state (`onListen`, `onCancel`, `deliverEvent`, and the RPC completions reading `isEngineDetached`) is already main-thread confined, so the hop is what makes that confinement complete and lets the state stay lock-free. It captures the instance strongly, since both the bridge handler slot and `AppsFlyerAttribution`'s queue are keyed on its identity.
@@ -429,7 +433,7 @@ Different test levels protect different boundaries:
 | Generated-model checks | `lib/appsflyer_sdk.g.dart` plus generator workflow | Purchase Connector JSON model conversion; regenerate after annotated model changes |
 | Android RPC tests | native Android SDK/RPC repository | Typed request parsing/validation, handler-to-SDK mapping, callbacks, response/error behavior, timeouts |
 | iOS RPC tests | native iOS SDK/RPC repository | Parser/router/domain handlers, state actor, event encoding, SDK timeout races, negative paths |
-| Platform adapter tests | `android/src/test/kotlin/com/appsflyer/appsflyersdk/AppsFlyerEventBusTest.kt`, `AppsFlyerRpcBridgeTest.kt`; otherwise no comprehensive suite in this repository | Android event buffering, replay ordering, sink attach/detach across engine recreation, concurrent publishing, and single-executor RPC bridge reuse across engine recreation are covered by JVM unit tests (`./gradlew :appsflyer_sdk:testDebugUnitTest` from `example/android`, run by the Android CI job). Channel registration, engine detach, Android activity/new-intent behavior, iOS AppDelegate/UIScene forwarding, and result unwrapping still require focused native tests or example-app verification |
+| Platform adapter tests | `android/src/test/kotlin/com/appsflyer/appsflyersdk/AppsFlyerEventBusTest.kt`, `AppsFlyerRpcBridgeTest.kt`; otherwise no comprehensive suite in this repository | Android event buffering, replay ordering, sink attach/detach across engine recreation, concurrent publishing, and single-executor RPC bridge reuse across engine recreation are covered by JVM unit tests (`./gradlew :appsflyer_sdk:testDebugUnitTest` from `example/android`, run by the Android CI job). Channel registration, engine detach, Android activity/new-intent behavior, and iOS AppDelegate/UIScene forwarding still require focused native tests or example-app verification |
 | Device/integration tests | `example/`, RC scenario scripts, real AppsFlyer dashboard/logs | Plugin registration, native dependency packaging, lifecycle sessions, deep links, attribution callbacks, push/uninstall paths, and network-visible behavior |
 
 The PR gate is `.github/workflows/lint-test-build.yml`: analyze, format check and `flutter test --coverage` on Linux, then a per-platform release build, with `./gradlew :appsflyer_sdk:testDebugUnitTest` running ahead of the build on the Android job (preceded by `flutter build apk --config-only`, because the Gradle wrapper is gitignored and a fresh checkout has none until the Flutter tool invokes Gradle). The iOS `RunnerTests` suite is not wired into CI: it re-implements the function under test rather than importing the plugin, so it pins Foundation behavior and would cover no plugin code in exchange for a simulator boot on a runner that bills at 10x. None of that loads a real device: it cannot prove lifecycle, packaging or network-visible behavior, and SPM resolution is not covered at all because `Package.swift` depends on the app-generated `FlutterFramework` path. Run the example on a device or emulator for platform changes and follow [`doc/testing-and-troubleshooting.md`](../doc/testing-and-troubleshooting.md). Purchase Connector changes need opt-in builds; iOS Core should be checked through both CocoaPods and SPM where applicable.
@@ -442,7 +446,7 @@ The PR gate is `.github/workflows/lint-test-build.yml`: analyze, format check an
 2. Define the public Dart signature and platform availability in `lib/src/appsflyer_sdk.dart`. Add a small model only when it gives callers type safety or isolates a real platform-shape difference.
 3. Map the public call to the exact native method name and parameter keys. Adapt the payload when the two contracts differ; do not silently send an iOS contract to Android or vice versa. Do not add a platform gate when only one side supports the method — forward it and let the RPC reject it.
 4. Decide the completion contract: RPC acceptance, awaited native callback, returned value, or asynchronous event. Keep a request result on its originating MethodChannel reply; reserve `af-events` for unsolicited/repeating SDK events.
-5. Update iOS result unwrapping when the public API expects data from an iOS nested response. Add plugin orchestration only for cross-layer duties such as initialization ordering or opening a returned URL.
+5. Forward the successful `data` payload to Dart unchanged when AppsFlyerRPC already exposes the public shape (7.0.13+ scalar getters and map results). Add plugin orchestration only for cross-layer duties such as initialization ordering or opening a returned URL — not per-method unwrapping of legacy nested `data.*` envelopes.
 6. Test Dart mappings for both platforms, including nulls/defaults, exceptions, and off-platform behavior. Add or update native RPC parser/handler tests in the owning native repository and run device coverage for lifecycle or packaging changes.
 7. Update API, feature, migration, and architecture documentation affected by the change. Do not hand-edit generated `.g.dart` files.
 

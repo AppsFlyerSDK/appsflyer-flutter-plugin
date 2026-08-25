@@ -137,9 +137,9 @@ await appsflyerSdk.registerSessionReadyListener(() async {
 If GDPR doesn't apply to the user perform the following:
 
 1. Initialize the SDK using `appsflyerSdk.init(...)`.
-2. Call `setConsentData` with all four consent fields. When GDPR does not apply,
-   set `isUserSubjectToGDPR` to `false` and supply explicit values for the
-   remaining fields.
+2. Call `setConsentData` with `isUserSubjectToGDPR: false`. The other consent
+   fields may be omitted or `null` — matching the native `AppsFlyerConsent`
+   constructor for non-GDPR users.
 3. Register the session-ready listener and call `appsflyerSdk.start()` from its
    callback.
 
@@ -152,9 +152,6 @@ await appsflyerSdk.init(
 
 await appsflyerSdk.setConsentData(
   isUserSubjectToGDPR: false,
-  hasConsentForDataUsage: false,
-  hasConsentForAdsPersonalization: false,
-  hasConsentForAdStorage: false,
 );
 
 await appsflyerSdk.registerSessionReadyListener(() async {
@@ -179,9 +176,9 @@ It uses named parameters to distinguish GDPR and non-GDPR users:</br>
 ```dart
 Future<void> setConsentData({
   required bool isUserSubjectToGDPR,
-  required bool hasConsentForDataUsage,
-  required bool hasConsentForAdsPersonalization,
-  required bool hasConsentForAdStorage,
+  bool? hasConsentForDataUsage,
+  bool? hasConsentForAdsPersonalization,
+  bool? hasConsentForAdStorage,
 })
 ```
 
@@ -190,12 +187,13 @@ Future<void> setConsentData({
 | Parameter | Type | Description |
 | -------- | -------- | -------- |
 | isUserSubjectToGDPR            | bool (required) | Indicates if the user is subject to GDPR regulations. |
-| hasConsentForDataUsage         | bool (required) | Determines if the user consents to data usage. |
-| hasConsentForAdsPersonalization | bool (required) | Determines if the user consents to personalized ads. |
-| hasConsentForAdStorage         | bool (required) | Determines if the user consents to storing ad-related data. |
+| hasConsentForDataUsage         | bool? (optional) | Determines if the user consents to data usage. Omit or pass `null` when GDPR does not apply. |
+| hasConsentForAdsPersonalization | bool? (optional) | Determines if the user consents to personalized ads. Omit or pass `null` when GDPR does not apply. |
+| hasConsentForAdStorage         | bool? (optional) | Determines if the user consents to storing ad-related data. Omit or pass `null` when GDPR does not apply. |
 
-- When `isUserSubjectToGDPR` is `true`, supply meaningful values for all four fields before the first `start()`.
-- When `isUserSubjectToGDPR` is `false`, still pass explicit `bool` values for the remaining fields.
+- When `isUserSubjectToGDPR` is `true`, supply meaningful values for the three
+  consent fields before the first `start()`.
+- When `isUserSubjectToGDPR` is `false`, omit the other fields or pass `null`.
 - These values should be collected from the user via an appropriate **UI or consent prompt** before calling this method.
 
 📌 **Example Usage**

@@ -9,16 +9,19 @@ let package = Package(
     ],
     dependencies: [
         .package(name: "FlutterFramework", path: "../FlutterFramework"),
+        // Must match the AppsFlyerFramework version AppsFlyerRPC's own podspec pins
+        // exactly (7.0.13 -> 7.0.2), or SPM and CocoaPods consumers link different
+        // native SDKs from the same plugin release.
         .package(
             url: "https://github.com/AppsFlyerSDK/AppsFlyerFramework.git",
-            exact: "7.0.1"
+            exact: "7.0.2"
         )
     ],
     targets: [
         .binaryTarget(
             name: "AppsFlyerRPC",
-            url: "https://github.com/AppsFlyerSDK/appsflyer-apple-rpc/releases/download/7.0.12/AppsFlyerRPC-static.xcframework.zip",
-            checksum: "14484bce262c2bea03cb4fb0ca85818560dd72831915246f5cc2686eb196f87f"
+            url: "https://github.com/AppsFlyerSDK/appsflyer-apple-rpc/releases/download/7.0.13/AppsFlyerRPC-static.xcframework.zip",
+            checksum: "e6ab48450c2f2bec204a8f6298e4b5859db6bf8232819b388d741aea59c567d1"
         ),
         .target(
             name: "appsflyer_sdk",

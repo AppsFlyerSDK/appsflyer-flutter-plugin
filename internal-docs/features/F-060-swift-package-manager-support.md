@@ -4,7 +4,7 @@ name: "Swift Package Manager (SPM) Support (Core, iOS)"
 type: sdkCore
 platform: ios
 status: active
-last_verified: 2026-08-10
+last_verified: 2026-08-25
 depends_on: []
 ---
 
@@ -40,9 +40,10 @@ SPM path (resolved by `flutter build` at build configuration time — not by sta
         FlutterFramework Swift package in the consuming app's ephemeral build output during
         `flutter pub get` / `flutter build`; removing the dependency breaks `import Flutter`
     → binaryTarget "AppsFlyerRPC" — the RPC xcframework vendored directly by release URL + SHA-256
-        (AppsFlyerRPC 7.0.12); at implementation review time, upstream tag 7.0.12's Package.swift
-        referenced the 7.0.1 asset / stale checksum, while the correction existed only on main
-    → dependency on AppsFlyerFramework, pinned exactly to 7.0.1 (AppsFlyerRPC 7.0.12 requires it)
+        (AppsFlyerRPC 7.0.13); the manifest is not consumed upstream because tag 7.0.12's own
+        Package.swift once referenced the 7.0.1 asset with a stale checksum — vendoring the
+        release asset by URL + checksum keeps the pin verifiable regardless of upstream tags
+    → dependency on AppsFlyerFramework, pinned exactly to 7.0.2 (AppsFlyerRPC 7.0.13 requires it)
     → target "appsflyer_sdk" depends on FlutterFramework, AppsFlyerLib (from AppsFlyerFramework),
         and AppsFlyerRPC — a single Swift target, so SPM's ban on mixing Swift and Objective-C
         sources in one target never applies
@@ -51,7 +52,7 @@ SPM path (resolved by `flutter build` at build configuration time — not by sta
 
 CocoaPods path (resolved by `pod install` at install time):
   ios/appsflyer_sdk.podspec
-    subspec 'Core' → source_files point at the shared Sources/ tree; depends on AppsFlyerRPC 7.0.12
+    subspec 'Core' → source_files point at the shared Sources/ tree; depends on AppsFlyerRPC 7.0.13
     subspec 'PurchaseConnector' → depends on PurchaseConnector 7.0.1, still points at ios/PurchaseConnector/
 ```
 
@@ -60,9 +61,9 @@ CocoaPods path (resolved by `pod install` at install time):
 ## Files
 | File | Role |
 |------|------|
-| `ios/appsflyer_sdk/Package.swift` | SPM manifest. `swift-tools-version:5.9` (Xcode 15.0+), `platforms: [.iOS("13.0")]`. Declares the Flutter-required path dependency `.package(name: "FlutterFramework", path: "../FlutterFramework")` — the generated ephemeral package is created by Flutter in the consuming app, not checked into this repository (see Known Limitations). Vendors `AppsFlyerRPC` 7.0.12 as a `binaryTarget` (release URL + SHA-256 `14484bce…`). Depends on `AppsFlyerFramework` `.exact("7.0.1")` for `AppsFlyerLib`. |
+| `ios/appsflyer_sdk/Package.swift` | SPM manifest. `swift-tools-version:5.9` (Xcode 15.0+), `platforms: [.iOS("13.0")]`. Declares the Flutter-required path dependency `.package(name: "FlutterFramework", path: "../FlutterFramework")` — the generated ephemeral package is created by Flutter in the consuming app, not checked into this repository (see Known Limitations). Vendors `AppsFlyerRPC` 7.0.13 as a `binaryTarget` (release URL + SHA-256 `e6ab4845…`). Depends on `AppsFlyerFramework` `.exact("7.0.2")` for `AppsFlyerLib` — the version AppsFlyerRPC 7.0.13's podspec pins, so SPM and CocoaPods consumers link the same native SDK. |
 | `ios/appsflyer_sdk/Sources/appsflyer_sdk/*.swift` | Core implementation files (`AppsflyerSdkPlugin.swift`, `AppsFlyerAttribution.swift`, `AFRPCBridge.swift`) — the single shared source tree for both CocoaPods and SPM, Swift only. `@objc(AppsflyerSdkPlugin)` is where `pluginClass: AppsflyerSdkPlugin` (declared in `pubspec.yaml`) resolves from in both integration paths. |
-| `ios/appsflyer_sdk.podspec` | `Core` subspec depends on `AppsFlyerRPC 7.0.12` (which transitively pins `AppsFlyerFramework 7.0.1`); `PurchaseConnector` subspec depends on `PurchaseConnector 7.0.1`. No marker declares SPM availability — Flutter's tooling detects it purely by the presence of `Package.swift` at the conventional path. |
+| `ios/appsflyer_sdk.podspec` | `Core` subspec depends on `AppsFlyerRPC 7.0.13` (which transitively pins `AppsFlyerFramework 7.0.2`); `PurchaseConnector` subspec depends on `PurchaseConnector 7.0.1`, which declares no `AppsFlyerFramework` dependency of its own and so cannot conflict with that pin. No marker declares SPM availability — Flutter's tooling detects it purely by the presence of `Package.swift` at the conventional path. |
 | `ios/.gitignore` | `.build/` and `.swiftpm/` — local SPM resolution/build artifacts that must not be committed. |
 | `CHANGELOG.md` | Documents SPM support, Purchase Connector's continued CocoaPods-only status, and a link to flutter/flutter#161182. |
 

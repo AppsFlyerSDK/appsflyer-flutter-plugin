@@ -9,7 +9,7 @@ affects-features: [F-054, F-060]
 related-issue-cases: []
 ---
 
-> **⚠️ Superseded — historical research record (do not treat as current).** This research supported SPM support on the SDK **6.18.0** line (DELIVERY-125462). The plugin has since migrated to **SDK 7 / RPC**: iOS vendors the **AppsFlyerRPC 7.0.12** static xcframework as a `binaryTarget` (→ AppsFlyerFramework 7.0.1), targets **iOS 13.0**, and does not consume the upstream RPC package manifest. At the implementation review that produced the current manifest, the 7.0.12 tag carried a stale asset/checksum. Current state: `ios/appsflyer_sdk/Package.swift`, `internal-docs/features/F-060-swift-package-manager-support.md`, and `internal-docs/ARCHITECTURE.md`. Kept for context only.
+> **⚠️ Superseded — historical research record (do not treat as current).** This research supported SPM support on the SDK **6.18.0** line (DELIVERY-125462). The plugin has since migrated to **SDK 7 / RPC**: iOS vendors the **AppsFlyerRPC 7.0.13** static xcframework as a `binaryTarget` (→ AppsFlyerFramework 7.0.2), targets **iOS 13.0**, and does not consume the upstream RPC package manifest. At the implementation review that produced the current manifest, the 7.0.12 tag carried a stale asset/checksum. Current state: `ios/appsflyer_sdk/Package.swift`, `internal-docs/features/F-060-swift-package-manager-support.md`, and `internal-docs/ARCHITECTURE.md`. Kept for context only.
 
 ## Summary
 

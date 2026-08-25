@@ -8,7 +8,7 @@ Pod::Spec.new do |s|
   s.author           = { "Appsflyer" => "build@appsflyer.com" }
   s.source           = { :git => "https://github.com/AppsFlyerSDK/flutter_appsflyer_sdk.git", :tag => s.version.to_s }
   
-  # SDK 7 requires iOS 13+ (AppsFlyerFramework 7.0.1 and the AppsFlyerRPC bridge both target iOS 13.0).
+  # SDK 7 requires iOS 13+ (AppsFlyerFramework 7.0.2 and the AppsFlyerRPC bridge both target iOS 13.0).
   s.ios.deployment_target = '13.0'
   s.requires_arc = true
   s.static_framework = true
@@ -23,7 +23,7 @@ Pod::Spec.new do |s|
   s.subspec 'Core' do |ss|
     ss.source_files = 'appsflyer_sdk/Sources/appsflyer_sdk/**/*.swift'
     ss.dependency 'Flutter'
-    ss.ios.dependency 'AppsFlyerRPC', '7.0.12'
+    ss.ios.dependency 'AppsFlyerRPC', '7.0.13'
   end
 
   s.subspec 'PurchaseConnector' do |ss|

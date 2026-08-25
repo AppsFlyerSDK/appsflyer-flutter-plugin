@@ -4,7 +4,7 @@ name: Manual GDPR/DMA Consent API
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-08-19
+last_verified: 2026-08-25
 depends_on: []
 ---
 
@@ -37,14 +37,14 @@ AppsFlyerSdk.setConsentData({isUserSubjectToGDPR, hasConsentForDataUsage,
   → PlatformException is converted to AppsFlyerException
 ```
 
-On iOS, `AFRPCSetConsentDataRequest` rejects incomplete GDPR consent as a validation error. Android's `SetConsentDataRequest` currently does not mirror that check; the plugin still forwards the call so native behavior can evolve without another Dart change.
+On iOS, `AFRPCSetConsentDataRequest` requires `isUserSubjectToGDPR` and accepts nullable consent fields; neither platform's RPC layer enforces completeness when GDPR applies — matching native `AppsFlyerConsent` construction.
 
 ---
 
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `setConsentData({required bool isUserSubjectToGDPR, required bool hasConsentForDataUsage, required bool hasConsentForAdsPersonalization, required bool hasConsentForAdStorage})` |
+| `lib/src/appsflyer_sdk.dart` | `setConsentData({required bool isUserSubjectToGDPR, bool? hasConsentForDataUsage, bool? hasConsentForAdsPersonalization, bool? hasConsentForAdStorage})` |
 | `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Generic `executeRpc` → `dispatchRpc` routing `setConsentData` to `AppsFlyerRpcHandler` |
 | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | Generic `executeRpc` → `dispatchRpc` forwarding `setConsentData` to `AppsFlyerRPCBridge` |
 | `doc/consent-dma.md` | Integration guide for both the CMP-automatic (F-011) and manual (this feature) consent paths |
@@ -55,20 +55,20 @@ On iOS, `AFRPCSetConsentDataRequest` rejects incomplete GDPR consent as a valida
 ## Input / Output
 | | |
 |--|--|
-| **Input** | All four fields are required `bool` values. |
+| **Input** | `isUserSubjectToGDPR` (`bool`, required). The three consent fields are optional `bool?` values — omit or pass `null` for non-GDPR users (`isUserSubjectToGDPR: false`), matching native `AppsFlyerConsent(false, null, null, null)`. |
 | **Output** | `Future<void>` completes after native RPC validation and the synchronous SDK setter invocation. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or request timeout. |
 
 ---
 
 ## Tests
 `test/appsflyer_sdk_test.dart` covers both the mapping and the forward-only behavior:
-- `maps cross-platform configuration and identity APIs` asserts that a fully populated call dispatches RPC method `setConsentData` with `{'isUserSubjectToGDPR': true, 'hasConsentForDataUsage': true, 'hasConsentForAdsPersonalization': false, 'hasConsentForAdStorage': true}`.
-- `setConsentData forwards all four consent fields to the native layer` asserts that a fully populated call dispatches RPC method `setConsentData` with all four boolean fields.
+- `setConsentData forwards all four consent fields to the native layer` asserts a fully populated GDPR call.
+- `setConsentData forwards non-GDPR consent with null optional fields` asserts `isUserSubjectToGDPR: false` with the three optional fields sent as `null`.
 
 ---
 
 ## Known Limitations
-- iOS validates required GDPR fields in its RPC request model; Android does not yet mirror that check in `SetConsentDataRequest`, so incomplete consent can reach the native SDK on Android until the RPC bridge is updated.
+- iOS requires `isUserSubjectToGDPR`; the three consent fields are optional at the RPC layer on both platforms. Incomplete GDPR consent is not rejected by the RPC bridge — native SDK behavior applies.
 - Consent is order-sensitive relative to `start()` (it must be set before the first session to affect the launch request), but neither the Dart API nor either native handler enforces or warns about this ordering.
 - "Every app start" means every cold/process start. The native SDK keeps the value for later background-to-foreground sessions in the same process; the Flutter plugin adds no persistence of its own.
 - The native API has no completion callback, so a completed `Future` confirms only that the RPC layer accepted the call — not that the consent state reached AppsFlyer's servers.

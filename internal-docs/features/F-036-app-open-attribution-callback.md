@@ -15,20 +15,21 @@ App-Open Attribution (OAOA) — the legacy `onAppOpenAttribution` / `registerOnA
 Per the [API Removal Rule](/doc/migration-guide.md#api-removal-rule), the plugin preserves SDK 7 behavior rather than SDK 6 APIs; OAOA is not kept as a no-op stub.
 
 ### Replacement
-Use **Unified Deep Linking (UDL)** — an explicit `registerDeepLinkListener(onDeepLink)` call that takes the handling callback as its argument (see F-037). There is no init-time callback flag: register the native listener before `init()`, so Android's one-shot deferred-resolution gate sees it.
+Use **Unified Deep Linking (UDL)** — an explicit `registerDeepLinkListener(onDeepLinking:)` call that takes the handling callback as its argument (see F-037). There is no init-time callback flag: register the native listener before `init()`, so Android's one-shot deferred-resolution gate sees it.
 
 ```dart
 final appsFlyer = AppsFlyerSdk.instance;
 
-await appsFlyer.registerDeepLinkListener((DeepLinkResult result) {
+await appsFlyer.registerDeepLinkListener(
+    onDeepLinking: (DeepLinkResult result) {
   // result.status, result.deepLink, result.error
 });
 await appsFlyer.init(devKey: 'YOUR_DEV_KEY', appId: 'YOUR_APP_ID');
 ```
 
-`registerDeepLinkListener()` maps to `subscribeForDeepLink` on Android and `registerDeeplinkListener` on iOS, and delivers both direct (app already installed) and deferred deep links as a single `DeepLinkResult`, superseding the legacy OAOA path. Android also exposes `unregisterDeeplinkListener()`, a soft unsubscribe that drops further bridge deep-link events; on iOS it drops the Dart callback and then throws `AppsFlyerException`, because the iOS RPC layer does not implement the method.
+`registerDeepLinkListener()` maps to `subscribeForDeepLink` on Android and `registerDeeplinkListener` on iOS, and delivers both direct (app already installed) and deferred deep links as a single `DeepLinkResult`, superseding the legacy OAOA path. Android also exposes `unregisterDeepLinkListener()`, a soft unsubscribe that drops further bridge deep-link events; on iOS it drops the Dart callback and then throws `AppsFlyerException`, because the iOS RPC layer does not implement the method.
 
-Install-time attribution/conversion data is still available via GCD (F-035), now as the `onSuccess` and `onFailure` callbacks passed to an explicit `registerConversionListener()` call — the SDK 6 `onInstallConversionData` callback no longer exists.
+Install-time attribution/conversion data is still available via GCD (F-035), now as the `onConversionDataSuccess` and `onConversionDataFail` callbacks passed to an explicit `registerConversionListener()` call — the SDK 6 `onInstallConversionData` callback no longer exists.
 
 See the [migration guide](/doc/migration-guide.md) for the full removal/replacement details.
 

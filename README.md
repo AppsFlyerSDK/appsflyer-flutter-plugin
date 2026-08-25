@@ -17,7 +17,7 @@ To do so, please follow [this article](https://support.appsflyer.com/hc/en-us/ar
 This plugin release bundles:
 
 - Android AppsFlyer SDK **v7.0.1**
-- iOS AppsFlyer SDK **v7.0.1**
+- iOS AppsFlyer SDK **v7.0.2**
 
 ### Purchase Connector versions
 
@@ -28,8 +28,8 @@ When Purchase Connector is enabled in your app:
 
 ## ❗❗ Breaking changes when updating to v7.x.x ❗❗
 
-Version `7.0.1` targets AppsFlyer SDK **7.0.1** on Android and iOS. The public
-Flutter API changed in this major release.
+Version `7.0.1` targets AppsFlyer SDK **7.0.1** on Android and **7.0.2** on iOS.
+The public Flutter API changed in this major release.
 
 - **Minimum supported versions: Flutter `3.24.0`, Dart `3.5.0` (and earlier than
   `4.0.0`), Android API 21, and iOS 13.0.**
@@ -44,7 +44,7 @@ final appsflyerSdk = AppsFlyerSdk.instance;
 // If your app handles deep links, register before init(). Android decides once
 // per install, while init() processes the launch intent, whether to request the
 // deferred deep link — registering later skips it for that install permanently.
-await appsflyerSdk.registerDeepLinkListener((result) {
+await appsflyerSdk.registerDeepLinkListener(onDeepLinking: (result) {
   print('Deep link: ${result.deepLink?.deepLinkValue}');
 });
 

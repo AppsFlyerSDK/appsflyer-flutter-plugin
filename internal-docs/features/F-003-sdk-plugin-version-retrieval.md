@@ -4,7 +4,7 @@ name: SDK/Plugin Version Retrieval
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-08-10
+last_verified: 2026-08-25
 depends_on: []
 ---
 
@@ -27,7 +27,7 @@ AppsFlyerSdk.getSdkVersion()                                          [lib/src/a
     → MethodChannel('af-api').invokeMethod('executeRpc', {method:'getSdkVersion', params:{}})
       → Android: dispatchRpc → AppsFlyerRpcHandler → AppsFlyerLib.getSdkVersion()   [android/.../AppsflyerSdkPlugin.kt]
       → iOS: dispatchRpc → AppsFlyerRPCBridge → [AppsFlyerLib shared] ...           [ios/.../AppsflyerSdkPlugin.swift]
-        (iOS unwraps the version from the nested {data:{version}} result)
+        (iOS forwards the bare `data` scalar from AppsFlyerRPC 7.0.13+, matching Android)
   → unexpected null reply throws AppsFlyerException (`<method> returned no value`)
   → PlatformException is converted to AppsFlyerException
 
@@ -43,7 +43,7 @@ AppsFlyerSdk.pluginVersion                                            [lib/src/a
 | `lib/src/appsflyer_sdk.dart` | `Future<String> getSdkVersion()` (async RPC round-trip), `String get pluginVersion` (sync, local constant) |
 | `lib/src/appsflyer_constants.dart` | `_AppsFlyerConstants.PLUGIN_VERSION = "7.0.1"` constant returned by `pluginVersion` |
 | `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | generic `getSdkVersion` dispatch over `AppsFlyerRpcHandler` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | generic `getSdkVersion` dispatch; `unwrapValueForMethod` extracts `data.version` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | generic `getSdkVersion` dispatch; forwards `resultObj["data"]` to Dart unchanged (bare version string under AppsFlyerRPC 7.0.13+) |
 
 ---
 

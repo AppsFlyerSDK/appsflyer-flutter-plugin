@@ -27,7 +27,7 @@ Search for the launch event that looks like this:
 
 ```
 <~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~~+~>
-<~+~   SEND Start:   https://launches.appsflyer.com/api/v7.0/iosevent?app_id=7xXxXxX1&buildnumber=7.0.1
+<~+~   SEND Start:   https://launches.appsflyer.com/api/v7.0/iosevent?app_id=7xXxXxX1&buildnumber=7.0.2
 <~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~+~~+~>
 { launch event payload } // Just an example of a JSON. you will see the full payload
 ```

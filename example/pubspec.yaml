@@ -37,8 +37,8 @@ dev_dependencies:
 
 # The following section is specific to Flutter.
 flutter:
-  # The example app is built with CocoaPods (the plugin's podspec pins AppsFlyerRPC 7.0.12 ->
-  # AppsFlyerFramework 7.0.1). Swift Package Manager is disabled here because this repository's
+  # The example app is built with CocoaPods (the plugin's podspec pins the native
+  # iOS AppsFlyer SDK). Swift Package Manager is disabled here because this repository's
   # folder name (appsflyer-flutter-plugin) differs from the Dart package name (appsflyer_sdk); with
   # a local path dependency SwiftPM derives the package identity from the checkout folder name and
   # fails to resolve ("unable to override package ... identity ... doesn't match"). The plugin still

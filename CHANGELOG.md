@@ -10,7 +10,7 @@ removed APIs, renames, lifecycle changes, and upgrade instructions.
 - Minimum Flutter version **3.24.0**
 - Minimum Dart version **3.5.0** (and earlier than Dart **4.0.0**)
 - Android AppsFlyer SDK **7.0.1**
-- iOS AppsFlyer SDK **7.0.1**
+- iOS AppsFlyer SDK **7.0.2**
 - Android Purchase Connector **2.2.0**
 - iOS Purchase Connector **7.0.1**
 - iOS minimum deployment target **13.0**
@@ -28,14 +28,18 @@ removed APIs, renames, lifecycle changes, and upgrade instructions.
   a session. Call `registerSessionReadyListener(onReady)` and call `start()`
   once for each readiness event.
 - Replaced callback registration flags with explicit listener registration that
-  takes the callback as an argument: `registerConversionListener(onSuccess:,
-  onFailure:)`, `registerDeepLinkListener(onDeepLink)`, and
-  `registerSessionReadyListener(onReady)`. The plugin holds one callback per
+  takes the callback as an argument: `registerConversionListener(
+  onConversionDataSuccess:, onConversionDataFail:)`,
+  `registerDeepLinkListener(onDeepLinking:)`, and
+  `registerSessionReadyListener(onReady)`. Each callback is named after
+  the event it handles, so the same handler names apply across the AppsFlyer
+  plugins. Every callback except `onReady` is optional — pass only the ones you
+  need. The plugin holds one callback per
   event and replaces it on re-registration, matching the native SDKs; no event
   stream is exposed, so a single native event cannot fan out to several
   handlers in the app. Registering and unregistering are all-or-nothing: when the
   native call fails, the Dart callbacks are left exactly as they were.
-- `registerDeepLinkListener(onDeepLink)` must be called **before** `init()`.
+- `registerDeepLinkListener(onDeepLinking:)` must be called **before** `init()`.
   Android decides once per install, while `init()` processes the launch intent,
   whether to send the deferred deep-link resolution request, and skips it when no
   listener is registered yet. The other listeners are still registered after
@@ -94,7 +98,9 @@ removed APIs, renames, lifecycle changes, and upgrade instructions.
 - `setSharingFilterForPartners(null)` and `setSharingFilterForPartners([])` are
   forwarded to the native layer instead of being ignored in Dart, and clear the
   filter on Android and iOS alike.
-- `setConsentData` no longer validates consent fields in Dart. All four parameters are required `bool` values.
+- `setConsentData` accepts nullable consent fields: only `isUserSubjectToGDPR` is
+  required; the three consent booleans are optional and may be omitted or `null`
+  for non-GDPR users, matching native `AppsFlyerConsent`.
 - Added Android-only `collectDataFromLauncherActivity()`, which collects the
   open/web referrer from the launcher activity's intent. Call it before
   `start()`. It requires an attached activity and otherwise fails with
@@ -140,10 +146,13 @@ replacement table.
 - Added the `AFPurchaseDetails` interface with dedicated
   `AFAndroidPurchaseDetails` and `AFIOSPurchaseDetails` implementations.
 - Added Android-only `logSession`, `setPreinstallAttribution`, `setAppId`,
-  `isStopped`, `isPreInstalledApp`, `getAttributionId`,
-  `unregisterDeeplinkListener`, and `unregisterConversionListener` APIs.
-  On Android, `unregisterDeeplinkListener` does not reliably stop subsequent
+  `isPreInstalledApp`, `getAttributionId`,
+  `unregisterDeepLinkListener`, and `unregisterConversionListener` APIs.
+  On Android, `unregisterDeepLinkListener` does not reliably stop subsequent
   deep-link events; do not depend on it as an effective unsubscribe.
+- Added `isStopped`, `getHostName`, and `getHostPrefix` on both platforms. On
+  iOS, `getHostName` and `getHostPrefix` return an empty string until `setHost`
+  is called.
 - Added iOS-only `setDisableAppleAdsAttribution`,
   `setDisableIDFVCollection`, `setShouldCollectDeviceName`, and
   `setUseUninstallSandbox` APIs.

@@ -79,7 +79,7 @@ class MainPageState extends State<MainPage> {
   }
 
   Future<void> _registerDeepLinkListener() async {
-    await _appsflyerSdk.registerDeepLinkListener((result) {
+    await _appsflyerSdk.registerDeepLinkListener(onDeepLinking: (result) {
       // Empty payload when the SDK didn't resolve a deep link, so the
       // smoke runner's pattern check sees a stable `payload={}` shape.
       final payload = result.deepLink == null ? const {} : result.toJson();
@@ -97,7 +97,7 @@ class MainPageState extends State<MainPage> {
 
   Future<void> _registerListeners() async {
     await _appsflyerSdk.registerConversionListener(
-      onSuccess: (res) {
+      onConversionDataSuccess: (res) {
         AfQaLogger.callback('onInstallConversionData', res);
         if (!_gcdReady.isCompleted) {
           _gcdReady.complete();
@@ -106,7 +106,7 @@ class MainPageState extends State<MainPage> {
           setState(() => _gcd = _conversionPayloadForUi(res));
         }
       },
-      onFailure: (error) {
+      onConversionDataFail: (error) {
         AfQaLogger.error('onInstallConversionData', error);
         if (!_gcdReady.isCompleted) {
           _gcdReady.complete();
@@ -156,7 +156,7 @@ class MainPageState extends State<MainPage> {
       _appsflyerSdk.unregisterConversionListener();
       // Soft unsubscribe: Android keeps its native listener and the plugin
       // stops forwarding, so this cannot disable deep-link handling.
-      _appsflyerSdk.unregisterDeeplinkListener();
+      _appsflyerSdk.unregisterDeepLinkListener();
     }
     super.dispose();
   }
