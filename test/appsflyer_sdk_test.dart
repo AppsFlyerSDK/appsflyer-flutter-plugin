@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -1716,6 +1717,38 @@ void main() {
     });
 
     test(
+      'logs a dropped malformed event without printing its payload',
+      () async {
+        final logged = <String>[];
+        final previous = debugPrint;
+        debugPrint = (String? message, {int? wrapWidth}) {
+          if (message != null) logged.add(message);
+        };
+        addTearDown(() => debugPrint = previous);
+
+        await androidSdk.registerConversionListener(
+          onConversionDataSuccess: (_) {},
+        );
+
+        // Truncated JSON: jsonDecode throws a FormatException whose toString()
+        // quotes the source it choked on.
+        await _emitRaw(
+          '{"event":"onConversionDataSuccess","data":{"click_id":'
+          '"$_sensitiveValue","deep_link_value":"$_sensitiveValue"',
+        );
+        await pumpEventQueue();
+
+        expect(logged, isNotEmpty);
+        for (final message in logged) {
+          expect(message, isNot(contains(_sensitiveValue)));
+          expect(message, isNot(contains('click_id')));
+          expect(message, isNot(contains('deep_link_value')));
+        }
+        expect(logged.first, contains('FormatException'));
+      },
+    );
+
+    test(
       'drops malformed native events instead of surfacing an error',
       () async {
         final received = <Map<String, dynamic>>[];
@@ -1887,6 +1920,9 @@ Future<void> _expectLogAdRevenueMediationNetworks(
     });
   }
 }
+
+/// Stands in for attribution data that must never reach a release log.
+const String _sensitiveValue = 'af-sensitive-payload-marker';
 
 Future<void> _emitEvent(Map<String, dynamic> event) =>
     _emitRaw(jsonEncode(event));

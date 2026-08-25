@@ -172,6 +172,12 @@ replacement table.
 
 **Fixed**
 
+- Native events that fail to parse are logged by error type only. The log line
+  previously interpolated the error, and `FormatException.toString()` appends an
+  excerpt of the string it could not parse, so a truncated or malformed event put
+  raw attribution data — click and deep-link identifiers among it — into the host
+  app's release log. Stream errors are logged the same way, naming the platform
+  error code but not the message or details.
 - Purchase Connector: a validation payload that omitted an optional field was silently dropped — the generated `fromJson` casts were non-nullable, and the resulting error was raised inside a platform-message handler, so neither `onResponse` nor `onFailure` fired and the app could not catch it. **BREAKING:** every field of `ProductPurchase`, `SubscriptionPurchase` and the types it nests, `ValidationFailureData`, `JVMThrowable` and `IosError` is now nullable, matching the Google Play Developer API, which documents `purchaseToken`, `productId`, `quantity`, `purchaseType` and the obfuscated identifiers as conditionally present and omits any field left at its default value. `success` and the `result` maps stay non-nullable. A payload that still cannot be parsed is reported through `onFailure` with a message naming the callback and the error type — never the payload, which carries purchase and account identifiers. See [doc/migration-guide.md](doc/migration-guide.md).
 - Purchase Connector: removed stray `[AppsFlyer_PC_Debug]` `print` logging that shipped in release builds; the callback handler now accepts both JSON-string and already-decoded `Map` payloads and logs (instead of throwing) on an unrecognized callback name.
 - Purchase Connector (**Android**): subscription and in-app validation-result listeners (`setSubscriptionValidationResultListener` / `setInAppValidationResultListener`) never fired — the Dart callback-name constants used a `#` separator while the native side invokes the channel with `:`, so the handler's `switch` never matched. Aligned the Dart constants to `:`, so these result listeners now deliver.

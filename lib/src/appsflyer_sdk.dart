@@ -24,7 +24,7 @@ typedef OnSessionReady = void Function();
 ///
 /// **Multi-engine hosts:** the native SDK and plugin transport are
 /// process-scoped. When more than one Flutter engine is alive, only the engine
-/// whose `af-events` subscription attached most recently receives native events,
+/// whose event subscription attached most recently receives native events,
 /// and the last `register*Listener()` from any engine wins at the native layer.
 /// Integrate from one primary engine. See `doc/getting-started.md#multi-engine`.
 ///
@@ -81,7 +81,7 @@ class AppsFlyerSdk {
     _eventSubscription ??= _eventChannel.receiveBroadcastStream().listen(
       _handleNativeEvent,
       onError: (Object error, StackTrace stackTrace) {
-        debugPrint('AppsFlyer: af-events stream error: $error');
+        debugPrint('AppsFlyer: event stream error (${_describeError(error)}).');
       },
     );
   }
@@ -96,10 +96,26 @@ class AppsFlyerSdk {
       }
       event = _AppsFlyerEvent.fromNative(value);
     } catch (error) {
-      debugPrint('AppsFlyer: dropped malformed native event: $error');
+      debugPrint(
+        'AppsFlyer: dropped malformed native event (${_describeError(error)}).',
+      );
       return;
     }
     _listeners.dispatch(event);
+  }
+
+  /// Describes [error] without reproducing the payload that produced it.
+  ///
+  /// `FormatException.toString()` appends an excerpt of the string it failed to
+  /// parse, and a native [PlatformException] carries the event body in its
+  /// `message` and `details`. That body holds attribution data — click and
+  /// deep-link identifiers among it — and these lines reach the host app's log
+  /// in release builds, so only the type and the platform error code are named.
+  static String _describeError(Object error) {
+    if (error is PlatformException) {
+      return '${error.runtimeType}: ${error.code}';
+    }
+    return '${error.runtimeType}';
   }
 
   /// Initializes the SDK with [devKey] and, on iOS, [appId].
