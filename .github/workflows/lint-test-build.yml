@@ -123,6 +123,16 @@ jobs:
       # This installs all packages defined in pubspec.yaml
       - name: Install plugin dependencies
         run: flutter pub get
+
+      # Step 4a: Create dummy example/.env for analyze
+      # example/pubspec.yaml lists .env as an asset; the file is gitignored and
+      # integrators create it locally. Without it, flutter analyze reports
+      # asset_does_not_exist when validating example assets from the plugin root.
+      - name: Create dummy example/.env for analyze
+        working-directory: example
+        run: |
+          echo "DEV_KEY=dummy_dev_key" > .env
+          echo "APP_ID=dummy_app_id" >> .env
       
       # Step 5: Analyze the plugin
       # Infos and warnings are fatal: both packages are clean at this level, so
@@ -131,10 +141,8 @@ jobs:
         run: flutter analyze --fatal-infos
 
       # Step 5a: Analyze the example app
-      # The example has its own pubspec, so it resolves as a separate package
-      # and the plugin's analyze run does not reach it. It is also the only code
-      # in the repository that exercises the public API the way an integrator
-      # does.
+      # Separate package context; also the only code in the repo that exercises
+      # the public API the way an integrator does.
       - name: Install example dependencies
         run: flutter pub get
         working-directory: example
