@@ -124,11 +124,24 @@ jobs:
       - name: Install plugin dependencies
         run: flutter pub get
       
-      # Step 5: Analyze code for issues
-      # Checks for code quality issues, unused imports, etc.
-      # Only fails on actual errors, not info-level warnings
-      - name: Analyze code
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+      # Step 5: Analyze the plugin
+      # Infos and warnings are fatal: both packages are clean at this level, so
+      # anything new is a regression rather than pre-existing debt.
+      - name: Analyze plugin
+        run: flutter analyze --fatal-infos
+
+      # Step 5a: Analyze the example app
+      # The example has its own pubspec, so it resolves as a separate package
+      # and the plugin's analyze run does not reach it. It is also the only code
+      # in the repository that exercises the public API the way an integrator
+      # does.
+      - name: Install example dependencies
+        run: flutter pub get
+        working-directory: example
+
+      - name: Analyze example app
+        run: flutter analyze --fatal-infos
+        working-directory: example
       
       # Step 6: Format check
       # Ensures code follows Dart formatting standards. On failure, prints
