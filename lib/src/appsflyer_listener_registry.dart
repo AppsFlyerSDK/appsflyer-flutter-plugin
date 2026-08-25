@@ -84,6 +84,47 @@ class _AppsFlyerListenerRegistry {
     callbacks.forEach(on);
   }
 
+  /// Captures the callbacks currently installed for [eventNames], leaving them
+  /// in place, so a caller about to replace them can undo that with [rollback].
+  ///
+  /// Unlike [take] this holds nothing back: the `register*Listener` APIs
+  /// snapshot before a first registration too, and the events held for that
+  /// startup window still have to be replayed once the call succeeds.
+  Map<String, void Function(_AppsFlyerEvent)> snapshot(
+      Iterable<String> eventNames) {
+    final previous = <String, void Function(_AppsFlyerEvent)>{};
+    for (final eventName in eventNames) {
+      final callback = _callbacks[eventName];
+      if (callback != null) {
+        previous[eventName] = callback;
+      }
+    }
+    return previous;
+  }
+
+  /// Undoes a registration of [eventNames] that failed, putting back whatever
+  /// [snapshot] captured.
+  ///
+  /// A name with no entry in [previous] had no callback before and is dropped
+  /// outright, which is what a failed first registration means. A name that had
+  /// one gets it back, so a failed re-registration leaves the listener that was
+  /// already working untouched instead of deleting it. The callback goes back
+  /// through [_callbacks] rather than [on]: it has already been registered
+  /// once, so nothing is held for it and there is nothing to replay.
+  void rollback(
+    Iterable<String> eventNames,
+    Map<String, void Function(_AppsFlyerEvent)> previous,
+  ) {
+    for (final eventName in eventNames) {
+      final callback = previous[eventName];
+      if (callback == null) {
+        off(eventName);
+      } else {
+        _callbacks[eventName] = callback;
+      }
+    }
+  }
+
   /// Delivers [event] to its registered callback, holding it for replay if that
   /// listener has never been registered.
   void dispatch(_AppsFlyerEvent event) {

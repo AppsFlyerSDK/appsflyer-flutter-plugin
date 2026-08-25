@@ -322,6 +322,10 @@ The plugin holds **one callback per event** and replaces it when
 is no stream to subscribe to, so one native event can never be delivered to two
 places in your app.
 
+Every `register*Listener()` and `unregister*Listener()` call is atomic: if it
+throws, the callbacks you had before are still installed and still receiving
+events, so a failed re-registration never leaves your app without a listener.
+
 `onConversionDataFail` is independent of the registration result: this call can succeed
 while the native SDK still fails to retrieve conversion data. The failure payload
 shape differs by platform — Android reports `{"error": String}` with no error

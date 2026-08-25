@@ -129,11 +129,20 @@ class AppsFlyerSdk {
   ///
   /// Both callbacks are optional; pass the ones you need. Calling this again
   /// replaces both.
+  ///
+  /// Throws [AppsFlyerException] when the native call fails. Neither callback
+  /// is installed in that case, and callbacks from an earlier successful call
+  /// stay in place, so a failed call changes nothing.
   Future<void> registerConversionListener({
     OnConversionDataSuccess? onConversionDataSuccess,
     OnConversionDataFailure? onConversionDataFail,
   }) async {
     _ensureEventsSubscribed();
+    const eventNames = [
+      _AppsFlyerConstants.EVENT_CONVERSION_DATA_SUCCESS,
+      _AppsFlyerConstants.EVENT_CONVERSION_DATA_FAIL,
+    ];
+    final previous = _listeners.snapshot(eventNames);
     _listeners.on(
       _AppsFlyerConstants.EVENT_CONVERSION_DATA_SUCCESS,
       (event) => onConversionDataSuccess?.call(event.data),
@@ -145,8 +154,7 @@ class AppsFlyerSdk {
     try {
       await _invokeVoidRpc('registerConversionListener');
     } catch (error) {
-      _listeners.off(_AppsFlyerConstants.EVENT_CONVERSION_DATA_SUCCESS);
-      _listeners.off(_AppsFlyerConstants.EVENT_CONVERSION_DATA_FAIL);
+      _listeners.rollback(eventNames, previous);
       rethrow;
     }
   }
@@ -185,6 +193,10 @@ class AppsFlyerSdk {
   /// never sent for that install, and the skipped state persists across
   /// launches. Direct links are unaffected. Registration before [init] is
   /// supported on both platforms.
+  ///
+  /// Throws [AppsFlyerException] when the native call fails. The callback is
+  /// not installed in that case, and a callback from an earlier successful
+  /// call stays in place, so a failed call changes nothing.
   Future<void> registerDeepLinkListener({
     OnDeepLinkReceived? onDeepLinking,
   }) async {
@@ -193,6 +205,11 @@ class AppsFlyerSdk {
           DeepLinkResult._fromEvent(event, platform: _platform),
         );
     // Android emits onDeepLinking, iOS emits onDeepLinkReceived.
+    const eventNames = [
+      _AppsFlyerConstants.EVENT_DEEP_LINKING,
+      _AppsFlyerConstants.EVENT_DEEP_LINK_RECEIVED,
+    ];
+    final previous = _listeners.snapshot(eventNames);
     _listeners.on(_AppsFlyerConstants.EVENT_DEEP_LINKING, dispatch);
     _listeners.on(_AppsFlyerConstants.EVENT_DEEP_LINK_RECEIVED, dispatch);
     try {
@@ -200,8 +217,7 @@ class AppsFlyerSdk {
         _isAndroid ? 'subscribeForDeepLink' : 'registerDeeplinkListener',
       );
     } catch (error) {
-      _listeners.off(_AppsFlyerConstants.EVENT_DEEP_LINKING);
-      _listeners.off(_AppsFlyerConstants.EVENT_DEEP_LINK_RECEIVED);
+      _listeners.rollback(eventNames, previous);
       rethrow;
     }
   }
@@ -236,8 +252,14 @@ class AppsFlyerSdk {
   ///
   /// Calling this again replaces the callback, so [start] is never issued twice
   /// for one readiness event.
+  ///
+  /// Throws [AppsFlyerException] when the native call fails. The callback is
+  /// not installed in that case, and a callback from an earlier successful
+  /// call stays in place, so a failed call changes nothing.
   Future<void> registerSessionReadyListener(OnSessionReady onReady) async {
     _ensureEventsSubscribed();
+    const eventNames = [_AppsFlyerConstants.EVENT_SESSION_READY];
+    final previous = _listeners.snapshot(eventNames);
     _listeners.on(
       _AppsFlyerConstants.EVENT_SESSION_READY,
       (_) => onReady(),
@@ -245,7 +267,7 @@ class AppsFlyerSdk {
     try {
       await _invokeVoidRpc('registerSessionReadyListener');
     } catch (error) {
-      _listeners.off(_AppsFlyerConstants.EVENT_SESSION_READY);
+      _listeners.rollback(eventNames, previous);
       rethrow;
     }
   }

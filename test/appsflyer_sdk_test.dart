@@ -1239,6 +1239,60 @@ void main() {
       expect(sessionReadyCount, 0);
     });
 
+    test('keeps the working callbacks when a re-registration RPC fails',
+        () async {
+      final conversionData = <Map<String, dynamic>>[];
+      var deepLinkCount = 0;
+      var sessionReadyCount = 0;
+      await androidSdk.registerConversionListener(
+        onConversionDataSuccess: conversionData.add,
+      );
+      await androidSdk.registerDeepLinkListener(
+          onDeepLinking: (_) => deepLinkCount++);
+      await androidSdk.registerSessionReadyListener(() => sessionReadyCount++);
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(methodChannel, (call) async {
+        throw PlatformException(code: '500', message: 'Registration failed');
+      });
+
+      // The replacements must never be installed: the RPC that would have
+      // activated them failed, so the callbacks registered above stay live.
+      await expectLater(
+        androidSdk.registerConversionListener(
+            onConversionDataSuccess: (_) => fail('replacement was installed')),
+        throwsA(isA<AppsFlyerException>()),
+      );
+      await expectLater(
+        androidSdk.registerDeepLinkListener(
+            onDeepLinking: (_) => fail('replacement was installed')),
+        throwsA(isA<AppsFlyerException>()),
+      );
+      await expectLater(
+        androidSdk
+            .registerSessionReadyListener(() => fail('replacement installed')),
+        throwsA(isA<AppsFlyerException>()),
+      );
+
+      await _emitEvent({
+        'event': 'onConversionDataSuccess',
+        'data': {'media_source': 'organic'},
+      });
+      await _emitEvent({
+        'event': 'onDeepLinking',
+        'data': {'status': 'FOUND'},
+      });
+      await _emitEvent({
+        'event': 'onSessionReady',
+        'data': null,
+      });
+      await pumpEventQueue();
+
+      expect(conversionData.single, {'media_source': 'organic'});
+      expect(deepLinkCount, 1);
+      expect(sessionReadyCount, 1);
+    });
+
     test('keeps Dart callbacks when the native unregister RPC fails', () async {
       final conversionData = <Map<String, dynamic>>[];
       var deepLinkCount = 0;
