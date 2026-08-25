@@ -114,7 +114,7 @@ OneLinks. Disable it via `flutter_deeplinking_enabled=false` (Android) and
 
 ### Events missing in an add-to-app or multi-engine host
 
-The native SDK and plugin `af-events` transport are **process-scoped**. When two or
+The native SDK and the plugin's event delivery are **process-scoped**. When two or
 more Flutter engines are alive at once, only the engine whose EventChannel
 subscription attached **most recently** receives conversion, deep-link, and
 session-ready callbacks. The last `register*Listener()` from any engine also wins

@@ -350,7 +350,7 @@ subspec (`public_header_files`):
 
 Plugin **7.x** rewrites the Core bridge in **Swift only**. The Core subspec
 ships Swift sources and declares **no** `public_header_files`. The
-`af-events` stream handler and the old `FlutterAppDelegate` category are gone;
+`AppsFlyerStreamHandler` type and the old `FlutterAppDelegate` category are gone;
 deep-link entry points live in `AppsflyerSdkPlugin.swift` and
 `AppsFlyerAttribution.swift`.
 

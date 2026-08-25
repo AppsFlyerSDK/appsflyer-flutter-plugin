@@ -124,7 +124,7 @@ exception propagate if the call is not essential on that platform.
 <a id="multi-engine-hosts"></a>
 
 The native AppsFlyer SDK is **process-scoped**. The Flutter plugin keeps one
-native bridge, one `af-events` transport subscription, and one native
+native bridge, one event delivery subscription, and one native
 listener reference per event type for the whole process — the same contract as
 the native SDKs themselves.
 
@@ -140,7 +140,7 @@ bridge. See [Getting started → Add-to-app and multiple Flutter engines](gettin
 with overlapping Flutter routes, `FlutterEngineGroup`, multi-scene) are **not
 supported** for event delivery:
 
-- The engine whose `af-events` subscription attached **most recently** is the only
+- The engine whose EventChannel subscription attached **most recently** is the only
   one that receives conversion, deep-link, and session-ready callbacks.
 - The **last** `register*Listener()` call from any engine wins at the native SDK
   and replaces earlier registrations.

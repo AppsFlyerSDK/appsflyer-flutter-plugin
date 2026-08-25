@@ -205,7 +205,7 @@ a new one.
 
 The AppsFlyer **native SDK is process-scoped** — one `AppsFlyerLib` instance per
 app process. The Flutter plugin mirrors that on the native side: one bridge,
-one `af-events` delivery path, and one native listener slot per event type
+one event delivery path, and one native listener slot per event type
 (`registerConversionListener`, `registerDeepLinkListener`, and so on all replace
 the previous registration).
 
@@ -228,7 +228,7 @@ one engine receives native events**:
 
 | Layer | Behavior |
 |---|---|
-| `af-events` delivery | The engine whose EventChannel subscription attached **most recently** wins. Older engines do not receive conversion, deep-link, or session-ready callbacks even if Dart listeners are still registered. |
+| Event delivery | The engine whose EventChannel subscription attached **most recently** wins. Older engines do not receive conversion, deep-link, or session-ready callbacks even if Dart listeners are still registered. |
 | Native `register*Listener()` | The **last** registration from any engine overwrites the native SDK's single listener reference for that event type. |
 | `init()` / `start()` | All engines share the same native SDK. Call `init()`, register listeners, and drive `start()` from **one primary engine** only. |
 
