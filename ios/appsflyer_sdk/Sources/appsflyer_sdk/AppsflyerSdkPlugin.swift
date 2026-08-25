@@ -543,11 +543,13 @@ extension AppsflyerSdkPlugin {
         return false
     }
 
+    // `FlutterApplicationLifeCycleDelegate` declares this inside `NS_ASSUME_NONNULL`, so the
+    // parameters import as non-optional.
     @objc(application:openURL:sourceApplication:annotation:)
     public func application(_ application: UIApplication,
                             openURL url: URL,
-                            sourceApplication: String?,
-                            annotation: Any?) -> Bool {
+                            sourceApplication: String,
+                            annotation: Any) -> Bool {
         AppsFlyerAttribution.shared().handleOpenUrl(url,
                                                     sourceApplication: sourceApplication,
                                                     annotation: annotation)

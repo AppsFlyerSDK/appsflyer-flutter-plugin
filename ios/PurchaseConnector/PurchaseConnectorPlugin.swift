@@ -186,7 +186,7 @@ extension PurchaseConnectorPlugin: PurchaseRevenueDelegate {
     /// Implementation of the `didReceivePurchaseRevenueValidationInfo` delegate method.
     /// When the validation info comes back after a purchase, it is reported back to the Flutter via the method channel.
     public func didReceivePurchaseRevenueValidationInfo(_ validationInfo: [AnyHashable : Any]?, error: Error?) {
-        var resMap: [AnyHashable : Any?] = [
+        let resMap: [AnyHashable : Any?] = [
             "validationInfo": validationInfo,
             "error" : error?.asDictionary
         ]
@@ -199,12 +199,12 @@ extension PurchaseConnectorPlugin: PurchaseRevenueDelegate {
 /// Extending `Error` to have a dictionary representation function. `asDictionary` will turn the current error instance into a dictionary containing `localizedDescription`, `domain` and `code` properties.
 extension Error {
     var asDictionary: [String: Any] {
-        var errorMap: [String: Any] = ["localizedDescription": self.localizedDescription]
-        if let nsError = self as? NSError {
-            errorMap["domain"] = nsError.domain
-            errorMap["code"] = nsError.code
-        }
-        return errorMap
+        let nsError = self as NSError
+        return [
+            "localizedDescription": self.localizedDescription,
+            "domain": nsError.domain,
+            "code": nsError.code,
+        ]
     }
 }
 
