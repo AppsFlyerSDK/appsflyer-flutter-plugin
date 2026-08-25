@@ -18,6 +18,11 @@
 - [AppsFlyerException](#AppsFlyerException)
 
 ## Methods
+
+All methods must be called from the main isolate. From a background isolate the
+call throws `AppsFlyerException` — see
+[Getting started → Background isolates](getting-started.md#background-isolates).
+
 - [init](#init)
 - [enableDebug](#enableDebug)
 - [setLogLevel](#setLogLevel)

@@ -172,6 +172,14 @@ replacement table.
 
 **Fixed**
 
+- Calling the SDK from a background isolate — a push handler, a `workmanager`
+  task, `compute()` — now throws a catchable `AppsFlyerException` naming the
+  cause. Platform channels are bound to the main isolate, and the underlying
+  `StateError` escaped through the event stream's subscribe callback rather than
+  the returned `Future`, so no `try`/`catch` around the call could intercept it
+  and the background isolate terminated mid-task. `AppsFlyerSdk.instance` is
+  also a per-isolate singleton, so a background isolate never sees the instance
+  you configured. See [doc/getting-started.md](doc/getting-started.md#background-isolates).
 - Native events that fail to parse are logged by error type only. The log line
   previously interpolated the error, and `FormatException.toString()` appends an
   excerpt of the string it could not parse, so a truncated or malformed event put

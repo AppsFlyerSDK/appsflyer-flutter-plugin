@@ -15,6 +15,36 @@ typedef OnDeepLinkReceived = void Function(DeepLinkResult result);
 /// Called once per foreground cycle when the SDK is ready to send a session.
 typedef OnSessionReady = void Function();
 
+/// Throws [AppsFlyerException] when this isolate cannot reach the platform
+/// channels.
+///
+/// Platform channels are bound to the root isolate. A background isolate — the
+/// one a push handler or a scheduled background task runs in — reaches them
+/// only after calling `BackgroundIsolateBinaryMessenger.ensureInitialized`
+/// with the root isolate's token; both cases are allowed here.
+///
+/// Without this check the underlying `StateError` escapes the event stream's
+/// subscribe callback rather than the returned [Future], which no `try`/`catch`
+/// around the call can intercept, and it terminates the isolate.
+void _ensureIsolateCanReachPlatform() {
+  if (RootIsolateToken.instance != null) {
+    return;
+  }
+  try {
+    BackgroundIsolateBinaryMessenger.instance;
+  } catch (_) {
+    throw const AppsFlyerException(
+      message:
+          'AppsFlyerSdk was called from a background isolate that cannot '
+          'reach the platform channels. Call the SDK from the main isolate, '
+          'or initialize the background isolate with '
+          'BackgroundIsolateBinaryMessenger.ensureInitialized(rootIsolateToken) '
+          'before calling it. AppsFlyerSdk.instance is per-isolate, so the '
+          'instance in a background isolate is not the one you configured.',
+    );
+  }
+}
+
 /// The AppsFlyer SDK entry point.
 ///
 /// Use the shared [instance] to configure and initialize the SDK. Each event
@@ -78,6 +108,7 @@ class AppsFlyerSdk {
   /// the sequence; [_AppsFlyerListenerRegistry] holds those until their
   /// callback arrives.
   void _ensureEventsSubscribed() {
+    _ensureIsolateCanReachPlatform();
     _eventSubscription ??= _eventChannel.receiveBroadcastStream().listen(
       _handleNativeEvent,
       onError: (Object error, StackTrace stackTrace) {
@@ -1030,6 +1061,7 @@ class AppsFlyerSdk {
     String method, [
     Map<String, dynamic>? params,
   ]) async {
+    _ensureIsolateCanReachPlatform();
     try {
       final dynamic result = await _methodChannel.invokeMethod<dynamic>(
         'executeRpc',

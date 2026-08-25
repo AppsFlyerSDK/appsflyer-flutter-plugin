@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:isolate';
 
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 import 'package:flutter/foundation.dart';
@@ -1716,6 +1717,18 @@ void main() {
       expect(result!.deepLink!.deepLinkValue, 'home');
     });
 
+    test('rejects RPC calls from a background isolate', () async {
+      final outcome = await _callFromBackgroundIsolate('rpc');
+      expect(outcome, startsWith('AppsFlyerException'));
+      expect(outcome, contains('background isolate'));
+    });
+
+    test('rejects listener registration from a background isolate', () async {
+      final outcome = await _callFromBackgroundIsolate('listener');
+      expect(outcome, startsWith('AppsFlyerException'));
+      expect(outcome, contains('background isolate'));
+    });
+
     test(
       'logs a dropped malformed event without printing its payload',
       () async {
@@ -1918,6 +1931,33 @@ Future<void> _expectLogAdRevenueMediationNetworks(
       'revenue': 1.0,
       'additionalParameters': additionalParameters,
     });
+  }
+}
+
+Future<String> _callFromBackgroundIsolate(String probe) async {
+  final port = ReceivePort();
+  await Isolate.spawn(_backgroundProbe, [port.sendPort, probe]);
+  final result = await port.first as String;
+  port.close();
+  return result;
+}
+
+/// Runs in a spawned isolate, which has no root isolate token and therefore no
+/// access to the platform channels.
+Future<void> _backgroundProbe(List<Object> args) async {
+  final send = args[0] as SendPort;
+  final probe = args[1] as String;
+  try {
+    if (probe == 'rpc') {
+      await AppsFlyerSdk.instance.setCustomerUserId('probe');
+    } else {
+      await AppsFlyerSdk.instance.registerConversionListener(
+        onConversionDataSuccess: (_) {},
+      );
+    }
+    send.send('returned normally');
+  } catch (error) {
+    send.send('${error.runtimeType}: $error');
   }
 }
 

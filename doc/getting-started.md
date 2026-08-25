@@ -238,6 +238,40 @@ startup sequence in this guide.
 
 See also [API reference → Multi-engine hosts](api-reference.md#multi-engine-hosts).
 
+<a id="background-isolates"></a>
+## Background isolates
+
+Call the SDK from the main isolate. Background isolates — the ones a push
+handler (`FirebaseMessaging.onBackgroundMessage`), a `workmanager` task, or a
+`compute()` call runs in — cannot reach the plugin.
+
+Two things go wrong there:
+
+- `AppsFlyerSdk.instance` is a singleton **per isolate**. A background isolate
+  gets a fresh, unconfigured instance, not the one you initialized.
+- Platform channels are bound to the main isolate, so the call cannot reach the
+  native SDK at all.
+
+The plugin detects this and throws `AppsFlyerException`, so the failure is
+catchable and your background task keeps running:
+
+```dart
+try {
+  await AppsFlyerSdk.instance.logEvent('af_purchase', {'af_revenue': 9.99});
+} on AppsFlyerException catch (error) {
+  // Called from a background isolate — hand the work to the main isolate.
+  debugPrint('${error.message}');
+}
+```
+
+To log from background work, send the data to the main isolate over a
+`SendPort` and call the SDK there.
+
+If you have already initialized the background isolate with
+`BackgroundIsolateBinaryMessenger.ensureInitialized(rootIsolateToken)`, the
+plugin allows the call — but the instance is still a separate one, so
+initialize the SDK in that isolate before using it.
+
 <a id="start"></a>
 <a id="startsdk"></a>
 ## 6. Start sessions

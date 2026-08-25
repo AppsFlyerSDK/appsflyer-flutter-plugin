@@ -82,6 +82,7 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
       _AppsFlyerConstants.STORE_KIT_VERSION_KEY: config.storeKitVersion.value,
     };
 
+    _ensureIsolateCanReachPlatform();
     _methodChannel.invokeMethod(_AppsFlyerConstants.CONFIGURE_KEY, configMap);
   }
 
@@ -115,12 +116,14 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
   /// Starts observing the transactions.
   @override
   void startObservingTransactions() {
+    _ensureIsolateCanReachPlatform();
     _methodChannel.invokeMethod("startObservingTransactions");
   }
 
   /// Stops observing the transactions.
   @override
   void stopObservingTransactions() {
+    _ensureIsolateCanReachPlatform();
     _methodChannel.invokeMethod("stopObservingTransactions");
   }
 
