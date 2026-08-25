@@ -31,8 +31,11 @@ When Purchase Connector is enabled in your app:
 Version `7.0.1` targets AppsFlyer SDK **7.0.1** on Android and **7.0.2** on iOS.
 The public Flutter API changed in this major release.
 
-- **Minimum supported versions: Flutter `3.24.0`, Dart `3.5.0` (and earlier than
-  `4.0.0`), Android API 21, and iOS 13.0.**
+- **Minimum supported versions: Flutter `3.35.0`, Dart `3.9.0` (and earlier than
+  `4.0.0`), Android API 21, and iOS 13.0.** On Android the plugin also requires
+  Kotlin Gradle Plugin `2.0.21`, Android Gradle Plugin `8.9.1`, Gradle `8.11.1`
+  and JDK 17, matching the AppsFlyer Android SDK. Flutter `3.35` templates all
+  of them — see [doc/installation-guide.md](doc/installation-guide.md).
 
 Use `AppsFlyerSdk.instance`, call `init(devKey:, appId:)` (`appId` is required
 on iOS and optional on Android), register the listeners you need with their

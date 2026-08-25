@@ -4,8 +4,9 @@ part of appsflyer_sdk;
 class MissingConfigurationException implements Exception {
   final String message;
 
-  MissingConfigurationException(
-      {this.message = _AppsFlyerConstants.MISSING_CONFIGURATION_EXCEPTION_MSG});
+  MissingConfigurationException({
+    this.message = _AppsFlyerConstants.MISSING_CONFIGURATION_EXCEPTION_MSG,
+  });
 
   @override
   String toString() => 'ConfigurationException: $message';

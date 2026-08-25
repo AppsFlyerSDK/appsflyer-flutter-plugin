@@ -285,6 +285,75 @@ jobs:
           retention-days: 7
 
   # ===========================================================================
+  # Job 2b: Build the example app on the declared minimum toolchain
+  # ===========================================================================
+  # Every other job pins `channel: stable`, which never exercises the floor
+  # advertised in pubspec.yaml. This job builds the example app on exactly that
+  # declared minimum, so the constraint is verified rather than assumed.
+  #
+  # Debug APK rather than the release bundle: this leg is about the toolchain
+  # accepting the plugin, and the release path is already covered by
+  # build-android on stable.
+  # ===========================================================================
+  build-android-min-toolchain:
+    name: 🤖 Build Android Example (minimum toolchain)
+    runs-on: ubuntu-latest
+    needs: test
+    if: ${{ (needs.test.result == 'success' || needs.test.result == 'skipped') && inputs.skip_builds != true }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      # JDK 17 is part of the declared minimum, so this leg pins it too.
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      # Pinned, not `stable`. Keep this version equal to the `flutter:`
+      # constraint in pubspec.yaml.
+      - name: Setup Flutter SDK (declared minimum)
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.0'
+          cache: true
+
+      - name: Display versions
+        run: |
+          flutter --version
+          java -version
+
+      - name: Fail if the pinned version does not match pubspec.yaml
+        run: |
+          declared=$(grep -oE 'flutter: *">=[0-9]+\.[0-9]+\.[0-9]+"' pubspec.yaml \
+            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          if [ "$declared" != "3.35.0" ]; then
+            echo "::error::pubspec.yaml declares Flutter >=$declared but this job pins 3.35.0."
+            echo "Update the flutter-version above, or the constraint in pubspec.yaml."
+            exit 1
+          fi
+
+      - name: Install plugin dependencies
+        run: flutter pub get
+
+      - name: Install example app dependencies
+        working-directory: example
+        run: flutter pub get
+
+      - name: Create dummy .env for CI build
+        working-directory: example
+        run: |
+          echo "DEV_KEY=dummy_dev_key" > .env
+          echo "APP_ID=dummy_app_id" >> .env
+
+      - name: Build Android APK (debug)
+        working-directory: example
+        run: flutter build apk --debug
+
+  # ===========================================================================
   # Job 3: Build iOS Example App
   # ===========================================================================
   # Builds the example app to ensure plugin integration works
@@ -389,7 +458,7 @@ jobs:
   ci-summary:
     name: 📋 CI Summary
     runs-on: ubuntu-latest
-    needs: [test, build-android, build-ios]
+    needs: [test, build-android, build-android-min-toolchain, build-ios]
     if: always()  # Run even if previous jobs fail
     
     steps:
@@ -400,6 +469,7 @@ jobs:
           echo "==================================="
           echo "Dart unit/lint:              ${{ needs.test.result }}"
           echo "Android native tests + build: ${{ needs.build-android.result }}"
+          echo "Android minimum toolchain:    ${{ needs.build-android-min-toolchain.result }}"
           echo "iOS build:                    ${{ needs.build-ios.result }}"
           echo "==================================="
 
@@ -409,6 +479,7 @@ jobs:
           # gate decides whether a skip is acceptable for publish.
           test_result="${{ needs.test.result }}"
           android_result="${{ needs.build-android.result }}"
+          android_min_result="${{ needs.build-android-min-toolchain.result }}"
           ios_result="${{ needs.build-ios.result }}"
 
           if [[ "$test_result" != "success" && "$test_result" != "skipped" ]]; then
@@ -417,6 +488,10 @@ jobs:
           fi
           if [[ "$android_result" != "success" && "$android_result" != "skipped" ]]; then
             echo "❌ Android native tests or release build failed"
+            exit 1
+          fi
+          if [[ "$android_min_result" != "success" && "$android_min_result" != "skipped" ]]; then
+            echo "❌ Android build on the declared minimum toolchain failed"
             exit 1
           fi
           if [[ "$ios_result" != "success" && "$ios_result" != "skipped" ]]; then

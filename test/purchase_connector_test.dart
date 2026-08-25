@@ -66,38 +66,42 @@ void main() {
     connector.setDidReceivePurchaseRevenueValidationInfo(null);
   });
 
-  test('parses a Play payload that omits every conditionally present field',
-      () {
-    final purchase = ProductPurchase.fromJson(_minimalProductPurchase);
+  test(
+    'parses a Play payload that omits every conditionally present field',
+    () {
+      final purchase = ProductPurchase.fromJson(_minimalProductPurchase);
 
-    expect(purchase.kind, 'androidpublisher#productPurchase');
-    expect(purchase.purchaseState, 0);
-    expect(purchase.developerPayload, isNull);
-    expect(purchase.orderId, isNull);
-    expect(purchase.quantity, isNull);
-    expect(purchase.purchaseToken, isNull);
-    expect(purchase.productId, isNull);
-    expect(purchase.obfuscatedExternalAccountId, isNull);
-    expect(purchase.regionCode, isNull);
-  });
+      expect(purchase.kind, 'androidpublisher#productPurchase');
+      expect(purchase.purchaseState, 0);
+      expect(purchase.developerPayload, isNull);
+      expect(purchase.orderId, isNull);
+      expect(purchase.quantity, isNull);
+      expect(purchase.purchaseToken, isNull);
+      expect(purchase.productId, isNull);
+      expect(purchase.obfuscatedExternalAccountId, isNull);
+      expect(purchase.regionCode, isNull);
+    },
+  );
 
-  test('delivers an in-app validation result built from a minimal payload',
-      () async {
-    Map<String, InAppPurchaseValidationResult>? delivered;
-    String? failure;
-    connector.setInAppValidationResultListener(
-      (result) => delivered = result,
-      (message, error) => failure = message,
-    );
+  test(
+    'delivers an in-app validation result built from a minimal payload',
+    () async {
+      Map<String, InAppPurchaseValidationResult>? delivered;
+      String? failure;
+      connector.setInAppValidationResultListener(
+        (result) => delivered = result,
+        (message, error) => failure = message,
+      );
 
-    await emit('InAppValidationResultListener:onResponse', {
-      'token': {'success': true, 'productPurchase': _minimalProductPurchase},
-    });
+      await emit('InAppValidationResultListener:onResponse', {
+        'token': {'success': true, 'productPurchase': _minimalProductPurchase},
+      });
 
-    expect(failure, isNull, reason: 'a well-formed payload is not a failure');
-    expect(delivered!['token']!.success, isTrue);
-    expect(delivered!['token']!.productPurchase!.orderId, isNull);
-  });
+      expect(failure, isNull, reason: 'a well-formed payload is not a failure');
+      expect(delivered!['token']!.success, isTrue);
+      expect(delivered!['token']!.productPurchase!.orderId, isNull);
+    },
+  );
 
   test('routes an unparseable in-app payload to onFailure', () async {
     Map<String, InAppPurchaseValidationResult>? delivered;
@@ -153,36 +157,40 @@ void main() {
     expect(failure, isNot(contains('not-an-int')));
   });
 
-  test('reports a failure whose payload omits the result description',
-      () async {
-    String? failure;
-    JVMThrowable? reported;
-    connector.setInAppValidationResultListener(null, (message, error) {
-      failure = message;
-      reported = error;
-    });
+  test(
+    'reports a failure whose payload omits the result description',
+    () async {
+      String? failure;
+      JVMThrowable? reported;
+      connector.setInAppValidationResultListener(null, (message, error) {
+        failure = message;
+        reported = error;
+      });
 
-    await emit('InAppValidationResultListener:onFailure', {
-      'error': {'type': 'java.io.IOException'},
-    });
+      await emit('InAppValidationResultListener:onFailure', {
+        'error': {'type': 'java.io.IOException'},
+      });
 
-    expect(failure, isNotNull);
-    expect(reported!.type, 'java.io.IOException');
-    expect(reported!.message, isNull);
-  });
+      expect(failure, isNotNull);
+      expect(reported!.type, 'java.io.IOException');
+      expect(reported!.message, isNull);
+    },
+  );
 
-  test('a malformed iOS validation payload still reaches the callback',
-      () async {
-    var called = false;
-    Map<String, dynamic>? info;
-    connector.setDidReceivePurchaseRevenueValidationInfo((i, error) {
-      called = true;
-      info = i;
-    });
+  test(
+    'a malformed iOS validation payload still reaches the callback',
+    () async {
+      var called = false;
+      Map<String, dynamic>? info;
+      connector.setDidReceivePurchaseRevenueValidationInfo((i, error) {
+        called = true;
+        info = i;
+      });
 
-    await emit('didReceivePurchaseRevenueValidationInfo', '{ not json');
+      await emit('didReceivePurchaseRevenueValidationInfo', '{ not json');
 
-    expect(called, isTrue);
-    expect(info, isNull);
-  });
+      expect(called, isTrue);
+      expect(info, isNull);
+    },
+  );
 }

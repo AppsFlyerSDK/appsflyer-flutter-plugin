@@ -47,13 +47,13 @@ class AppsFlyerInviteLinkParams {
   /// Set [isIOS] to `true` for the iOS request format. Android and iOS use
   /// different request keys for [referrerCustomerId].
   Map<String, dynamic> toRpcMap({required bool isIOS}) => {
-        'channel': channel,
-        'campaign': campaign,
-        'referrerName': referrerName,
-        'referrerImageUrl': referrerImageUrl,
-        isIOS ? 'referrerCustomerId' : 'customerId': referrerCustomerId,
-        'baseDeepLink': baseDeepLink,
-        'brandDomain': brandDomain,
-        'userParams': userParams,
-      };
+    'channel': channel,
+    'campaign': campaign,
+    'referrerName': referrerName,
+    'referrerImageUrl': referrerImageUrl,
+    isIOS ? 'referrerCustomerId' : 'customerId': referrerCustomerId,
+    'baseDeepLink': baseDeepLink,
+    'brandDomain': brandDomain,
+    'userParams': userParams,
+  };
 }

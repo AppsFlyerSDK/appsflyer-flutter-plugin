@@ -79,20 +79,22 @@ class MainPageState extends State<MainPage> {
   }
 
   Future<void> _registerDeepLinkListener() async {
-    await _appsflyerSdk.registerDeepLinkListener(onDeepLinking: (result) {
-      // Empty payload when the SDK didn't resolve a deep link, so the
-      // smoke runner's pattern check sees a stable `payload={}` shape.
-      final payload = result.deepLink == null ? const {} : result.toJson();
-      AfQaLogger.callback(
-        'onDeepLinking',
-        'status=${_deepLinkStatusForQaLog(result.status)}, '
-            'deepLinkValue=${result.deepLink?.deepLinkValue}, '
-            'payload=$payload',
-      );
-      if (mounted) {
-        setState(() => _deepLinkData = result.toJson());
-      }
-    });
+    await _appsflyerSdk.registerDeepLinkListener(
+      onDeepLinking: (result) {
+        // Empty payload when the SDK didn't resolve a deep link, so the
+        // smoke runner's pattern check sees a stable `payload={}` shape.
+        final payload = result.deepLink == null ? const {} : result.toJson();
+        AfQaLogger.callback(
+          'onDeepLinking',
+          'status=${_deepLinkStatusForQaLog(result.status)}, '
+              'deepLinkValue=${result.deepLink?.deepLinkValue}, '
+              'payload=$payload',
+        );
+        if (mounted) {
+          setState(() => _deepLinkData = result.toJson());
+        }
+      },
+    );
   }
 
   Future<void> _registerListeners() async {
@@ -173,10 +175,7 @@ class MainPageState extends State<MainPage> {
       AfQaLogger.result('setCustomerUserId', 'e2e_user_42');
     });
 
-    const additionalData = {
-      'tenant': 'qa_eu',
-      'experiment': 'rc_pipeline_v1',
-    };
+    const additionalData = {'tenant': 'qa_eu', 'experiment': 'rc_pipeline_v1'};
     await _safeCall('setAdditionalData', () async {
       await _appsflyerSdk.setAdditionalData(additionalData);
       AfQaLogger.log(
@@ -193,10 +192,7 @@ class MainPageState extends State<MainPage> {
       await _appsflyerSdk.start(awaitResponse: true);
       AfQaLogger.result('startSDK', 'SUCCESS');
     } on AppsFlyerException catch (error) {
-      AfQaLogger.error(
-        'startSDK',
-        'code=${error.code} msg=${error.message}',
-      );
+      AfQaLogger.error('startSDK', 'code=${error.code} msg=${error.message}');
     } finally {
       if (!_firstStartDone.isCompleted) {
         _firstStartDone.complete();
@@ -224,23 +220,15 @@ class MainPageState extends State<MainPage> {
 
   Future<void> _runStandardEvents() async {
     await _logEvent('af_demo_launch', const {});
-    await _logEvent(
-      'af_purchase',
-      const {
-        'af_revenue': 19.99,
-        'af_currency': 'EUR',
-        'af_content_id': 'id_42',
-      },
-      resultTag: 'logEvent: af_purchase sent',
-    );
-    await _logEvent(
-      'af_content_view',
-      const {
-        'af_content_id': 'id_42',
-        'af_content_type': 'demo',
-      },
-      resultTag: 'logEvent: af_content_view sent',
-    );
+    await _logEvent('af_purchase', const {
+      'af_revenue': 19.99,
+      'af_currency': 'EUR',
+      'af_content_id': 'id_42',
+    }, resultTag: 'logEvent: af_purchase sent');
+    await _logEvent('af_content_view', const {
+      'af_content_id': 'id_42',
+      'af_content_type': 'demo',
+    }, resultTag: 'logEvent: af_content_view sent');
   }
 
   Future<void> _runCustomEvent() async {
@@ -264,10 +252,7 @@ class MainPageState extends State<MainPage> {
       await _appsflyerSdk.setCurrencyCode('EUR');
       AfQaLogger.result('setCurrencyCode', 'EUR');
     });
-    const additionalData = {
-      'tenant': 'qa_eu',
-      'experiment': 'rc_pipeline_v1',
-    };
+    const additionalData = {'tenant': 'qa_eu', 'experiment': 'rc_pipeline_v1'};
     await _safeCall('setAdditionalData', () async {
       await _appsflyerSdk.setAdditionalData(additionalData);
       AfQaLogger.log(
@@ -302,11 +287,7 @@ class MainPageState extends State<MainPage> {
   /// Logs the invocation, calls [AppsFlyerSdk.logEvent] (fire-and-forget), and
   /// emits a harness `result: true` line for the smoke runner. Server failures
   /// are not surfaced unless awaitResponse is enabled here.
-  Future<bool?> _logEvent(
-    String name,
-    Map params, {
-    String? resultTag,
-  }) async {
+  Future<bool?> _logEvent(String name, Map params, {String? resultTag}) async {
     AfQaLogger.log('logEvent', 'name=$name params=$params');
     try {
       await _appsflyerSdk.logEvent(
@@ -320,10 +301,7 @@ class MainPageState extends State<MainPage> {
     return true;
   }
 
-  Future<void> _safeCall(
-    String tag,
-    Future<void> Function() body,
-  ) async {
+  Future<void> _safeCall(String tag, Future<void> Function() body) async {
     try {
       await body();
     } catch (error) {

@@ -18,20 +18,21 @@ class ProductPurchase {
   String? regionCode;
 
   ProductPurchase(
-      this.kind,
-      this.purchaseTimeMillis,
-      this.purchaseState,
-      this.consumptionState,
-      this.developerPayload,
-      this.orderId,
-      this.purchaseType,
-      this.acknowledgementState,
-      this.purchaseToken,
-      this.productId,
-      this.quantity,
-      this.obfuscatedExternalAccountId,
-      this.obfuscatedExternalProfileId,
-      this.regionCode);
+    this.kind,
+    this.purchaseTimeMillis,
+    this.purchaseState,
+    this.consumptionState,
+    this.developerPayload,
+    this.orderId,
+    this.purchaseType,
+    this.acknowledgementState,
+    this.purchaseToken,
+    this.productId,
+    this.quantity,
+    this.obfuscatedExternalAccountId,
+    this.obfuscatedExternalProfileId,
+    this.regionCode,
+  );
 
   factory ProductPurchase.fromJson(Map<String, dynamic> json) =>
       _$ProductPurchaseFromJson(json);

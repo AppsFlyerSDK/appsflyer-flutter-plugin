@@ -25,10 +25,10 @@ class _AppsFlyerConstants {
   // Purchase Connector listeners
   // These match the exact method names sent by the native Android channel.
   static const String
-      SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_RESPONSE =
+  SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_RESPONSE =
       "SubscriptionPurchaseValidationResultListener:onResponse";
   static const String
-      SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_FAILURE =
+  SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_FAILURE =
       "SubscriptionPurchaseValidationResultListener:onFailure";
   static const String IN_APP_VALIDATION_RESULT_LISTENER_ON_RESPONSE =
       "InAppValidationResultListener:onResponse";

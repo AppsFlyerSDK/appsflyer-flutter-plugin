@@ -67,7 +67,8 @@ class _AppsFlyerListenerRegistry {
   /// Dart exactly as it was. Nothing held is lost in between — [_hold] only
   /// keeps events for a listener that has never registered, and these have.
   Map<String, void Function(_AppsFlyerEvent)> take(
-      Iterable<String> eventNames) {
+    Iterable<String> eventNames,
+  ) {
     final taken = <String, void Function(_AppsFlyerEvent)>{};
     for (final eventName in eventNames) {
       final callback = _callbacks[eventName];
@@ -91,7 +92,8 @@ class _AppsFlyerListenerRegistry {
   /// snapshot before a first registration too, and the events held for that
   /// startup window still have to be replayed once the call succeeds.
   Map<String, void Function(_AppsFlyerEvent)> snapshot(
-      Iterable<String> eventNames) {
+    Iterable<String> eventNames,
+  ) {
     final previous = <String, void Function(_AppsFlyerEvent)>{};
     for (final eventName in eventNames) {
       final callback = _callbacks[eventName];
@@ -179,9 +181,7 @@ class _AppsFlyerListenerRegistry {
     try {
       callback(event);
     } catch (error, stack) {
-      debugPrint(
-        'AppsFlyer: listener for ${event.name} threw: $error\n$stack',
-      );
+      debugPrint('AppsFlyer: listener for ${event.name} threw: $error\n$stack');
     }
   }
 }

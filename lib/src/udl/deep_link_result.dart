@@ -1,12 +1,7 @@
 part of appsflyer_sdk;
 
 /// The outcome of native Unified Deep Linking resolution.
-enum DeepLinkStatus {
-  found,
-  notFound,
-  error,
-  unknown,
-}
+enum DeepLinkStatus { found, notFound, error, unknown }
 
 /// Platform-specific deep-link failure information.
 ///
@@ -20,10 +15,7 @@ class DeepLinkFailure {
 
   const DeepLinkFailure({this.type, this.message});
 
-  Map<String, dynamic> toJson() => {
-        'type': type,
-        'message': message,
-      };
+  Map<String, dynamic> toJson() => {'type': type, 'message': message};
 }
 
 @immutable
@@ -32,11 +24,7 @@ class DeepLinkResult {
   final DeepLink? deepLink;
   final DeepLinkFailure? error;
 
-  const DeepLinkResult({
-    required this.status,
-    this.deepLink,
-    this.error,
-  });
+  const DeepLinkResult({required this.status, this.deepLink, this.error});
 
   factory DeepLinkResult._fromEvent(
     _AppsFlyerEvent event, {
@@ -62,8 +50,8 @@ class DeepLinkResult {
     final error = rawError == null
         ? null
         : platform == TargetPlatform.android
-            ? DeepLinkFailure(type: rawError.toString())
-            : DeepLinkFailure(message: rawError.toString());
+        ? DeepLinkFailure(type: rawError.toString())
+        : DeepLinkFailure(message: rawError.toString());
 
     return DeepLinkResult(
       status: status,
@@ -88,10 +76,10 @@ class DeepLinkResult {
   }
 
   Map<String, dynamic> toJson() => {
-        'status': status.name,
-        'error': error?.toJson(),
-        'deepLink': deepLink?.clickEvent,
-      };
+    'status': status.name,
+    'error': error?.toJson(),
+    'deepLink': deepLink?.clickEvent,
+  };
 
   @override
   String toString() => 'DeepLinkResult: ${jsonEncode(toJson())}';

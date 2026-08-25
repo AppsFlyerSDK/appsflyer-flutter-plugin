@@ -7,7 +7,10 @@ class InAppPurchaseValidationResult {
   ValidationFailureData? failureData;
 
   InAppPurchaseValidationResult(
-      this.success, this.productPurchase, this.failureData);
+    this.success,
+    this.productPurchase,
+    this.failureData,
+  );
 
   factory InAppPurchaseValidationResult.fromJson(Map<String, dynamic> json) =>
       _$InAppPurchaseValidationResultFromJson(json);
@@ -21,8 +24,8 @@ class InAppPurchaseValidationResultMap {
 
   InAppPurchaseValidationResultMap(this.result);
   factory InAppPurchaseValidationResultMap.fromJson(
-          Map<String, dynamic> json) =>
-      _$InAppPurchaseValidationResultMapFromJson(json);
+    Map<String, dynamic> json,
+  ) => _$InAppPurchaseValidationResultMapFromJson(json);
 
   Map<String, dynamic> toJson() =>
       _$InAppPurchaseValidationResultMapToJson(this);

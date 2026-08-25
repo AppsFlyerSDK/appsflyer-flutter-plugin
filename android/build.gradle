@@ -16,6 +16,47 @@ rootProject.allprojects {
 apply plugin: 'com.android.library'
 apply plugin: 'org.jetbrains.kotlin.android'
 
+// The Kotlin Gradle Plugin version comes from the host app: this file applies
+// org.jetbrains.kotlin.android without a version, so there is nothing the
+// plugin can pin. Below the minimum, the Kotlin compiler cannot read the
+// AppsFlyer dependencies' metadata and reports an "incompatible version of
+// Kotlin" error naming an internal class, which gives no hint that the fix
+// belongs in the app's own settings.gradle. This check reports it instead.
+// See doc/installation-guide.md.
+def minKotlinVersion = '2.0.21'
+def hostKotlinVersion =
+        org.jetbrains.kotlin.gradle.plugin.KotlinPluginWrapperKt.getKotlinPluginVersion(project)
+
+static List<Integer> parseVersionParts(String version) {
+    // Drops any pre-release suffix ("2.1.0-Beta2" -> [2, 1, 0]).
+    version.split('-')[0].split('\\.').collect { it.isInteger() ? it.toInteger() : 0 }
+}
+
+static boolean isVersionAtLeast(String actual, String required) {
+    def a = parseVersionParts(actual)
+    def r = parseVersionParts(required)
+    for (int i = 0; i < Math.max(a.size(), r.size()); i++) {
+        int left = i < a.size() ? a[i] : 0
+        int right = i < r.size() ? r[i] : 0
+        if (left != right) {
+            return left > right
+        }
+    }
+    return true
+}
+
+if (!isVersionAtLeast(hostKotlinVersion, minKotlinVersion)) {
+    throw new GradleException(
+            "appsflyer_sdk requires Kotlin Gradle Plugin $minKotlinVersion or " +
+            "later, but this app builds with $hostKotlinVersion.\n" +
+            "Fix: raise the org.jetbrains.kotlin.android version in your app's " +
+            "android/settings.gradle (or android/build.gradle on older " +
+            "projects) to $minKotlinVersion or later.\n" +
+            "Upgrading Flutter alone does not change it — the Kotlin version is " +
+            "declared by your project, not by the Flutter SDK.\n" +
+            "See https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/blob/master/doc/installation-guide.md")
+}
+
 def includeConnector = project.findProperty('appsflyer.enable_purchase_connector')?.toBoolean() ?: false
 
 android {
@@ -27,6 +68,19 @@ android {
         multiDexEnabled true
     }
     
+    // Matches the AppsFlyer Android dependencies, which are built at Java 17.
+    // Keep the two blocks in step: setting one without the other makes Gradle
+    // report "Inconsistent JVM-target compatibility" between the Java and
+    // Kotlin compile tasks.
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
     lintOptions {
         disable 'InvalidPackage'
     }
@@ -40,15 +94,6 @@ android {
         test {
             java.srcDirs = ['src/test/kotlin']
         }
-    }
-
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-    }
-    
-    kotlinOptions {
-        jvmTarget = '17'
     }
 
     testOptions {

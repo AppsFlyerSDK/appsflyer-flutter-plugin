@@ -10,9 +10,14 @@ Plugin `7.0.1` migrates to **AppsFlyer SDK 7** (Android `7.0.1`, iOS `7.0.2`). T
 is a major release with intentional breaking changes. Purchase Connector
 dependency changes are described later in this guide.
 
-The minimum supported toolchain is Flutter `3.24.0` and Dart `3.5.0` (and
+The minimum supported toolchain is Flutter `3.35.0` and Dart `3.9.0` (and
 earlier than Dart `4.0.0`). Android requires API 21 or later, and iOS requires
-version 13.0 or later.
+version 13.0 or later. Android additionally requires Kotlin Gradle Plugin
+`2.0.21`, Android Gradle Plugin `8.9.1`, Gradle `8.11.1` and JDK 17, matching
+the toolchain the AppsFlyer Android SDK is built with — see
+[installation-guide.md](installation-guide.md). The plugin fails the build with
+an explicit message if the Kotlin Gradle Plugin is older, because that version
+is declared by your project and does not change when you upgrade Flutter.
 
 This guide is scoped to the **Flutter plugin**. For the underlying native behavior, read
 the official SDK 7 migration guides — they are the source of truth for what changed:

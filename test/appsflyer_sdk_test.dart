@@ -60,16 +60,10 @@ void main() {
 
   group('lifecycle', () {
     test('init sends the iOS initialization parameters', () async {
-      await iosSdk.init(
-        devKey: 'ios-dev-key',
-        appId: '123456789',
-      );
+      await iosSdk.init(devKey: 'ios-dev-key', appId: '123456789');
 
       expect(rpcMethod, 'init');
-      expect(rpcParams, {
-        'devKey': 'ios-dev-key',
-        'appId': '123456789',
-      });
+      expect(rpcParams, {'devKey': 'ios-dev-key', 'appId': '123456789'});
     });
 
     test('init does not send appId to Android', () async {
@@ -114,7 +108,8 @@ void main() {
 
     test('listeners are registered explicitly', () async {
       await androidSdk.registerConversionListener(
-          onConversionDataSuccess: (_) {});
+        onConversionDataSuccess: (_) {},
+      );
       expect(rpcMethod, 'registerConversionListener');
 
       await androidSdk.registerDeepLinkListener(onDeepLinking: (_) {});
@@ -139,29 +134,31 @@ void main() {
       expect(rpcParams, {'awaitResponse': true});
     });
 
-    test('start with awaitResponse throws AppsFlyerException on RPC failure',
-        () async {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(methodChannel, (_) async {
-        throw PlatformException(
-          code: '500',
-          message: 'Session launch failed',
-        );
-      });
+    test(
+      'start with awaitResponse throws AppsFlyerException on RPC failure',
+      () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(methodChannel, (_) async {
+              throw PlatformException(
+                code: '500',
+                message: 'Session launch failed',
+              );
+            });
 
-      await expectLater(
-        androidSdk.start(awaitResponse: true),
-        throwsA(
-          isA<AppsFlyerException>()
-              .having((error) => error.code, 'code', 500)
-              .having(
-                (error) => error.message,
-                'message',
-                'Session launch failed',
-              ),
-        ),
-      );
-    });
+        await expectLater(
+          androidSdk.start(awaitResponse: true),
+          throwsA(
+            isA<AppsFlyerException>()
+                .having((error) => error.code, 'code', 500)
+                .having(
+                  (error) => error.message,
+                  'message',
+                  'Session launch failed',
+                ),
+          ),
+        );
+      },
+    );
 
     test('enableDebug maps to the isDebug RPC method', () async {
       await iosSdk.enableDebug(true);
@@ -186,10 +183,7 @@ void main() {
     });
 
     test('logEvent is fire-and-forget by default', () async {
-      await androidSdk.logEvent(
-        'af_purchase',
-        eventValues: {'revenue': 4.2},
-      );
+      await androidSdk.logEvent('af_purchase', eventValues: {'revenue': 4.2});
 
       expect(rpcMethod, 'logEvent');
       expect(rpcParams, {
@@ -214,43 +208,44 @@ void main() {
       });
     });
 
-    test(
-        'PlatformException with a numeric RPC code becomes '
+    test('PlatformException with a numeric RPC code becomes '
         'AppsFlyerException', () async {
       // Matches the real native shape: RpcResponse.Error/AFRPCError report a
       // numeric, HTTP-style code as a string, with no details map.
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(methodChannel, (_) async {
-        throw PlatformException(
-          code: '422',
-          message: 'devKey cannot be empty',
-        );
-      });
+            throw PlatformException(
+              code: '422',
+              message: 'devKey cannot be empty',
+            );
+          });
 
       await expectLater(
         androidSdk.logEvent('', eventValues: null),
         throwsA(
           isA<AppsFlyerException>()
               .having((error) => error.code, 'code', 422)
-              .having((error) => error.message, 'message',
-                  'devKey cannot be empty'),
+              .having(
+                (error) => error.message,
+                'message',
+                'devKey cannot be empty',
+              ),
         ),
       );
     });
 
-    test(
-        'PlatformException with a non-numeric plugin-guard code leaves '
+    test('PlatformException with a non-numeric plugin-guard code leaves '
         'code null', () async {
       // Matches guards that fail before reaching the RPC layer (a malformed
       // channel call, a JSON parse failure) — these report a non-numeric
       // code, e.g. "INVALID_PARAMETERS", which has no HTTP-style equivalent.
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(methodChannel, (_) async {
-        throw PlatformException(
-          code: 'INVALID_PARAMETERS',
-          message: "executeRpc requires a 'method'",
-        );
-      });
+            throw PlatformException(
+              code: 'INVALID_PARAMETERS',
+              message: "executeRpc requires a 'method'",
+            );
+          });
 
       await expectLater(
         androidSdk.logEvent('', eventValues: null),
@@ -266,18 +261,20 @@ void main() {
       );
     });
 
-    test('MissingPluginException is not converted to AppsFlyerException',
-        () async {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(methodChannel, (_) async {
-        throw MissingPluginException('No implementation found');
-      });
+    test(
+      'MissingPluginException is not converted to AppsFlyerException',
+      () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(methodChannel, (_) async {
+              throw MissingPluginException('No implementation found');
+            });
 
-      await expectLater(
-        androidSdk.logEvent('', eventValues: null),
-        throwsA(isA<MissingPluginException>()),
-      );
-    });
+        await expectLater(
+          androidSdk.logEvent('', eventValues: null),
+          throwsA(isA<MissingPluginException>()),
+        );
+      },
+    );
 
     test('unexpected RPC result type becomes AppsFlyerException', () async {
       rpcResult = 1;
@@ -318,8 +315,7 @@ void main() {
       }
     });
 
-    test(
-        'platform-only calls are forwarded to the native RPC instead of being '
+    test('platform-only calls are forwarded to the native RPC instead of being '
         'swallowed in Dart', () async {
       // Which platform implements which method is the RPC contract's to know.
       // Mirroring that list in Dart would silently go stale the moment a
@@ -350,58 +346,62 @@ void main() {
       }
     });
 
-    test('an off-platform getter forwards rather than fabricating a value',
-        () async {
-      // Returning a plausible `false` here would be indistinguishable from a
-      // genuine "not a preinstalled app" answer.
-      rpcResult = true;
+    test(
+      'an off-platform getter forwards rather than fabricating a value',
+      () async {
+        // Returning a plausible `false` here would be indistinguishable from a
+        // genuine "not a preinstalled app" answer.
+        rpcResult = true;
 
-      expect(await iosSdk.isPreInstalledApp(), isTrue);
-      expect(rpcMethod, 'isPreInstalledApp');
-    });
+        expect(await iosSdk.isPreInstalledApp(), isTrue);
+        expect(rpcMethod, 'isPreInstalledApp');
+      },
+    );
 
-    test('platform-only getters surface the native method-not-found error',
-        () async {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(methodChannel, (call) async {
-        final args = Map<String, dynamic>.from(call.arguments as Map);
-        rpcMethod = args['method'] as String;
-        throw PlatformException(
-          code: '404',
-          message: 'Method not found: $rpcMethod',
-        );
-      });
+    test(
+      'platform-only getters surface the native method-not-found error',
+      () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(methodChannel, (call) async {
+              final args = Map<String, dynamic>.from(call.arguments as Map);
+              rpcMethod = args['method'] as String;
+              throw PlatformException(
+                code: '404',
+                message: 'Method not found: $rpcMethod',
+              );
+            });
 
-      for (final getter in <Future<Object?> Function()>[
-        iosSdk.getOutOfStore,
-        iosSdk.getAttributionId,
-        () => iosSdk.isPreInstalledApp(),
-      ]) {
-        await expectLater(
-          getter(),
-          throwsA(
-            isA<AppsFlyerException>()
-                .having((error) => error.code, 'code', 404)
-                .having(
-                  (error) => error.message,
-                  'message',
-                  'Method not found: $rpcMethod',
-                ),
-          ),
-        );
-      }
-    });
+        for (final getter in <Future<Object?> Function()>[
+          iosSdk.getOutOfStore,
+          iosSdk.getAttributionId,
+          () => iosSdk.isPreInstalledApp(),
+        ]) {
+          await expectLater(
+            getter(),
+            throwsA(
+              isA<AppsFlyerException>()
+                  .having((error) => error.code, 'code', 404)
+                  .having(
+                    (error) => error.message,
+                    'message',
+                    'Method not found: $rpcMethod',
+                  ),
+            ),
+          );
+        }
+      },
+    );
 
     test('platform-only setters surface the native error', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(methodChannel, (call) async {
-        final args = Map<String, dynamic>.from(call.arguments as Map);
-        rpcMethod = args['method'] as String;
-        throw PlatformException(
-          code: '422',
-          message: 'Unknown RPC method: $rpcMethod',
-        );
-      });
+            final args = Map<String, dynamic>.from(call.arguments as Map);
+            rpcMethod = args['method'] as String;
+            throw PlatformException(
+              code: '422',
+              message: 'Unknown RPC method: $rpcMethod',
+            );
+          });
 
       for (final setter in <Future<void> Function()>[
         () => androidSdk.setUseReceiptValidationSandbox(true),
@@ -424,12 +424,14 @@ void main() {
       }
     });
 
-    test('iOS ASA collection is configured through an explicit setter',
-        () async {
-      await iosSdk.setDisableCollectASA(true);
-      expect(rpcMethod, 'setDisableCollectASA');
-      expect(rpcParams, {'disable': true});
-    });
+    test(
+      'iOS ASA collection is configured through an explicit setter',
+      () async {
+        await iosSdk.setDisableCollectASA(true);
+        expect(rpcMethod, 'setDisableCollectASA');
+        expect(rpcParams, {'disable': true});
+      },
+    );
 
     test('Android clear requests reach the native layer', () async {
       for (final partners in <List<String>?>[null, []]) {
@@ -441,36 +443,40 @@ void main() {
   });
 
   group('models and platform payloads', () {
-    test('setConsentData forwards all four consent fields to the native layer',
-        () async {
-      await androidSdk.setConsentData(
-        isUserSubjectToGDPR: true,
-        hasConsentForDataUsage: true,
-        hasConsentForAdsPersonalization: false,
-        hasConsentForAdStorage: true,
-      );
+    test(
+      'setConsentData forwards all four consent fields to the native layer',
+      () async {
+        await androidSdk.setConsentData(
+          isUserSubjectToGDPR: true,
+          hasConsentForDataUsage: true,
+          hasConsentForAdsPersonalization: false,
+          hasConsentForAdStorage: true,
+        );
 
-      expect(rpcMethod, 'setConsentData');
-      expect(rpcParams, {
-        'isUserSubjectToGDPR': true,
-        'hasConsentForDataUsage': true,
-        'hasConsentForAdsPersonalization': false,
-        'hasConsentForAdStorage': true,
-      });
-    });
+        expect(rpcMethod, 'setConsentData');
+        expect(rpcParams, {
+          'isUserSubjectToGDPR': true,
+          'hasConsentForDataUsage': true,
+          'hasConsentForAdsPersonalization': false,
+          'hasConsentForAdStorage': true,
+        });
+      },
+    );
 
-    test('setConsentData forwards non-GDPR consent with null optional fields',
-        () async {
-      await androidSdk.setConsentData(isUserSubjectToGDPR: false);
+    test(
+      'setConsentData forwards non-GDPR consent with null optional fields',
+      () async {
+        await androidSdk.setConsentData(isUserSubjectToGDPR: false);
 
-      expect(rpcMethod, 'setConsentData');
-      expect(rpcParams, {
-        'isUserSubjectToGDPR': false,
-        'hasConsentForDataUsage': null,
-        'hasConsentForAdsPersonalization': null,
-        'hasConsentForAdStorage': null,
-      });
-    });
+        expect(rpcMethod, 'setConsentData');
+        expect(rpcParams, {
+          'isUserSubjectToGDPR': false,
+          'hasConsentForDataUsage': null,
+          'hasConsentForAdsPersonalization': null,
+          'hasConsentForAdStorage': null,
+        });
+      },
+    );
 
     test('maps every mediation network to the native RPC string', () async {
       const androidMediationNetworks = {
@@ -505,10 +511,9 @@ void main() {
         purchaseToken: 'token',
       );
 
-      expect(
-        await androidSdk.validateAndLogInAppPurchase(purchase),
-        {'status': 'verified'},
-      );
+      expect(await androidSdk.validateAndLogInAppPurchase(purchase), {
+        'status': 'verified',
+      });
       expect(rpcParams, {
         'purchaseType': 'one_time_purchase',
         'purchaseToken': 'token',
@@ -536,20 +541,19 @@ void main() {
       });
     });
 
-    test('purchase validation returns an empty map when native result is null',
-        () async {
-      rpcResult = null;
-      const purchase = AFAndroidPurchaseDetails(
-        purchaseType: AFPurchaseType.oneTimePurchase,
-        productId: 'sku',
-        purchaseToken: 'token',
-      );
+    test(
+      'purchase validation returns an empty map when native result is null',
+      () async {
+        rpcResult = null;
+        const purchase = AFAndroidPurchaseDetails(
+          purchaseType: AFPurchaseType.oneTimePurchase,
+          productId: 'sku',
+          purchaseToken: 'token',
+        );
 
-      expect(
-        await androidSdk.validateAndLogInAppPurchase(purchase),
-        isEmpty,
-      );
-    });
+        expect(await androidSdk.validateAndLogInAppPurchase(purchase), isEmpty);
+      },
+    );
 
     test('purchase validation never sends awaitResponse', () async {
       rpcResult = <String, dynamic>{};
@@ -634,21 +638,22 @@ void main() {
     });
 
     test(
-        'generateInviteLink throws AppsFlyerException when native returns null',
-        () async {
-      rpcResult = null;
+      'generateInviteLink throws AppsFlyerException when native returns null',
+      () async {
+        rpcResult = null;
 
-      expect(
-        () => androidSdk.generateInviteLink(),
-        throwsA(
-          isA<AppsFlyerException>().having(
-            (error) => error.message,
-            'message',
-            'generateInviteLink returned no value',
+        expect(
+          () => androidSdk.generateInviteLink(),
+          throwsA(
+            isA<AppsFlyerException>().having(
+              (error) => error.message,
+              'message',
+              'generateInviteLink returned no value',
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   });
 
   group('complete RPC mapping', () {
@@ -695,11 +700,7 @@ void main() {
         'setUserFbLoginId',
         {'fbLoginId': 42},
       );
-      await expectVoidRpc(
-        androidSdk.clearUserPii,
-        'clearUserPii',
-        {},
-      );
+      await expectVoidRpc(androidSdk.clearUserPii, 'clearUserPii', {});
       await expectVoidRpc(
         () => androidSdk.setCurrencyCode('USD'),
         'setCurrencyCode',
@@ -783,11 +784,9 @@ void main() {
         'anonymizeUser',
         {'shouldAnonymize': true},
       );
-      await expectVoidRpc(
-        () => androidSdk.stop(true),
-        'stop',
-        {'shouldStop': true},
-      );
+      await expectVoidRpc(() => androidSdk.stop(true), 'stop', {
+        'shouldStop': true,
+      });
       await expectVoidRpc(
         () => androidSdk.setDisableAdvertisingIdentifiers(true),
         'setDisableAdvertisingIdentifiers',
@@ -802,10 +801,7 @@ void main() {
 
     test('maps deep-link, sharing, push, and uninstall APIs', () async {
       await expectVoidRpc(
-        () => androidSdk.logLocation(
-          latitude: 1.5,
-          longitude: -2.5,
-        ),
+        () => androidSdk.logLocation(latitude: 1.5, longitude: -2.5),
         'logLocation',
         {'latitude': 1.5, 'longitude': -2.5},
       );
@@ -849,10 +845,7 @@ void main() {
           shouldTriggerSession: true,
         ),
         'performDeepLinking',
-        {
-          'url': 'https://example.com/path',
-          'shouldTriggerSession': true,
-        },
+        {'url': 'https://example.com/path', 'shouldTriggerSession': true},
       );
       // iOS shares the wire name but takes no shouldTriggerSession: the SDK has
       // no re-engagement session to enqueue.
@@ -893,10 +886,9 @@ void main() {
         {'isEnabled': true},
       );
       await expectVoidRpc(
-        () => androidSdk.appendParametersToDeepLinkingURL(
-          'example.com',
-          {'key': 'value'},
-        ),
+        () => androidSdk.appendParametersToDeepLinkingURL('example.com', {
+          'key': 'value',
+        }),
         'appendParametersToDeepLinkingURL',
         {
           'contains': 'example.com',
@@ -982,11 +974,9 @@ void main() {
         'setOutOfStore',
         {'sourceName': 'amazon'},
       );
-      await expectVoidRpc(
-        () => androidSdk.setIsUpdate(true),
-        'setIsUpdate',
-        {'isUpdate': true},
-      );
+      await expectVoidRpc(() => androidSdk.setIsUpdate(true), 'setIsUpdate', {
+        'isUpdate': true,
+      });
       await expectVoidRpc(
         () => androidSdk.setPreinstallAttribution(
           'media',
@@ -994,11 +984,7 @@ void main() {
           siteId: 'site',
         ),
         'setPreinstallAttribution',
-        {
-          'mediaSource': 'media',
-          'campaign': 'campaign',
-          'siteId': 'site',
-        },
+        {'mediaSource': 'media', 'campaign': 'campaign', 'siteId': 'site'},
       );
       await expectVoidRpc(
         () => androidSdk.setAppId('com.example.app'),
@@ -1015,11 +1001,7 @@ void main() {
         'setDisableNetworkData',
         {'isDisable': true},
       );
-      await expectVoidRpc(
-        androidSdk.disableAppSetId,
-        'disableAppSetId',
-        {},
-      );
+      await expectVoidRpc(androidSdk.disableAppSetId, 'disableAppSetId', {});
     });
 
     test('maps every iOS-only API', () async {
@@ -1150,148 +1132,160 @@ void main() {
   });
 
   group('event routing', () {
-    test('subscribes to af-events only when the first listener is registered',
-        () async {
-      expect(eventChannelCalls, isEmpty);
+    test(
+      'subscribes to af-events only when the first listener is registered',
+      () async {
+        expect(eventChannelCalls, isEmpty);
 
-      await androidSdk.registerSessionReadyListener(() {});
-      await pumpEventQueue();
+        await androidSdk.registerSessionReadyListener(() {});
+        await pumpEventQueue();
 
-      expect(eventChannelCalls, ['listen']);
+        expect(eventChannelCalls, ['listen']);
 
-      await androidSdk.registerConversionListener(
-          onConversionDataSuccess: (_) {});
-      await pumpEventQueue();
+        await androidSdk.registerConversionListener(
+          onConversionDataSuccess: (_) {},
+        );
+        await pumpEventQueue();
 
-      // One transport subscription for the whole plugin, not one per listener.
-      expect(eventChannelCalls, ['listen']);
-    });
+        // One transport subscription for the whole plugin, not one per listener.
+        expect(eventChannelCalls, ['listen']);
+      },
+    );
 
-    test('rolls back Dart callbacks when native registration RPC fails',
-        () async {
-      Future<Object?> failingRegistrationHandler(MethodCall call) async {
-        expect(call.method, 'executeRpc');
-        final args = Map<String, dynamic>.from(call.arguments as Map);
-        final method = args['method'] as String;
-        rpcMethod = method;
-        rpcParams = Map<String, dynamic>.from(args['params'] as Map);
-        if (method == 'registerConversionListener' ||
-            method == 'subscribeForDeepLink' ||
-            method == 'registerDeeplinkListener' ||
-            method == 'registerSessionReadyListener') {
-          throw PlatformException(
-            code: '500',
-            message: 'Listener registration failed',
-          );
+    test(
+      'rolls back Dart callbacks when native registration RPC fails',
+      () async {
+        Future<Object?> failingRegistrationHandler(MethodCall call) async {
+          expect(call.method, 'executeRpc');
+          final args = Map<String, dynamic>.from(call.arguments as Map);
+          final method = args['method'] as String;
+          rpcMethod = method;
+          rpcParams = Map<String, dynamic>.from(args['params'] as Map);
+          if (method == 'registerConversionListener' ||
+              method == 'subscribeForDeepLink' ||
+              method == 'registerDeeplinkListener' ||
+              method == 'registerSessionReadyListener') {
+            throw PlatformException(
+              code: '500',
+              message: 'Listener registration failed',
+            );
+          }
+          return rpcResult;
         }
-        return rpcResult;
-      }
 
-      final messenger =
-          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-      messenger.setMockMethodCallHandler(
-        methodChannel,
-        failingRegistrationHandler,
-      );
+        final messenger =
+            TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+        messenger.setMockMethodCallHandler(
+          methodChannel,
+          failingRegistrationHandler,
+        );
 
-      final conversionData = <Map<String, dynamic>>[];
-      await expectLater(
-        androidSdk.registerConversionListener(
-            onConversionDataSuccess: conversionData.add),
-        throwsA(
-          isA<AppsFlyerException>().having(
-            (error) => error.message,
-            'message',
-            'Listener registration failed',
+        final conversionData = <Map<String, dynamic>>[];
+        await expectLater(
+          androidSdk.registerConversionListener(
+            onConversionDataSuccess: conversionData.add,
           ),
-        ),
-      );
-      await _emitEvent({
-        'event': 'onConversionDataSuccess',
-        'data': {'media_source': 'organic'},
-      });
-      await pumpEventQueue();
-      expect(conversionData, isEmpty);
+          throwsA(
+            isA<AppsFlyerException>().having(
+              (error) => error.message,
+              'message',
+              'Listener registration failed',
+            ),
+          ),
+        );
+        await _emitEvent({
+          'event': 'onConversionDataSuccess',
+          'data': {'media_source': 'organic'},
+        });
+        await pumpEventQueue();
+        expect(conversionData, isEmpty);
 
-      var deepLinkCount = 0;
-      await expectLater(
-        androidSdk.registerDeepLinkListener(
-            onDeepLinking: (_) => deepLinkCount++),
-        throwsA(isA<AppsFlyerException>()),
-      );
-      await _emitEvent({
-        'event': 'onDeepLinking',
-        'data': {'status': 'FOUND'},
-      });
-      await pumpEventQueue();
-      expect(deepLinkCount, 0);
+        var deepLinkCount = 0;
+        await expectLater(
+          androidSdk.registerDeepLinkListener(
+            onDeepLinking: (_) => deepLinkCount++,
+          ),
+          throwsA(isA<AppsFlyerException>()),
+        );
+        await _emitEvent({
+          'event': 'onDeepLinking',
+          'data': {'status': 'FOUND'},
+        });
+        await pumpEventQueue();
+        expect(deepLinkCount, 0);
 
-      var sessionReadyCount = 0;
-      await expectLater(
-        androidSdk.registerSessionReadyListener(() => sessionReadyCount++),
-        throwsA(isA<AppsFlyerException>()),
-      );
-      await _emitEvent({
-        'event': 'onSessionReady',
-        'data': null,
-      });
-      await pumpEventQueue();
-      expect(sessionReadyCount, 0);
-    });
+        var sessionReadyCount = 0;
+        await expectLater(
+          androidSdk.registerSessionReadyListener(() => sessionReadyCount++),
+          throwsA(isA<AppsFlyerException>()),
+        );
+        await _emitEvent({'event': 'onSessionReady', 'data': null});
+        await pumpEventQueue();
+        expect(sessionReadyCount, 0);
+      },
+    );
 
-    test('keeps the working callbacks when a re-registration RPC fails',
-        () async {
-      final conversionData = <Map<String, dynamic>>[];
-      var deepLinkCount = 0;
-      var sessionReadyCount = 0;
-      await androidSdk.registerConversionListener(
-        onConversionDataSuccess: conversionData.add,
-      );
-      await androidSdk.registerDeepLinkListener(
-          onDeepLinking: (_) => deepLinkCount++);
-      await androidSdk.registerSessionReadyListener(() => sessionReadyCount++);
+    test(
+      'keeps the working callbacks when a re-registration RPC fails',
+      () async {
+        final conversionData = <Map<String, dynamic>>[];
+        var deepLinkCount = 0;
+        var sessionReadyCount = 0;
+        await androidSdk.registerConversionListener(
+          onConversionDataSuccess: conversionData.add,
+        );
+        await androidSdk.registerDeepLinkListener(
+          onDeepLinking: (_) => deepLinkCount++,
+        );
+        await androidSdk.registerSessionReadyListener(
+          () => sessionReadyCount++,
+        );
 
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(methodChannel, (call) async {
-        throw PlatformException(code: '500', message: 'Registration failed');
-      });
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(methodChannel, (call) async {
+              throw PlatformException(
+                code: '500',
+                message: 'Registration failed',
+              );
+            });
 
-      // The replacements must never be installed: the RPC that would have
-      // activated them failed, so the callbacks registered above stay live.
-      await expectLater(
-        androidSdk.registerConversionListener(
-            onConversionDataSuccess: (_) => fail('replacement was installed')),
-        throwsA(isA<AppsFlyerException>()),
-      );
-      await expectLater(
-        androidSdk.registerDeepLinkListener(
-            onDeepLinking: (_) => fail('replacement was installed')),
-        throwsA(isA<AppsFlyerException>()),
-      );
-      await expectLater(
-        androidSdk
-            .registerSessionReadyListener(() => fail('replacement installed')),
-        throwsA(isA<AppsFlyerException>()),
-      );
+        // The replacements must never be installed: the RPC that would have
+        // activated them failed, so the callbacks registered above stay live.
+        await expectLater(
+          androidSdk.registerConversionListener(
+            onConversionDataSuccess: (_) => fail('replacement was installed'),
+          ),
+          throwsA(isA<AppsFlyerException>()),
+        );
+        await expectLater(
+          androidSdk.registerDeepLinkListener(
+            onDeepLinking: (_) => fail('replacement was installed'),
+          ),
+          throwsA(isA<AppsFlyerException>()),
+        );
+        await expectLater(
+          androidSdk.registerSessionReadyListener(
+            () => fail('replacement installed'),
+          ),
+          throwsA(isA<AppsFlyerException>()),
+        );
 
-      await _emitEvent({
-        'event': 'onConversionDataSuccess',
-        'data': {'media_source': 'organic'},
-      });
-      await _emitEvent({
-        'event': 'onDeepLinking',
-        'data': {'status': 'FOUND'},
-      });
-      await _emitEvent({
-        'event': 'onSessionReady',
-        'data': null,
-      });
-      await pumpEventQueue();
+        await _emitEvent({
+          'event': 'onConversionDataSuccess',
+          'data': {'media_source': 'organic'},
+        });
+        await _emitEvent({
+          'event': 'onDeepLinking',
+          'data': {'status': 'FOUND'},
+        });
+        await _emitEvent({'event': 'onSessionReady', 'data': null});
+        await pumpEventQueue();
 
-      expect(conversionData.single, {'media_source': 'organic'});
-      expect(deepLinkCount, 1);
-      expect(sessionReadyCount, 1);
-    });
+        expect(conversionData.single, {'media_source': 'organic'});
+        expect(deepLinkCount, 1);
+        expect(sessionReadyCount, 1);
+      },
+    );
 
     test('keeps Dart callbacks when the native unregister RPC fails', () async {
       final conversionData = <Map<String, dynamic>>[];
@@ -1301,14 +1295,15 @@ void main() {
         onConversionDataSuccess: conversionData.add,
       );
       await androidSdk.registerDeepLinkListener(
-          onDeepLinking: (_) => deepLinkCount++);
+        onDeepLinking: (_) => deepLinkCount++,
+      );
       await androidSdk.registerSessionReadyListener(() => sessionReadyCount++);
 
       // Stands in for iOS, where none of the unregister RPCs are mapped.
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(methodChannel, (call) async {
-        throw PlatformException(code: '404', message: 'Method not found');
-      });
+            throw PlatformException(code: '404', message: 'Method not found');
+          });
 
       await expectLater(
         androidSdk.unregisterConversionListener(),
@@ -1331,10 +1326,7 @@ void main() {
         'event': 'onDeepLinking',
         'data': {'status': 'FOUND'},
       });
-      await _emitEvent({
-        'event': 'onSessionReady',
-        'data': null,
-      });
+      await _emitEvent({'event': 'onSessionReady', 'data': null});
       await pumpEventQueue();
 
       expect(conversionData.single, {'media_source': 'organic'});
@@ -1342,82 +1334,88 @@ void main() {
       expect(sessionReadyCount, 1);
     });
 
-    test('continues delivering events when a listener callback throws',
-        () async {
-      final received = <Map<String, dynamic>>[];
-      var callCount = 0;
-      await androidSdk.registerConversionListener(
-        onConversionDataSuccess: (data) {
-          callCount++;
-          if (callCount == 1) {
-            throw StateError('listener failed');
-          }
-          received.add(data);
-        },
-      );
+    test(
+      'continues delivering events when a listener callback throws',
+      () async {
+        final received = <Map<String, dynamic>>[];
+        var callCount = 0;
+        await androidSdk.registerConversionListener(
+          onConversionDataSuccess: (data) {
+            callCount++;
+            if (callCount == 1) {
+              throw StateError('listener failed');
+            }
+            received.add(data);
+          },
+        );
 
-      await _emitEvent({
-        'event': 'onConversionDataSuccess',
-        'data': {'id': 1},
-      });
-      await _emitEvent({
-        'event': 'onConversionDataSuccess',
-        'data': {'id': 2},
-      });
-      await pumpEventQueue();
+        await _emitEvent({
+          'event': 'onConversionDataSuccess',
+          'data': {'id': 1},
+        });
+        await _emitEvent({
+          'event': 'onConversionDataSuccess',
+          'data': {'id': 2},
+        });
+        await pumpEventQueue();
 
-      expect(callCount, 2);
-      expect(received.single, {'id': 2});
-    });
-
-    test('continues replaying held events when a listener callback throws',
-        () async {
-      await androidSdk.registerDeepLinkListener(onDeepLinking: (_) {});
-      await _emitEvent({
-        'event': 'onConversionDataSuccess',
-        'data': {'id': 1},
-      });
-      await _emitEvent({
-        'event': 'onConversionDataSuccess',
-        'data': {'id': 2},
-      });
-      await pumpEventQueue();
-
-      final received = <Map<String, dynamic>>[];
-      var callCount = 0;
-      await androidSdk.registerConversionListener(
-        onConversionDataSuccess: (data) {
-          callCount++;
-          if (callCount == 1) {
-            throw StateError('listener failed');
-          }
-          received.add(data);
-        },
-      );
-      await pumpEventQueue();
-
-      expect(callCount, 2);
-      expect(received.single, {'id': 2});
-    });
-
-    test('delivers conversion data to the registered success callback',
-        () async {
-      final received = <Map<String, dynamic>>[];
-      await androidSdk.registerConversionListener(
-          onConversionDataSuccess: received.add);
-      await _emitEvent({
-        'event': 'onConversionDataSuccess',
-        'data': {'media_source': 'organic'},
-        'timestamp': 123,
-        'origin': 'android',
-      });
-      await pumpEventQueue();
-
-      expect(received.single, {'media_source': 'organic'});
-    });
+        expect(callCount, 2);
+        expect(received.single, {'id': 2});
+      },
+    );
 
     test(
-        'the failure callback passes through the raw native payload '
+      'continues replaying held events when a listener callback throws',
+      () async {
+        await androidSdk.registerDeepLinkListener(onDeepLinking: (_) {});
+        await _emitEvent({
+          'event': 'onConversionDataSuccess',
+          'data': {'id': 1},
+        });
+        await _emitEvent({
+          'event': 'onConversionDataSuccess',
+          'data': {'id': 2},
+        });
+        await pumpEventQueue();
+
+        final received = <Map<String, dynamic>>[];
+        var callCount = 0;
+        await androidSdk.registerConversionListener(
+          onConversionDataSuccess: (data) {
+            callCount++;
+            if (callCount == 1) {
+              throw StateError('listener failed');
+            }
+            received.add(data);
+          },
+        );
+        await pumpEventQueue();
+
+        expect(callCount, 2);
+        expect(received.single, {'id': 2});
+      },
+    );
+
+    test(
+      'delivers conversion data to the registered success callback',
+      () async {
+        final received = <Map<String, dynamic>>[];
+        await androidSdk.registerConversionListener(
+          onConversionDataSuccess: received.add,
+        );
+        await _emitEvent({
+          'event': 'onConversionDataSuccess',
+          'data': {'media_source': 'organic'},
+          'timestamp': 123,
+          'origin': 'android',
+        });
+        await pumpEventQueue();
+
+        expect(received.single, {'media_source': 'organic'});
+      },
+    );
+
+    test('the failure callback passes through the raw native payload '
         '(no synthesized RPC exception)', () async {
       final failures = <Map<String, dynamic>>[];
       await androidSdk.registerConversionListener(
@@ -1437,16 +1435,19 @@ void main() {
       expect(failures.single, {'error': 'Network unavailable'});
     });
 
-    test('a conversion failure without a failure callback is not an error',
-        () async {
-      await androidSdk.registerConversionListener(
-          onConversionDataSuccess: (_) {});
-      await _emitEvent({
-        'event': 'onConversionDataFail',
-        'data': {'error': 'Network unavailable'},
-      });
-      await pumpEventQueue();
-    });
+    test(
+      'a conversion failure without a failure callback is not an error',
+      () async {
+        await androidSdk.registerConversionListener(
+          onConversionDataSuccess: (_) {},
+        );
+        await _emitEvent({
+          'event': 'onConversionDataFail',
+          'data': {'error': 'Network unavailable'},
+        });
+        await pumpEventQueue();
+      },
+    );
 
     test('registering with no conversion callbacks is not an error', () async {
       await androidSdk.registerConversionListener();
@@ -1474,39 +1475,46 @@ void main() {
       await pumpEventQueue();
     });
 
-    test('ignores transport-only envelope fields on conversion events',
-        () async {
-      final received = <Map<String, dynamic>>[];
-      await androidSdk.registerConversionListener(
-          onConversionDataSuccess: received.add);
-      await _emitEvent({
-        'event': 'onConversionDataSuccess',
-        'data': {'media_source': 'organic'},
-        'timestamp': 999,
-        'origin': 'android',
-      });
-      await pumpEventQueue();
+    test(
+      'ignores transport-only envelope fields on conversion events',
+      () async {
+        final received = <Map<String, dynamic>>[];
+        await androidSdk.registerConversionListener(
+          onConversionDataSuccess: received.add,
+        );
+        await _emitEvent({
+          'event': 'onConversionDataSuccess',
+          'data': {'media_source': 'organic'},
+          'timestamp': 999,
+          'origin': 'android',
+        });
+        await pumpEventQueue();
 
-      expect(received.single, {'media_source': 'organic'});
-    });
+        expect(received.single, {'media_source': 'organic'});
+      },
+    );
 
-    test('re-registering replaces the callback instead of adding a second one',
-        () async {
-      final first = <Map<String, dynamic>>[];
-      final second = <Map<String, dynamic>>[];
-      await androidSdk.registerConversionListener(
-          onConversionDataSuccess: first.add);
-      await androidSdk.registerConversionListener(
-          onConversionDataSuccess: second.add);
-      await _emitEvent({
-        'event': 'onConversionDataSuccess',
-        'data': {'media_source': 'organic'},
-      });
-      await pumpEventQueue();
+    test(
+      're-registering replaces the callback instead of adding a second one',
+      () async {
+        final first = <Map<String, dynamic>>[];
+        final second = <Map<String, dynamic>>[];
+        await androidSdk.registerConversionListener(
+          onConversionDataSuccess: first.add,
+        );
+        await androidSdk.registerConversionListener(
+          onConversionDataSuccess: second.add,
+        );
+        await _emitEvent({
+          'event': 'onConversionDataSuccess',
+          'data': {'media_source': 'organic'},
+        });
+        await pumpEventQueue();
 
-      expect(first, isEmpty);
-      expect(second.single, {'media_source': 'organic'});
-    });
+        expect(first, isEmpty);
+        expect(second.single, {'media_source': 'organic'});
+      },
+    );
 
     test('a session-ready event reaches the callback exactly once', () async {
       var readyCount = 0;
@@ -1522,36 +1530,39 @@ void main() {
       expect(readyCount, 1);
     });
 
-    test('re-registering the session-ready listener cannot double-start',
-        () async {
-      var startCount = 0;
-      await androidSdk.registerSessionReadyListener(() => startCount++);
-      await androidSdk.registerSessionReadyListener(() => startCount++);
-      await _emitEvent({
-        'event': 'onSessionReady',
-        'data': <String, dynamic>{},
-      });
-      await pumpEventQueue();
+    test(
+      're-registering the session-ready listener cannot double-start',
+      () async {
+        var startCount = 0;
+        await androidSdk.registerSessionReadyListener(() => startCount++);
+        await androidSdk.registerSessionReadyListener(() => startCount++);
+        await _emitEvent({
+          'event': 'onSessionReady',
+          'data': <String, dynamic>{},
+        });
+        await pumpEventQueue();
 
-      expect(startCount, 1);
-    });
-
-    test('unregistering the session-ready listener drops its callback',
-        () async {
-      var readyCount = 0;
-      await androidSdk.registerSessionReadyListener(() => readyCount++);
-      await androidSdk.unregisterSessionReadyListener();
-      await _emitEvent({
-        'event': 'onSessionReady',
-        'data': <String, dynamic>{},
-      });
-      await pumpEventQueue();
-
-      expect(readyCount, 0);
-    });
+        expect(startCount, 1);
+      },
+    );
 
     test(
-        'an event replayed before its listener is registered is delivered '
+      'unregistering the session-ready listener drops its callback',
+      () async {
+        var readyCount = 0;
+        await androidSdk.registerSessionReadyListener(() => readyCount++);
+        await androidSdk.unregisterSessionReadyListener();
+        await _emitEvent({
+          'event': 'onSessionReady',
+          'data': <String, dynamic>{},
+        });
+        await pumpEventQueue();
+
+        expect(readyCount, 0);
+      },
+    );
+
+    test('an event replayed before its listener is registered is delivered '
         'once that listener registers', () async {
       // Both platforms flush their whole native buffer as soon as Dart
       // attaches, which the first register*Listener call triggers. The
@@ -1566,7 +1577,8 @@ void main() {
 
       final received = <Map<String, dynamic>>[];
       await androidSdk.registerConversionListener(
-          onConversionDataSuccess: received.add);
+        onConversionDataSuccess: received.add,
+      );
       await pumpEventQueue();
 
       expect(received.single, {'media_source': 'organic'});
@@ -1584,53 +1596,67 @@ void main() {
 
       final received = <Map<String, dynamic>>[];
       await androidSdk.registerConversionListener(
-          onConversionDataSuccess: received.add);
+        onConversionDataSuccess: received.add,
+      );
       await pumpEventQueue();
 
       expect(received.map((data) => data['index']), [0, 1, 2]);
     });
 
-    test('a held event is replayed before a live event that follows it',
-        () async {
-      await androidSdk.registerDeepLinkListener(onDeepLinking: (_) {});
-      await _emitEvent({
-        'event': 'onConversionDataSuccess',
-        'data': {'index': 0},
-      });
-      await pumpEventQueue();
+    test(
+      'a held event is replayed before a live event that follows it',
+      () async {
+        await androidSdk.registerDeepLinkListener(onDeepLinking: (_) {});
+        await _emitEvent({
+          'event': 'onConversionDataSuccess',
+          'data': {'index': 0},
+        });
+        await pumpEventQueue();
 
-      final received = <Map<String, dynamic>>[];
-      // Not awaited: the live event is emitted while the replay is still
-      // pending, so this pins the replay ahead of it.
-      unawaited(androidSdk.registerConversionListener(
-          onConversionDataSuccess: received.add));
-      await _emitEvent({
-        'event': 'onConversionDataSuccess',
-        'data': {'index': 1},
-      });
-      await pumpEventQueue();
+        final received = <Map<String, dynamic>>[];
+        // Not awaited: the live event is emitted while the replay is still
+        // pending, so this pins the replay ahead of it.
+        unawaited(
+          androidSdk.registerConversionListener(
+            onConversionDataSuccess: received.add,
+          ),
+        );
+        await _emitEvent({
+          'event': 'onConversionDataSuccess',
+          'data': {'index': 1},
+        });
+        await pumpEventQueue();
 
-      expect(received.map((data) => data['index']), [0, 1]);
-    });
+        expect(received.map((data) => data['index']), [0, 1]);
+      },
+    );
 
-    test('re-registering before the replay runs does not deliver twice',
-        () async {
-      await androidSdk.registerDeepLinkListener(onDeepLinking: (_) {});
-      await _emitEvent({
-        'event': 'onConversionDataSuccess',
-        'data': {'media_source': 'organic'},
-      });
-      await pumpEventQueue();
+    test(
+      're-registering before the replay runs does not deliver twice',
+      () async {
+        await androidSdk.registerDeepLinkListener(onDeepLinking: (_) {});
+        await _emitEvent({
+          'event': 'onConversionDataSuccess',
+          'data': {'media_source': 'organic'},
+        });
+        await pumpEventQueue();
 
-      final received = <Map<String, dynamic>>[];
-      unawaited(androidSdk.registerConversionListener(
-          onConversionDataSuccess: received.add));
-      unawaited(androidSdk.registerConversionListener(
-          onConversionDataSuccess: received.add));
-      await pumpEventQueue();
+        final received = <Map<String, dynamic>>[];
+        unawaited(
+          androidSdk.registerConversionListener(
+            onConversionDataSuccess: received.add,
+          ),
+        );
+        unawaited(
+          androidSdk.registerConversionListener(
+            onConversionDataSuccess: received.add,
+          ),
+        );
+        await pumpEventQueue();
 
-      expect(received.single, {'media_source': 'organic'});
-    });
+        expect(received.single, {'media_source': 'organic'});
+      },
+    );
 
     test('unregistering discards events held for that listener', () async {
       var readyCount = 0;
@@ -1662,7 +1688,8 @@ void main() {
 
       final received = <Map<String, dynamic>>[];
       await androidSdk.registerConversionListener(
-          onConversionDataSuccess: received.add);
+        onConversionDataSuccess: received.add,
+      );
       await pumpEventQueue();
 
       expect(received.length, 64);
@@ -1673,7 +1700,8 @@ void main() {
     test('routes deep-link events with an object data payload', () async {
       DeepLinkResult? result;
       await iosSdk.registerDeepLinkListener(
-          onDeepLinking: (value) => result = value);
+        onDeepLinking: (value) => result = value,
+      );
       await _emitEvent({
         'event': 'onDeepLinkReceived',
         'data': {
@@ -1687,38 +1715,41 @@ void main() {
       expect(result!.deepLink!.deepLinkValue, 'home');
     });
 
-    test('drops malformed native events instead of surfacing an error',
-        () async {
-      final received = <Map<String, dynamic>>[];
-      await androidSdk.registerConversionListener(
-          onConversionDataSuccess: received.add);
+    test(
+      'drops malformed native events instead of surfacing an error',
+      () async {
+        final received = <Map<String, dynamic>>[];
+        await androidSdk.registerConversionListener(
+          onConversionDataSuccess: received.add,
+        );
 
-      await _emitRaw('not-json-at-all');
-      await _emitRaw(jsonEncode(<dynamic>['not', 'an', 'object']));
-      await _emitEvent({
-        'event': null,
-        'data': {'media_source': 'organic'},
-      });
-      await _emitEvent({
-        'event': '',
-        'data': {'media_source': 'organic'},
-      });
-      await _emitEvent({
-        'event': 123,
-        'data': {'media_source': 'organic'},
-      });
-      await pumpEventQueue();
+        await _emitRaw('not-json-at-all');
+        await _emitRaw(jsonEncode(<dynamic>['not', 'an', 'object']));
+        await _emitEvent({
+          'event': null,
+          'data': {'media_source': 'organic'},
+        });
+        await _emitEvent({
+          'event': '',
+          'data': {'media_source': 'organic'},
+        });
+        await _emitEvent({
+          'event': 123,
+          'data': {'media_source': 'organic'},
+        });
+        await pumpEventQueue();
 
-      expect(received, isEmpty);
+        expect(received, isEmpty);
 
-      await _emitEvent({
-        'event': 'onConversionDataSuccess',
-        'data': {'media_source': 'organic'},
-      });
-      await pumpEventQueue();
+        await _emitEvent({
+          'event': 'onConversionDataSuccess',
+          'data': {'media_source': 'organic'},
+        });
+        await pumpEventQueue();
 
-      expect(received.single, {'media_source': 'organic'});
-    });
+        expect(received.single, {'media_source': 'organic'});
+      },
+    );
 
     test('maps every deep-link status to DeepLinkStatus', () async {
       final cases = <String, DeepLinkStatus>{
@@ -1733,7 +1764,8 @@ void main() {
 
       DeepLinkResult? result;
       await androidSdk.registerDeepLinkListener(
-          onDeepLinking: (value) => result = value);
+        onDeepLinking: (value) => result = value,
+      );
 
       for (final entry in cases.entries) {
         await _emitEvent({
@@ -1751,7 +1783,8 @@ void main() {
     test('deep-link errors use platform-specific failure fields', () async {
       DeepLinkResult? android;
       await androidSdk.registerDeepLinkListener(
-          onDeepLinking: (value) => android = value);
+        onDeepLinking: (value) => android = value,
+      );
       await _emitEvent({
         'event': 'onDeepLinking',
         'data': {'status': 'error', 'error': 'NETWORK'},
@@ -1763,7 +1796,8 @@ void main() {
 
       DeepLinkResult? ios;
       await iosSdk.registerDeepLinkListener(
-          onDeepLinking: (value) => ios = value);
+        onDeepLinking: (value) => ios = value,
+      );
       await _emitEvent({
         'event': 'onDeepLinkReceived',
         'data': {'status': 'error', 'error': 'Timed out'},
@@ -1774,39 +1808,42 @@ void main() {
       expect(ios!.error!.type, isNull);
     });
 
-    test('normalizes Android and iOS deep-link status without hiding errors',
-        () async {
-      DeepLinkResult? androidResult;
-      await androidSdk.registerDeepLinkListener(
-        onDeepLinking: (value) => androidResult = value,
-      );
-      await _emitEvent({
-        'event': 'onDeepLinking',
-        'data': {
-          'status': 'FOUND',
-          'deepLink': '{"deep_link_value":"home","is_deferred":false}',
-        },
-      });
-      await pumpEventQueue();
-      final android = androidResult!;
+    test(
+      'normalizes Android and iOS deep-link status without hiding errors',
+      () async {
+        DeepLinkResult? androidResult;
+        await androidSdk.registerDeepLinkListener(
+          onDeepLinking: (value) => androidResult = value,
+        );
+        await _emitEvent({
+          'event': 'onDeepLinking',
+          'data': {
+            'status': 'FOUND',
+            'deepLink': '{"deep_link_value":"home","is_deferred":false}',
+          },
+        });
+        await pumpEventQueue();
+        final android = androidResult!;
 
-      DeepLinkResult? iosResult;
-      await iosSdk.registerDeepLinkListener(
-          onDeepLinking: (value) => iosResult = value);
-      await _emitEvent({
-        'event': 'onDeepLinkReceived',
-        'data': {'status': 'failure', 'error': 'Network unavailable'},
-      });
-      await pumpEventQueue();
-      final ios = iosResult!;
+        DeepLinkResult? iosResult;
+        await iosSdk.registerDeepLinkListener(
+          onDeepLinking: (value) => iosResult = value,
+        );
+        await _emitEvent({
+          'event': 'onDeepLinkReceived',
+          'data': {'status': 'failure', 'error': 'Network unavailable'},
+        });
+        await pumpEventQueue();
+        final ios = iosResult!;
 
-      expect(android.status, DeepLinkStatus.found);
-      expect(android.deepLink!.deepLinkValue, 'home');
-      expect(android.deepLink!.isDeferred, isFalse);
-      expect(ios.status, DeepLinkStatus.error);
-      expect(ios.error!.message, 'Network unavailable');
-      expect(ios.error!.type, isNull);
-    });
+        expect(android.status, DeepLinkStatus.found);
+        expect(android.deepLink!.deepLinkValue, 'home');
+        expect(android.deepLink!.isDeferred, isFalse);
+        expect(ios.status, DeepLinkStatus.error);
+        expect(ios.error!.message, 'Network unavailable');
+        expect(ios.error!.type, isNull);
+      },
+    );
   });
 }
 
@@ -1841,16 +1878,13 @@ Future<void> _expectLogAdRevenueMediationNetworks(
       revenue: 1.0,
       additionalParameters: additionalParameters,
     );
-    expect(
-      readRpcParams(),
-      {
-        'monetizationNetwork': 'network',
-        'mediationNetwork': entry.value,
-        'currencyIso4217Code': 'USD',
-        'revenue': 1.0,
-        'additionalParameters': additionalParameters,
-      },
-    );
+    expect(readRpcParams(), {
+      'monetizationNetwork': 'network',
+      'mediationNetwork': entry.value,
+      'currencyIso4217Code': 'USD',
+      'revenue': 1.0,
+      'additionalParameters': additionalParameters,
+    });
   }
 }
 
@@ -1860,7 +1894,8 @@ Future<void> _emitEvent(Map<String, dynamic> event) =>
 Future<void> _emitRaw(String payload) async {
   final messenger =
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-  final ByteData data =
-      const StandardMethodCodec().encodeSuccessEnvelope(payload);
+  final ByteData data = const StandardMethodCodec().encodeSuccessEnvelope(
+    payload,
+  );
   await messenger.handlePlatformMessage('af-events', data, (_) {});
 }

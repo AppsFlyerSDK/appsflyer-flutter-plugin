@@ -100,9 +100,7 @@ final class AFIOSPurchaseDetails implements AFPurchaseDetails {
     Map<String, String>? additionalParameters,
   }) {
     if (platform != TargetPlatform.iOS) {
-      throw ArgumentError(
-        'AFIOSPurchaseDetails can only be used on iOS',
-      );
+      throw ArgumentError('AFIOSPurchaseDetails can only be used on iOS');
     }
     return {
       'product': {'productId': productId},

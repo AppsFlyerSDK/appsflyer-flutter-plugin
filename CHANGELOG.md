@@ -7,8 +7,10 @@ breaking changes. See [doc/migration-guide.md](doc/migration-guide.md) for
 removed APIs, renames, lifecycle changes, and upgrade instructions.
 
 - Flutter plugin version **7.0.1**
-- Minimum Flutter version **3.24.0**
-- Minimum Dart version **3.5.0** (and earlier than Dart **4.0.0**)
+- Minimum Flutter version **3.35.0**
+- Minimum Dart version **3.9.0** (and earlier than Dart **4.0.0**)
+- Android build toolchain, aligned with the AppsFlyer Android SDK: Kotlin Gradle
+  Plugin **2.0.21**, Android Gradle Plugin **8.9.1**, Gradle **8.11.1**, JDK **17**
 - Android AppsFlyer SDK **7.0.1**
 - iOS AppsFlyer SDK **7.0.2**
 - Android Purchase Connector **2.2.0**
@@ -20,6 +22,15 @@ removed APIs, renames, lifecycle changes, and upgrade instructions.
 
 **BREAKING**
 
+- Raised the minimum Flutter version to **3.35.0** (Dart **3.9.0**) and aligned the
+  Android build toolchain with the AppsFlyer Android SDK: Kotlin Gradle Plugin
+  **2.0.21**, Android Gradle Plugin **8.9.1**, Gradle **8.11.1**, JDK **17**. The
+  Android dependencies are compiled with Kotlin 2.0, so an older Kotlin Gradle
+  Plugin cannot read their metadata; the previously advertised floor of Flutter
+  `3.24` templates Kotlin `1.7.10` and could not build the plugin at all. The
+  build now fails at configuration time with a message naming the version found
+  and the file to change, because the Kotlin Gradle Plugin version is declared by
+  the app and does not change when Flutter is upgraded.
 - Replaced `AppsflyerSdk(options)` and `AppsFlyerOptions` with the shared
   `AppsFlyerSdk.instance` singleton and explicit configuration methods.
 - Replaced `initSdk(...)` with `init(devKey:, appId:)`. `appId` is required on

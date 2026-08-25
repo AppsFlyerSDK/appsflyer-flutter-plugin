@@ -12,10 +12,7 @@ class _AppsFlyerEvent {
   final Map<String, dynamic> data;
 
   /// Creates an AppsFlyer event with the supplied name and payload.
-  const _AppsFlyerEvent({
-    required this.name,
-    required this.data,
-  });
+  const _AppsFlyerEvent({required this.name, required this.data});
 
   /// Parses a native RPC event JSON envelope.
   ///

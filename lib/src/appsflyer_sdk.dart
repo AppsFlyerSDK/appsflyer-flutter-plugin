@@ -111,10 +111,7 @@ class AppsFlyerSdk {
   ///
   /// [appId] is required by the native iOS SDK and is not sent to Android.
   /// Input validation is performed by the native layer.
-  Future<void> init({
-    required String devKey,
-    String? appId,
-  }) {
+  Future<void> init({required String devKey, String? appId}) {
     return _invokeVoidRpc(
       'init',
       _isIOS ? {'devKey': devKey, 'appId': appId} : {'devKey': devKey},
@@ -202,8 +199,8 @@ class AppsFlyerSdk {
   }) async {
     _ensureEventsSubscribed();
     void dispatch(_AppsFlyerEvent event) => onDeepLinking?.call(
-          DeepLinkResult._fromEvent(event, platform: _platform),
-        );
+      DeepLinkResult._fromEvent(event, platform: _platform),
+    );
     // Android emits onDeepLinking, iOS emits onDeepLinkReceived.
     const eventNames = [
       _AppsFlyerConstants.EVENT_DEEP_LINKING,
@@ -260,10 +257,7 @@ class AppsFlyerSdk {
     _ensureEventsSubscribed();
     const eventNames = [_AppsFlyerConstants.EVENT_SESSION_READY];
     final previous = _listeners.snapshot(eventNames);
-    _listeners.on(
-      _AppsFlyerConstants.EVENT_SESSION_READY,
-      (_) => onReady(),
-    );
+    _listeners.on(_AppsFlyerConstants.EVENT_SESSION_READY, (_) => onReady());
     try {
       await _invokeVoidRpc('registerSessionReadyListener');
     } catch (error) {
@@ -340,10 +334,7 @@ class AppsFlyerSdk {
   /// await AppsFlyerSdk.instance.setLogLevel(AFLogLevel.debug);
   /// ```
   Future<void> setLogLevel(AFLogLevel logLevel) async {
-    return _invokeVoidRpc(
-      'setLogLevel',
-      {'logLevel': logLevel.rpcValue},
-    );
+    return _invokeVoidRpc('setLogLevel', {'logLevel': logLevel.rpcValue});
   }
 
   /// Sends an in-app event.
@@ -480,10 +471,7 @@ class AppsFlyerSdk {
   ///
   /// Use a three-letter ISO 4217 currency code. The default is USD.
   Future<void> setCurrencyCode(String currencyCode) {
-    return _invokeVoidRpc(
-      'setCurrencyCode',
-      {'currencyCode': currencyCode},
-    );
+    return _invokeVoidRpc('setCurrencyCode', {'currencyCode': currencyCode});
   }
 
   /// Sets the minimum time between two launches for them to count as separate
@@ -491,10 +479,7 @@ class AppsFlyerSdk {
   ///
   /// [seconds] is the minimum interval in seconds.
   Future<void> setMinTimeBetweenSessions(int seconds) {
-    return _invokeVoidRpc(
-      'setMinTimeBetweenSessions',
-      {'seconds': seconds},
-    );
+    return _invokeVoidRpc('setMinTimeBetweenSessions', {'seconds': seconds});
   }
 
   /// Sets a custom host name and prefix.
@@ -527,28 +512,19 @@ class AppsFlyerSdk {
   ///
   /// Pass an empty map to clear previously supplied data.
   Future<void> setAdditionalData(Map<String, dynamic> customData) {
-    return _invokeVoidRpc(
-      'setAdditionalData',
-      {'customData': customData},
-    );
+    return _invokeVoidRpc('setAdditionalData', {'customData': customData});
   }
 
   /// Sets the OneLink ID used as the base for links from [generateInviteLink].
   Future<void> setAppInviteOneLink(String oneLinkId) {
-    return _invokeVoidRpc(
-      'setAppInviteOneLink',
-      {'oneLinkId': oneLinkId},
-    );
+    return _invokeVoidRpc('setAppInviteOneLink', {'oneLinkId': oneLinkId});
   }
 
   /// Sets partner-specific data.
   ///
   /// [partnerId] identifies the partner and [data] contains the data
   /// supplied to that partner.
-  Future<void> setPartnerData(
-    String partnerId,
-    Map<String, dynamic> data,
-  ) {
+  Future<void> setPartnerData(String partnerId, Map<String, dynamic> data) {
     return _invokeVoidRpc('setPartnerData', {
       'partnerId': partnerId,
       'data': data,
@@ -562,10 +538,9 @@ class AppsFlyerSdk {
   /// an empty list to `null` before sending the native request, so the two are
   /// interchangeable.
   Future<void> setSharingFilterForPartners(List<String>? partners) {
-    return _invokeVoidRpc(
-      'setSharingFilterForPartners',
-      {'partners': partners != null && partners.isEmpty ? null : partners},
-    );
+    return _invokeVoidRpc('setSharingFilterForPartners', {
+      'partners': partners != null && partners.isEmpty ? null : partners,
+    });
   }
 
   /// Sets the out-of-store install source.
@@ -593,10 +568,7 @@ class AppsFlyerSdk {
   ///
   /// iOS only.
   Future<void> setCurrentDeviceLanguage(String language) async {
-    return _invokeVoidRpc(
-      'setCurrentDeviceLanguage',
-      {'language': language},
-    );
+    return _invokeVoidRpc('setCurrentDeviceLanguage', {'language': language});
   }
 
   /// Sets a custom install ID to correlate the install with your own ID.
@@ -660,18 +632,16 @@ class AppsFlyerSdk {
 
   /// Enables or disables automatic collection of IAB TCF consent data.
   Future<void> enableTCFDataCollection(bool shouldCollect) {
-    return _invokeVoidRpc(
-      'enableTCFDataCollection',
-      {'shouldCollect': shouldCollect},
-    );
+    return _invokeVoidRpc('enableTCFDataCollection', {
+      'shouldCollect': shouldCollect,
+    });
   }
 
   /// Anonymizes user data.
   Future<void> anonymizeUser(bool shouldAnonymize) {
-    return _invokeVoidRpc(
-      'anonymizeUser',
-      {'shouldAnonymize': shouldAnonymize},
-    );
+    return _invokeVoidRpc('anonymizeUser', {
+      'shouldAnonymize': shouldAnonymize,
+    });
   }
 
   /// Stops or resumes all SDK activity and communication with AppsFlyer
@@ -702,10 +672,7 @@ class AppsFlyerSdk {
   ///
   /// iOS only. Call before [start].
   Future<void> setDisableCollectASA(bool disable) async {
-    return _invokeVoidRpc(
-      'setDisableCollectASA',
-      {'disable': disable},
-    );
+    return _invokeVoidRpc('setDisableCollectASA', {'disable': disable});
   }
 
   /// Enables or disables Android ID collection.
@@ -720,10 +687,7 @@ class AppsFlyerSdk {
   ///
   /// Android only.
   Future<void> setDisableNetworkData(bool isDisable) async {
-    return _invokeVoidRpc(
-      'setDisableNetworkData',
-      {'isDisable': isDisable},
-    );
+    return _invokeVoidRpc('setDisableNetworkData', {'isDisable': isDisable});
   }
 
   /// Disables App Set ID collection.
@@ -737,30 +701,23 @@ class AppsFlyerSdk {
   ///
   /// iOS only. Pass `true` to disable SKAdNetwork.
   Future<void> setDisableSKAdNetwork(bool disable) async {
-    return _invokeVoidRpc(
-      'setDisableSKAdNetwork',
-      {'disable': disable},
-    );
+    return _invokeVoidRpc('setDisableSKAdNetwork', {'disable': disable});
   }
 
   /// Disables Apple Ads attribution.
   ///
   /// iOS only. Call before [start].
   Future<void> setDisableAppleAdsAttribution(bool disable) async {
-    return _invokeVoidRpc(
-      'setDisableAppleAdsAttribution',
-      {'disable': disable},
-    );
+    return _invokeVoidRpc('setDisableAppleAdsAttribution', {
+      'disable': disable,
+    });
   }
 
   /// Disables collection of the Identifier for Vendor (IDFV).
   ///
   /// iOS only. Call before [start].
   Future<void> setDisableIDFVCollection(bool disable) async {
-    return _invokeVoidRpc(
-      'setDisableIDFVCollection',
-      {'disable': disable},
-    );
+    return _invokeVoidRpc('setDisableIDFVCollection', {'disable': disable});
   }
 
   /// Enables device-name collection.
@@ -769,10 +726,7 @@ class AppsFlyerSdk {
   /// enable it only when your privacy policy covers collection of the device
   /// name.
   Future<void> setShouldCollectDeviceName(bool collect) async {
-    return _invokeVoidRpc(
-      'setShouldCollectDeviceName',
-      {'collect': collect},
-    );
+    return _invokeVoidRpc('setShouldCollectDeviceName', {'collect': collect});
   }
 
   /// Validates and logs an in-app purchase.
@@ -806,10 +760,9 @@ class AppsFlyerSdk {
   ///
   /// iOS only.
   Future<void> setUseReceiptValidationSandbox(bool sandbox) {
-    return _invokeVoidRpc(
-      'setUseReceiptValidationSandbox',
-      {'sandbox': sandbox},
-    );
+    return _invokeVoidRpc('setUseReceiptValidationSandbox', {
+      'sandbox': sandbox,
+    });
   }
 
   /// Enables sandbox mode for uninstall-measurement validation.
@@ -817,10 +770,7 @@ class AppsFlyerSdk {
   /// iOS only. This is the uninstall-measurement companion to
   /// [setUseReceiptValidationSandbox].
   Future<void> setUseUninstallSandbox(bool sandbox) {
-    return _invokeVoidRpc(
-      'setUseUninstallSandbox',
-      {'sandbox': sandbox},
-    );
+    return _invokeVoidRpc('setUseUninstallSandbox', {'sandbox': sandbox});
   }
 
   /// Logs a cross-promotion impression.
@@ -913,10 +863,7 @@ class AppsFlyerSdk {
     return _invokeVoidRpc(
       'performDeepLinking',
       _isAndroid
-          ? {
-              'url': url,
-              'shouldTriggerSession': shouldTriggerSession,
-            }
+          ? {'url': url, 'shouldTriggerSession': shouldTriggerSession}
           : {'url': url},
     );
   }
@@ -933,10 +880,7 @@ class AppsFlyerSdk {
   ///
   /// For example, pass `["click.greatapp.com"]`. [domains] must be non-empty.
   Future<void> setOneLinkCustomDomain(List<String> domains) {
-    return _invokeVoidRpc(
-      'setOneLinkCustomDomain',
-      {'domains': domains},
-    );
+    return _invokeVoidRpc('setOneLinkCustomDomain', {'domains': domains});
   }
 
   /// Sets the deep-link resolution timeout in milliseconds.
@@ -945,10 +889,7 @@ class AppsFlyerSdk {
   /// on Android and 60000 ms on iOS. Android requires a positive value; iOS
   /// accepts zero, but use a positive value for consistent behavior.
   Future<void> setDeepLinkTimeout(int timeout) {
-    return _invokeVoidRpc(
-      'setDeepLinkTimeout',
-      {'timeout': timeout},
-    );
+    return _invokeVoidRpc('setDeepLinkTimeout', {'timeout': timeout});
   }
 
   /// Registers the ordered JSON key path of a OneLink nested in a push payload.
@@ -958,20 +899,18 @@ class AppsFlyerSdk {
   /// On iOS, also forward the notification payload with
   /// [handlePushNotification].
   Future<void> addPushNotificationDeepLinkPath(List<String> deepLinkPath) {
-    return _invokeVoidRpc(
-      'addPushNotificationDeepLinkPath',
-      {'deepLinkPath': deepLinkPath},
-    );
+    return _invokeVoidRpc('addPushNotificationDeepLinkPath', {
+      'deepLinkPath': deepLinkPath,
+    });
   }
 
   /// Enables or disables Facebook deferred app-link resolution.
   ///
   /// On iOS, the Facebook SDK must be linked for this integration.
   Future<void> enableFacebookDeferredApplinks(bool isEnabled) {
-    return _invokeVoidRpc(
-      'enableFacebookDeferredApplinks',
-      {'isEnabled': isEnabled},
-    );
+    return _invokeVoidRpc('enableFacebookDeferredApplinks', {
+      'isEnabled': isEnabled,
+    });
   }
 
   /// Appends [parameters] to deep-link URLs containing [contains] before the SDK
@@ -1019,13 +958,10 @@ class AppsFlyerSdk {
   /// Passes an APNs push-notification payload to the iOS SDK.
   ///
   /// iOS only. Pass the complete notification `userInfo` dictionary.
-  Future<void> handlePushNotification(
-    Map<String, dynamic> pushPayload,
-  ) async {
-    return _invokeVoidRpc(
-      'handlePushNotification',
-      {'pushPayload': pushPayload},
-    );
+  Future<void> handlePushNotification(Map<String, dynamic> pushPayload) async {
+    return _invokeVoidRpc('handlePushNotification', {
+      'pushPayload': pushPayload,
+    });
   }
 
   /// Passes the device token to AppsFlyer for uninstall measurement.

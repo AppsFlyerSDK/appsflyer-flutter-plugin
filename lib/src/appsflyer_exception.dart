@@ -13,10 +13,7 @@ class AppsFlyerException implements Exception {
   final String message;
 
   /// Creates an AppsFlyer SDK exception.
-  const AppsFlyerException({
-    this.code,
-    required this.message,
-  });
+  const AppsFlyerException({this.code, required this.message});
 
   /// Converts a Flutter [PlatformException] from the native bridge.
   factory AppsFlyerException.fromPlatformException(PlatformException error) {
