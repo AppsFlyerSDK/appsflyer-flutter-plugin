@@ -63,9 +63,6 @@ android {
     defaultConfig {
         minSdkVersion 21
         compileSdk 36
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-
-        multiDexEnabled true
     }
     
     // Matches the AppsFlyer Android dependencies, which are built at Java 17.
@@ -81,9 +78,6 @@ android {
         jvmTarget = '17'
     }
 
-    lintOptions {
-        disable 'InvalidPackage'
-    }
     namespace 'com.appsflyer.appsflyersdk'
 
     sourceSets {
