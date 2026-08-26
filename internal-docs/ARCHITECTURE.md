@@ -188,10 +188,16 @@ Dart holds exactly one `af-events` subscription, owned by `AppsFlyerSdk` itself.
 
 ```dart
 void _ensureEventsSubscribed() {
-  _eventSubscription ??=
-      _eventChannel.receiveBroadcastStream().listen(_handleNativeEvent);
+  _ensureIsolateCanReachPlatform();
+  _eventSubscription ??= _eventChannel.receiveBroadcastStream().listen(
+    _handleNativeEvent,
+    onError: (Object error, StackTrace stackTrace) { /* log only */ },
+    onDone: () => _eventSubscription = null,
+  );
 }
 ```
+
+The two failure callbacks are deliberately asymmetric because `EventChannel` treats them differently. A platform error is added to a live broadcast controller, so the subscription keeps delivering later events; `onError` therefore only logs, and cancelling or re-listening there would leak the old subscription, re-issue `listen`, and replay the native buffer into callbacks that already received it. Only a null platform reply closes the controller, which neither platform plugin sends today — nothing in either native codebase calls `endOfStream` or `FlutterEndOfEventStream`. Clearing the field in `onDone` keeps the invariant that a non-null `_eventSubscription` means a live one, so the next `register*Listener` re-attaches if a future native change ever ends the stream.
 
 `_AppsFlyerEvent.fromNative` accepts the RPC JSON string and normalizes:
 

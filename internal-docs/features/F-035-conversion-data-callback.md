@@ -75,6 +75,8 @@ Android also exposes `unregisterConversionListener()`; on iOS it still drops the
 - `registering with no conversion callbacks is not an error` — asserts the RPC is still dispatched and both events are dropped harmlessly when neither callback is supplied.
 - `re-registering replaces the callback instead of adding a second one` — asserts the second registration's callback receives the event and the first does not.
 - `subscribes to af-events only when the first listener is registered` — asserts the `listen` handshake is sent on the first registration and not repeated for later ones.
+- `keeps delivering events after a platform error on the stream` — asserts an error envelope on `af-events` leaves the subscription live: the next event still reaches the callback and no second `listen` is issued.
+- `re-subscribes after the platform ends the event stream` — asserts a null platform reply (end of stream) clears the subscription, so the next registration re-issues `listen` and events reach the callback again.
 - `rolls back Dart callbacks when native registration RPC fails` — asserts failed `registerConversionListener`, `registerDeepLinkListener`, and `registerSessionReadyListener` RPCs rethrow and leave no Dart callback receiving events.
 - `keeps Dart callbacks when the native unregister RPC fails` — asserts failed `unregisterConversionListener`, `unregisterDeepLinkListener`, and `unregisterSessionReadyListener` RPCs rethrow and leave the registered callbacks still receiving events, the iOS case for the first two.
 - `listeners are registered explicitly` — asserts `registerConversionListener(onConversionDataSuccess:)` dispatches the `registerConversionListener` RPC.

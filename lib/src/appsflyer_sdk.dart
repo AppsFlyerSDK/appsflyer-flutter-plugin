@@ -124,12 +124,21 @@ class AppsFlyerSdk {
   /// whole buffer on attach, including events for listeners registered later in
   /// the sequence; [_AppsFlyerListenerRegistry] holds those until their
   /// callback arrives.
+  ///
+  /// A channel error keeps the subscription alive — `EventChannel` adds it to a
+  /// live controller — so [onError] only reports. Only an end-of-stream from
+  /// native closes the controller, which neither platform sends; clearing the
+  /// field in [onDone] keeps `non-null` meaning `live` if one ever does.
   void _ensureEventsSubscribed() {
     _ensureIsolateCanReachPlatform();
     _eventSubscription ??= _eventChannel.receiveBroadcastStream().listen(
       _handleNativeEvent,
       onError: (Object error, StackTrace stackTrace) {
         _log('AppsFlyer: event stream error (${_describeError(error)}).');
+      },
+      onDone: () {
+        _log('AppsFlyer: event stream closed by the platform.');
+        _eventSubscription = null;
       },
     );
   }

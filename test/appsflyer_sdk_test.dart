@@ -1177,6 +1177,57 @@ void main() {
     );
 
     test(
+      'keeps delivering events after a platform error on the stream',
+      () async {
+        final received = <Map<String, dynamic>>[];
+        await androidSdk.registerConversionListener(
+          onConversionDataSuccess: received.add,
+        );
+
+        await _emitStreamError();
+        await pumpEventQueue();
+
+        await _emitEvent({
+          'event': 'onConversionDataSuccess',
+          'data': {'media_source': 'organic'},
+        });
+        await pumpEventQueue();
+
+        // An error is added to a live controller, so the subscription survives it:
+        // no re-subscribe is needed, and none is issued.
+        expect(received.single, {'media_source': 'organic'});
+        expect(eventChannelCalls, ['listen']);
+      },
+    );
+
+    test('re-subscribes after the platform ends the event stream', () async {
+      final received = <Map<String, dynamic>>[];
+      await androidSdk.registerConversionListener(
+        onConversionDataSuccess: received.add,
+      );
+      await pumpEventQueue();
+      expect(eventChannelCalls, ['listen']);
+
+      await _emitEndOfStream();
+      await pumpEventQueue();
+
+      await androidSdk.registerConversionListener(
+        onConversionDataSuccess: received.add,
+      );
+      await pumpEventQueue();
+
+      expect(eventChannelCalls.where((call) => call == 'listen').length, 2);
+
+      await _emitEvent({
+        'event': 'onConversionDataSuccess',
+        'data': {'media_source': 'organic'},
+      });
+      await pumpEventQueue();
+
+      expect(received.single, {'media_source': 'organic'});
+    });
+
+    test(
       'rolls back Dart callbacks when native registration RPC fails',
       () async {
         Future<Object?> failingRegistrationHandler(MethodCall call) async {
@@ -1988,6 +2039,26 @@ const String _sensitiveValue = 'af-sensitive-payload-marker';
 
 Future<void> _emitEvent(Map<String, dynamic> event) =>
     _emitRaw(jsonEncode(event));
+
+/// Mimics an error envelope on `af-events`: `EventChannel` adds it to a live
+/// controller, which no AppsFlyer platform sends today either.
+Future<void> _emitStreamError() async {
+  final messenger =
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  final ByteData data = const StandardMethodCodec().encodeErrorEnvelope(
+    code: 'STREAM_ERROR',
+    message: 'transport failure',
+  );
+  await messenger.handlePlatformMessage('af-events', data, (_) {});
+}
+
+/// Mimics the platform ending the `af-events` stream: `EventChannel` closes its
+/// controller on a null reply, which no AppsFlyer platform sends today.
+Future<void> _emitEndOfStream() async {
+  final messenger =
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  await messenger.handlePlatformMessage('af-events', null, (_) {});
+}
 
 Future<void> _emitRaw(String payload) async {
   final messenger =
