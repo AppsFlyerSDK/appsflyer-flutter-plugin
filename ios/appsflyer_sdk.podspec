@@ -24,6 +24,8 @@ Pod::Spec.new do |s|
     ss.source_files = 'appsflyer_sdk/Sources/appsflyer_sdk/**/*.swift'
     ss.dependency 'Flutter'
     ss.ios.dependency 'AppsFlyerRPC', '7.0.13'
+    # Imported directly for `handleLaunchOptions:`; must stay on the version AppsFlyerRPC pins.
+    ss.ios.dependency 'AppsFlyerFramework', '7.0.2'
   end
 
   s.subspec 'PurchaseConnector' do |ss|

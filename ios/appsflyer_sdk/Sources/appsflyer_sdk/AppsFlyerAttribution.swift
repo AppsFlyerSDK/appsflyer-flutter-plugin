@@ -10,7 +10,6 @@
 
 import Foundation
 import os
-import UIKit
 
 @objc(AppsFlyerAttribution)
 public class AppsFlyerAttribution: NSObject {
@@ -59,24 +58,6 @@ public class AppsFlyerAttribution: NSObject {
         executeOrQueue(method: "handleOpenUrl", params: [
             "url": url.absoluteString,
             "options": jsonSafeOptions(from: options)
-        ])
-    }
-
-    @objc(handleOpenUrl:sourceApplication:annotation:)
-    public func handleOpenUrl(_ url: URL?, sourceApplication: String?, annotation: Any?) {
-        guard let url = url else {
-            return
-        }
-        var rawOptions: [AnyHashable: Any] = [:]
-        if let sourceApplication = sourceApplication {
-            rawOptions[UIApplication.OpenURLOptionsKey.sourceApplication.rawValue] = sourceApplication
-        }
-        if let annotation = annotation {
-            rawOptions[UIApplication.OpenURLOptionsKey.annotation.rawValue] = annotation
-        }
-        executeOrQueue(method: "handleOpenURL", params: [
-            "url": url.absoluteString,
-            "options": jsonSafeOptions(from: rawOptions)
         ])
     }
 

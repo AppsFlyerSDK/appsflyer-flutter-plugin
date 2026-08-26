@@ -325,9 +325,9 @@ The plugin is `ActivityAware` and registers a `NewIntentListener`.
 
 The plugin registers AppDelegate and, when available, UIScene lifecycle delegates.
 
-- URL-scheme links map to `handleOpenUrl` or `handleOpenURL` according to the native callback shape.
+- URL-scheme links map to `handleOpenUrl`. The deprecated iOS 8 `sourceApplication`/`annotation` shape is not forwarded: UIKit stops calling that selector once `application:openURL:options:` exists, which `FlutterAppDelegate` provides, so it is unreachable on the iOS 13 floor.
 - Universal Links map to `continueUserActivity`.
-- launch options are forwarded at cold start through the interim `handleLaunchOptions` JSON-RPC hop (no `initialize` dependency); serialization and RPC failures are logged via `os_log`, matching `AppsFlyerAttribution`;
+- launch options are forwarded at cold start by calling `AppsFlyerLib.shared().handleLaunchOptions(_:)` directly, not through the RPC bridge: the native implementation reads only the live `NSUserActivity` inside the launch-options dictionary, which no JSON envelope can carry. This is the one native call the plugin makes outside AppsFlyerRPC, so the Core podspec declares `AppsFlyerFramework` explicitly alongside `AppsFlyerRPC` (the SPM manifest already listed the `AppsFlyerLib` product). There is no `initialize` dependency and nothing to report: the call only sets the pending-deeplink flag that `registerSessionReadyListener` samples later;
 - `AppsFlyerAttribution` queues early URL/Universal Link requests and replays them after plugin-internal `markBridgeReady(markedBy:)`. Queue state is serialized on the main queue inside the singleton (interim until the RPC lifecycle-callback wrapper absorbs it). Serialization and RPC failures are logged via `os_log`; the host app still learns deep-link outcomes only through `af-events` (F-037). That call records the owning plugin instance so `resetBridgeStateIfOwned(by:)` on engine detach clears `isBridgeReady` / `pendingRequests` without affecting a live second engine. A parameterless `@objc markBridgeReady` is intentionally not exposed: it would open the gate without an owner and break detach cleanup.
 
 These lifecycle RPC calls are implementation details and are not public Dart methods.

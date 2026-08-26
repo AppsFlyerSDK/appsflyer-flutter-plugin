@@ -172,6 +172,13 @@ replacement table.
 
 **Fixed**
 
+- iOS: session readiness now accounts for a Universal Link that launched the app
+  from cold. The plugin forwarded the launch options through the RPC bridge,
+  which serializes its payload to JSON, and the only value the native SDK reads
+  there is a live `NSUserActivity` object — it was dropped in serialization, so
+  the SDK was never told a deep link was pending and could report the session
+  ready before resolving it. The launch options are now handed to the native SDK
+  directly.
 - `enableDebug` now controls the plugin's own diagnostics as well as native SDK
   logging. The plugin printed through `debugPrint`, which Flutter does not
   compile out of release builds, so those lines reached production logs whatever

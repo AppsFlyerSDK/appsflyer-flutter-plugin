@@ -3,10 +3,10 @@
 //  appsflyer_sdk
 //
 
+import AppsFlyerLib
 import Foundation
 import UIKit
 import Flutter
-import os
 
 // Plugin version
 private let kAppsFlyerPluginVersion = "7.0.1"
@@ -34,9 +34,6 @@ private let kPluginDetachedMessage = "Plugin is not attached to a Flutter engine
 
 @objc(AppsflyerSdkPlugin)
 public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
-
-    private static let lifecycleLog = OSLog(subsystem: "com.appsflyer.appsflyer_sdk",
-                                            category: "AppsflyerSdkPlugin")
 
     /// One entry of the ordered `init` RPC sequence. Built and consumed inside this class only —
     /// each entry's `params` is forwarded to the RPC layer as the untouched Foundation payload.
@@ -504,27 +501,9 @@ extension AppsflyerSdkPlugin {
         guard !launchOptions.isEmpty else {
             return false
         }
-        let jsonSafeOptions = NSMutableDictionary()
-        for (key, value) in launchOptions {
-            let stringKey = String(describing: key as AnyObject)
-            if let url = value as? URL {
-                jsonSafeOptions[stringKey] = url.absoluteString
-            } else if JSONSerialization.isValidJSONObject([value]) {
-                jsonSafeOptions[stringKey] = value
-            }
-        }
-        // Fire-and-forget: native `handleLaunchOptions:` only sets a pending-deeplink flag and has
-        // no dependency on `initialize`. It must run before `registerSessionReadyListener`, which
-        // Dart registers after `init()` — forwarding here satisfies that earlier than caching did.
-        executeJson(forMethod: "handleLaunchOptions",
-                    params: ["launchOptions": jsonSafeOptions]) { _, error in
-            if let error = error {
-                os_log(.error,
-                         log: Self.lifecycleLog,
-                         "handleLaunchOptions failed: %{public}@",
-                         String(describing: error))
-            }
-        }
+        // Not routed through the RPC bridge: the SDK reads only the `NSUserActivity` under
+        // `UIApplicationLaunchOptionsUserActivityDictionaryKey`, which no JSON envelope can carry.
+        AppsFlyerLib.shared().handleLaunchOptions(launchOptions)
         return false
     }
 
@@ -540,19 +519,6 @@ extension AppsflyerSdkPlugin {
             rawOptions[key.rawValue] = value
         }
         AppsFlyerAttribution.shared().handleOpenUrl(url, options: rawOptions)
-        return false
-    }
-
-    // `FlutterApplicationLifeCycleDelegate` declares this inside `NS_ASSUME_NONNULL`, so the
-    // parameters import as non-optional.
-    @objc(application:openURL:sourceApplication:annotation:)
-    public func application(_ application: UIApplication,
-                            openURL url: URL,
-                            sourceApplication: String,
-                            annotation: Any) -> Bool {
-        AppsFlyerAttribution.shared().handleOpenUrl(url,
-                                                    sourceApplication: sourceApplication,
-                                                    annotation: annotation)
         return false
     }
 
