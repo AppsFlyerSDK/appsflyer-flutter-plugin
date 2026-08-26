@@ -216,6 +216,14 @@ extension Error {
 extension Dictionary {
        
    var jsonData: Data? {
+      // `isValidJSONObject` must gate the write: `data(withJSONObject:)` raises
+      // `NSInvalidArgumentException` on a value it cannot represent, and `try?`
+      // does not catch an Objective-C exception. The validation payload comes from
+      // the native connector as an untyped `NSDictionary`, so returning nil here
+      // is the only way an unrepresentable value stays reportable.
+      guard JSONSerialization.isValidJSONObject(self) else {
+         return nil
+      }
       return try? JSONSerialization.data(withJSONObject: self, options: [.prettyPrinted])
    }
        

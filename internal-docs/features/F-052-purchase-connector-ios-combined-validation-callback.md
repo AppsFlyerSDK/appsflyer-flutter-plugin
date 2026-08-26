@@ -4,7 +4,7 @@ name: "Purchase Connector: iOS Combined Validation Callback"
 type: purchaseValidation
 platform: ios
 status: active
-last_verified: 2026-08-10
+last_verified: 2026-08-26
 depends_on: ["F-049"]
 ---
 
@@ -34,6 +34,8 @@ StoreKit transaction observed (via F-049 startObservingTransactions)
       (delegate conformance to `PurchaseRevenueDelegate`; `connector.purchaseRevenueDelegate = self` assigned during F-049's `configure`)
       → resMap = ["validationInfo": validationInfo, "error": error?.asDictionary]
         → DispatchQueue.main.async { methodChannel?.invokeMethod("didReceivePurchaseRevenueValidationInfo", arguments: resMap.toJSONString()) }
+          (toJSONString gates the write on isValidJSONObject and returns nil for a payload JSON
+           cannot represent; the nil arrives in Dart as a null and is routed to _reportParseFailure)
           → Dart _methodCallHandler(call)   [lib/src/purchase_connector/purchase_connector.dart]
             → case AppsflyerConstants.DID_RECEIVE_PURCHASE_REVENUE_VALIDATION_INFO
               → _handleDidReceivePurchaseRevenueValidationInfo(callMap)
@@ -64,7 +66,16 @@ StoreKit transaction observed (via F-049 startObservingTransactions)
 ---
 
 ## Tests
-No dedicated test found. Grepping `test/` for `setDidReceivePurchaseRevenueValidationInfo`, `didReceivePurchaseRevenueValidationInfo`, or `IosError` returns no matches.
+No dedicated Dart test found. Grepping `test/` for `setDidReceivePurchaseRevenueValidationInfo`, `didReceivePurchaseRevenueValidationInfo`, or `IosError` returns no matches.
+
+`PurchaseConnectorPayloadSerializationTests` in `example/ios/RunnerTests/RunnerTests.swift` covers the
+serialization boundary: an `NSDate`, `NSData`, non-`String` key or `Double.nan` in the payload must
+yield `nil` rather than abort, while the ordinary shapes (both keys nil, a populated `validationInfo`,
+an `error` dictionary) must still serialize. It **mirrors** `Dictionary.jsonData` rather than importing
+it — the module is compiled only under `ENABLE_PURCHASE_CONNECTOR` and so is not linked into the test
+target, the same constraint `RPCPayloadSerializationTests` works around. It therefore pins the
+Foundation behavior the fix relies on; it does not fail if the guard is removed from
+`PurchaseConnectorPlugin.swift`.
 
 ---
 
@@ -72,6 +83,7 @@ No dedicated test found. Grepping `test/` for `setDidReceivePurchaseRevenueValid
 - `validationInfo` is untyped (`Map<String, dynamic>?`) — callers must know the native `PurchaseRevenueDelegate` payload shape themselves; there is no equivalent of Android's `SubscriptionPurchase`/`ProductPurchase` models on the iOS side.
 - One combined callback serves both subscriptions and in-app purchases with no discriminator field surfaced by the Dart API — the app must inspect `validationInfo`'s contents itself to tell them apart. Contrasts with Android's two separate typed listeners (F-051).
 - `IosError` only captures `domain`/`code` when the underlying error is an `NSError`; a plain Swift `Error` yields `localizedDescription` only.
+- The native delegate declares `validationInfo` as an untyped `NSDictionary * _Nullable`, so its contract permits values JSON cannot represent (an `NSDate`, an `NSData`, a non-`String` key). Such a payload cannot be delivered: `toJSONString()` returns `nil`, Dart routes the resulting null through `_reportParseFailure`, and the app's callback fires with `(null, null)` plus a log line. The outcome is reported rather than silent, but the validation info for that transaction is lost. Whether the native SDK ever emits such a value is unverified.
 - No native counterpart exists on Android for this method name — the Dart setter compiles and stores the handler cross-platform, but it is only ever invoked from `PurchaseConnectorPlugin.swift`; on Android it never fires.
 - Entire feature is a no-op unless the app opted into the Purchase Connector at build time (`$AppsFlyerPurchaseConnector = true` in the Podfile, gating the `PurchaseConnector` podspec subspec and its `ENABLE_PURCHASE_CONNECTOR=1` flag) — otherwise `ios/PurchaseConnector/PurchaseConnectorPlugin.swift` isn't compiled into the app at all (see F-054).
 

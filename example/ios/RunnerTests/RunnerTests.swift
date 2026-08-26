@@ -45,3 +45,53 @@ class RPCPayloadSerializationTests: XCTestCase {
     XCTAssertNotNil(jsonString(from: envelope(value: 0)))
   }
 }
+
+/// Pins the same Foundation behavior for the Purchase Connector's own serialization helper.
+///
+/// The connector delivers `didReceivePurchaseRevenueValidationInfo:error:` with an untyped
+/// `NSDictionary`, so its contract permits values JSON cannot represent. `try?` does not catch the
+/// `NSInvalidArgumentException` that `data(withJSONObject:)` raises for those, which is why
+/// `jsonData` gates the write on `isValidJSONObject`.
+class PurchaseConnectorPayloadSerializationTests: XCTestCase {
+
+  /// Mirrors `Dictionary.jsonData` / `toJSONString()` in `PurchaseConnectorPlugin.swift`.
+  /// The module is compiled only under the `ENABLE_PURCHASE_CONNECTOR` opt-in, so it is not linked
+  /// into this test target — same reason `RPCPayloadSerializationTests` mirrors its subject.
+  private func toJSONString(_ dictionary: [AnyHashable: Any?]) -> String? {
+    guard JSONSerialization.isValidJSONObject(dictionary),
+          let data = try? JSONSerialization.data(withJSONObject: dictionary,
+                                                 options: [.prettyPrinted]) else {
+      return nil
+    }
+    return String(data: data, encoding: .utf8)
+  }
+
+  private func payload(validationInfo: Any?) -> [AnyHashable: Any?] {
+    return ["validationInfo": validationInfo, "error": nil]
+  }
+
+  func testUnrepresentableValuesReturnNilInsteadOfRaising() {
+    let unrepresentable: [String: Any] = [
+      "NSDate": Date(timeIntervalSince1970: 0),
+      "NSData": Data([0x00, 0x01]),
+      "non-String key": [1: "x"],
+      "Double.nan": Double.nan
+    ]
+    for (name, value) in unrepresentable {
+      let object = payload(validationInfo: value)
+      XCTAssertFalse(JSONSerialization.isValidJSONObject(object),
+                     "\(name) must be rejected before data(withJSONObject:) is reached")
+      XCTAssertNil(toJSONString(object), "\(name) must serialize to nil, not abort the process")
+    }
+  }
+
+  func testRepresentablePayloadsStillSerialize() {
+    // Both keys nil is the ordinary "no info, no error" shape and must keep serializing.
+    XCTAssertNotNil(toJSONString(payload(validationInfo: nil)))
+    XCTAssertNotNil(toJSONString(payload(validationInfo: ["productId": "sku_1", "revenue": 12.5])))
+    XCTAssertNotNil(toJSONString(["validationInfo": nil,
+                                  "error": ["localizedDescription": "boom",
+                                            "domain": "AFSDK",
+                                            "code": 7]]))
+  }
+}

@@ -172,6 +172,16 @@ replacement table.
 
 **Fixed**
 
+- iOS Purchase Connector: a validation payload the native SDK reports with a
+  value JSON cannot represent no longer terminates the app. The serialization
+  helper behind `didReceivePurchaseRevenueValidationInfo` called
+  `JSONSerialization.data(withJSONObject:)` under `try?`, which does not catch
+  the `NSInvalidArgumentException` that call raises, so an `NSDate`, an
+  `NSData` or a non-`String` key in the delegate's untyped dictionary aborted
+  the process. The helper now checks `isValidJSONObject` first and returns
+  `nil`, which surfaces as a reported parse failure — the callback fires with
+  no data and a log line — instead of a crash. Only affects apps that opted
+  into the Purchase Connector.
 - iOS: the UIKit lifecycle callbacks the plugin intercepts — launch options,
   URL-scheme opens, and Universal Links — are handed to the native SDK directly
   instead of crossing the JSON-based RPC bridge, which could not carry them
