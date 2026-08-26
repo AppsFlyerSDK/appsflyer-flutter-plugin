@@ -14,7 +14,7 @@ removed APIs, renames, lifecycle changes, and upgrade instructions.
 - Android AppsFlyer SDK **7.0.1**
 - iOS AppsFlyer SDK **7.0.2**
 - Android Purchase Connector **2.2.0**
-- iOS Purchase Connector **7.0.1**
+- iOS Purchase Connector **7.0.2**
 - iOS minimum deployment target **13.0**
 - Android minimum API level **21**
 - Documentation remains organized under [`doc/`](doc/README.md), with the

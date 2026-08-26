@@ -28,7 +28,7 @@ Pod::Spec.new do |s|
 
   s.subspec 'PurchaseConnector' do |ss|
     ss.dependency 'Flutter'
-    ss.ios.dependency 'PurchaseConnector', '7.0.1'
+    ss.ios.dependency 'PurchaseConnector', '7.0.2'
     ss.source_files = 'PurchaseConnector/**/*.swift'
   
     # GCC_PREPROCESSOR_DEFINITIONS only reaches the Objective-C compiler; the Core plugin is Swift

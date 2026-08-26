@@ -45,6 +45,11 @@ import Flutter
 
     /// Mandatory method needed to register the plugin with iOS part of Flutter app.
     public static func register(with registrar: FlutterPluginRegistrar) {
+        /// Release the previous engine first: a stale channel would keep driving this singleton, and
+        /// its ownership-guarded `tearDown` would then skip clearing it. Per-engine state stays
+        /// impossible while `PurchaseConnector.shared()` is process-scoped.
+        shared.methodChannel?.setMethodCallHandler(nil)
+
         /// Create a new method channel with the registrar.
         shared.owningRegistrar = registrar
         shared.methodChannel =  FlutterMethodChannel(name: AF_PURCHASE_CONNECTOR_CHANNEL, binaryMessenger: registrar.messenger())
