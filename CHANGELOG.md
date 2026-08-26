@@ -172,13 +172,15 @@ replacement table.
 
 **Fixed**
 
-- iOS: session readiness now accounts for a Universal Link that launched the app
-  from cold. The plugin forwarded the launch options through the RPC bridge,
-  which serializes its payload to JSON, and the only value the native SDK reads
-  there is a live `NSUserActivity` object — it was dropped in serialization, so
-  the SDK was never told a deep link was pending and could report the session
-  ready before resolving it. The launch options are now handed to the native SDK
-  directly.
+- iOS: the UIKit lifecycle callbacks the plugin intercepts — launch options,
+  URL-scheme opens, and Universal Links — are handed to the native SDK directly
+  instead of crossing the JSON-based RPC bridge, which could not carry them
+  intact. Session readiness now accounts for a Universal Link that launched the
+  app from cold: the only value the SDK reads from launch options is a live
+  `NSUserActivity`, which serialization dropped, so the SDK was never told a
+  deep link was pending and could report the session ready before resolving it.
+  Universal Links delivered while running now reach the SDK as the original
+  activity rather than one rebuilt from its type and URL.
 - `enableDebug` now controls the plugin's own diagnostics as well as native SDK
   logging. The plugin printed through `debugPrint`, which Flutter does not
   compile out of release builds, so those lines reached production logs whatever
