@@ -19,8 +19,10 @@
 
 ## Methods
 
-All methods must be called from the main isolate. From a background isolate the
-call throws `AppsFlyerException` — see
+Call these methods from the main isolate. From a background isolate that has not
+been initialized with
+`BackgroundIsolateBinaryMessenger.ensureInitialized(rootIsolateToken)`, the call
+throws `AppsFlyerException` — see
 [Getting started → Background isolates](getting-started.md#background-isolates).
 
 - [init](#init)
@@ -404,12 +406,13 @@ await appsflyerSdk.unregisterDeepLinkListener();
 <a id="startSDK"></a>
 ##### <a id="start"> **`Future<void> start({bool awaitResponse = false})`**
 In SDK 7, `init(...)` only initializes the SDK; it does not send a session
-(Launch). Call `start()` to report one. Unlike SDK 6, there is no `manualStart`
-option — initialization never triggers a session automatically.
+(Launch). Call `start()` to report one — initialization never triggers a session
+automatically.
 
 When `awaitResponse` is `true`, the Future completes when the native request
-succeeds and throws `AppsFlyerException` when it fails. A timeout does not
-cancel the native request, which may still succeed later.
+succeeds and throws `AppsFlyerException` when it fails. Android times out after
+5 seconds, iOS after 10. A timeout does not cancel the native request, which may
+still succeed later.
 
 When `awaitResponse` is `false` (default), the Future completes when the
 native SDK accepts the request. Delivery success or failure is not reported.
@@ -445,7 +448,7 @@ appsFlyerSdk.getAttributionId().then((id) {
   campaigns/media-sources. Please take the time define the event/s you want to measure to allow you
   to send ROI (Return on Investment) and LTV (Lifetime Value).
 - The `logEvent` method allows you to send in-app events to AppsFlyer analytics. This method allows you to add events dynamically by adding them directly to the application code.
-- Result reporting mirrors [`start`](#start); both accept `awaitResponse` and default to fire-and-forget acceptance by the native SDK.
+- Result reporting mirrors [`start`](#start); both accept `awaitResponse` and default to fire-and-forget acceptance by the native SDK. With `awaitResponse: true`, Android times out after 5 seconds, iOS after 10.
 
 | parameter       | type     | description                                                                                                                                                                       |
 | --------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1248,7 +1251,7 @@ The Future completes with the generated URL. Native generation failures are
 reported as `AppsFlyerException`. On Android, `awaitResponse: true` waits for
 asynchronous short-link generation and `false` returns the synchronously
 generated long link. On iOS, link generation always waits for the asynchronous
-result.
+result. Both platforms time out after 10 seconds.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
@@ -1308,7 +1311,16 @@ await appsFlyerSdk.logCrossPromoteImpression(
 **<a id="logAndOpenStore"> `Future<void> logAndOpenStore(String promotedAppId, {String campaign = '', Map<String, String>? userParams})`**
 
 Records the promotion and asks the native SDK to open the promoted app's store
-page:
+page.
+
+The returned `Future` means different things per platform. On Android it
+completes as soon as the native SDK has been invoked, without waiting for the
+store to open. On iOS the plugin must first obtain the click URL from the native
+SDK and then open it, so the `Future` completes only after the store has been
+asked to open; that click-URL step times out after 10 seconds and raises
+`AppsFlyerException`. A timeout does not cancel the native request. If iOS
+returns no click URL, the `Future` still completes successfully but nothing
+opens. The click URL itself is never returned to Dart.
 
 ```dart
 await appsFlyerSdk.logAndOpenStore(

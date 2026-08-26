@@ -24,7 +24,7 @@ This plugin release bundles:
 When Purchase Connector is enabled in your app:
 
 - Android **2.2.0**
-- iOS **7.0.1**
+- iOS **7.0.2**
 
 ## ❗❗ Breaking changes when updating to v7.x.x ❗❗
 

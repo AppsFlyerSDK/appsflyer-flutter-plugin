@@ -120,7 +120,7 @@ class AppsFlyerInviteLinkParams {
    Future completes with the generated URL or throws `AppsFlyerException`.
    `awaitResponse` defaults to `true`. On Android, `false` returns the
    synchronously generated long link. On iOS, link generation always waits for
-   the asynchronous result.
+   the asynchronous result. Both platforms time out after 10 seconds.
 
 4. Pass the generated URL to your app's share flow. After the user shares the
    invite, call `logInvite` with the same channel to log the `af_invite` event:

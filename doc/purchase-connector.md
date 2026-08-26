@@ -55,7 +55,7 @@ support@appsflyer.com
 ## <a id="important-note"> ⚠️ ⚠️ Important Note ⚠️ ⚠️
 
 Plugin `7.0.1` resolves Android Purchase Connector `2.2.0` and iOS Purchase
-Connector `7.0.1` when the feature is enabled. Android Purchase Connector
+Connector `7.0.2` when the feature is enabled. Android Purchase Connector
 `2.2.0` supports Google Play Billing Library `8.x`. The Flutter plugin does
 not add the Billing Library itself, so your app or IAP plugin must provide a
 Billing Library `8.x` dependency and use Billing 8-compatible APIs.

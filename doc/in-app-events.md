@@ -23,7 +23,7 @@ Find more info about recording events [here](https://dev.appsflyer.com/hc/docs/i
 
 When `awaitResponse` is `true`, the Future completes after the native
 request callback succeeds. Request failures and timeouts are reported as
-`AppsFlyerException`. See the [API reference](api-reference.md#logEvent) for
+`AppsFlyerException`; Android times out after 5 seconds, iOS after 10. See the [API reference](api-reference.md#logEvent) for
 details.
 With the default `false`, it completes when the native SDK accepts the
 fire-and-forget call and does not report the native delivery result.

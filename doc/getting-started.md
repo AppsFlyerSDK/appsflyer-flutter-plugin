@@ -246,14 +246,15 @@ See also [API reference → Multi-engine hosts](api-reference.md#multi-engine-ho
 
 Call the SDK from the main isolate. Background isolates — the ones a push
 handler (`FirebaseMessaging.onBackgroundMessage`), a `workmanager` task, or a
-`compute()` call runs in — cannot reach the plugin.
+`compute()` call runs in — cannot reach the plugin unless you initialize them
+first (see below).
 
 Two things go wrong there:
 
 - `AppsFlyerSdk.instance` is a singleton **per isolate**. A background isolate
   gets a fresh, unconfigured instance, not the one you initialized.
-- Platform channels are bound to the main isolate, so the call cannot reach the
-  native SDK at all.
+- Platform channels are bound to the main isolate, so an uninitialized
+  background isolate cannot reach the native SDK at all.
 
 The plugin detects this and throws `AppsFlyerException`, so the failure is
 catchable and your background task keeps running:
@@ -300,8 +301,9 @@ session-ready callback before calling `start()`.
   the native SDK accepts the fire-and-forget call; this does not confirm request
   delivery.
 - `start(awaitResponse: true)` waits for the native request callback. Native
-  errors and timeouts are reported as `AppsFlyerException`. A timeout does not
-  cancel the native request, which may still succeed later.
+  errors and timeouts are reported as `AppsFlyerException`. Android times out
+  after 5 seconds, iOS after 10. A timeout does not cancel the native request,
+  which may still succeed later.
 
 <a id="conversion-data-start"></a>
 ### Conversion-data timing

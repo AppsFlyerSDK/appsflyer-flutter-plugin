@@ -876,6 +876,11 @@ class AppsFlyerSdk {
   ///
   /// [promotedAppId] is the app ID shown in the AppsFlyer dashboard.
   /// [campaign] and [userParams] are optional.
+  ///
+  /// On Android the returned future completes once the native SDK has been
+  /// invoked. On iOS it completes only after the store has been asked to open,
+  /// because the plugin must first fetch the click URL from the native SDK; that
+  /// step times out after 10 seconds and throws [AppsFlyerException].
   Future<void> logAndOpenStore(
     String promotedAppId, {
     String campaign = '',
