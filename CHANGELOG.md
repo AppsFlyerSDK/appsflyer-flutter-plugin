@@ -1,12 +1,12 @@
 # Versions
 
-## 7.0.1
+## 7.0.2
 
 Migration to **AppsFlyer SDK 7**. This is a major release with intentional
 breaking changes. See [doc/migration-guide.md](doc/migration-guide.md) for
 removed APIs, renames, lifecycle changes, and upgrade instructions.
 
-- Flutter plugin version **7.0.1**
+- Flutter plugin version **7.0.2**
 - Minimum Flutter version **3.35.0**
 - Minimum Dart version **3.9.0** (and earlier than Dart **4.0.0**)
 - Android build toolchain, aligned with the AppsFlyer Android SDK: Kotlin Gradle

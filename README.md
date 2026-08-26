@@ -28,7 +28,7 @@ When Purchase Connector is enabled in your app:
 
 ## ❗❗ Breaking changes when updating to v7.x.x ❗❗
 
-Version `7.0.1` targets AppsFlyer SDK **7.0.1** on Android and **7.0.2** on iOS.
+Version `7.0.2` targets AppsFlyer SDK **7.0.1** on Android and **7.0.2** on iOS.
 The public Flutter API changed in this major release.
 
 - **Minimum supported versions: Flutter `3.35.0`, Dart `3.9.0` (and earlier than

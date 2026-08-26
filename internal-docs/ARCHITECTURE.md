@@ -2,7 +2,7 @@
 
 **Status:** Current implementation  
 **Last verified:** 2026-08-25  
-**Flutter plugin:** 7.0.1  
+**Flutter plugin:** 7.0.2  
 **Flutter:** >=3.35.0 · **Dart:** >=3.9.0  
 **Android toolchain:** KGP 2.0.21+, AGP 8.9.1+, Gradle 8.11.1+, JDK 17  
 **Android SDK:** 7.0.1  

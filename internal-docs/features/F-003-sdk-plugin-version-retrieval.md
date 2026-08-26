@@ -41,7 +41,7 @@ AppsFlyerSdk.pluginVersion                                            [lib/src/a
 | File | Role |
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `Future<String> getSdkVersion()` (async RPC round-trip), `String get pluginVersion` (sync, local constant) |
-| `lib/src/appsflyer_constants.dart` | `_AppsFlyerConstants.PLUGIN_VERSION = "7.0.1"` constant returned by `pluginVersion` |
+| `lib/src/appsflyer_constants.dart` | `_AppsFlyerConstants.PLUGIN_VERSION = "7.0.2"` constant returned by `pluginVersion` |
 | `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | generic `getSdkVersion` dispatch over `AppsFlyerRpcHandler` |
 | `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | generic `getSdkVersion` dispatch; forwards `resultObj["data"]` to Dart unchanged (bare version string under AppsFlyerRPC 7.0.13+) |
 
@@ -51,12 +51,12 @@ AppsFlyerSdk.pluginVersion                                            [lib/src/a
 | | |
 |--|--|
 | **Input** | None |
-| **Output** | `getSdkVersion()` → `Future<String>` — the native AppsFlyer SDK's version string. `pluginVersion` → `String` — the Flutter plugin's version constant (`7.0.1`, synchronous). |
+| **Output** | `getSdkVersion()` → `Future<String>` — the native AppsFlyer SDK's version string. `pluginVersion` → `String` — the Flutter plugin's version constant (`7.0.2`, synchronous). |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` → `'maps getters and native return values'` verifies that `getSdkVersion()` dispatches RPC method `getSdkVersion` with empty params and returns the version string from the mocked native reply. `'pluginVersion exposes the compiled plugin version constant'` asserts that `pluginVersion` returns the compiled `PLUGIN_VERSION` constant (`7.0.1`) without a channel call.
+`test/appsflyer_sdk_test.dart` → `'maps getters and native return values'` verifies that `getSdkVersion()` dispatches RPC method `getSdkVersion` with empty params and returns the version string from the mocked native reply. `'pluginVersion exposes the compiled plugin version constant'` asserts that `pluginVersion` returns the compiled `PLUGIN_VERSION` constant (`7.0.2`) without a channel call.
 
 ---
 

@@ -104,8 +104,8 @@ void main() {
     });
 
     test('pluginVersion exposes the compiled plugin version constant', () {
-      expect(androidSdk.pluginVersion, '7.0.1');
-      expect(iosSdk.pluginVersion, '7.0.1');
+      expect(androidSdk.pluginVersion, '7.0.2');
+      expect(iosSdk.pluginVersion, '7.0.2');
     });
 
     test('listeners are registered explicitly', () async {

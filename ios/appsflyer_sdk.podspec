@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'appsflyer_sdk'
-  s.version          = '7.0.1'
+  s.version          = '7.0.2'
   s.summary          = 'AppsFlyer Integration for Flutter'
   s.description      = 'AppsFlyer is the market leader in mobile advertising attribution & analytics, helping marketers to pinpoint their targeting, optimize their ad spend and boost their ROI.'
   s.homepage         = 'https://github.com/AppsFlyerSDK/flutter_appsflyer_sdk'

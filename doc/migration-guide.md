@@ -6,7 +6,7 @@ This release is a major API cleanup. It replaces callback flags, callback slots,
 and SDK-6 names with an explicit SDK-7 lifecycle, typed callbacks, correlated
 `Future` results, and platform-aware models.
 
-Plugin `7.0.1` migrates to **AppsFlyer SDK 7** (Android `7.0.1`, iOS `7.0.2`). This
+Plugin `7.0.2` migrates to **AppsFlyer SDK 7** (Android `7.0.1`, iOS `7.0.2`). This
 is a major release with intentional breaking changes. Purchase Connector
 dependency changes are described later in this guide.
 
@@ -267,7 +267,7 @@ both platforms always wait for the validation result.
 
 ## Purchase Connector dependency changes
 
-When Purchase Connector is enabled, plugin `7.0.1` resolves Android Purchase
+When Purchase Connector is enabled, plugin `7.0.2` resolves Android Purchase
 Connector `2.2.0` and iOS Purchase Connector `7.0.2`.
 
 Android Purchase Connector `2.2.0` supports Google Play Billing Library `8.x`.
@@ -284,7 +284,7 @@ Connector. See [Purchase Connector](purchase-connector.md) for setup details.
 
 ## Purchase Connector validation models are nullable
 
-Every field of the validation-result models is nullable in `7.0.1`:
+Every field of the validation-result models is nullable in `7.0.2`:
 `ProductPurchase`, `SubscriptionPurchase` and the types it nests,
 `ValidationFailureData`, `JVMThrowable` and `IosError`. Only `success` on the
 two result classes and the `result` maps stay non-nullable.
