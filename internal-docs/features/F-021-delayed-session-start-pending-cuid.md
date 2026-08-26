@@ -11,7 +11,7 @@ depends_on: ["F-015"]
 ## Business Purpose
 In SDK 6 the plugin exposed `waitForCustomerUserId(bool)` and `setCustomerIdAndLogSession(String)` so an app could hold the first session until it supplied a customer user ID after login.
 
-> **Removed in SDK 7.** Both APIs no longer exist in the Flutter plugin. SDK 7 replaces this pattern with the app-driven session model: `init()` does not send a session, so the app simply awaits `setCustomerUserId()` **before** `start()` to guarantee a CUID-attributed first session. See [`doc/migration-guide.md`](/doc/migration-guide.md) and F-002 (SDK Start).
+> **Removed in SDK 7.** Both APIs no longer exist in the Flutter plugin. SDK 7 replaces this pattern with the app-driven session model: `init()` does not send a session, so the app simply awaits `setCustomerUserId()` **before** `start()` to guarantee a CUID-attributed first session. See [`doc/migration-guide.md`](../../doc/migration-guide.md) and F-002 (SDK Start).
 
 ---
 
@@ -34,7 +34,7 @@ AppsFlyerSdk.start()                 → RPC start {awaitResponse: false}     [F
 ## Files
 | File | Role |
 |------|------|
-| — | No implementation remains. Removal is documented in [`doc/migration-guide.md`](/doc/migration-guide.md) and `CHANGELOG.md`. |
+| — | No implementation remains. Removal is documented in [`doc/migration-guide.md`](../../doc/migration-guide.md) and `CHANGELOG.md`. |
 
 ---
 

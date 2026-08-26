@@ -1,6 +1,6 @@
 # AppsFlyer Flutter Plugin — Feature Diagrams
 
-> **Verification status:** All dependency metadata and workflow edges were checked on **2026-08-10** against the current Dart, platform-plugin, native RPC, and relevant native SDK sources. Removed feature tombstones are intentionally absent from runtime diagrams.
+> **Verification status:** All dependency metadata and workflow edges were checked on **2026-08-10** against the current Dart, platform-plugin, native RPC, and relevant native SDK sources, and re-diffed against every active feature's `depends_on` on **2026-08-26** (which added the missing F-070 edge). Removed feature tombstones are intentionally absent from runtime diagrams.
 
 ## Section 1 — Declared Feature Dependencies
 
@@ -13,6 +13,7 @@ flowchart TD
         F002["F-002<br/>SDK Start"]:::sdkCore
         F011["F-011<br/>TCF/DMA Auto Consent"]:::sdkCore
         F048["F-048<br/>Plugin Metadata Reporting"]:::sdkCore
+        F070["F-070<br/>Launcher-Activity Referrer"]:::sdkCore
     end
 
     subgraph purchaseValidation ["purchaseValidation"]
@@ -43,6 +44,7 @@ flowchart TD
     F011 --> F001
     F011 --> F002
     F048 --> F001
+    F070 --> F001
 
     F049 --> F054
     F050 --> F049
@@ -120,5 +122,6 @@ Configuration that is native runtime state remains available across background-t
 | F-053 | F-049 | Models are populated only by configured connector callbacks |
 | F-053 | F-051 | The models are the Android listener payload shapes |
 | F-055 | F-049 | Guard protects first construction of the connector singleton |
+| F-070 | F-001 | Called after `init()` and before the first `start()` so the referrer reaches the first Launch |
 
 Optional relationships are intentionally excluded. In particular, F-025 is an optional sandbox switch for F-024; F-031 can attribute a push without F-022; and F-060's exclusion of Purchase Connector is a packaging constraint rather than a runtime dependency.

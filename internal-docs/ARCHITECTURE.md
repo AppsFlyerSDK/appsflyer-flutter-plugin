@@ -116,6 +116,14 @@ Public APIs use the delivery style supported by the underlying capability:
 
 `start`, `logEvent`, and `generateInviteLink` expose a public `awaitResponse` parameter. It defaults to `false` for `start` and `logEvent`, and to `true` for `generateInviteLink`. The flag is forwarded to both platforms for `start` and `logEvent`, but only Android exposes it for invite generation. `validateAndLogInAppPurchase` exposes no such flag and always awaits validation on both platforms — see §7.1.
 
+### 2.4 Isolate reachability and plugin diagnostics
+
+Both concerns are per-isolate, because `AppsFlyerSdk.instance` is a per-isolate singleton and platform channels are bound to the isolate that owns the binary messenger.
+
+`_ensureIsolateCanReachPlatform()` gates every path that touches a channel — `_invokeNullableRpc`, which `_invokeVoidRpc` and `_invokeRpc` both delegate to, plus `_ensureEventsSubscribed` and the Purchase Connector's `configure` / `startObservingTransactions` / `stopObservingTransactions`. It admits the root isolate (`RootIsolateToken.instance != null`) and any background isolate already initialized with `BackgroundIsolateBinaryMessenger.ensureInitialized(rootIsolateToken)`; anything else throws `AppsFlyerException` before a message is sent. The guard exists because the alternative failure is worse than an exception: a background isolate would otherwise get a fresh, unconfigured singleton and either hang or silently drop calls. It is a reachability check, not a platform-support check — the §2.1 rule that Dart does not gate by platform still holds.
+
+Plugin diagnostics go through the library-private `_log`, which prints only when `kDebugMode` is set or `enableDebug(true)` has been called on that isolate; `debugPrint` itself is not compiled out of release builds, so every plugin log site routes through this gate rather than calling it directly. `enableDebug` therefore has two effects — the `isDebug` RPC to the native SDK and this local flag — and it restores the previous flag value if the RPC throws, so a failed call does not leave the plugin logging in a state the caller did not ask for. Consequences worth knowing: in a release build without `enableDebug(true)`, dropped malformed events (§5), Purchase Connector re-configure warnings (F-049), and listener-dispatch errors are all silent.
+
 ## 3. Flutter platform channels
 
 The channel names are identical across Dart, Android, and iOS:
@@ -184,7 +192,7 @@ The native RPC event notifier emits JSON event envelopes. Both platform plugins 
 
 Events emitted before Dart attaches an `EventChannel` listener are buffered by the platform plugin and replayed when `onListen` runs. On Android that buffer lives in the process-scoped `AppsFlyerEventBus` rather than on the plugin instance, so it also spans engine teardown: the native SDK keeps the listeners registered through the process-scoped `AppsFlyerRpcHandler`, and routing every event through the bus means those late events reach the next subscriber instead of an unreachable plugin. iOS instead removes its bridge event handler in `detachFromEngineForRegistrar:` — only when the detaching instance still owns the bridge's single handler slot — so it has no equivalent late-delivery path and keeps its engine-scoped buffer.
 
-Dart holds exactly one `af-events` subscription, owned by `AppsFlyerSdk` itself. It is established lazily on the first `register*Listener` call — not in the constructor — so nothing is read from the native buffers before the application has asked for events. That first attach flushes the entire native buffer, including events for listeners the application registers later in the sequence, so `_AppsFlyerListenerRegistry` holds those until their callback arrives rather than dropping them. The handler catches malformed transport values, logs them with `debugPrint`, and drops them instead of failing the subscription:
+Dart holds exactly one `af-events` subscription, owned by `AppsFlyerSdk` itself. It is established lazily on the first `register*Listener` call — not in the constructor — so nothing is read from the native buffers before the application has asked for events. That first attach flushes the entire native buffer, including events for listeners the application registers later in the sequence, so `_AppsFlyerListenerRegistry` holds those until their callback arrives rather than dropping them. The handler catches malformed transport values, logs them through the gated `_log` (see §2.4), and drops them instead of failing the subscription:
 
 ```dart
 void _ensureEventsSubscribed() {

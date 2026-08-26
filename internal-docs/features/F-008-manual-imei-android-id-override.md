@@ -11,7 +11,7 @@ depends_on: []
 ## Business Purpose
 In SDK 6 the plugin exposed `setImeiData(String)` and `setAndroidIdData(String)` so apps that already held IMEI/Android ID values could hand them to the SDK instead of relying on its automatic collection.
 
-> **Removed in SDK 7.** Both `setImeiData` and `setAndroidIdData` no longer exist in the Flutter plugin. These APIs are **not exposed by the SDK 7 RPC bridges** (`AppsFlyerRpcHandler` / `AppsFlyerRPCBridge`), so the plugin cannot reach them. Per the API Removal Rule, they were removed rather than shipped as silent no-ops. There is no RPC-reachable replacement. See [`doc/migration-guide.md`](/doc/migration-guide.md).
+> **Removed in SDK 7.** Both `setImeiData` and `setAndroidIdData` no longer exist in the Flutter plugin. These APIs are **not exposed by the SDK 7 RPC bridges** (`AppsFlyerRpcHandler` / `AppsFlyerRPCBridge`), so the plugin cannot reach them. Per the API Removal Rule, they were removed rather than shipped as silent no-ops. There is no RPC-reachable replacement. See [`doc/migration-guide.md`](../../doc/migration-guide.md).
 
 ---
 
@@ -28,7 +28,7 @@ N/A — removed. No `setImeiData` / `setAndroidIdData` method exists in `lib/src
 ## Files
 | File | Role |
 |------|------|
-| — | No implementation remains in `lib/src/appsflyer_sdk.dart`. Removal is documented in [`doc/migration-guide.md`](/doc/migration-guide.md) and `CHANGELOG.md`. |
+| — | No implementation remains in `lib/src/appsflyer_sdk.dart`. Removal is documented in [`doc/migration-guide.md`](../../doc/migration-guide.md) and `CHANGELOG.md`. |
 
 ---
 

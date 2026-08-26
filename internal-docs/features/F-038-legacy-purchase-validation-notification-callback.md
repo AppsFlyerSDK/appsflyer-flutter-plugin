@@ -16,7 +16,7 @@ It only ever existed to serve the V1 validation APIs (F-023), which are themselv
 
 **Replacement:** `validateAndLogInAppPurchase` (F-024) returns the validation result (or throws) directly on its own `Future` — no separate listener registration is needed.
 
-See [`doc/migration-guide.md`](/doc/migration-guide.md#removed-apis-and-their-replacements) and the [CHANGELOG](/CHANGELOG.md).
+See [`doc/migration-guide.md`](../../doc/migration-guide.md#removed-apis-and-their-replacements) and the [CHANGELOG](../../CHANGELOG.md).
 
 ---
 

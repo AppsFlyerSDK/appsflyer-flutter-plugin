@@ -10,13 +10,13 @@ depends_on: []
 
 ## Status: REMOVED in SDK 7
 
-The legacy V1 in-app purchase validation APIs — `validateAndLogInAppAndroidPurchase` (Google Play `publicKey`/`signature`/`purchaseData` triple) and `validateAndLogInAppIosPurchase` (the iOS six-parameter form) — are **not part of the plugin's public API**. Neither symbol exists in `lib/`. The underlying native V1 validation entry points were removed from the native AppsFlyer SDK 7, so per the [API Removal Rule](/doc/migration-guide.md#api-removal-rule) the plugin does not keep or emulate them.
+The legacy V1 in-app purchase validation APIs — `validateAndLogInAppAndroidPurchase` (Google Play `publicKey`/`signature`/`purchaseData` triple) and `validateAndLogInAppIosPurchase` (the iOS six-parameter form) — are **not part of the plugin's public API**. Neither symbol exists in `lib/`. The underlying native V1 validation entry points were removed from the native AppsFlyer SDK 7, so per the [API Removal Rule](../../doc/migration-guide.md#api-removal-rule) the plugin does not keep or emulate them.
 
 There is no separate V1 result listener either; the legacy notification-based callback is tombstoned as F-038.
 
 **Replacement:** `validateAndLogInAppPurchase(AFPurchaseDetails purchase, {Map<String, String>? additionalParameters})` (F-024) — a single cross-platform call that returns the validation result directly on its `Future` and throws `AppsFlyerException` on failure when the native RPC reports it.
 
-See [`doc/migration-guide.md`](/doc/migration-guide.md#removed-apis-and-their-replacements) and the [CHANGELOG](/CHANGELOG.md).
+See [`doc/migration-guide.md`](../../doc/migration-guide.md#removed-apis-and-their-replacements) and the [CHANGELOG](../../CHANGELOG.md).
 
 ---
 

@@ -11,7 +11,7 @@ depends_on: []
 ## Business Purpose
 Push-notification re-engagement campaigns need to be measured (so their ROI shows up in AppsFlyer reporting) and, when the payload carries a OneLink URL, routed as a deep link into the right in-app screen. This feature hands the push campaign data to the native SDK so it can attribute the re-engagement and, if a deep-link path was configured (F-022), extract and resolve the embedded OneLink URL. Without it, push campaigns cannot be measured for re-engagement and push-embedded deep links never reach the SDK for resolution.
 
-> The legacy `setPushNotification(bool)` toggle was **removed in SDK 7**. See the [migration guide](/doc/migration-guide.md).
+> The legacy `setPushNotification(bool)` toggle was **removed in SDK 7**. See the [migration guide](../../doc/migration-guide.md).
 
 ---
 
