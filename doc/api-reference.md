@@ -282,9 +282,10 @@ Enable it only for development and troubleshooting. May be called before
 [`init`](#init); call before [`start`](#start) so the first session uses the
 selected setting.
 
-In release builds the plugin's own diagnostics are printed only after
+In release builds the plugin's Dart-side diagnostics are printed only after
 `enableDebug(true)`. Debug builds always print them. The setting applies to the
-isolate that calls it.
+isolate that calls it. It does not gate the plugin's native error logging, which
+is always written to logcat on Android and to the system log on iOS.
 
 ```dart
 await appsflyerSdk.enableDebug(true);

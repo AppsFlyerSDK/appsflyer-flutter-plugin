@@ -85,9 +85,10 @@ await appsflyerSdk.init(
 | `appId` | iOS only | Your application's [Apple App ID](https://support.appsflyer.com/hc/en-us/articles/207377436-Adding-a-new-app#available-in-the-app-store-google-play-store-windows-phone-store). It is optional and is not sent to the native SDK on Android. |
 
 `enableDebug(...)` can be called before `init(...)`. Disable debug logging
-before releasing the app to production: it controls the plugin's own log output
-as well as the native SDK's, and a release build prints neither unless you turn
-it on.
+before releasing the app to production: it controls the native SDK's log output
+and the plugin's Dart-side logging, neither of which prints in a release build
+unless you turn it on. The plugin's native error logging is not affected — it
+always goes to logcat on Android and to the system log on iOS.
 
 ## 4. Configure the first Launch
 

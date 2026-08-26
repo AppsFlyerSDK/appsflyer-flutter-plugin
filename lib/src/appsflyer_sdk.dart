@@ -388,9 +388,15 @@ class AppsFlyerSdk {
   ///
   /// The plugin's own diagnostics follow this setting in release builds; debug
   /// builds always print them. The setting applies to the calling isolate.
-  Future<void> enableDebug(bool enabled) {
+  Future<void> enableDebug(bool enabled) async {
+    final previous = _pluginLoggingEnabled;
     _pluginLoggingEnabled = enabled;
-    return _invokeVoidRpc('isDebug', {'isDebug': enabled});
+    try {
+      await _invokeVoidRpc('isDebug', {'isDebug': enabled});
+    } catch (error) {
+      _pluginLoggingEnabled = previous;
+      rethrow;
+    }
   }
 
   /// Sets the Android SDK logging level.

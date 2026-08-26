@@ -448,8 +448,6 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
 
         private const val RPC_METHOD_START = "start"
         private const val RPC_METHOD_LOG_EVENT = "logEvent"
-        private const val RPC_METHOD_COLLECT_DATA_FROM_LAUNCHER_ACTIVITY =
-            "collectDataFromLauncherActivity"
         private const val RPC_METHOD_VALIDATE_AND_LOG_IN_APP_PURCHASE = "validateAndLogInAppPurchase"
         private const val RPC_METHOD_GENERATE_INVITE_LINK = "generateInviteLink"
         private const val RPC_PARAM_AWAIT_RESPONSE = "awaitResponse"

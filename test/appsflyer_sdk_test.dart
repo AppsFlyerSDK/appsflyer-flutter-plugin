@@ -168,6 +168,28 @@ void main() {
       expect(rpcParams, {'isDebug': true});
     });
 
+    test('enableDebug rethrows when the isDebug RPC fails', () async {
+      // The plugin rolls its log flag back on failure; the rollback itself is
+      // not observable here because `kDebugMode` is true under `flutter test`.
+      // What this pins is that the surrounding catch rethrows instead of
+      // swallowing the error.
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(methodChannel, (call) async {
+            throw PlatformException(code: '500', message: 'isDebug failed');
+          });
+
+      await expectLater(
+        iosSdk.enableDebug(true),
+        throwsA(
+          isA<AppsFlyerException>().having(
+            (error) => error.message,
+            'message',
+            'isDebug failed',
+          ),
+        ),
+      );
+    });
+
     test('isSessionReady returns the native result', () async {
       rpcResult = true;
       expect(await iosSdk.isSessionReady(), isTrue);

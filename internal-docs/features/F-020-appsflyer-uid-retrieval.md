@@ -4,7 +4,7 @@ name: AppsFlyer UID Retrieval
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-08-10
+last_verified: 2026-08-26
 depends_on: []
 ---
 
@@ -19,7 +19,7 @@ Awaited on demand by the host app — typically after `init()`, to attach the Ap
 ---
 
 ## Call Chain
-A generic RPC round trip with a typed native return value. Unlike `getHostName`/`getHostPrefix`, this getter is available on both platforms and has no platform guard.
+A generic RPC round trip with a typed native return value. This getter calls `_invokeNullableRpc` directly, so a `null` reply is a valid result; `getSdkVersion`/`getHostName` wrap the same helper in `_invokeRpc`, which rejects `null` and throws instead.
 
 ```
 AppsFlyerSdk.getAppsFlyerUID()                                        [lib/src/appsflyer_sdk.dart]
