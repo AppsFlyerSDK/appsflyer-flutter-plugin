@@ -101,8 +101,9 @@ removed APIs, renames, lifecycle changes, and upgrade instructions.
   `code` comes from the native layer, which reports `404` for an unimplemented
   method on both platforms.
 - `getHostName()` and `getHostPrefix()` now return non-nullable `Future<String>`
-  on Android; unexpected native null replies throw `AppsFlyerException` instead
-  of surfacing as `null`.
+  instead of `Future<String?>`; unexpected native null replies throw
+  `AppsFlyerException` instead of surfacing as `null`. Both are available on
+  Android and iOS — see **Added** below.
 - Bool getters such as `isSessionReady`, `isStopped`, and `isPreInstalledApp` no
   longer coerce an unexpected native `null` to `false`; they throw
   `AppsFlyerException` instead.
@@ -182,15 +183,6 @@ replacement table.
   `nil`, which surfaces as a reported parse failure — the callback fires with
   no data and a log line — instead of a crash. Only affects apps that opted
   into the Purchase Connector.
-- iOS: the UIKit lifecycle callbacks the plugin intercepts — launch options,
-  URL-scheme opens, and Universal Links — are handed to the native SDK directly
-  instead of crossing the JSON-based RPC bridge, which could not carry them
-  intact. Session readiness now accounts for a Universal Link that launched the
-  app from cold: the only value the SDK reads from launch options is a live
-  `NSUserActivity`, which serialization dropped, so the SDK was never told a
-  deep link was pending and could report the session ready before resolving it.
-  Universal Links delivered while running now reach the SDK as the original
-  activity rather than one rebuilt from its type and URL.
 - `enableDebug` now controls the plugin's own diagnostics as well as native SDK
   logging. The plugin printed through `debugPrint`, which Flutter does not
   compile out of release builds, so those lines reached production logs whatever

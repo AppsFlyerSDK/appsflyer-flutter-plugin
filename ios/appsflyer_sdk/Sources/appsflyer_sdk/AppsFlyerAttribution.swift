@@ -18,12 +18,32 @@ public class AppsFlyerAttribution: NSObject {
     private enum PendingRequest {
         case openUrl(URL, [AnyHashable: Any]?)
         case userActivity(NSUserActivity)
+
+        /// Identifies the *link*, not the delivery. Options and activity metadata are excluded so the
+        /// two copies of one deep link — which differ in `sourceApplication` and nothing else — compare
+        /// equal. See `isDuplicateDelivery(_:)`.
+        var deepLinkIdentity: String {
+            switch self {
+            case let .openUrl(url, _):
+                return "url\u{1}\(url.absoluteString)"
+            case let .userActivity(activity):
+                return "activity\u{1}\(activity.activityType)\u{1}\(activity.webpageURL?.absoluteString ?? "")"
+            }
+        }
     }
+
+    /// How long after forwarding a link an identical one is treated as the UIScene duplicate rather
+    /// than a new open. Flutter's replay lands in the same runloop turn, so this only has to be long
+    /// enough to cover that hop; it is deliberately far shorter than any interval in which a person
+    /// could open the same link twice on purpose.
+    private static let duplicateDeliveryWindow: TimeInterval = 1
 
     private static let sharedInstance = AppsFlyerAttribution()
 
     private var isBridgeReady = false
     private var pendingRequests: [PendingRequest] = []
+    /// Identity and monotonic timestamp of the last forwarded link — see `isDuplicateDelivery(_:)`.
+    private var lastDelivery: (identity: String, at: TimeInterval)?
     /// The plugin instance that last called `markBridgeReady(markedBy:)`. Used to reset queue state
     /// on engine detach without affecting a live second engine in multi-engine hosts.
     private weak var bridgeReadyOwner: AnyObject?
@@ -68,6 +88,7 @@ public class AppsFlyerAttribution: NSObject {
             bridgeReadyOwner = nil
             isBridgeReady = false
             pendingRequests.removeAll()
+            lastDelivery = nil
         }
     }
 
@@ -79,8 +100,40 @@ public class AppsFlyerAttribution: NSObject {
         requests.forEach(execute)
     }
 
+    /// Whether this delivery is the second copy of a link the host already handed over.
+    ///
+    /// Under the UIScene lifecycle UIKit delivers deep links through the `scene:...` methods, but
+    /// Flutter also replays every scene event through the `UIApplicationDelegate` methods so plugins
+    /// predating the migration keep working. `AppsflyerSdkPlugin` implements both families, so one
+    /// user action arrives here twice and Dart's `onDeepLinking` callback would run twice.
+    ///
+    /// Two properties keep this from suppressing anything real. It is scoped to hosts that declare
+    /// `UIApplicationSceneManifest`, so an app on the application-delegate lifecycle — where no replay
+    /// exists — is not affected at all. And it keys on the link itself rather than on which delegate
+    /// method delivered it, so a host that forwards a URL manually from its own `AppDelegate` is still
+    /// honored; only an identical link arriving twice in the same instant is dropped. Suppressing the
+    /// application-delegate path wholesale would have broken exactly that manual forward.
+    private func isDuplicateDelivery(_ request: PendingRequest) -> Bool {
+        guard hostUsesSceneLifecycle else {
+            return false
+        }
+        let identity = request.deepLinkIdentity
+        // Monotonic: unaffected by wall-clock changes mid-session.
+        let now = ProcessInfo.processInfo.systemUptime
+        if let last = lastDelivery,
+           last.identity == identity,
+           now - last.at < Self.duplicateDeliveryWindow {
+            return true
+        }
+        lastDelivery = (identity, now)
+        return false
+    }
+
     private func executeOrQueue(_ request: PendingRequest) {
         onMain { [self] in
+            if isDuplicateDelivery(request) {
+                return
+            }
             if isBridgeReady {
                 execute(request)
             } else {
@@ -97,6 +150,10 @@ public class AppsFlyerAttribution: NSObject {
             _ = AppsFlyerLib.shared().continue(userActivity, restorationHandler: nil)
         }
     }
+
+    /// Read once: the host's scene manifest cannot change during a process lifetime.
+    private lazy var hostUsesSceneLifecycle: Bool =
+        Bundle.main.object(forInfoDictionaryKey: "UIApplicationSceneManifest") != nil
 
     /// Serializes `isBridgeReady` / `pendingRequests` on the main queue. UIKit entry points are
     /// already main-thread; `markBridgeReady` is normalized there by `AFRPCBridge`, but the public
