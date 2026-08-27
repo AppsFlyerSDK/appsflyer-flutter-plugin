@@ -13,6 +13,10 @@ flutter pub add appsflyer_sdk
 
 This will download the AppsFlyer flutter plugin to your project, you may observe the changes in your `pubspec.yaml` file.
 
+The plugin pulls in the AppsFlyer RPC layer, which in turn brings the native
+AppsFlyer SDK. For the exact versions this release resolves to, see
+[SDK Versions](../README.md#sdk-versions) in the README.
+
 The plugin requires:
 
 - Flutter `3.35.0` or later;

@@ -372,8 +372,13 @@ jobs:
         run: |
           VERSION="${{ needs.validate-release.outputs.version }}"
           
-          # Get SDK versions from files
-          ANDROID_SDK_VERSION=$(grep "implementation 'com.appsflyer:af-android-sdk:" android/build.gradle | sed -n "s/.*af-android-sdk:\([^']*\).*/\1/p" | head -1)
+          # Android has no local pin to read — it resolves through the bridge
+          # POM. This step runs after the publish, so a failed lookup must not
+          # leave a shipped version without a GitHub release.
+          ANDROID_SDK_VERSION=$(bash scripts/resolve-android-sdk-version.sh) || {
+            echo "::warning::Could not resolve the Android SDK version from the bridge POM; release notes will say unknown"
+            ANDROID_SDK_VERSION="unknown"
+          }
           IOS_SDK_VERSION=$(grep "s.ios.dependency 'AppsFlyerFramework'" ios/appsflyer_sdk.podspec | sed -n "s/.*AppsFlyerFramework',.*'\([^']*\)'.*/\1/p" | head -1)
           
           # Create enhanced release notes
@@ -476,8 +481,13 @@ jobs:
         run: |
           VERSION="${{ needs.validate-release.outputs.version }}"
           
-          # Extract Android SDK version
-          ANDROID_SDK_VERSION=$(grep "implementation 'com.appsflyer:af-android-sdk:" android/build.gradle | sed -n "s/.*af-android-sdk:\([^']*\).*/\1/p" | head -1)
+          # Android has no local pin to read — it resolves through the bridge
+          # POM. This job runs after the publish and only feeds a notification,
+          # so a failed lookup must not fail the release.
+          ANDROID_SDK_VERSION=$(bash scripts/resolve-android-sdk-version.sh) || {
+            echo "::warning::Could not resolve the Android SDK version from the bridge POM; reporting it as unknown"
+            ANDROID_SDK_VERSION="unknown"
+          }
           echo "android_sdk=$ANDROID_SDK_VERSION" >> $GITHUB_OUTPUT
           
           # Extract iOS SDK version from podspec

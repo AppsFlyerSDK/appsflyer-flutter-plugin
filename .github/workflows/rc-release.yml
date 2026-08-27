@@ -45,9 +45,10 @@ on:
         description: 'iOS native AppsFlyer SDK version (e.g., 6.17.7)'
         required: true
         type: string
-      android_sdk_version:
-        description: 'Android native AppsFlyer SDK version (e.g., 6.17.4)'
-        required: true
+      android_bridge_version:
+        description: 'Android plugin bridge version, i.e. the com.appsflyer:af-android-plugin-bridge pin (defaults to unchanged — the current android/build.gradle pin is left as-is). Pass to update it.'
+        required: false
+        default: ''
         type: string
       ios_pc_version:
         description: 'iOS Purchase Connector version (defaults to ios_sdk_version). Use when PC version differs from iOS SDK version.'
@@ -105,7 +106,7 @@ jobs:
       base_branch: ${{ steps.compute.outputs.base_branch }}
       release_branch: ${{ steps.compute.outputs.release_branch }}
       ios_sdk_version: ${{ steps.compute.outputs.ios_sdk_version }}
-      android_sdk_version: ${{ steps.compute.outputs.android_sdk_version }}
+      android_bridge_version: ${{ steps.compute.outputs.android_bridge_version }}
       ios_pc_version: ${{ steps.compute.outputs.ios_pc_version }}
       android_pc_version: ${{ steps.compute.outputs.android_pc_version }}
       # Normalised dry_run. Resolved in its own step so it survives even if
@@ -150,14 +151,14 @@ jobs:
         env:
           VERSION: ${{ github.event.inputs.flutter_version }}
           IOS_VER: ${{ github.event.inputs.ios_sdk_version }}
-          AND_VER: ${{ github.event.inputs.android_sdk_version }}
+          AND_BRIDGE_VER_INPUT: ${{ github.event.inputs.android_bridge_version }}
           IOS_PC_VER_INPUT: ${{ github.event.inputs.ios_pc_version }}
           AND_PC_VER_INPUT: ${{ github.event.inputs.android_pc_version }}
           BASE_BRANCH_INPUT: ${{ github.event.inputs.base_branch }}
         run: |
           set -euo pipefail
 
-          if [[ -z "$VERSION" || -z "$IOS_VER" || -z "$AND_VER" ]]; then
+          if [[ -z "$VERSION" || -z "$IOS_VER" ]]; then
             echo "❌ Missing required inputs"; exit 1
           fi
 
@@ -168,14 +169,14 @@ jobs:
           if [[ ! $IOS_VER =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "❌ ios_sdk_version must be X.Y.Z"; exit 1
           fi
-          if [[ ! $AND_VER =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "❌ android_sdk_version must be X.Y.Z"; exit 1
-          fi
           if [[ -n "$IOS_PC_VER_INPUT" && ! $IOS_PC_VER_INPUT =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "❌ ios_pc_version must be X.Y.Z when provided"; exit 1
           fi
           if [[ -n "$AND_PC_VER_INPUT" && ! $AND_PC_VER_INPUT =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "❌ android_pc_version must be X.Y.Z when provided"; exit 1
+          fi
+          if [[ -n "$AND_BRIDGE_VER_INPUT" && ! $AND_BRIDGE_VER_INPUT =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ android_bridge_version must be X.Y.Z when provided"; exit 1
           fi
 
           # iOS PC defaults to the iOS SDK version, same semantics as Unity's
@@ -200,7 +201,7 @@ jobs:
           echo "base_branch=$BASE_BRANCH_INPUT" >> $GITHUB_OUTPUT
           echo "release_branch=$RELEASE_BRANCH" >> $GITHUB_OUTPUT
           echo "ios_sdk_version=$IOS_VER" >> $GITHUB_OUTPUT
-          echo "android_sdk_version=$AND_VER" >> $GITHUB_OUTPUT
+          echo "android_bridge_version=$AND_BRIDGE_VER_INPUT" >> $GITHUB_OUTPUT
           echo "ios_pc_version=$IOS_PC_VER" >> $GITHUB_OUTPUT
           echo "android_pc_version=$AND_PC_VER_INPUT" >> $GITHUB_OUTPUT
 
@@ -241,6 +242,12 @@ jobs:
     if: always() && needs.validate-release.outputs.is_valid == 'true'
     outputs:
       release_branch: ${{ steps.push.outputs.release_branch }}
+      # Versions as they ended up on the release branch. Report from these, not
+      # from validate-release: its android_bridge_version is the requested
+      # input and is empty whenever the operator left the pin unchanged.
+      android_sdk_version: ${{ steps.versions.outputs.android_sdk_version }}
+      android_bridge_version: ${{ steps.versions.outputs.android_bridge_version }}
+      ios_rpc_version: ${{ steps.versions.outputs.ios_rpc_version }}
     steps:
       - name: Checkout base branch
         uses: actions/checkout@v5
@@ -276,109 +283,213 @@ jobs:
           rm pubspec.yaml.bak
           grep "^version:" pubspec.yaml
 
-      - name: Update Android SDK dependency
+      # The Android SDK is not pinned directly — it resolves transitively from
+      # af-android-plugin-bridge (compile scope in the bridge POM). Rewriting
+      # the bridge pin is therefore the only way to change which SDK ships,
+      # which is why there is no android_sdk_version input.
+      - name: Update Android bridge & Purchase Connector pins
         run: |
-          AND_VER='${{ needs.validate-release.outputs.android_sdk_version }}'
+          set -euo pipefail
+          BRIDGE_VER='${{ needs.validate-release.outputs.android_bridge_version }}'
           AND_PC_VER='${{ needs.validate-release.outputs.android_pc_version }}'
-          sed -i.bak "s/com.appsflyer:af-android-sdk:[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/com.appsflyer:af-android-sdk:${AND_VER}/" android/build.gradle
-          rm android/build.gradle.bak
-          grep "af-android-sdk:" -n android/build.gradle | head -1
-          if [[ -n "$AND_PC_VER" ]]; then
-            sed -i.bak "s/com.appsflyer:purchase-connector:[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/com.appsflyer:purchase-connector:${AND_PC_VER}/" android/build.gradle
-            rm android/build.gradle.bak
-            grep "purchase-connector:" -n android/build.gradle | head -1
+          FILE='android/build.gradle'
+
+          # An artifact that is absent is an error, not a skip: sed alone would
+          # leave the pin at its old version and still succeed.
+          pin_gradle_dep() {
+            local artifact="$1" version="$2"
+            if ! grep -q "com\.appsflyer:${artifact}:" "$FILE"; then
+              echo "::error::${FILE} has no com.appsflyer:${artifact} pin to update"
+              exit 1
+            fi
+            sed -i.bak -E "s/com\.appsflyer:${artifact}:[0-9]+\.[0-9]+\.[0-9]+/com.appsflyer:${artifact}:${version}/" "$FILE"
+            rm "${FILE}.bak"
+            grep -n "com\.appsflyer:${artifact}:" "$FILE"
+          }
+
+          if [[ -n "$BRIDGE_VER" ]]; then
+            pin_gradle_dep af-android-plugin-bridge "$BRIDGE_VER"
           else
-            echo "android_pc_version not provided — leaving android/build.gradle's purchase-connector pin unchanged"
+            echo "android_bridge_version not provided — leaving the af-android-plugin-bridge pin unchanged"
+          fi
+
+          if [[ -n "$AND_PC_VER" ]]; then
+            pin_gradle_dep purchase-connector "$AND_PC_VER"
+          else
+            echo "android_pc_version not provided — leaving the purchase-connector pin unchanged"
           fi
 
       - name: Update iOS podspec version and dependencies
         run: |
+          set -euo pipefail
           PODSPEC_VERSION='${{ needs.validate-release.outputs.podspec_version }}'
           IOS_VER='${{ needs.validate-release.outputs.ios_sdk_version }}'
           IOS_PC_VER='${{ needs.validate-release.outputs.ios_pc_version }}'
           FILE='ios/appsflyer_sdk.podspec'
-          if [ -f "$FILE" ]; then
-            sed -i.bak "s/s\.version\s*=\s*'.*'/s.version          = '${PODSPEC_VERSION}'/" "$FILE"
-            sed -i.bak "s/ss\.ios\.dependency 'AppsFlyerFramework','[^']*'/ss.ios.dependency 'AppsFlyerFramework','${IOS_VER}'/" "$FILE"
-            # PurchaseConnector line may or may not exist. Defaults to IOS_VER
-            # (same as ios_sdk_version) unless ios_pc_version was passed —
-            # same semantics as Unity's rc-release.yml.
-            if grep -q "PurchaseConnector', '" "$FILE"; then
-              sed -i.bak "s/ss\.ios\.dependency 'PurchaseConnector', '[^']*'/ss.ios.dependency 'PurchaseConnector', '${IOS_PC_VER}'/" "$FILE" || true
-            fi
-            rm ${FILE}.bak || true
-            echo "Updated podspec lines:"
-            grep -n "s.version\|AppsFlyerFramework\|PurchaseConnector" "$FILE" || true
-          else
-            echo "⚠️ $FILE not found"
-          fi
 
-      - name: Update plugin version constants (Android/iOS/Dart)
-        run: |
-          VERSION='${{ needs.validate-release.outputs.version }}'
-          echo "Updating PLUGIN_VERSION constants to: $VERSION"
-
-          # Android - AppsFlyerConstants.kt
-          ANDROID_FILE="android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsFlyerConstants.kt"
-          if [ -f "$ANDROID_FILE" ]; then
-            sed -i.bak "s/PLUGIN_VERSION = \".*\"/PLUGIN_VERSION = \"$VERSION\"/" "$ANDROID_FILE"
-            rm "$ANDROID_FILE.bak"
-            echo "✅ Android:" && grep "PLUGIN_VERSION" "$ANDROID_FILE"
-          fi
-
-          # Dart - appsflyer_constants.dart
-          DART_FILE="lib/src/appsflyer_constants.dart"
-          if [ -f "$DART_FILE" ]; then
-            sed -i.bak "s/PLUGIN_VERSION = \".*\"/PLUGIN_VERSION = \"$VERSION\"/" "$DART_FILE"
-            rm "$DART_FILE.bak"
-            echo "✅ Dart:" && grep "PLUGIN_VERSION" "$DART_FILE"
-          fi
-
-          # iOS - AppsflyerSdkPlugin.swift
-          IOS_FILE="ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift"
-          if [ -f "$IOS_FILE" ]; then
-            sed -i.bak "s/kAppsFlyerPluginVersion = \".*\"/kAppsFlyerPluginVersion = \"$VERSION\"/" "$IOS_FILE"
-            rm "$IOS_FILE.bak"
-            echo "✅ iOS:" && grep "kAppsFlyerPluginVersion" "$IOS_FILE"
-          else
-            echo "::error::iOS plugin version file not found: $IOS_FILE" >&2
+          if [ ! -f "$FILE" ]; then
+            echo "::error::$FILE not found — cannot prepare an iOS release without it"
             exit 1
           fi
 
+          # Spacing after the comma varies between podspec entries, so it is
+          # matched loosely. A pod that is absent is an error, not a skip.
+          pin_pod_dep() {
+            local pod="$1" version="$2"
+            if ! grep -qE "ss\.ios\.dependency '${pod}'," "$FILE"; then
+              echo "::error::$FILE has no '${pod}' dependency to update"
+              exit 1
+            fi
+            sed -i.bak -E "s/(ss\.ios\.dependency '${pod}',[[:space:]]*)'[^']*'/\1'${version}'/" "$FILE"
+            rm "${FILE}.bak"
+          }
+
+          if ! grep -qE "^[[:space:]]*s\.version[[:space:]]*=" "$FILE"; then
+            echo "::error::$FILE has no s.version line to update"
+            exit 1
+          fi
+          sed -i.bak -E "s/^([[:space:]]*s\.version[[:space:]]*=[[:space:]]*)'[^']*'/\1'${PODSPEC_VERSION}'/" "$FILE"
+          rm "${FILE}.bak"
+
+          pin_pod_dep AppsFlyerFramework "$IOS_VER"
+
+          # PurchaseConnector lives in an optional subspec. Defaults to IOS_VER
+          # (same as ios_sdk_version) unless ios_pc_version was passed —
+          # same semantics as Unity's rc-release.yml.
+          if grep -qE "ss\.ios\.dependency 'PurchaseConnector'," "$FILE"; then
+            pin_pod_dep PurchaseConnector "$IOS_PC_VER"
+          fi
+
+          echo "Updated podspec lines:"
+          grep -nE "s\.version|AppsFlyerRPC|AppsFlyerFramework|PurchaseConnector" "$FILE"
+
+      - name: Update plugin version constants (Android/iOS/Dart)
+        run: |
+          set -euo pipefail
+          VERSION='${{ needs.validate-release.outputs.version }}'
+          echo "Updating PLUGIN_VERSION constants to: $VERSION"
+
+          # All three constants are required — they are what the plugin reports
+          # as its version in the RPC payload.
+          pin_version_constant() {
+            local label="$1" file="$2" constant="$3"
+            if [ ! -f "$file" ]; then
+              echo "::error::$label plugin version file not found: $file"
+              exit 1
+            fi
+            if ! grep -q "${constant} = \"" "$file"; then
+              echo "::error::$file has no ${constant} assignment to update"
+              exit 1
+            fi
+            sed -i.bak "s/${constant} = \".*\"/${constant} = \"$VERSION\"/" "$file"
+            rm "${file}.bak"
+            echo "✅ $label:" && grep -n "$constant" "$file"
+          }
+
+          pin_version_constant Android \
+            "android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsFlyerConstants.kt" \
+            PLUGIN_VERSION
+          pin_version_constant Dart \
+            "lib/src/appsflyer_constants.dart" \
+            PLUGIN_VERSION
+          pin_version_constant iOS \
+            "ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift" \
+            kAppsFlyerPluginVersion
+
+      # Single source for every version reported downstream: README, commit
+      # message, PR body, release notes and Slack. Runs after the pins are
+      # written so it reports what the release branch actually carries.
+      - name: Resolve RPC and native SDK versions
+        id: versions
+        run: |
+          set -euo pipefail
+          BRIDGE_VER=$(sed -nE 's/.*com\.appsflyer:af-android-plugin-bridge:([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' android/build.gradle | head -1)
+          IOS_RPC_VER=$(sed -nE "s/.*ss\.ios\.dependency 'AppsFlyerRPC',[[:space:]]*'([^']*)'.*/\1/p" ios/appsflyer_sdk.podspec | head -1)
+          ANDROID_SDK_VER=$(bash scripts/resolve-android-sdk-version.sh)
+
+          for pair in "BRIDGE_VER:$BRIDGE_VER" "IOS_RPC_VER:$IOS_RPC_VER" "ANDROID_SDK_VER:$ANDROID_SDK_VER"; do
+            if [[ -z "${pair#*:}" ]]; then
+              echo "::error::Could not resolve ${pair%%:*}"
+              exit 1
+            fi
+          done
+
+          echo "Android bridge $BRIDGE_VER → AppsFlyer SDK $ANDROID_SDK_VER"
+          echo "iOS AppsFlyerRPC $IOS_RPC_VER"
+          echo "android_bridge_version=$BRIDGE_VER" >> "$GITHUB_OUTPUT"
+          echo "android_sdk_version=$ANDROID_SDK_VER" >> "$GITHUB_OUTPUT"
+          echo "ios_rpc_version=$IOS_RPC_VER" >> "$GITHUB_OUTPUT"
+
       - name: Update README SDK and Purchase Connector versions
         run: |
+          set -euo pipefail
           IOS_VER='${{ needs.validate-release.outputs.ios_sdk_version }}'
-          AND_VER='${{ needs.validate-release.outputs.android_sdk_version }}'
+          AND_VER='${{ steps.versions.outputs.android_sdk_version }}'
+          BRIDGE_VER='${{ steps.versions.outputs.android_bridge_version }}'
+          IOS_RPC_VER='${{ steps.versions.outputs.ios_rpc_version }}'
 
-          # Main SDK versions
-          sed -i.bak -E "s/- Android AppsFlyer SDK \*\*v[0-9.]+\*\*/- Android AppsFlyer SDK **v${AND_VER}**/" README.md
-          sed -i.bak -E "s/- iOS AppsFlyer SDK \*\*v[0-9.]+\*\*/- iOS AppsFlyer SDK **v${IOS_VER}**/" README.md
+          # Each RPC-layer row of the SDK Versions table carries two versions:
+          # the RPC layer's own, and the native SDK it resolves to. A row that
+          # does not match is an error, not a skip.
+          pin_readme_row() {
+            local platform="$1" artifact="$2" rpc_version="$3" sdk_version="$4"
+            local row="\| ${platform} \| \`${artifact}\` \*\*v[0-9.]+\*\* \| \*\*v[0-9.]+\*\* \|"
+            if ! grep -qE "$row" README.md; then
+              echo "::error::README.md has no SDK Versions row for ${artifact}"
+              exit 1
+            fi
+            sed -i.bak -E "s@(\| ${platform} \| \`${artifact}\` \*\*v)[0-9.]+(\*\* \| \*\*v)[0-9.]+(\*\* \|)@\1${rpc_version}\2${sdk_version}\3@" README.md
+            rm README.md.bak
+          }
 
-          # Purchase Connector versions (extract from build files)
-          AND_PC=$(grep "purchase-connector:" android/build.gradle | sed -n "s/.*purchase-connector:\([^']*\).*/\1/p" | head -1)
-          IOS_PC=$(grep "PurchaseConnector" ios/appsflyer_sdk.podspec | sed -n "s/.*PurchaseConnector',.*'\([^']*\)'.*/\1/p" | head -1)
+          pin_readme_row Android af-android-plugin-bridge "$BRIDGE_VER" "$AND_VER"
+          pin_readme_row iOS AppsFlyerRPC "$IOS_RPC_VER" "$IOS_VER"
 
-          if [ -n "$AND_PC" ]; then
-            sed -i.bak -E "/^### Purchase Connector/,/^##|^$/{s/^- Android [0-9.]+$/- Android ${AND_PC}/;}" README.md
+          # Both bullets carry bold markers, and they are the only `- <label>
+          # **<version>**` lines in README, so they are matched without an
+          # address range.
+          pin_readme_bullet() {
+            local label="$1" version="$2"
+            if ! grep -qE "^- ${label} \*\*[0-9.]+\*\*\$" README.md; then
+              echo "::error::README.md has no Purchase Connector bullet for ${label}"
+              exit 1
+            fi
+            sed -i.bak -E "s@^- ${label} \*\*[0-9.]+\*\*\$@- ${label} **${version}**@" README.md
+            rm README.md.bak
+          }
+
+          # Purchase Connector is optional on both platforms. sed -n exits 0 with
+          # no output when the pin is absent, which keeps that case out of
+          # pipefail's way.
+          AND_PC=$(sed -nE 's/.*com\.appsflyer:purchase-connector:([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' android/build.gradle | head -1)
+          IOS_PC=$(sed -nE "s/.*ss\.ios\.dependency 'PurchaseConnector',[[:space:]]*'([^']*)'.*/\1/p" ios/appsflyer_sdk.podspec | head -1)
+
+          if [[ -n "$AND_PC" ]]; then
+            pin_readme_bullet Android "$AND_PC"
+          else
+            echo "No Android purchase-connector pin — leaving its README bullet unchanged"
           fi
-          if [ -n "$IOS_PC" ]; then
-            sed -i.bak -E "/^### Purchase Connector/,/^##|^$/{s/^- iOS [0-9.]+$/- iOS ${IOS_PC}/;}" README.md
+          if [[ -n "$IOS_PC" ]]; then
+            pin_readme_bullet iOS "$IOS_PC"
+          else
+            echo "No iOS PurchaseConnector pin — leaving its README bullet unchanged"
           fi
 
-          rm -f README.md.bak
           echo "README updated versions:"
-          sed -n '/## SDK Versions/,/## ❗/p' README.md | head -12
+          sed -n '/## SDK Versions/,/## ❗/p' README.md
 
       - name: Commit & push changes
         id: push
         run: |
-          set -e
+          set -euo pipefail
           REL_BRANCH='${{ needs.validate-release.outputs.release_branch }}'
+          VERSION='${{ needs.validate-release.outputs.version }}'
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
           if [[ -n $(git status -s) ]]; then
-            git add pubspec.yaml android/ ios/ README.md || true
-            git commit -m "chore: prepare RC ${VERSION} (iOS ${{ needs.validate-release.outputs.ios_sdk_version }} / PC ${{ needs.validate-release.outputs.ios_pc_version }}, Android ${{ needs.validate-release.outputs.android_sdk_version }})"
+            # lib/ carries the Dart PLUGIN_VERSION constant.
+            git add pubspec.yaml android/ ios/ lib/ README.md
+            git commit -m "chore: prepare RC ${VERSION} (iOS ${{ needs.validate-release.outputs.ios_sdk_version }} / PC ${{ needs.validate-release.outputs.ios_pc_version }}, Android ${{ steps.versions.outputs.android_sdk_version }})"
             git push --set-upstream origin "$REL_BRANCH"
           else
             echo "No changes to commit"
@@ -607,7 +718,7 @@ jobs:
             const base = 'master';
             // Find existing PR
             const { data: prs } = await github.rest.pulls.list({ owner: context.repo.owner, repo: context.repo.repo, state: 'open', head: `${context.repo.owner}:${head}` });
-            const body = `### Release ${version}\n\n- Android SDK: ${{ needs.validate-release.outputs.android_sdk_version }}\n- iOS SDK: ${{ needs.validate-release.outputs.ios_sdk_version }}\n\nThis PR was opened by the RC workflow.`;
+            const body = `### Release ${version}\n\n- Android: AppsFlyer SDK ${{ needs.prepare-branch.outputs.android_sdk_version }} (via bridge ${{ needs.prepare-branch.outputs.android_bridge_version }})\n- iOS: AppsFlyer SDK ${{ needs.validate-release.outputs.ios_sdk_version }} (via AppsFlyerRPC ${{ needs.prepare-branch.outputs.ios_rpc_version }})\n\nThis PR was opened by the RC workflow.`;
             if (prs.length > 0) {
               const pr = prs[0];
               await github.rest.pulls.update({ owner: context.repo.owner, repo: context.repo.repo, pull_number: pr.number, title: `Release ${version}`, body });
@@ -780,9 +891,9 @@ jobs:
           VERSION="${{ needs.validate-release.outputs.version }}"
           BASE_VERSION=$(echo "$VERSION" | sed 's/-rc[0-9]*$//')
 
-          # Extract Android SDK version
-          ANDROID_SDK_VERSION=$(grep "implementation 'com.appsflyer:af-android-sdk:" android/build.gradle | sed -n "s/.*af-android-sdk:\([^']*\).*/\1/p" | head -1)
-          echo "android_sdk=$ANDROID_SDK_VERSION" >> $GITHUB_OUTPUT
+          # The Android SDK has no pin in android/build.gradle to read; it comes
+          # from the bridge POM, which prepare-branch already resolved.
+          echo "android_sdk=${{ needs.prepare-branch.outputs.android_sdk_version }}" >> $GITHUB_OUTPUT
 
           # Extract iOS SDK version
           IOS_SDK_VERSION=$(grep "s.ios.dependency 'AppsFlyerFramework'" ios/appsflyer_sdk.podspec | sed -n "s/.*AppsFlyerFramework',.*'\([^']*\)'.*/\1/p" | head -1)
