@@ -1,36 +1,31 @@
 ---
 id: F-056
-name: App Invite Link OneLink ID (init-time)
+name: App Invite OneLink ID (init-time option)
 type: oneLinkAndGrowth
 platform: both
-status: active
-last_verified: 2026-07-15
-depends_on: ["F-028"]
+status: removed
+last_verified: 2026-08-10
+depends_on: []
 ---
 
 ## Business Purpose
-Apps that already know their invite-link OneLink ID at build/config time (rather than resolving it dynamically at runtime) want to configure it once, as part of the same `AppsFlyerOptions`/init-options object used to configure the dev key, app ID, and other startup flags — avoiding a separate `setAppInviteOneLinkID` (F-028) call after `initSdk()`. The `appInviteOneLink` init option sets this same underlying native OneLink ID at SDK-initialization time, so `generateInviteLink` (F-027) has a base link ready as soon as the SDK starts.
+This entry is retained as a tombstone for the former `AppsFlyerOptions.appInviteOneLink` and map-based init option. The native-aligned SDK 7 Flutter API no longer accepts a configuration object or an init-time OneLink ID.
 
-> TODO: enrich from product specs — provide a Notion database URL and re-run Phase 4 to fill this automatically.
+Use the active F-028 API, `await AppsFlyerSdk.instance.setAppInviteOneLink(oneLinkId)`, before generating invite links.
 
 ---
 
 ## Trigger
-Runs once, during `initSdk()`, whenever the host app constructed its `AppsFlyerOptions` (or the equivalent options `Map`) with a non-null `appInviteOneLink` value.
+None. The init-time option is not part of the current public API and is not consumed by either Flutter platform implementation.
 
 ---
 
 ## Call Chain
+There is no current call chain. The replacement is documented by F-028:
+
 ```
-AppsFlyerOptions(appInviteOneLink: "...")                                        [lib/src/appsflyer_options.dart]
-  → AppsflyerSdk.initSdk()                                                       [lib/src/appsflyer_sdk.dart]
-    → _validateAFOptions(afOptions) / _validateMapOptions(mapOptions)            [lib/src/appsflyer_sdk.dart]
-      → validatedOptions[AppsflyerConstants.APP_INVITE_ONE_LINK] = appInviteOneLink
-    → _methodChannel.invokeMethod("initSdk", validatedOptions)
-      → Android: AppsflyerSdkPlugin.onMethodCall("initSdk") → initSdk(call, result)                          [android/.../AppsflyerSdkPlugin.java]
-        → call.argument(AppsFlyerConstants.AF_APP_INVITE_ONE_LINK) → AppsFlyerLib.getInstance().setAppInviteOneLink(appInviteOneLink)   (only if non-null)
-      → iOS: AppsflyerSdkPlugin.handleMethodCall("initSdk") → initSdkWithCall:result:                          [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
-        → call.arguments[afInviteOneLink] → [AppsFlyerLib shared].appInviteOneLinkID = appInviteOneLink   (only if non-nil and not NSNull)
+AppsFlyerSdk.setAppInviteOneLink(oneLinkId)
+  → RPC setAppInviteOneLink {oneLinkId}
 ```
 
 ---
@@ -38,39 +33,29 @@ AppsFlyerOptions(appInviteOneLink: "...")                                       
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_options.dart` | `AppsFlyerOptions.appInviteOneLink` — optional `String?` init-time field |
-| `lib/src/appsflyer_sdk.dart` | `_validateAFOptions()` (lines ~56-61) and `_validateMapOptions()` (lines ~111-123) — copy `appInviteOneLink` into `validatedOptions[AppsflyerConstants.APP_INVITE_ONE_LINK]` under the wire key `"appInviteOneLink"`; `initSdk()` sends it as part of the `"initSdk"` method-channel call |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `initSdk(call, result)` (~line 1100) reads `AppsFlyerConstants.AF_APP_INVITE_ONE_LINK` and calls `AppsFlyerLib.getInstance().setAppInviteOneLink(appInviteOneLink)` if non-null, **after** `instance.init(...)` but before `instance.start(activity)` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `initSdkWithCall:result:` (~line 831) reads `afInviteOneLink` (`"appInviteOneLink"`) and sets `[AppsFlyerLib shared].appInviteOneLinkID` if non-nil and not `NSNull` |
+| `doc/migration-guide.md` | Documents removal of `AppsFlyerOptions.appInviteOneLink` and its replacement |
+| `lib/src/appsflyer_sdk.dart` | Contains the active `setAppInviteOneLink(String oneLinkId)` API; `init()` accepts only `devKey` and `appId` |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `AppsFlyerOptions.appInviteOneLink` (`String?`) or `mapOptions["appInviteOneLink"]`, consumed only during `initSdk()` |
-| **Output** | Sets the same underlying native OneLink ID property that `setAppInviteOneLinkID` (F-028) sets at runtime (`AppsFlyerLib.getInstance()` on Android, `[AppsFlyerLib shared].appInviteOneLinkID` on iOS) — no dedicated success/failure callback exists for the init-time path |
+| **Input** | Removed: `AppsFlyerOptions.appInviteOneLink` / map init option |
+| **Output** | None. Use F-028, which returns `Future<void>`. |
 
 ---
 
 ## Tests
-No dedicated test found. `test/appsflyer_sdk_test.dart`'s `check initSdk call` (line 93) exercises the general `initSdk()` path using `mapOptions: {'afDevKey': 'sdfhj2342cx'}` (set in `setUp()`, line 19) — no test sets or asserts `appInviteOneLink`/`APP_INVITE_ONE_LINK` specifically, on either the Dart validation logic or either native handler.
+Current RPC mapping tests cover the replacement `setAppInviteOneLink` API. No test should expect an init-time OneLink option.
 
 ---
 
 ## Known Limitations
-- **Assert-only validation**: both `_validateAFOptions` and `_validateMapOptions` in `lib/src/appsflyer_sdk.dart` only `assert(appInviteOneLink is String)` when non-null — `assert` is stripped in release (profile/release) Flutter builds, so a wrong type passed via the untyped `Map` init path would not be caught outside debug mode.
-- **Silently overwritten by a later runtime call**: because F-056 (init-time) and F-028 (`setAppInviteOneLinkID`, runtime) both write to the exact same native property, calling `setAppInviteOneLinkID` after `initSdk()` completes silently overrides whatever was set via the `appInviteOneLink` init option, with no warning of the override.
-- **Android sets it after `init()` but the codebase doesn't document why**: `AppsFlyerLib.getInstance().setAppInviteOneLink(appInviteOneLink)` is called after `instance.init(afDevKey, gcdListener, mContext)` and before `instance.start(activity)`; the ordering relative to `start()` is load-bearing for the native SDK but is not asserted or tested here.
-- No way to detect, from Dart, whether the init-time `appInviteOneLink` value was actually applied by the native SDK (no callback/confirmation, unlike the explicit `setAppInviteOneLinkID` callback in F-028).
+- Existing SDK 6 integrations must move the OneLink ID into an explicit `setAppInviteOneLink` call.
+- The removed init-time option must not be restored or simulated in Dart because the approved SDK 7 API keeps initialization limited to native initialization parameters.
 
 ---
 
 ## Dependencies
-```mermaid
-flowchart LR
-    F056["F-056 · App Invite Link OneLink ID (init-time)"]:::oneLinkAndGrowth
-    F028["F-028 · App Invite OneLink ID Configuration"]:::oneLinkAndGrowth
-    F056 -->|"shares same native OneLink-ID property, last write wins"| F028
-    classDef oneLinkAndGrowth fill:#7048E8,color:#fff
-```
+No active feature depends on F-056. F-028 is the supported replacement.

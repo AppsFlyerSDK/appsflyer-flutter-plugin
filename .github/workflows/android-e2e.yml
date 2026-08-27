@@ -106,7 +106,8 @@ jobs:
           # -dns-server bypasses the host's systemd-resolved stub at 127.0.0.53,
           # which the emulator's network namespace can't reach. Without this,
           # every AppsFlyer SDK HTTP call fails with `Unable to resolve host`,
-          # startSDK returns code=40, and phase_1's sdk_started abort fires.
+          # and phase_1's http_200_count abort fires. Slow cold starts can also
+          # exceed start(awaitResponse: true)'s ~5s RPC cap; example uses false.
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -dns-server 8.8.8.8,1.1.1.1
           disable-animations: true
           script: |

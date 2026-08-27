@@ -1,69 +1,86 @@
 part of appsflyer_sdk;
 
+/// The outcome of native Unified Deep Linking resolution.
+enum DeepLinkStatus { found, notFound, error, unknown }
+
+/// Platform-specific deep-link failure information.
+///
+/// Android reports a stable error type such as `NETWORK`; iOS reports a
+/// localized error message. The fields intentionally remain optional so the
+/// platform distinction is not hidden.
+@immutable
+class DeepLinkFailure {
+  final String? type;
+  final String? message;
+
+  const DeepLinkFailure({this.type, this.message});
+
+  Map<String, dynamic> toJson() => {'type': type, 'message': message};
+}
+
+@immutable
 class DeepLinkResult {
-  final Error? _error;
-  final DeepLink? _deepLink;
-  final Status _status;
+  final DeepLinkStatus status;
+  final DeepLink? deepLink;
+  final DeepLinkFailure? error;
 
-  DeepLinkResult(this._error, this._deepLink, this._status);
+  const DeepLinkResult({required this.status, this.deepLink, this.error});
 
-  Error? get error => _error;
+  factory DeepLinkResult._fromEvent(
+    _AppsFlyerEvent event, {
+    required TargetPlatform platform,
+  }) {
+    final data = event.data;
+    final rawStatus = data['status']?.toString();
+    final normalizedStatus = rawStatus?.replaceAll('_', '').toLowerCase();
+    final DeepLinkStatus status;
+    if (normalizedStatus == 'found') {
+      status = DeepLinkStatus.found;
+    } else if (normalizedStatus == 'notfound') {
+      status = DeepLinkStatus.notFound;
+    } else if (normalizedStatus == 'error' || normalizedStatus == 'failure') {
+      status = DeepLinkStatus.error;
+    } else {
+      status = DeepLinkStatus.unknown;
+    }
 
-  DeepLink? get deepLink => _deepLink;
+    final rawDeepLink = data['deepLink'];
+    final deepLinkMap = _decodeDeepLink(rawDeepLink);
+    final rawError = data['error'];
+    final error = rawError == null
+        ? null
+        : platform == TargetPlatform.android
+        ? DeepLinkFailure(type: rawError.toString())
+        : DeepLinkFailure(message: rawError.toString());
 
-  Status get status => _status;
+    return DeepLinkResult(
+      status: status,
+      deepLink: deepLinkMap == null ? null : DeepLink(deepLinkMap),
+      error: error,
+    );
+  }
 
-  DeepLinkResult.fromJson(Map<String, dynamic> json)
-      : _error = json['error'],
-        _status = json['status'],
-        _deepLink = json['deepLink'];
+  static Map<String, dynamic>? _decodeDeepLink(dynamic value) {
+    if (value is Map) {
+      return Map<String, dynamic>.from(value);
+    }
+    if (value is! String || value.isEmpty) {
+      return null;
+    }
+    try {
+      final decoded = jsonDecode(value);
+      return decoded is Map ? Map<String, dynamic>.from(decoded) : null;
+    } on FormatException {
+      return null;
+    }
+  }
 
   Map<String, dynamic> toJson() => {
-        'status': _status.toShortString(),
-        'error': _error?.toShortString(),
-        'deepLink': _deepLink?.clickEvent,
-      };
+    'status': status.name,
+    'error': error?.toJson(),
+    'deepLink': deepLink?.clickEvent,
+  };
 
   @override
-  String toString() {
-    return "DeepLinkResult:${jsonEncode(toJson())}";
-  }
-}
-
-enum Error { TIMEOUT, NETWORK, HTTP_STATUS_CODE, UNEXPECTED, DEVELOPER_ERROR }
-
-enum Status { FOUND, NOT_FOUND, ERROR, PARSE_ERROR }
-
-extension ParseStatusToString on Status {
-  String toShortString() {
-    return toString().split('.').last;
-  }
-}
-
-extension ParseErrorToString on Error {
-  String toShortString() {
-    return toString().split('.').last;
-  }
-}
-
-extension ParseEnumFromString on String {
-  Status? statusFromString() {
-    return Status.values
-        .firstWhere((s) => _describeEnum(s) == this, orElse: null);
-  }
-
-  Error? errorFromString() {
-    return Error.values
-        .firstWhere((e) => _describeEnum(e) == this, orElse: null);
-  }
-
-  String _describeEnum(Object enumEntry) {
-    final String description = enumEntry.toString();
-    final int indexOfDot = description.indexOf('.');
-    assert(
-      indexOfDot != -1 && indexOfDot < description.length - 1,
-      'The provided object "$enumEntry" is not an enum.',
-    );
-    return description.substring(indexOfDot + 1);
-  }
+  String toString() => 'DeepLinkResult: ${jsonEncode(toJson())}';
 }

@@ -13,8 +13,9 @@ abstract class PurchaseConnector {
   /// [onResponse] Function to be executed when a successful response is received.
   /// [onFailure] Function to be executed when a failure occurs (network exception or non 200/OK response from the server).
   void setSubscriptionValidationResultListener(
-      OnResponse<SubscriptionValidationResult>? onResponse,
-      OnFailure? onFailure);
+    OnResponse<SubscriptionValidationResult>? onResponse,
+    OnFailure? onFailure,
+  );
 
   /// Sets the listener for Android in-app validation results.
   ///
@@ -22,14 +23,16 @@ abstract class PurchaseConnector {
   /// [onFailure] Function to be executed when a failure occurs (network exception or non 200/OK response from the server).
 
   void setInAppValidationResultListener(
-      OnResponse<InAppPurchaseValidationResult>? onResponse,
-      OnFailure? onFailure);
+    OnResponse<InAppPurchaseValidationResult>? onResponse,
+    OnFailure? onFailure,
+  );
 
   /// Sets the listener for iOS subscription and  in-app validation results.
   /// Parameter:
   ///   [callback] the function to be executed when `DidReceivePurchaseRevenueValidationInfo` is called.
   void setDidReceivePurchaseRevenueValidationInfo(
-      DidReceivePurchaseRevenueValidationInfo? callback);
+    DidReceivePurchaseRevenueValidationInfo? callback,
+  );
 
   /// Creates a new PurchaseConnector instance.
   /// Parameter:
@@ -63,25 +66,24 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
 
   /// Callback handler for receiving validation info for iOS.
   DidReceivePurchaseRevenueValidationInfo?
-      _didReceivePurchaseRevenueValidationInfo;
+  _didReceivePurchaseRevenueValidationInfo;
 
   /// Internal constructor. Initializes the instance and sets up method call handler.
   _PurchaseConnectorImpl._internal(
-      this._methodChannel, PurchaseConnectorConfiguration config) {
+    this._methodChannel,
+    PurchaseConnectorConfiguration config,
+  ) {
     _methodChannel.setMethodCallHandler(_methodCallHandler);
 
     final configMap = {
-      AppsflyerConstants.LOG_SUBS_KEY: config.logSubscriptions,
-      AppsflyerConstants.LOG_IN_APP_KEY: config.logInApps,
-      AppsflyerConstants.SANDBOX_KEY: config.sandbox,
-      AppsflyerConstants.STORE_KIT_VERSION_KEY: config.storeKitVersion.value,
+      _AppsFlyerConstants.LOG_SUBS_KEY: config.logSubscriptions,
+      _AppsFlyerConstants.LOG_IN_APP_KEY: config.logInApps,
+      _AppsFlyerConstants.SANDBOX_KEY: config.sandbox,
+      _AppsFlyerConstants.STORE_KIT_VERSION_KEY: config.storeKitVersion.value,
     };
 
-    print("[AppsFlyer_PC_Debug] Sending config to native: $configMap");
-    print(
-        "[AppsFlyer_PC_Debug] Keys being sent: ${AppsflyerConstants.LOG_SUBS_KEY}, ${AppsflyerConstants.LOG_IN_APP_KEY}, ${AppsflyerConstants.SANDBOX_KEY}");
-
-    _methodChannel.invokeMethod(AppsflyerConstants.CONFIGURE_KEY, configMap);
+    _ensureIsolateCanReachPlatform();
+    _methodChannel.invokeMethod(_AppsFlyerConstants.CONFIGURE_KEY, configMap);
   }
 
   /// Factory constructor.
@@ -100,11 +102,12 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
       throw MissingConfigurationException();
     } else if (_instance == null && config != null) {
       // no existing instance. Create new instance and apply config
-      MethodChannel methodChannel =
-          const MethodChannel(AppsflyerConstants.AF_PURCHASE_CONNECTOR_CHANNEL);
+      MethodChannel methodChannel = const MethodChannel(
+        _AppsFlyerConstants.AF_PURCHASE_CONNECTOR_CHANNEL,
+      );
       _instance = _PurchaseConnectorImpl._internal(methodChannel, config);
     } else if (_instance != null && config != null) {
-      debugPrint(AppsflyerConstants.RE_CONFIGURE_ERROR_MSG);
+      _log(_AppsFlyerConstants.RE_CONFIGURE_ERROR_MSG);
     }
 
     return _instance!;
@@ -113,19 +116,22 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
   /// Starts observing the transactions.
   @override
   void startObservingTransactions() {
+    _ensureIsolateCanReachPlatform();
     _methodChannel.invokeMethod("startObservingTransactions");
   }
 
   /// Stops observing the transactions.
   @override
   void stopObservingTransactions() {
+    _ensureIsolateCanReachPlatform();
     _methodChannel.invokeMethod("stopObservingTransactions");
   }
 
   /// Sets the function to be executed when iOS validation info is received.
   @override
   void setDidReceivePurchaseRevenueValidationInfo(
-      DidReceivePurchaseRevenueValidationInfo? callback) {
+    DidReceivePurchaseRevenueValidationInfo? callback,
+  ) {
     _didReceivePurchaseRevenueValidationInfo = callback;
   }
 
@@ -135,8 +141,9 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
   /// [onFailure] Function to be executed when a failure occurs (network exception or non 200/OK response from the server).
   @override
   void setInAppValidationResultListener(
-      OnResponse<InAppPurchaseValidationResult>? onResponse,
-      OnFailure? onFailure) {
+    OnResponse<InAppPurchaseValidationResult>? onResponse,
+    OnFailure? onFailure,
+  ) {
     _viapOnResponse = onResponse;
     _viapOnFailure = onFailure;
   }
@@ -147,36 +154,57 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
   /// [onFailure] Function to be executed when a failure occurs (network exception or non 200/OK response from the server).
   @override
   void setSubscriptionValidationResultListener(
-      OnResponse<SubscriptionValidationResult>? onResponse,
-      OnFailure? onFailure) {
+    OnResponse<SubscriptionValidationResult>? onResponse,
+    OnFailure? onFailure,
+  ) {
     _arsOnResponse = onResponse;
     _arsOnFailure = onFailure;
   }
 
   /// Method call handler for different operations. Called by the _methodChannel.
+  ///
+  /// Every branch below parses a payload the native layer built from a Google
+  /// Play or StoreKit response. A parse failure must never escape: this is an
+  /// async platform-message handler, so a throw here becomes an unhandled
+  /// asynchronous error that no `try`/`catch` in the host app can intercept,
+  /// and the app is left with neither a success nor a failure callback. Parse
+  /// failures are routed to the listener's `onFailure` instead — see
+  /// [_reportParseFailure].
   Future<void> _methodCallHandler(MethodCall call) async {
-    dynamic callMap = jsonDecode(call.arguments);
+    try {
+      _dispatchMethodCall(call);
+    } catch (error) {
+      _reportParseFailure(call.method, error);
+    }
+  }
+
+  void _dispatchMethodCall(MethodCall call) {
+    // Native may send either a JSON string or an already-decoded Map; handle both.
+    final dynamic rawArgs = call.arguments;
+    final dynamic callMap = rawArgs is String ? jsonDecode(rawArgs) : rawArgs;
 
     switch (call.method) {
-      case AppsflyerConstants
+      case _AppsFlyerConstants
           .SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_RESPONSE:
         _handleSubscriptionPurchaseValidationResultListenerOnResponse(callMap);
         break;
-      case AppsflyerConstants
+      case _AppsFlyerConstants
           .SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_FAILURE:
         _handleSubscriptionPurchaseValidationResultListenerOnFailure(callMap);
         break;
-      case AppsflyerConstants.IN_APP_VALIDATION_RESULT_LISTENER_ON_RESPONSE:
+      case _AppsFlyerConstants.IN_APP_VALIDATION_RESULT_LISTENER_ON_RESPONSE:
         _handleInAppValidationResultListenerOnResponse(callMap);
         break;
-      case AppsflyerConstants.IN_APP_VALIDATION_RESULT_LISTENER_ON_FAILURE:
+      case _AppsFlyerConstants.IN_APP_VALIDATION_RESULT_LISTENER_ON_FAILURE:
         _handleInAppValidationResultListenerOnFailure(callMap);
         break;
-      case AppsflyerConstants.DID_RECEIVE_PURCHASE_REVENUE_VALIDATION_INFO:
+      case _AppsFlyerConstants.DID_RECEIVE_PURCHASE_REVENUE_VALIDATION_INFO:
         _handleDidReceivePurchaseRevenueValidationInfo(callMap);
         break;
       default:
-        throw ArgumentError("Method not found: ${call.method}");
+        // Unknown callback name — log instead of throwing inside a platform
+        // message handler (an uncaught throw here becomes an unhandled async error).
+        _log("PurchaseConnector: unknown method ${call.method}");
     }
   }
 
@@ -184,7 +212,8 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
   ///
   /// [callbackData] is the callback data expected in the form of a map.
   void _handleSubscriptionPurchaseValidationResultListenerOnResponse(
-      dynamic callbackData) {
+    dynamic callbackData,
+  ) {
     _handleValidationResultListenerOnResponse<SubscriptionValidationResult>(
       {"result": callbackData},
       _arsOnResponse,
@@ -207,7 +236,8 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
   ///
   /// [callbackData] is the callback data expected in the form of a map.
   void _handleSubscriptionPurchaseValidationResultListenerOnFailure(
-      Map<String, dynamic> callbackData) {
+    Map<String, dynamic> callbackData,
+  ) {
     _handleValidationResultListenerOnFailure(callbackData, _arsOnFailure);
   }
 
@@ -222,14 +252,44 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
   ///
   /// [callbackData] is the callback data expected in the form of a map.
   void _handleDidReceivePurchaseRevenueValidationInfo(dynamic callbackData) {
-    var validationInfo = callbackData[AppsflyerConstants.VALIDATION_INFO]
-        as Map<String, dynamic>?;
+    var validationInfo =
+        callbackData[_AppsFlyerConstants.VALIDATION_INFO]
+            as Map<String, dynamic>?;
     var errorMap =
-        callbackData[AppsflyerConstants.ERROR] as Map<String, dynamic>?;
+        callbackData[_AppsFlyerConstants.ERROR] as Map<String, dynamic>?;
     var error = errorMap != null ? IosError.fromJson(errorMap) : null;
 
     if (_didReceivePurchaseRevenueValidationInfo != null) {
       _didReceivePurchaseRevenueValidationInfo!(validationInfo, error);
+    }
+  }
+
+  /// Routes a payload that could not be parsed to the failure callback of the
+  /// listener the call was addressed to, so a malformed payload surfaces as a
+  /// reported failure rather than as silence.
+  ///
+  /// The message carries the callback name and the error type only. The payload
+  /// itself is never interpolated: it holds purchase and account identifiers,
+  /// and this string reaches the host app's log in release builds.
+  void _reportParseFailure(String method, Object error) {
+    final message =
+        'PurchaseConnector: could not parse the payload for $method '
+        '(${error.runtimeType})';
+    _log(message);
+    switch (method) {
+      case _AppsFlyerConstants
+          .SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_RESPONSE:
+      case _AppsFlyerConstants
+          .SUBSCRIPTION_PURCHASE_VALIDATION_RESULT_LISTENER_ON_FAILURE:
+        _arsOnFailure?.call(message, null);
+        break;
+      case _AppsFlyerConstants.IN_APP_VALIDATION_RESULT_LISTENER_ON_RESPONSE:
+      case _AppsFlyerConstants.IN_APP_VALIDATION_RESULT_LISTENER_ON_FAILURE:
+        _viapOnFailure?.call(message, null);
+        break;
+      case _AppsFlyerConstants.DID_RECEIVE_PURCHASE_REVENUE_VALIDATION_INFO:
+        _didReceivePurchaseRevenueValidationInfo?.call(null, null);
+        break;
     }
   }
 
@@ -238,12 +298,15 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
   /// [callbackData] is the callback data expected in the form of a map.
   /// [onResponse] is a function to be called upon response.
   /// [converter] is a function used for converting `[callbackData]` to result type `T`
-  void _handleValidationResultListenerOnResponse<T>(dynamic callbackData,
-      OnResponse<T>? onResponse, Map<String, T>? Function(dynamic) converter) {
+  void _handleValidationResultListenerOnResponse<T>(
+    dynamic callbackData,
+    OnResponse<T>? onResponse,
+    Map<String, T>? Function(dynamic) converter,
+  ) {
     Map<String, T>? res = converter(callbackData);
     if (onResponse != null) {
       onResponse(res);
-    } else {}
+    }
   }
 
   /// Handles failure for a validation result listener.
@@ -251,10 +314,17 @@ class _PurchaseConnectorImpl implements PurchaseConnector {
   /// [callbackData] is the callback data expected in the form of a map.
   /// [onFailureCallback] is a function to be called on failure.
   void _handleValidationResultListenerOnFailure(
-      dynamic callbackData, OnFailure? onFailureCallback) {
-    var resultMsg = callbackData[AppsflyerConstants.RESULT] as String;
+    dynamic callbackData,
+    OnFailure? onFailureCallback,
+  ) {
+    // A failure payload that is itself malformed must still reach the app: the
+    // native layer is already reporting an error, so losing this call would
+    // hide the very failure it announces.
+    var resultMsg =
+        callbackData[_AppsFlyerConstants.RESULT] as String? ??
+        'PurchaseConnector: validation failed, no description supplied';
     var errorMap =
-        callbackData[AppsflyerConstants.ERROR] as Map<String, dynamic>?;
+        callbackData[_AppsFlyerConstants.ERROR] as Map<String, dynamic>?;
     var error = errorMap != null ? JVMThrowable.fromJson(errorMap) : null;
     if (onFailureCallback != null) {
       onFailureCallback(resultMsg, error);

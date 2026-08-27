@@ -32,10 +32,9 @@ import Flutter
       return nil
     }()
     if let url = url {
-      // Delay long enough for the Flutter engine to spin up, MainPage to
-      // initState, and AppsflyerSdk.initSdk + startSDK to complete on the
-      // Dart side. The test plan's wait_after_trigger_sec is 12s, leaving
-      // ample margin.
+      // Delay long enough for the Flutter engine to spin up and for the
+      // example's AppsFlyer initialization and start lifecycle to complete.
+      // The test plan's wait_after_trigger_sec is 12s, leaving ample margin.
       DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self, weak application] in
         guard let self = self, let application = application else { return }
         _ = self.application(application, open: url, options: [:])

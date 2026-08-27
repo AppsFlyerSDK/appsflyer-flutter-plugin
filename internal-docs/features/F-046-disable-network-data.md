@@ -4,14 +4,12 @@ name: Disable Network Data Transfer
 type: sdkCore
 platform: android
 status: active
-last_verified: 2026-07-15
+last_verified: 2026-08-10
 depends_on: []
 ---
 
 ## Business Purpose
 Carrier/SIM operator name are device-level signals some privacy-conscious apps or regulatory regimes want excluded from what's sent to AppsFlyer, even while the rest of the SDK (attribution, events) stays fully active. `setDisableNetworkData` lets an Android app opt out of collecting the network operator name (carrier) and SIM operator name from the device, without having to disable the SDK (F-017) or anonymize the user (F-013) entirely.
-
-> TODO: enrich from product specs — provide a Notion database URL and re-run Phase 4 to fill this automatically.
 
 ---
 
@@ -21,41 +19,44 @@ Called by the host app during startup configuration whenever the app needs to op
 ---
 
 ## Call Chain
+The Dart method is Android-only but is not gated in Dart. On iOS the call is still dispatched and throws `AppsFlyerException`, because the iOS RPC layer does not implement the method.
+
 ```
-AppsflyerSdk.setDisableNetworkData(disable)                            [lib/src/appsflyer_sdk.dart]
-  → _methodChannel.invokeMethod("setDisableNetworkData", disable)
-    → Android: AppsflyerSdkPlugin.onMethodCall("setDisableNetworkData") → setDisableNetworkData(call, result)   [android/.../AppsflyerSdkPlugin.java]
-      → AppsFlyerLib.getInstance().setDisableNetworkData(disable)
+AppsFlyerSdk.setDisableNetworkData(isDisable)                          [lib/src/appsflyer_sdk.dart]
+  → off Android: native RPC reports the method as unavailable → AppsFlyerException
+  → _invokeVoidRpc('setDisableNetworkData', {'isDisable': isDisable})
+    → MethodChannel "af-api".invokeMethod('executeRpc', {method:'setDisableNetworkData', params:{isDisable}})
+      → Android: AppsflyerSdkPlugin.executeRpc → dispatchRpc → AppsFlyerRpcHandler   [android/.../AppsflyerSdkPlugin.kt]
+        → AppsFlyerLib.getInstance().setDisableNetworkData(disable)
 ```
-No iOS branch exists for `"setDisableNetworkData"` in `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m`'s `handleMethodCall:` — the call falls through to `result(FlutterMethodNotImplemented)`.
 
 ---
 
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `setDisableNetworkData(bool)` — no `Platform.isAndroid` guard |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `setDisableNetworkData(call, result)`, line 520 |
-| `doc/API.md` | Documents the method as **"Android Only!"** and describes it as opting out of "collecting the network operator name (carrier) and sim operator name from the device" |
+| `lib/src/appsflyer_sdk.dart` | `Future<void> setDisableNetworkData(bool isDisable)` — dispatched through RPC without a Dart platform check |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | RPC bridge entry (`executeRpc`) routing `setDisableNetworkData` to `AppsFlyerRpcHandler` |
+| `doc/api-reference.md` | Documents the method as **"Android Only!"** and describes it as opting out of "collecting the network operator name (carrier) and sim operator name from the device" |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `disable` (bool) — `true` opts out of network/carrier data collection; `false` keeps default collection behavior. |
-| **Output** | `void` — fire-and-forget; no confirmation returned to Dart. |
+| **Input** | `isDisable` (bool) — `true` opts out of network/carrier data collection; `false` keeps default collection behavior. Sent under the `isDisable` param key. |
+| **Output** | On Android, `Future<void>` completes after RPC validation and synchronous SDK invocation, with no native completion callback or timeout. Validation or bridge failures throw `AppsFlyerException`. Off Android the call is still dispatched and throws `AppsFlyerException` once the native RPC layer reports the method as unavailable. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` — `check setDisableNetworkData call` (line 314) asserts the mocked channel receives `'setDisableNetworkData'`. Test runs only through the Dart mock channel and cannot distinguish Android vs. iOS native behavior.
+`test/appsflyer_sdk_test.dart` → `'maps every Android-only API'` verifies that `setDisableNetworkData(true)` dispatches RPC method `setDisableNetworkData` with `{'isDisable': true}`. No test exercises `setDisableNetworkData` off Android; the shared off-platform contract is covered generically by `'platform-only calls are forwarded to the native RPC instead of being swallowed in Dart'` and `'platform-only setters surface the native error'`, which use other Android-only setters.
 
 ---
 
 ## Known Limitations
-- **Android-only**: no corresponding native implementation on iOS. Calling this from a Flutter app running on iOS results in a `MissingPluginException`/`FlutterMethodNotImplemented` at the native layer, since the Dart API has no platform guard. The official docs correctly flag it "Android Only!" with a usage example wrapped in `if (Platform.isAndroid)`, but nothing in the Dart API itself enforces or warns about this.
-- The Dart method name (`setDisableNetworkData`) is broader-sounding than its actual, narrower scope (carrier/SIM operator name only, per `doc/API.md`) — an integrator relying on the method name alone could over-assume it disables all "network data" transfer generally.
+- **Android-only**: there is no iOS equivalent in the native SDK, and the plugin no longer blocks the call in Dart — calling the Dart method on iOS dispatches the RPC and throws `AppsFlyerException` when the iOS RPC layer reports the method as unavailable.
+- The Dart method name (`setDisableNetworkData`) is broader-sounding than its actual, narrower scope (carrier/SIM operator name only, per `doc/api-reference.md`) — an integrator relying on the method name alone could over-assume it disables all "network data" transfer generally.
 
 ---
 

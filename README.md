@@ -5,55 +5,63 @@
 [![pub package](https://img.shields.io/pub/v/appsflyer_sdk.svg)](https://pub.dartlang.org/packages/appsflyer_sdk)
 ![Coverage](https://raw.githubusercontent.com/AppsFlyerSDK/appsflyer-flutter-plugin/master/coverage_badge.svg)
 
+Flutter plugin for the AppsFlyer mobile attribution and analytics SDK on **Android**
+and **iOS**.
+
 🛠 In order for us to provide optimal support, please contact AppsFlyer support through the Customer Assistant Chatbot for assistance with troubleshooting issues or product guidance. </br>
 To do so, please follow [this article](https://support.appsflyer.com/hc/en-us/articles/23583984402193-Using-the-Customer-Assistant-Chatbot)
 
 
 ## SDK Versions
 
-- Android AppsFlyer SDK **v6.18.1**
-- iOS AppsFlyer SDK **v6.18.1**
+This plugin release bundles:
+
+- Android AppsFlyer SDK **v7.0.1**
+- iOS AppsFlyer SDK **v7.0.2**
 
 ### Purchase Connector versions
 
-- Android 2.2.0
-- iOS 6.17.9
+When Purchase Connector is enabled in your app:
 
-## ❗❗ Breaking changes when updating to v6.x.x❗❗
+- Android **2.2.0**
+- iOS **7.0.2**
 
-If you have used one of the removed/changed APIs, please check the integration guide for the updated instructions.
+## ❗❗ Breaking changes when updating to v7.x.x ❗❗
 
-- From version `6.11.2`, the `setPushNotification` will not work in iOS. [Please use our new API `sendPushNotificationData` when receiving a notification on flutter side](/doc/API.md#sendPushNotificationData).
+Version `7.0.2` targets AppsFlyer SDK **7.0.1** on Android and **7.0.2** on iOS.
+The public Flutter API changed in this major release.
 
-- From version `6.8.0`, the `enableLocationCollection` has been removed from the plugin.
+- **Minimum supported versions: Flutter `3.35.0`, Dart `3.9.0` (and earlier than
+  `4.0.0`), Android API 21, and iOS 13.0.** On Android the plugin also requires
+  Kotlin Gradle Plugin `2.0.21`, Android Gradle Plugin `8.9.1`, Gradle `8.11.1`
+  and JDK 17, matching the AppsFlyer Android SDK. Flutter `3.35` templates all
+  of them — see [doc/installation-guide.md](doc/installation-guide.md).
 
-- From version `6.4.0`, UDL (Unified deep link) now as a dedicated class with getters for handling the deeplink result.
-[Check the full UDL guide](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/blob/master/doc/Guides.md#-3-unified-deep-linking).
-`setSharingFilter` & `setSharingFilterForAllPartners` APIs are deprecated.
-Instead use the [new API `setSharingFilterForPartners`](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/blob/RD-69098/update6.4.0%26more/doc/API.md#setSharingFilterForPartners).
+Use `AppsFlyerSdk.instance`, call `init(devKey:, appId:)` (`appId` is required
+on iOS and optional on Android), register the listeners you need with their
+callbacks, and call `start()` from the session-ready callback:
 
-- From version `6.3.5+2`, Remove stream from the plugin (no change is needed if you use callbacks for handling deeplink).
+```dart
+final appsflyerSdk = AppsFlyerSdk.instance;
 
-- From version `6.2.3+2`, Flutter 2 is supported, including null safety.
-`6.2.4-flutterv1` will use iOS SDK 6.2.4 with Flutter V1.
+// If your app handles deep links, register before init(). Android decides once
+// per install, while init() processes the launch intent, whether to request the
+// deferred deep link — registering later skips it for that install permanently.
+await appsflyerSdk.registerDeepLinkListener(onDeepLinking: (result) {
+  print('Deep link: ${result.deepLink?.deepLinkValue}');
+});
 
-- From version `6.0.0`, we have renamed the following APIs:
+await appsflyerSdk.init(
+  devKey: '<DEV_KEY>',
+  appId: '<APP_ID>',
+);
+await appsflyerSdk.registerSessionReadyListener(() async {
+  await appsflyerSdk.start();
+});
+```
 
-|Before v6                      | v6                          |
-|-------------------------------|-----------------------------|
-| trackEvent                    | logEvent                    |
-| stopTracking                  | stop                        |
-| validateAndTrackInAppPurchase | validateAndLogInAppPurchase |
-
-- From version `6.1.2+4`, we have renamed the following APIs:
-
-|Before v6.1.2+4                | v6.1.2+4                    |
-|-------------------------------|-----------------------------|
-| validateAndLogInAppPurchase | validateAndLogInAppIosPurchase/validateAndLogInAppAndroidPurchase |
-
-### Important notice
-
-- Switch `ConversionData` and `OnAppOpenAttribution` to be based on callbacks instead of streams from plugin version `6.0.5+2`.
+All removed APIs, renamed APIs, lifecycle changes, and upgrade instructions are
+documented in [doc/migration-guide.md](doc/migration-guide.md).
 
 ## AD_ID permission for Android
 
@@ -64,12 +72,15 @@ You can read more about it in the [Android SDK installation guide](https://dev.a
 
 ## 📖 Guides
 
-- [Adding the SDK to your project](/doc/Installation.md)
-- [Initializing the SDK](/doc/BasicIntegration.md)
-- [In-app Events](/doc/InAppEvents.md)
-- [Deep Linking](/doc/DeepLink.md)
-- [Advanced APIs](/doc/AdvancedAPI.md)
-- [Testing the integration](/doc/Testing.md)
-- [Purchase Connector](/doc/PurchaseConnector.md) <- **New addition**
-- [APIs](/doc/API.md)
-- [Sample App](/example)
+- [Documentation index](doc/README.md)
+- [Migrating from v6 to v7](doc/migration-guide.md)
+- [Adding the SDK to your project](doc/installation-guide.md)
+- [Getting started (init & session)](doc/getting-started.md)
+- [In-app events & ad revenue](doc/in-app-events.md)
+- [Deep linking](doc/deep-linking.md)
+- [Advanced features](doc/advanced-features.md)
+- [Consent & DMA compliance](doc/consent-dma.md)
+- [Testing & troubleshooting](doc/testing-and-troubleshooting.md)
+- [Purchase Connector](doc/purchase-connector.md)
+- [API reference](doc/api-reference.md)
+- [Sample App](example/)

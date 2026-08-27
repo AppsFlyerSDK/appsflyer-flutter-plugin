@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'appsflyer_sdk'
-  s.version          = '6.18.1'
+  s.version          = '7.0.2'
   s.summary          = 'AppsFlyer Integration for Flutter'
   s.description      = 'AppsFlyer is the market leader in mobile advertising attribution & analytics, helping marketers to pinpoint their targeting, optimize their ad spend and boost their ROI.'
   s.homepage         = 'https://github.com/AppsFlyerSDK/flutter_appsflyer_sdk'
@@ -8,9 +8,12 @@ Pod::Spec.new do |s|
   s.author           = { "Appsflyer" => "build@appsflyer.com" }
   s.source           = { :git => "https://github.com/AppsFlyerSDK/flutter_appsflyer_sdk.git", :tag => s.version.to_s }
   
-  s.ios.deployment_target = '12.0'
+  # SDK 7 requires iOS 13+ (AppsFlyerFramework 7.0.2 and the AppsFlyerRPC bridge both target iOS 13.0).
+  s.ios.deployment_target = '13.0'
   s.requires_arc = true
   s.static_framework = true
+  # Matches the SPM manifest's swift-tools-version:5.9.
+  s.swift_version = '5.9'
   if defined?($AppsFlyerPurchaseConnector)
     s.default_subspecs = 'Core', 'PurchaseConnector' 
   else
@@ -18,18 +21,23 @@ Pod::Spec.new do |s|
   end
 
   s.subspec 'Core' do |ss|
-    ss.source_files = 'appsflyer_sdk/Sources/appsflyer_sdk/**/*.{h,m}'
-    ss.public_header_files = 'appsflyer_sdk/Sources/appsflyer_sdk/include/appsflyer_sdk/*.h'
+    ss.source_files = 'appsflyer_sdk/Sources/appsflyer_sdk/**/*.swift'
     ss.dependency 'Flutter'
-    ss.ios.dependency 'AppsFlyerFramework','6.18.1'
+    ss.ios.dependency 'AppsFlyerRPC', '7.0.13'
+    # Imported directly for `handleLaunchOptions:`; must stay on the version AppsFlyerRPC pins.
+    ss.ios.dependency 'AppsFlyerFramework', '7.0.2'
   end
 
   s.subspec 'PurchaseConnector' do |ss|
     ss.dependency 'Flutter'
-    ss.ios.dependency 'PurchaseConnector', '6.18.2'
-    ss.source_files = 'PurchaseConnector/**/*'
-    ss.public_header_files = 'PurchaseConnector/**/*.h'
+    ss.ios.dependency 'PurchaseConnector', '7.0.2'
+    ss.source_files = 'PurchaseConnector/**/*.swift'
   
-    ss.pod_target_xcconfig = { 'GCC_PREPROCESSOR_DEFINITIONS' => '$(inherited) ENABLE_PURCHASE_CONNECTOR=1' }
+    # GCC_PREPROCESSOR_DEFINITIONS only reaches the Objective-C compiler; the Core plugin is Swift
+    # now, so the same opt-in has to be declared as a Swift compilation condition as well.
+    ss.pod_target_xcconfig = {
+      'GCC_PREPROCESSOR_DEFINITIONS' => '$(inherited) ENABLE_PURCHASE_CONNECTOR=1',
+      'SWIFT_ACTIVE_COMPILATION_CONDITIONS' => '$(inherited) ENABLE_PURCHASE_CONNECTOR'
+    }
   end
 end

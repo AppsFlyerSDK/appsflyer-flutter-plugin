@@ -120,6 +120,10 @@ jobs:
         working-directory: example
         run: flutter pub get
 
+      - name: Regenerate iOS project configuration
+        working-directory: example
+        run: flutter build ios --config-only
+
       - name: Install CocoaPods
         working-directory: example/ios
         run: pod install

@@ -4,80 +4,85 @@ name: In-App Purchase Validation V2 (cross-platform)
 type: purchaseValidation
 platform: both
 status: active
-last_verified: 2026-07-15
-depends_on: ["F-025"]
+last_verified: 2026-08-25
+depends_on: []
 ---
 
 ## Business Purpose
-`validateAndLogInAppPurchaseV2` replaces the deprecated, platform-specific V1 APIs (F-023) with a single cross-platform entry point built around the `AFPurchaseDetails` model, so app developers write one call site instead of branching on `Platform.isAndroid`/`Platform.isIOS`. It lets AppsFlyer verify purchase/subscription revenue against the store (Google Play or App Store) and, unlike V1, returns the actual validation result (or a structured error) directly on the `Future`, so the app can react to a failed validation (e.g. refuse to unlock content) at the call site instead of wiring a separate global listener. Without this feature, apps would have to fall back to the deprecated, harder-to-use, fire-and-forget V1 APIs to get server-side purchase validation at all.
+`validateAndLogInAppPurchase` is the single cross-platform entry point for server-side purchase validation. It lets AppsFlyer verify purchase and subscription revenue against the store (Google Play or App Store). It returns the validation result — or throws a structured error — directly on the `Future`, so the app can react at the call site. It replaces the removed platform-split V1 APIs (F-023).
 
-> TODO: enrich from product specs — provide a Notion database URL and re-run Phase 4 to fill this automatically.
+The store contract is selected by the type of the supplied `AFPurchaseDetails`, not by a runtime platform check, so an app that ships the wrong store's purchase model fails loudly instead of sending an unusable payload.
 
 ---
 
 ## Trigger
-Called by the host app after it detects a completed purchase or subscription renewal from the platform store, whenever it wants a synchronous (awaited) validation result back from AppsFlyer.
+Called by the host app after it detects a completed purchase or subscription renewal from the platform store. Both platforms always await the validation result.
 
 ---
 
 ## Call Chain
+Both platforms dispatch the same RPC method name, `validateAndLogInAppPurchase`, but the purchase parameter shape is produced by the platform-specific `AFPurchaseDetails` implementation. Android uses a flat schema and iOS uses nested `product` and `transaction` objects. Neither payload carries an `awaitResponse` field: Android RPC 7.0.12 removed it and iOS never exposed it.
+
 ```
-AppsflyerSdk.validateAndLogInAppPurchaseV2(purchaseDetails, {additionalParameters})        [lib/src/appsflyer_sdk.dart]
-  → _methodChannel.invokeMethod("validateAndLogInAppPurchaseV2", {
-        'purchaseDetails': purchaseDetails.toMap(),      // {purchaseType, purchaseToken, productId}  [lib/src/af_purchase_details.dart]
-        'additionalParameters': additionalParameters,
-    })
-    → Android: AppsflyerSdkPlugin.onMethodCall case "validateAndLogInAppPurchaseV2" → validateAndLogInAppPurchaseV2(call, result)   [android/.../AppsflyerSdkPlugin.java]
-      → mapPurchaseType(purchaseTypeString)  // "subscription" → AFPurchaseType.SUBSCRIPTION, "one_time_purchase" → AFPurchaseType.ONE_TIME_PURCHASE
-      → new AFPurchaseDetails(purchaseType, purchaseToken, productId)
-      → AppsFlyerLib.getInstance().validateAndLogInAppPurchase(purchaseDetails, additionalParameters, AppsFlyerInAppPurchaseValidationCallback)
-        → onInAppPurchaseValidationFinished(...) → result.success(flutterResult)
-        → onInAppPurchaseValidationError(...)    → result.error("VALIDATION_ERROR", errorMessage, flutterErrorResult)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall case "validateAndLogInAppPurchaseV2" → validateAndLogInAppPurchaseV2:result:   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
-      → maps purchaseType string to AFSDKPurchaseType, purchaseToken → transactionId
-      → new AFSDKPurchaseDetails(productId, transactionId, purchaseType)
-      → [AppsFlyerLib shared] validateAndLogInAppPurchase:purchaseAdditionalDetails:completion:
-        → completion(response, nil)   → result(response)
-        → completion(nil, error)      → result([FlutterError code:"VALIDATION_ERROR" ...])
+AppsFlyerSdk.validateAndLogInAppPurchase(                                  [lib/src/appsflyer_sdk.dart]
+  purchase, {additionalParameters})
+  → purchase.toRpcMap(platform: _platform, additionalParameters: ...)       [lib/src/af_purchase_details.dart]
+      → AFAndroidPurchaseDetails: {purchaseType, purchaseToken, productId,
+                                   additionalParameters}
+      → AFIOSPurchaseDetails:     {product: {productId},
+                                   transaction: {transactionId, purchaseType},
+                                   additionalParameters}
+      → wrong platform for the model, including any non-mobile platform → ArgumentError
+  → _invokeNullableRpc<Map<Object?, Object?>?>>('validateAndLogInAppPurchase', params)
+    → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
+      → Android: AppsflyerSdkPlugin.executeRpc → dispatchRpc('validateAndLogInAppPurchase', ...)
+        → AppsFlyerRpcHandler.execute(json) → AppsFlyerLib.validateAndLogInAppPurchase(...)
+      → iOS: AppsflyerSdkPlugin.executeRpc → dispatchRpc:method:@"validateAndLogInAppPurchase"
+        → [AppsFlyerRPCBridge shared] executeJson:completion: → AFRPCRequestHandler → SDK
+        → forwards `resultObj["data"]` to Dart unchanged (validation-result map under AppsFlyerRPC 7.0.13+)
+  → successful per-call reply completes the Future with the validation-result map
+  → PlatformException is converted to AppsFlyerException
 ```
+
+A `null` native reply is normalized to an empty map rather than propagated as `null`.
 
 ---
 
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `validateAndLogInAppPurchaseV2(AFPurchaseDetails, {additionalParameters})` |
-| `lib/src/af_purchase_details.dart` | `AFPurchaseDetails` model (`purchaseType`, `purchaseToken`, `productId`) and `AFPurchaseType` enum (`oneTimePurchase`, `subscription`); `toMap()` serializes `purchaseType` to `"one_time_purchase"` / `"subscription"` strings for the channel |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `validateAndLogInAppPurchaseV2(MethodCall, Result)` handler; `mapPurchaseType(String)` translates the Dart string enum to the native `AFPurchaseType` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `validateAndLogInAppPurchaseV2:result:` handler; inline string comparison maps to `AFSDKPurchaseType` (note: `purchaseToken` from Dart is passed as iOS `transactionId`) |
+| `lib/src/appsflyer_sdk.dart` | `validateAndLogInAppPurchase(AFPurchaseDetails purchase, {Map<String, String>? additionalParameters})` → `Future<Map<String, dynamic>>`; delegates purchase parameter building to the model and invokes the RPC |
+| `lib/src/af_purchase_details.dart` | `sealed class AFPurchaseDetails` (closed to `AFAndroidPurchaseDetails` and `AFIOSPurchaseDetails`), `AFPurchaseType`, and the per-platform `toRpcMap` contracts |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | No per-method handler — generic `executeRpc` → `dispatchRpc('validateAndLogInAppPurchase', ...)` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | No per-method handler; generic dispatch forwards `resultObj["data"]` unchanged (map or empty when absent) |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `purchaseDetails` (`AFPurchaseDetails` → map with `purchaseType` string, `purchaseToken`, `productId`), `additionalParameters` (`Map<String, String>?`, optional). |
-| **Output** | `Future<Map<String, dynamic>>` — resolves with the native SDK's validation-finished result map on success; on failure the platform channel throws (Android: `PlatformException` with code `"VALIDATION_ERROR"` or `"INVALID_ARGUMENTS"`/`"INVALID_PURCHASE_TYPE"`; iOS: `PlatformException` with code `"VALIDATION_ERROR"` or `"INVALID_ARGUMENTS"`, details include `error_code`/`error_domain`). Unlike V1 (F-023), the result is delivered synchronously on the same `Future` — no separate listener is needed. |
+| **Input** | `purchase` (`AFPurchaseDetails`) — `AFAndroidPurchaseDetails(purchaseType, productId, purchaseToken)` for Google Play or `AFIOSPurchaseDetails(purchaseType, productId, transactionId)` for the App Store; `additionalParameters` (`Map<String, String>?`, optional). `AFPurchaseType` serializes as `"one_time_purchase"` / `"subscription"` on Android and `"oneTimePurchase"` / `"subscription"` on iOS. |
+| **Output** | `Future<Map<String, dynamic>>` — completes with the native validation-result map, or an empty map when the native reply carries no payload. Android RPC 7.0.12 always awaits the callback and waits up to 5 seconds; iOS RPC 7.0.13 also always awaits and uses a 30-second timeout. Native and bridge failures throw `AppsFlyerException`. Passing the wrong platform's model throws `ArgumentError`, including on a non-mobile platform. |
 
 ---
 
 ## Tests
-No dedicated test found. `test/appsflyer_sdk_test.dart` does not register a mock handler for `"validateAndLogInAppPurchaseV2"` or call `validateAndLogInAppPurchaseV2` anywhere; the only purchase-validation test present covers the deprecated `validateAndLogInAppAndroidPurchase` (F-023). The `example/` app does exercise this method (`example/lib/main_page.dart`, `validatePurchase()` helper), but that is a manual/demo path, not an automated test.
+`test/appsflyer_sdk_test.dart`:
+- `purchase validation sends the Android contract` — asserts the flat Android parameter map (`purchaseType: 'one_time_purchase'`, `purchaseToken`, `productId`, `additionalParameters`) and that the mocked result map is returned to the caller.
+- `purchase validation sends the iOS contract` — asserts the nested iOS parameter map (`product.productId`, `transaction.transactionId`, `transaction.purchaseType`, `additionalParameters`) without an unsupported `awaitResponse` field.
+- `purchase validation never sends awaitResponse` — asserts the field is absent from both the Android and iOS payloads.
+- `purchase details reject the wrong platform` — asserts `ArgumentError` when an Android model is used on iOS and vice versa, and when either model is serialized on a non-mobile target platform (`macOS`, `windows`).
 
 ---
 
 ## Known Limitations
-- No automated test coverage — a regression in the `purchaseType` string values (`"one_time_purchase"` / `"subscription"`), which must match exactly across `af_purchase_details.dart`, `AppsflyerSdkPlugin.java`'s `mapPurchaseType`, and the iOS string comparison, would not be caught by CI.
-- The field name is inconsistent across platforms: Dart/Android call it `purchaseToken`, but the iOS handler maps that same value onto `transactionId` (`NSString* transactionId = purchaseDetailsMap[@"purchaseToken"];`) — functionally correct today, but a naming trap for anyone reading only one side of the bridge.
-- Invalid `purchaseType` strings are handled inconsistently in shape: Android returns a distinct `"INVALID_PURCHASE_TYPE"` error code, while iOS silently defaults any non-`"subscription"` string to `AFSDKPurchaseTypeOneTimePurchase` instead of validating and erroring — a typo'd purchase type on iOS would silently validate as the wrong purchase type rather than fail loudly.
+- The platform/model pairing is enforced at runtime by `toRpcMap`, not by the type system, so a mismatched model compiles and only throws `ArgumentError` when the call is made.
+- The purchase-type wire values differ between platforms (`one_time_purchase` on Android, `oneTimePurchase` on iOS) because each native RPC parser expects its own casing; the Dart enum hides this, but the payloads are not interchangeable.
+- The returned validation-result map is untyped (`Map<String, dynamic>`) and passed through from the native reply, so its keys are defined by the native SDK rather than by the Flutter API.
+- Neither RPC offers a fire-and-forget branch, so every call occupies the Android blocking executor until the result or timeout arrives.
+- A timeout fails the Dart Future but does not cancel the store/server validation already started by the native SDK. A late result is not delivered through a second Flutter callback.
 
 ---
 
 ## Dependencies
-```mermaid
-flowchart LR
-    F024["F-024 · In-App Purchase Validation V2"]:::purchaseValidation
-    F025["F-025 · iOS Receipt Validation Sandbox Toggle"]:::purchaseValidation
-    F024 -->|"iOS: validates against endpoint set by"| F025
-    classDef purchaseValidation fill:#F59F00,color:#fff
-```
+No required feature dependency. F-025 is an optional iOS environment switch used only for sandbox validation.

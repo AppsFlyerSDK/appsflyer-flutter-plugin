@@ -4,60 +4,61 @@ name: Customer User ID (CUID)
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-07-15
+last_verified: 2026-08-10
 depends_on: []
 ---
 
 ## Business Purpose
-AppsFlyer generates its own device-scoped unique ID (`getAppsFlyerUID`), but businesses need to join AppsFlyer's attribution/reporting data (CSV exports, Postback APIs) against their own internal user records (account ID, CRM ID, etc.). `setCustomerUserId` lets the app register its own developer-defined ID alongside AppsFlyer's, so every report and postback can be cross-referenced against the app's own user database — without it, correlating AppsFlyer attribution data with internal user analytics would require a fragile, manual matching process.
-
-> TODO: enrich from product specs — provide a Notion database URL and re-run Phase 4 to fill this automatically.
+AppsFlyer generates its own device-scoped unique ID (`getAppsFlyerUID`), but businesses need to join AppsFlyer's attribution/reporting data against their own internal user records. `setCustomerUserId` registers the app's developer-defined ID alongside AppsFlyer's, so every report and postback can be cross-referenced against the app's user database. In SDK 7, await the CUID **before** `start()` to attribute the first session with it (the SDK-6 `setCustomerIdAndLogSession` / `waitForCustomerUserId` pair has been removed — see [`doc/migration-guide.md`](../../doc/migration-guide.md) and F-021).
 
 ---
 
 ## Trigger
-Called by the host app whenever it knows the user's internal identifier — typically right after login/signup, or as soon as the app's own user-identity system resolves an ID.
+The host app awaits `AppsFlyerSdk.instance.setCustomerUserId(id)` whenever it knows the user's internal identifier — typically right after login/signup, or before `start()` to gate the first session on the CUID.
 
 ---
 
 ## Call Chain
+Generic RPC on both platforms.
+
 ```
-AppsflyerSdk.setCustomerUserId(id)                                       [lib/src/appsflyer_sdk.dart]
-  → _methodChannel.invokeMethod("setCustomerUserId", {'id': id})
-    → Android: AppsflyerSdkPlugin.onMethodCall("setCustomerUserId") → setCustomerUserId(call, result)   [android/.../AppsflyerSdkPlugin.java]
-      → AppsFlyerLib.getInstance().setCustomerUserId(userId)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("setCustomerUserId") → setCustomerUserId:result:         [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
-      → [[AppsFlyerLib shared] setCustomerUserID:userId]
+AppsFlyerSdk.setCustomerUserId(customerId)                            [lib/src/appsflyer_sdk.dart]
+  → _invokeVoidRpc('setCustomerUserId', {'customerId': customerId})
+    → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
+      → Android: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRpcHandler
+        → AppsFlyerLib.setCustomerUserId(...)
+      → iOS: AppsflyerSdkPlugin.dispatchRpc → AppsFlyerRPCBridge
+        → [AppsFlyerLib shared] setCustomerUserID:
+  → PlatformException is converted to AppsFlyerException
 ```
-Note: the related (but distinct) Dart API `setCustomerIdAndLogSession(id)` invokes the channel method `"setCustomerIdAndLogSession"`, which Android handles with its own `setCustomerIdAndLogSession(call, result)` (calling `AppsFlyerLib.getInstance().setCustomerIdAndLogSession(userId, mContext)`), while iOS routes `"setCustomerIdAndLogSession"` to the *same* `setCustomerUserId:result:` handler as plain `setCustomerUserId` — iOS has no distinct "and log session" native behavior.
 
 ---
 
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `setCustomerUserId(String)` |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `setCustomerUserId` native handler |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `setCustomerUserId:result:` native handler |
+| `lib/src/appsflyer_sdk.dart` | `setCustomerUserId(String customerId)` — dispatches the RPC with the `customerId` param |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | generic `setCustomerUserId` dispatch over `AppsFlyerRpcHandler` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | generic `setCustomerUserId` dispatch over `AppsFlyerRPCBridge` |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `id` (String) — the developer-defined customer user ID. |
-| **Output** | `void` — fire-and-forget; no confirmation returned to Dart. |
+| **Input** | `customerId` (`String`) — the developer-defined customer user ID. Android RPC rejects an empty value; iOS RPC requires a string but does not reject an empty string. RPC param key `customerId`. |
+| **Output** | `Future<void>` completes after native RPC validation and the synchronous SDK setter invocation. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or request timeout. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` — `check setCustomerUserId call` (line 266) asserts the mocked channel receives `setCustomerUserId`. No assertion on the argument value reaching native code beyond the channel dispatch mock.
+`test/appsflyer_sdk_test.dart` — `maps cross-platform configuration and identity APIs` verifies that `setCustomerUserId` dispatches the `setCustomerUserId` RPC with the value under the `customerId` param.
 
 ---
 
 ## Known Limitations
-- No validation of the `id` string (empty string, whitespace, excessive length) before it is forwarded to native code — a blank ID is passed through unchanged on both platforms.
-- iOS silently reuses the plain `setCustomerUserId:` implementation for the separate `setCustomerIdAndLogSession` Dart API, while Android gives it genuinely distinct native behavior (`setCustomerIdAndLogSession(userId, mContext)`, tied to `waitForCustomerUserId`'s delayed-session-log flow) — cross-platform behavior for that related API is not equivalent, which is easy to miss since both share the same underlying `setCustomerUserId` naming.
+- Dart performs no value validation. Android RPC rejects an empty string, while iOS RPC accepts one; neither bridge rejects whitespace-only values.
+- To associate the first session with the CUID, await it before `start()`; there is no dedicated "set CUID and log session" API in SDK 7.
 
 ---
 

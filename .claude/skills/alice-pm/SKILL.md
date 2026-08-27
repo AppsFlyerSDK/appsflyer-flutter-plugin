@@ -322,7 +322,7 @@ Automated via GitHub Actions: `.github/workflows/rc-release.yml`, `rc-smoke.yml`
 
 ## Domain-Specific Notes
 
-- Cross-platform parity: any new public Dart API must map to matching method names/behavior in both `AppsflyerSdkPlugin.java` (Android) and `AppsflyerSdkPlugin.m` (iOS) — flag any PRD that only specifies one platform.
+- Cross-platform parity: any new public Dart API must map to matching method names/behavior in both `AppsflyerSdkPlugin.kt` (Android) and `AppsflyerSdkPlugin.swift` (iOS) — flag any PRD that only specifies one platform.
 - This is a published pub.dev package (`appsflyer_sdk`) consumed by third-party apps — breaking changes to the public Dart API require a major version bump and migration notes in `CHANGELOG.md`.
 - Purchase Connector is optional/self-contained (`lib/src/purchase_connector/`, `ios/PurchaseConnector/`, Android Kotlin) — changes there should not affect core SDK consumers who don't opt in.
 - Release goes through the RC pipeline (see Release Process above) — any feature landing near a release cut should account for RC-SMOKE validation.

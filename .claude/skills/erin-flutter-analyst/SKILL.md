@@ -95,5 +95,5 @@ After Erin presents any analysis findings, `alice-pm` is invoked automatically. 
 
 - Field maps live at the MethodChannel/EventChannel boundary — arguments passed as `Map<String, dynamic>` between Dart and native.
 - JSON-serializable Dart models: `lib/src/purchase_connector/` (in-app purchase validation payloads) — regenerate `.g.dart` via `build_runner` after any field change.
-- Attribution/conversion data payloads flow through `lib/src/callbacks.dart` — check both the Dart model and the native (Java/ObjC) side that populates the EventChannel data.
+- Attribution/conversion data payloads flow through `lib/src/callbacks.dart` — check both the Dart model and the native (Kotlin/Swift) side that populates the EventChannel data.
 - When mapping fields, verify parity between what Android and iOS native code send — historically a source of drift.

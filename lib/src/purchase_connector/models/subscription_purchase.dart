@@ -2,34 +2,35 @@ part of appsflyer_sdk;
 
 @JsonSerializable()
 class SubscriptionPurchase {
-  String acknowledgementState;
+  String? acknowledgementState;
   CanceledStateContext? canceledStateContext;
   ExternalAccountIdentifiers? externalAccountIdentifiers;
-  String kind;
-  String latestOrderId;
-  List<SubscriptionPurchaseLineItem> lineItems;
+  String? kind;
+  String? latestOrderId;
+  List<SubscriptionPurchaseLineItem>? lineItems;
   String? linkedPurchaseToken;
   PausedStateContext? pausedStateContext;
-  String regionCode;
-  String startTime;
+  String? regionCode;
+  String? startTime;
   SubscribeWithGoogleInfo? subscribeWithGoogleInfo;
-  String subscriptionState;
+  String? subscriptionState;
   TestPurchase? testPurchase;
 
   SubscriptionPurchase(
-      this.acknowledgementState,
-      this.canceledStateContext,
-      this.externalAccountIdentifiers,
-      this.kind,
-      this.latestOrderId,
-      this.lineItems,
-      this.linkedPurchaseToken,
-      this.pausedStateContext,
-      this.regionCode,
-      this.startTime,
-      this.subscribeWithGoogleInfo,
-      this.subscriptionState,
-      this.testPurchase);
+    this.acknowledgementState,
+    this.canceledStateContext,
+    this.externalAccountIdentifiers,
+    this.kind,
+    this.latestOrderId,
+    this.lineItems,
+    this.linkedPurchaseToken,
+    this.pausedStateContext,
+    this.regionCode,
+    this.startTime,
+    this.subscribeWithGoogleInfo,
+    this.subscriptionState,
+    this.testPurchase,
+  );
 
   factory SubscriptionPurchase.fromJson(Map<String, dynamic> json) =>
       _$SubscriptionPurchaseFromJson(json);
@@ -45,10 +46,11 @@ class CanceledStateContext {
   UserInitiatedCancellation? userInitiatedCancellation;
 
   CanceledStateContext(
-      this.developerInitiatedCancellation,
-      this.replacementCancellation,
-      this.systemInitiatedCancellation,
-      this.userInitiatedCancellation);
+    this.developerInitiatedCancellation,
+    this.replacementCancellation,
+    this.systemInitiatedCancellation,
+    this.userInitiatedCancellation,
+  );
 
   factory CanceledStateContext.fromJson(Map<String, dynamic> json) =>
       _$CanceledStateContextFromJson(json);
@@ -86,7 +88,7 @@ class SystemInitiatedCancellation {
 @JsonSerializable()
 class UserInitiatedCancellation {
   CancelSurveyResult? cancelSurveyResult;
-  String cancelTime;
+  String? cancelTime;
 
   UserInitiatedCancellation(this.cancelSurveyResult, this.cancelTime);
 
@@ -98,8 +100,8 @@ class UserInitiatedCancellation {
 
 @JsonSerializable()
 class CancelSurveyResult {
-  String reason;
-  String reasonUserInput;
+  String? reason;
+  String? reasonUserInput;
 
   CancelSurveyResult(this.reason, this.reasonUserInput);
 
@@ -111,12 +113,15 @@ class CancelSurveyResult {
 
 @JsonSerializable()
 class ExternalAccountIdentifiers {
-  String externalAccountId;
-  String obfuscatedExternalAccountId;
-  String obfuscatedExternalProfileId;
+  String? externalAccountId;
+  String? obfuscatedExternalAccountId;
+  String? obfuscatedExternalProfileId;
 
-  ExternalAccountIdentifiers(this.externalAccountId,
-      this.obfuscatedExternalAccountId, this.obfuscatedExternalProfileId);
+  ExternalAccountIdentifiers(
+    this.externalAccountId,
+    this.obfuscatedExternalAccountId,
+    this.obfuscatedExternalProfileId,
+  );
 
   factory ExternalAccountIdentifiers.fromJson(Map<String, dynamic> json) =>
       _$ExternalAccountIdentifiersFromJson(json);
@@ -128,18 +133,19 @@ class ExternalAccountIdentifiers {
 class SubscriptionPurchaseLineItem {
   AutoRenewingPlan? autoRenewingPlan;
   DeferredItemReplacement? deferredItemReplacement;
-  String expiryTime;
+  String? expiryTime;
   OfferDetails? offerDetails;
   PrepaidPlan? prepaidPlan;
-  String productId;
+  String? productId;
 
   SubscriptionPurchaseLineItem(
-      this.autoRenewingPlan,
-      this.deferredItemReplacement,
-      this.expiryTime,
-      this.offerDetails,
-      this.prepaidPlan,
-      this.productId);
+    this.autoRenewingPlan,
+    this.deferredItemReplacement,
+    this.expiryTime,
+    this.offerDetails,
+    this.prepaidPlan,
+    this.productId,
+  );
 
   factory SubscriptionPurchaseLineItem.fromJson(Map<String, dynamic> json) =>
       _$SubscriptionPurchaseLineItemFromJson(json);
@@ -150,7 +156,7 @@ class SubscriptionPurchaseLineItem {
 @JsonSerializable()
 class OfferDetails {
   List<String>? offerTags;
-  String basePlanId;
+  String? basePlanId;
   String? offerId;
 
   OfferDetails(this.offerTags, this.basePlanId, this.offerId);
@@ -176,17 +182,21 @@ class AutoRenewingPlan {
 
 @JsonSerializable()
 class SubscriptionItemPriceChangeDetails {
-  String expectedNewPriceChargeTime;
+  String? expectedNewPriceChargeTime;
   Money? newPrice;
-  String priceChangeMode;
-  String priceChangeState;
+  String? priceChangeMode;
+  String? priceChangeState;
 
-  SubscriptionItemPriceChangeDetails(this.expectedNewPriceChargeTime,
-      this.newPrice, this.priceChangeMode, this.priceChangeState);
+  SubscriptionItemPriceChangeDetails(
+    this.expectedNewPriceChargeTime,
+    this.newPrice,
+    this.priceChangeMode,
+    this.priceChangeState,
+  );
 
   factory SubscriptionItemPriceChangeDetails.fromJson(
-          Map<String, dynamic> json) =>
-      _$SubscriptionItemPriceChangeDetailsFromJson(json);
+    Map<String, dynamic> json,
+  ) => _$SubscriptionItemPriceChangeDetailsFromJson(json);
 
   Map<String, dynamic> toJson() =>
       _$SubscriptionItemPriceChangeDetailsToJson(this);
@@ -194,9 +204,9 @@ class SubscriptionItemPriceChangeDetails {
 
 @JsonSerializable()
 class Money {
-  String currencyCode;
-  int nanos;
-  int units;
+  String? currencyCode;
+  int? nanos;
+  int? units;
 
   Money(this.currencyCode, this.nanos, this.units);
 
@@ -207,7 +217,7 @@ class Money {
 
 @JsonSerializable()
 class DeferredItemReplacement {
-  String productId;
+  String? productId;
 
   DeferredItemReplacement(this.productId);
 
@@ -231,7 +241,7 @@ class PrepaidPlan {
 
 @JsonSerializable()
 class PausedStateContext {
-  String autoResumeTime;
+  String? autoResumeTime;
 
   PausedStateContext(this.autoResumeTime);
 
@@ -243,14 +253,19 @@ class PausedStateContext {
 
 @JsonSerializable()
 class SubscribeWithGoogleInfo {
-  String emailAddress;
-  String familyName;
-  String givenName;
-  String profileId;
-  String profileName;
+  String? emailAddress;
+  String? familyName;
+  String? givenName;
+  String? profileId;
+  String? profileName;
 
-  SubscribeWithGoogleInfo(this.emailAddress, this.familyName, this.givenName,
-      this.profileId, this.profileName);
+  SubscribeWithGoogleInfo(
+    this.emailAddress,
+    this.familyName,
+    this.givenName,
+    this.profileId,
+    this.profileName,
+  );
 
   factory SubscribeWithGoogleInfo.fromJson(Map<String, dynamic> json) =>
       _$SubscribeWithGoogleInfoFromJson(json);

@@ -4,14 +4,12 @@ name: Partner Postback Sharing Filter
 type: platformIntegration
 platform: both
 status: active
-last_verified: 2026-07-15
+last_verified: 2026-08-19
 depends_on: []
 ---
 
 ## Business Purpose
-AppsFlyer forwards install/event data to integrated partner networks (ad networks, MMPs, analytics vendors) via server-to-server postbacks and API. Advertisers sometimes need to block that forwarding for specific partners or for all of them — to comply with GDPR/CCPA data-sharing restrictions, honor a user's opt-out choice, or enforce a business rule about which vendors may receive attribution data. `setSharingFilterForPartners` (and its deprecated predecessors `setSharingFilter`/`setSharingFilterForAllPartners`) is the only API surface for this; without it, the app would have no way to suppress third-party data sharing short of disabling the AppsFlyer SDK entirely via `stop()`, which would also break the advertiser's own attribution.
-
-> TODO: enrich from product specs — provide a Notion database URL and re-run Phase 4 to fill this automatically.
+AppsFlyer forwards install/event data to integrated partner networks (ad networks, MMPs, analytics vendors) via server-to-server postbacks and API. Advertisers sometimes need to block that forwarding for specific partners or for all of them — to comply with GDPR/CCPA data-sharing restrictions, honor a user's opt-out choice, or enforce a business rule about which vendors may receive attribution data. `setSharingFilterForPartners` is the API surface for this; without it, the app would have no way to suppress third-party data sharing short of disabling the AppsFlyer SDK entirely via `stop()`, which would also break the advertiser's own attribution.
 
 ---
 
@@ -21,49 +19,48 @@ Called by the host app during startup configuration or in direct response to a u
 ---
 
 ## Call Chain
-```
-AppsflyerSdk.setSharingFilterForPartners(partners)                       [lib/src/appsflyer_sdk.dart:615]
-  → _methodChannel.invokeMethod("setSharingFilterForPartners", partners)
-    → Android: AppsflyerSdkPlugin.onMethodCall("setSharingFilterForPartners") → setSharingFilterForPartners(call, result)   [android/.../AppsflyerSdkPlugin.java:349,555]
-      → AppsFlyerLib.getInstance().setSharingFilterForPartners(partners)   (only if call.arguments != null)
-    → iOS: AppsflyerSdkPlugin handleMethodCall: case "setSharingFilterForPartners" → setSharingFilterForPartners:result:   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m:157,389]
-      → [AppsFlyerLib shared] setSharingFilterForPartners: partners
+Awaitable RPC call over the single `executeRpc` entry point. (The legacy `setSharingFilter`/`setSharingFilterForAllPartners` Dart methods no longer exist — SDK 7 exposes only `setSharingFilterForPartners`.)
 
-AppsflyerSdk.setSharingFilter(partners)  [DEPRECATED]                     [lib/src/appsflyer_sdk.dart:603]
-  → setSharingFilterForPartners(partners)   (re-routed in Dart to the method above; native "setSharingFilter" channel handlers still exist but are unreachable from this Dart entry point)
+Clearing the filter — passing `null` or an empty list — is expressed on the wire as `partners: null`. Dart normalizes an empty list to `null` before dispatch so `null` and `[]` are interchangeable for callers. The plugin forwards every call to the native layer and does not short-circuit clear requests in Dart.
 
-AppsflyerSdk.setSharingFilterForAllPartners()  [DEPRECATED]               [lib/src/appsflyer_sdk.dart:609]
-  → setSharingFilterForPartners(["all"])   (re-routed in Dart to the method above)
 ```
+AppsFlyerSdk.setSharingFilterForPartners(List<String>? partners)         [lib/src/appsflyer_sdk.dart]
+  → empty list is normalized to null
+  → _invokeVoidRpc('setSharingFilterForPartners', {'partners': partners})
+    → _invokeNullableRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
+      → Android: dispatchRpc → AppsFlyerRpcHandler.execute("setSharingFilterForPartners") → SDK setSharingFilterForPartners
+      → iOS: dispatchRpc → AppsFlyerRPCBridge executeJson("setSharingFilterForPartners") → SDK setSharingFilterForPartners:
+  → PlatformException is converted to AppsFlyerException
+```
+
+`null` clears the filter on both platforms. Android RPC 7.0.12 dropped the `require(partners.isNotEmpty())` guard from `SetSharingFilterForPartnersRequest`, so a `null` partner list parses to an empty list and the handler calls the SDK setter with no arguments, which clears the filter.
 
 ---
 
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `setSharingFilterForPartners(List<String>)` (active); `setSharingFilter(List<String>)` and `setSharingFilterForAllPartners()` (`@Deprecated`, both re-route to `setSharingFilterForPartners`) |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `setSharingFilterForPartners` (active, dispatched via channel), plus dead `setSharingFilter`/`setSharingFilterForAllPartners` channel handlers no longer reachable from the current Dart API |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `setSharingFilterForPartners:result:` (active, dispatched via channel), plus dead `setSharingFilter:result:`/`setSharingFilterForAllPartners:` channel handlers no longer reachable from the current Dart API |
+| `lib/src/appsflyer_sdk.dart` | `Future<void> setSharingFilterForPartners(List<String>? partners)` — sends the `setSharingFilterForPartners` RPC with `{partners}` and normalizes an empty list to `null` |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | No per-method handler — the generic `executeRpc` → `dispatchRpc` forwards to the native RPC bridge |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | No per-method handler — the generic `executeRpc` → `dispatchRpc` forwards to the native RPC bridge |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `partners` (`List<String>`) — partner ID strings (e.g. `'facebook_int'`, `'googleadwords_int'`), or the literal `'all'` to block every partner. Empty list or `null` resets to the default (no filtering). |
-| **Output** | `void` — fire-and-forget; both native handlers always return success/`nil`. |
+| **Input** | `partners` (`List<String>?`) — partner ID strings (e.g. `'facebook_int'`, `'googleadwords_int'`), or the literal `'all'` to block every partner. `null` or an empty list clears the filter; both are sent as `null` under the `partners` param key. |
+| **Output** | `Future<void>` completes after native validation and the synchronous SDK setter invocation. Validation or bridge failures throw `AppsFlyerException`; there is no native completion callback or timeout. |
 
 ---
 
 ## Tests
-No dedicated test found. `test/appsflyer_sdk_test.dart`'s mock method-call handler includes `case 'setSharingFilterForAllPartners'` and `case 'setSharingFilter'` (but not `'setSharingFilterForPartners'`, the actual active channel method), and no `test(...)` block exercises any of `instance.setSharingFilter(...)`, `instance.setSharingFilterForAllPartners()`, or `instance.setSharingFilterForPartners(...)`.
+`test/appsflyer_sdk_test.dart` → `'maps cross-platform configuration and identity APIs'` verifies that `setSharingFilterForPartners(['partner'])` dispatches RPC method `setSharingFilterForPartners` with `{'partners': ['partner']}`, and that both `null` and `[]` on iOS dispatch `{'partners': null}` — pinning the empty-to-null normalization. `'Android clear requests reach the native layer'` verifies that both `null` and `[]` on Android dispatch `{'partners': null}` and complete successfully.
 
 ---
 
 ## Known Limitations
-- The Android native handler for the legacy `setSharingFilter` channel method (`android/.../AppsflyerSdkPlugin.java:792`) calls `AppsFlyerLib.getInstance().setSharingFilter()` with **no arguments**, discarding whatever filter list was passed — this handler is dead code from the current Dart API (which no longer sends a `"setSharingFilter"` channel call), but it would silently misbehave if ever invoked directly via the channel.
-- The Dart mock test harness registers channel-method cases for the deprecated `setSharingFilter`/`setSharingFilterForAllPartners` names rather than the actual active `setSharingFilterForPartners` channel call, so the test scaffolding does not match current production wiring and provides no real coverage for this feature.
-- No validation in Dart or native code that partner ID strings are well-formed or recognized; typos silently fail to filter the intended partner.
+- Dart and the RPC request models do not verify that individual partner IDs are recognized. The native SDK can ignore or filter unsupported values without returning a per-ID result, so a typo is not observable through the completed Future.
 
 ---
 

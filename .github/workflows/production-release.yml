@@ -405,9 +405,11 @@ jobs:
           
           ## 📚 Documentation
           
-          - [Installation Guide](https://github.com/${{ github.repository }}/blob/master/doc/Installation.md)
-          - [Basic Integration](https://github.com/${{ github.repository }}/blob/master/doc/BasicIntegration.md)
-          - [API Documentation](https://github.com/${{ github.repository }}/blob/master/doc/API.md)
+          - [Documentation index](https://github.com/${{ github.repository }}/blob/master/doc/README.md)
+          - [Installation](https://github.com/${{ github.repository }}/blob/master/doc/installation-guide.md)
+          - [Getting started](https://github.com/${{ github.repository }}/blob/master/doc/getting-started.md)
+          - [API reference](https://github.com/${{ github.repository }}/blob/master/doc/api-reference.md)
+          - [Migrating v6 → v7](https://github.com/${{ github.repository }}/blob/master/doc/migration-guide.md)
           - [Sample App](https://github.com/${{ github.repository }}/tree/master/example)
           
           ## 🔗 Links

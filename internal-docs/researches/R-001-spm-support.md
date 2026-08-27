@@ -2,15 +2,18 @@
 id: R-001
 title: Swift Package Manager (SPM) support — feasibility, PurchaseConnector blocker, and prior art
 versions: "Flutter 3.24 (experimental) – 3.44+ (default); Swift tools 5.3 – 5.9; Xcode 12+ (Package.swift baseline), Xcode 15+ (this plugin's actual manifest)"
-status: complete
+status: superseded
+research_outcome: complete
 date: 2026-07-19
-affects-features: [F-054]
+affects-features: [F-054, F-060]
 related-issue-cases: []
 ---
 
+> **⚠️ Superseded — historical research record (do not treat as current).** This research supported SPM support on the SDK **6.18.0** line (DELIVERY-125462). The plugin has since migrated to **SDK 7 / RPC**: iOS vendors the **AppsFlyerRPC 7.0.13** static xcframework as a `binaryTarget` (→ AppsFlyerFramework 7.0.2), targets **iOS 13.0**, and does not consume the upstream RPC package manifest. At the implementation review that produced the current manifest, the 7.0.12 tag carried a stale asset/checksum. Current state: `ios/appsflyer_sdk/Package.swift`, `internal-docs/features/F-060-swift-package-manager-support.md`, and `internal-docs/ARCHITECTURE.md`. Kept for context only.
+
 ## Summary
 
-Researched for DELIVERY-125462 / PRD `docs/prds/spm-support.md`. No prior research or issue-case docs existed on this topic (`docs/researches/` and `docs/issue-cases/` are both empty in this repo). Checked GitHub directly (issues/PRs on this plugin's repo, flutter/flutter, and AppsFlyerSDK/AppsFlyerFramework) rather than relying on secondhand summaries.
+Researched for DELIVERY-125462 / PRD `internal-docs/prds/spm-support.md`. No prior research or issue-case document existed on this topic when this record was created. Checked GitHub directly (issues/PRs on this plugin's repo, flutter/flutter, and AppsFlyerSDK/AppsFlyerFramework) rather than relying on secondhand summaries.
 
 Key finding: **Swift Package Manager Traits do NOT unblock PurchaseConnector.** flutter/flutter#161182 — the exact issue the ticket cites — is literally titled "[SwiftPM] Support conditional compilation in plugins" and is still **OPEN**, unassigned, P3. It states plainly: "Swift Package Manager does not support conditional compilation," and lists two possible fixes, neither shipped: (1) a documented hacky workaround, or (2) "Update Flutter to support Swift package traits **if/when that lands**." Traits are a SwiftPM-language feature (SE-0450, Swift tools 6.1+) — the blocker is that **Flutter's own plugin build tooling** has no support for conditional compilation of plugin code, with or without traits underneath. Until Flutter's tooling adds that support, PurchaseConnector cannot be conditionally included via SPM regardless of what SwiftPM itself offers. This confirms the PRD's non-goal was correctly scoped: don't chase traits for this release.
 

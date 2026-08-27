@@ -134,8 +134,8 @@ jobs:
           VERSION='${{ steps.compute-version.outputs.version }}'
           echo "Updating PLUGIN_VERSION constants to: $VERSION"
 
-          # Android - AppsFlyerConstants.java
-          ANDROID_FILE="android/src/main/java/com/appsflyer/appsflyersdk/AppsFlyerConstants.java"
+          # Android - AppsFlyerConstants.kt
+          ANDROID_FILE="android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsFlyerConstants.kt"
           if [ -f "$ANDROID_FILE" ]; then
             sed -i "s/PLUGIN_VERSION = \".*\"/PLUGIN_VERSION = \"$VERSION\"/" "$ANDROID_FILE"
             echo "✅ Android:" && grep "PLUGIN_VERSION" "$ANDROID_FILE"
@@ -148,11 +148,14 @@ jobs:
             echo "✅ Dart:" && grep "PLUGIN_VERSION" "$DART_FILE"
           fi
 
-          # iOS - AppsflyerSdkPlugin.h (#define)
-          IOS_FILE="ios/Classes/AppsflyerSdkPlugin.h"
+          # iOS - AppsflyerSdkPlugin.swift
+          IOS_FILE="ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift"
           if [ -f "$IOS_FILE" ]; then
-            sed -i 's/kAppsFlyerPluginVersion[[:space:]]*@"[^"]*"/kAppsFlyerPluginVersion             @"'"$VERSION"'"/' "$IOS_FILE"
+            sed -i "s/kAppsFlyerPluginVersion = \".*\"/kAppsFlyerPluginVersion = \"$VERSION\"/" "$IOS_FILE"
             echo "✅ iOS:" && grep "kAppsFlyerPluginVersion" "$IOS_FILE"
+          else
+            echo "::error::iOS plugin version file not found: $IOS_FILE" >&2
+            exit 1
           fi
       
       - name: Commit and push version changes
