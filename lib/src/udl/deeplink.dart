@@ -35,8 +35,9 @@ class DeepLink {
   /// Whether this link came from deferred deep linking (fresh install) vs. a
   /// direct click while already installed.
   ///
-  /// Reliable on Android. **Always `null` on iOS**: the native click event
-  /// doesn't carry an `is_deferred` key.
+  /// Populated on both platforms. Returns `null` only when the click event
+  /// carries no `is_deferred` key at all, which no current resolved deep link
+  /// does.
   bool? get isDeferred {
     final value = _clickEvent['is_deferred'];
     if (value is bool) {

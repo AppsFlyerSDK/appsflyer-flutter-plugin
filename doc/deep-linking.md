@@ -232,11 +232,11 @@ class DeepLink {
 }
 ```
 
-> **Platform behavior:** `DeepLink.isDeferred` is reliable on Android. On iOS
-> it is always `null` because the native click event does not include an
-> `is_deferred` value. Do not use `isDeferred` alone to control cross-platform
-> navigation. Handle a found result using `deepLinkValue` and the other
-> available deep-link parameters instead.
+> **Platform behavior:** `DeepLink.isDeferred` is populated on both Android and
+> iOS — `true` when the link was resolved by deferred deep linking on the first
+> launch after install, `false` for a direct click into an installed app. It is
+> `null` only if the click event carries no `is_deferred` key, so treat `null`
+> as "unknown" rather than as "direct".
 
 ### <a id="handle-deeplinking"></a> Direct deep linking
 

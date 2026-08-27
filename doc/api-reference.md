@@ -224,9 +224,9 @@ Contains an optional Android error `type` or optional iOS error `message`.
 Provides the full `clickEvent` map, `getStringValue(String key)`, and typed
 getters for common Unified Deep Linking values such as `deepLinkValue`,
 `mediaSource`, `campaign`, `campaignId`, `afSub1` through `afSub5`, and
-`isDeferred`. `isDeferred` is reliable on Android; on iOS the native SDK does
-not forward an `is_deferred` flag on the click event, so it always returns
-`null` there.
+`isDeferred`. `isDeferred` is populated on both Android and iOS: it is `true`
+for a link resolved through deferred deep linking (first launch after install)
+and `false` for a direct click into an installed app.
 
 ##### <a id="AppsFlyerException"> **`AppsFlyerException`**
 
