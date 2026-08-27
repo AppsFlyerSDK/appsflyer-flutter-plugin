@@ -9,7 +9,7 @@ import UIKit
 import Flutter
 
 // Plugin version
-private let kAppsFlyerPluginVersion = "7.0.2"
+private let kAppsFlyerPluginVersion = "7.0.2-rc1"
 
 // Flutter channels
 private let afMethodChannel = "af-api"

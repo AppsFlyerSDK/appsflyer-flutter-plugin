@@ -1,6 +1,6 @@
 package com.appsflyer.appsflyersdk
 
-internal const val PLUGIN_VERSION = "7.0.2"
+internal const val PLUGIN_VERSION = "7.0.2-rc1"
 internal const val AF_PLUGIN_NAME = "flutter"
 
 internal const val AF_EVENTS_CHANNEL = "af-events"
