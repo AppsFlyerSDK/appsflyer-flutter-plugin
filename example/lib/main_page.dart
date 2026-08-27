@@ -189,7 +189,11 @@ class MainPageState extends State<MainPage> {
 
   Future<void> _startSdkForCurrentSession() async {
     try {
-      await _appsflyerSdk.start(awaitResponse: true);
+      // Fire-and-forget: awaitResponse true waits for the Launch HTTP callback
+      // (Android RPC ~5s cap). On a cold CI emulator, CDN config + DDL can defer
+      // the conversion request past that window even though the launch later
+      // succeeds. E2E phase_1's http_200_count check covers the real Launch.
+      await _appsflyerSdk.start(awaitResponse: false);
       AfQaLogger.result('startSDK', 'SUCCESS');
     } on AppsFlyerException catch (error) {
       AfQaLogger.error('startSDK', 'code=${error.code} msg=${error.message}');

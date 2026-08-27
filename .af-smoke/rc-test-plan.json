@@ -34,7 +34,7 @@
       "checks": [
         {
           "id": "sdk_started",
-          "description": "startSDK returns SUCCESS",
+          "description": "start() dispatched without RPC error (awaitResponse false; Launch HTTP verified by http_200_count)",
           "type": "log_contains",
           "pattern": "[AF_QA][startSDK] result: SUCCESS",
           "fail_action": "abort"
@@ -147,7 +147,7 @@
       "checks": [
         {
           "id": "sdk_started",
-          "description": "startSDK returns SUCCESS on fresh install",
+          "description": "start() dispatched without RPC error on fresh install (Launch HTTP verified by http_200_count)",
           "type": "log_contains",
           "pattern": "[AF_QA][startSDK] result: SUCCESS",
           "fail_action": "abort"
