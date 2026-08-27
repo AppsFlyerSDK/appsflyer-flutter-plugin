@@ -935,6 +935,18 @@ main() {
       continue
     fi
 
+    # Optional per-phase platform gate (omit `platforms` to run on every runner platform).
+    if ! echo "$phase" | jq -e --arg p "$PLATFORM" '
+        (.platforms // []) | length == 0 or index($p) != null
+      ' >/dev/null; then
+      log_info "Skipping phase ${pid} (scheduled for: $(echo "$phase" | jq -c '.platforms'), runner: ${PLATFORM})"
+      PHASE_RESULTS=$(echo "$PHASE_RESULTS" | jq \
+        --arg pid "$pid" \
+        '. + [{phase_id: $pid, status: "SKIPPED", checks: {}, log_file: "N/A", note: "Not scheduled for this platform"}]')
+      p=$((p + 1))
+      continue
+    fi
+
     run_phase "$phase"
 
     if $ABORTED; then
