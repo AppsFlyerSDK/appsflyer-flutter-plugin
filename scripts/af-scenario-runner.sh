@@ -486,7 +486,12 @@ run_phase_command() {
 
   log_info "${label}: ${command}"
   set +e
-  output=$(eval "$command" 2>&1)
+  # stdin is detached because callers iterate command lists with `while read`
+  # fed by a pipe or process substitution. `adb shell` drains stdin, which
+  # would starve the loop and silently skip every remaining command — that is
+  # how the `sleep` pre-actions between backgrounding and a deep link trigger
+  # used to disappear.
+  output=$(eval "$command" 2>&1 </dev/null)
   status=$?
   set -e
 
