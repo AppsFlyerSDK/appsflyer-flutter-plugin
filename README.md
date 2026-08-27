@@ -16,8 +16,16 @@ To do so, please follow [this article](https://support.appsflyer.com/hc/en-us/ar
 
 This plugin release bundles:
 
-- Android AppsFlyer SDK **v7.0.1**
-- iOS AppsFlyer SDK **v7.0.2**
+| Platform | RPC layer the plugin pins | AppsFlyer SDK it brings |
+|----------|---------------------------|-------------------------|
+| Android | `af-android-plugin-bridge` **v7.0.12** | **v7.0.1** |
+| iOS | `AppsFlyerRPC` **v7.0.13** | **v7.0.2** |
+
+Since v7.0.0 the plugin integrates through the AppsFlyer RPC layer instead of
+depending on the native SDK directly. On Android the SDK is resolved transitively
+by the bridge — do not pin `com.appsflyer:af-android-sdk` yourself. On iOS the
+podspec pins `AppsFlyerFramework` explicitly, and it must stay on the version
+`AppsFlyerRPC` requires.
 
 ### Purchase Connector versions
 
@@ -28,8 +36,8 @@ When Purchase Connector is enabled in your app:
 
 ## ❗❗ Breaking changes when updating to v7.x.x ❗❗
 
-Version `7.0.2` targets AppsFlyer SDK **7.0.1** on Android and **7.0.2** on iOS.
-The public Flutter API changed in this major release.
+The public Flutter API changed in this major release. For the native SDK
+versions this release resolves to, see [SDK Versions](#sdk-versions) above.
 
 - **Minimum supported versions: Flutter `3.35.0`, Dart `3.9.0` (and earlier than
   `4.0.0`), Android API 21, and iOS 13.0.** On Android the plugin also requires
