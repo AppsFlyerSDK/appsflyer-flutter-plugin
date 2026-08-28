@@ -100,7 +100,6 @@ jobs:
     outputs:
       version: ${{ steps.compute.outputs.version }}
       base_version: ${{ steps.compute.outputs.base_version }}
-      podspec_version: ${{ steps.compute.outputs.podspec_version }}
       is_rc: ${{ steps.compute.outputs.is_rc }}
       is_valid: ${{ steps.compute.outputs.is_valid }}
       base_branch: ${{ steps.compute.outputs.base_branch }}
@@ -186,8 +185,6 @@ jobs:
 
           # Compute base version (remove -rcN), keep +build if present
           BASE_VERSION=$(echo "$VERSION" | sed 's/-rc[0-9]*$//')
-          # Podspec version must remove both +build and -rcN
-          PODSPEC_VERSION=$(echo "$VERSION" | sed -E 's/(\+[0-9]+)?(-rc[0-9]+)?$//')
 
           MAJOR_MINOR=$(echo "$BASE_VERSION" | grep -oE '^[0-9]+\.[0-9]+')
           MAJOR=$(echo "$BASE_VERSION" | grep -oE '^[0-9]+')
@@ -195,7 +192,6 @@ jobs:
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "base_version=$BASE_VERSION" >> $GITHUB_OUTPUT
-          echo "podspec_version=$PODSPEC_VERSION" >> $GITHUB_OUTPUT
           echo "is_rc=true" >> $GITHUB_OUTPUT
           echo "is_valid=true" >> $GITHUB_OUTPUT
           echo "base_branch=$BASE_BRANCH_INPUT" >> $GITHUB_OUTPUT
@@ -275,126 +271,25 @@ jobs:
             git checkout -b "$REL_BRANCH"
           fi
 
-      - name: Update pubspec.yaml version (RC full)
-        run: |
-          VERSION='${{ needs.validate-release.outputs.version }}'
-          echo "Setting pubspec.yaml version to $VERSION (includes -rcN)"
-          sed -i.bak "s/^version: .*/version: $VERSION/" pubspec.yaml
-          rm pubspec.yaml.bak
-          grep "^version:" pubspec.yaml
-
       # The Android SDK is not pinned directly — it resolves transitively from
       # af-android-plugin-bridge (compile scope in the bridge POM). Rewriting
-      # the bridge pin is therefore the only way to change which SDK ships,
-      # which is why there is no android_sdk_version input.
-      - name: Update Android bridge & Purchase Connector pins
+      # the bridge pin is the only way to change which SDK ships, which is why
+      # there is no android_sdk_version input.
+      - name: Write version to every surface
+        env:
+          VERSION: ${{ needs.validate-release.outputs.version }}
+          IOS_VER: ${{ needs.validate-release.outputs.ios_sdk_version }}
+          IOS_PC_VER: ${{ needs.validate-release.outputs.ios_pc_version }}
+          BRIDGE_VER: ${{ needs.validate-release.outputs.android_bridge_version }}
+          AND_PC_VER: ${{ needs.validate-release.outputs.android_pc_version }}
         run: |
           set -euo pipefail
-          BRIDGE_VER='${{ needs.validate-release.outputs.android_bridge_version }}'
-          AND_PC_VER='${{ needs.validate-release.outputs.android_pc_version }}'
-          FILE='android/build.gradle'
-
-          # An artifact that is absent is an error, not a skip: sed alone would
-          # leave the pin at its old version and still succeed.
-          pin_gradle_dep() {
-            local artifact="$1" version="$2"
-            if ! grep -q "com\.appsflyer:${artifact}:" "$FILE"; then
-              echo "::error::${FILE} has no com.appsflyer:${artifact} pin to update"
-              exit 1
-            fi
-            sed -i.bak -E "s/com\.appsflyer:${artifact}:[0-9]+\.[0-9]+\.[0-9]+/com.appsflyer:${artifact}:${version}/" "$FILE"
-            rm "${FILE}.bak"
-            grep -n "com\.appsflyer:${artifact}:" "$FILE"
-          }
-
-          if [[ -n "$BRIDGE_VER" ]]; then
-            pin_gradle_dep af-android-plugin-bridge "$BRIDGE_VER"
-          else
-            echo "android_bridge_version not provided — leaving the af-android-plugin-bridge pin unchanged"
-          fi
-
-          if [[ -n "$AND_PC_VER" ]]; then
-            pin_gradle_dep purchase-connector "$AND_PC_VER"
-          else
-            echo "android_pc_version not provided — leaving the purchase-connector pin unchanged"
-          fi
-
-      - name: Update iOS podspec version and dependencies
-        run: |
-          set -euo pipefail
-          PODSPEC_VERSION='${{ needs.validate-release.outputs.podspec_version }}'
-          IOS_VER='${{ needs.validate-release.outputs.ios_sdk_version }}'
-          IOS_PC_VER='${{ needs.validate-release.outputs.ios_pc_version }}'
-          FILE='ios/appsflyer_sdk.podspec'
-
-          if [ ! -f "$FILE" ]; then
-            echo "::error::$FILE not found — cannot prepare an iOS release without it"
-            exit 1
-          fi
-
-          # Spacing after the comma varies between podspec entries, so it is
-          # matched loosely. A pod that is absent is an error, not a skip.
-          pin_pod_dep() {
-            local pod="$1" version="$2"
-            if ! grep -qE "ss\.ios\.dependency '${pod}'," "$FILE"; then
-              echo "::error::$FILE has no '${pod}' dependency to update"
-              exit 1
-            fi
-            sed -i.bak -E "s/(ss\.ios\.dependency '${pod}',[[:space:]]*)'[^']*'/\1'${version}'/" "$FILE"
-            rm "${FILE}.bak"
-          }
-
-          if ! grep -qE "^[[:space:]]*s\.version[[:space:]]*=" "$FILE"; then
-            echo "::error::$FILE has no s.version line to update"
-            exit 1
-          fi
-          sed -i.bak -E "s/^([[:space:]]*s\.version[[:space:]]*=[[:space:]]*)'[^']*'/\1'${PODSPEC_VERSION}'/" "$FILE"
-          rm "${FILE}.bak"
-
-          pin_pod_dep AppsFlyerFramework "$IOS_VER"
-
-          # PurchaseConnector lives in an optional subspec. Defaults to IOS_VER
-          # (same as ios_sdk_version) unless ios_pc_version was passed —
-          # same semantics as Unity's rc-release.yml.
-          if grep -qE "ss\.ios\.dependency 'PurchaseConnector'," "$FILE"; then
-            pin_pod_dep PurchaseConnector "$IOS_PC_VER"
-          fi
-
-          echo "Updated podspec lines:"
-          grep -nE "s\.version|AppsFlyerRPC|AppsFlyerFramework|PurchaseConnector" "$FILE"
-
-      - name: Update plugin version constants (Android/iOS/Dart)
-        run: |
-          set -euo pipefail
-          VERSION='${{ needs.validate-release.outputs.version }}'
-          echo "Updating PLUGIN_VERSION constants to: $VERSION"
-
-          # All three constants are required — they are what the plugin reports
-          # as its version in the RPC payload.
-          pin_version_constant() {
-            local label="$1" file="$2" constant="$3"
-            if [ ! -f "$file" ]; then
-              echo "::error::$label plugin version file not found: $file"
-              exit 1
-            fi
-            if ! grep -q "${constant} = \"" "$file"; then
-              echo "::error::$file has no ${constant} assignment to update"
-              exit 1
-            fi
-            sed -i.bak "s/${constant} = \".*\"/${constant} = \"$VERSION\"/" "$file"
-            rm "${file}.bak"
-            echo "✅ $label:" && grep -n "$constant" "$file"
-          }
-
-          pin_version_constant Android \
-            "android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsFlyerConstants.kt" \
-            PLUGIN_VERSION
-          pin_version_constant Dart \
-            "lib/src/appsflyer_constants.dart" \
-            PLUGIN_VERSION
-          pin_version_constant iOS \
-            "ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift" \
-            kAppsFlyerPluginVersion
+          args=(--plugin-version "$VERSION")
+          [[ -n "$IOS_VER" ]] && args+=(--ios-sdk "$IOS_VER")
+          [[ -n "$IOS_PC_VER" ]] && args+=(--ios-pc "$IOS_PC_VER")
+          [[ -n "$BRIDGE_VER" ]] && args+=(--android-bridge "$BRIDGE_VER")
+          [[ -n "$AND_PC_VER" ]] && args+=(--android-pc "$AND_PC_VER")
+          bash scripts/set-version.sh "${args[@]}"
 
       # Single source for every version reported downstream: README, commit
       # message, PR body, release notes and Slack. Runs after the pins are
@@ -477,6 +372,9 @@ jobs:
 
           echo "README updated versions:"
           sed -n '/## SDK Versions/,/## ❗/p' README.md
+
+      - name: Verify every version surface agrees
+        run: bash scripts/verify-version-consistency.sh
 
       - name: Commit & push changes
         id: push
