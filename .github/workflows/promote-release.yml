@@ -158,6 +158,9 @@ jobs:
             exit 1
           fi
       
+      - name: Verify every version surface agrees
+        run: bash scripts/verify-version-consistency.sh
+
       - name: Commit and push version changes
         run: |
           VERSION='${{ steps.compute-version.outputs.version }}'
@@ -167,7 +170,9 @@ jobs:
           git config user.name "github-actions[bot]"
           
           if [[ -n $(git status -s) ]]; then
-            git add pubspec.yaml android/ ios/
+            # lib/ holds the Dart PLUGIN_VERSION constant behind the public
+            # pluginVersion getter, rewritten by the step above.
+            git add pubspec.yaml android/ ios/ lib/
             git commit -m "chore: prepare production release $VERSION (from $CURRENT)"
             git push
             echo "✅ Pushed version update to release branch"

@@ -288,6 +288,11 @@ jobs:
             echo "✅ pub.dev credentials found"
           fi
       
+      # This job's gate is `always()`, so a failure in validate-release does not
+      # stop it. Version checks belong here, ahead of the irreversible publish.
+      - name: Verify every version surface agrees
+        run: bash scripts/verify-version-consistency.sh
+
       - name: Publish to pub.dev
         if: needs.validate-release.outputs.is_dry_run != 'true'
         run: |

@@ -1,7 +1,7 @@
 part of appsflyer_sdk;
 
 class _AppsFlyerConstants {
-  static const String PLUGIN_VERSION = "7.0.2-rc1";
+  static const String PLUGIN_VERSION = "7.0.2";
   static const String AF_EVENTS_CHANNEL = "af-events";
   static const String AF_METHOD_CHANNEL = "af-api";
 
