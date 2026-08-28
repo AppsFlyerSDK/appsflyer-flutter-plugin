@@ -285,6 +285,43 @@ ios_ensure_udid() {
   fi
 }
 
+# Trust the app's custom URL scheme so `simctl openurl` opens it silently.
+#
+# iOS gates custom-scheme opens behind a LaunchServices approval keyed by
+# "<requesting process>-->'<scheme>'". `simctl openurl` requests through
+# CoreSimulatorBridge, so an unapproved scheme raises SpringBoard's
+# "Open in <App>?" alert — which nothing can dismiss in a non-interactive run,
+# and which a fresh CI simulator always hits. Writing the approval up front is
+# what lets a foreground deep link be triggered the way a real click would be,
+# instead of terminating the app and smuggling the URL in as a launch argument.
+ios_approve_url_scheme() {
+  ios_ensure_udid
+
+  local scheme
+  scheme=$(echo "$PLAN" | jq -r ".config.ios.url_scheme // empty")
+  if [[ -z "$scheme" ]]; then
+    # Fall back to the scheme of the first deep link the plan declares.
+    scheme=$(echo "$PLAN" | jq -r '[.phases[].deep_link_url // empty][0] // empty' | sed -n 's#^\([a-zA-Z][a-zA-Z0-9+.-]*\)://.*#\1#p')
+  fi
+  if [[ -z "$scheme" ]]; then
+    log_debug "No custom URL scheme in the plan; skipping scheme approval"
+    return 0
+  fi
+
+  local plist="$HOME/Library/Developer/CoreSimulator/Devices/${IOS_UDID}/data/Library/Preferences/com.apple.launchservices.schemeapproval.plist"
+  local key="com.apple.CoreSimulator.CoreSimulatorBridge-->${scheme}"
+
+  mkdir -p "$(dirname "$plist")" 2>/dev/null || true
+  # `Add` fails when the key already exists and `Set` fails when it does not,
+  # so try Set first and fall back to Add. Both are best effort: a stale
+  # approval is harmless and a failure only means the prompt may appear.
+  /usr/libexec/PlistBuddy -c "Set :${key} ${PACKAGE_NAME}" "$plist" >/dev/null 2>&1 ||
+    /usr/libexec/PlistBuddy -c "Add :${key} string ${PACKAGE_NAME}" "$plist" >/dev/null 2>&1 ||
+    log_warn "Could not pre-approve URL scheme '${scheme}'; a confirmation prompt may block deep links"
+
+  log_info "URL scheme '${scheme}' approved for ${PACKAGE_NAME}"
+}
+
 ios_is_installed() {
   xcrun simctl listapps "$IOS_UDID" 2>/dev/null | grep -q "$PACKAGE_NAME" 2>/dev/null
 }
@@ -292,11 +329,31 @@ ios_is_installed() {
 ios_uninstall() {
   ios_ensure_udid
   log_info "Uninstalling $PACKAGE_NAME..."
-  if ios_is_installed; then
-    xcrun simctl uninstall "$IOS_UDID" "$PACKAGE_NAME" 2>/dev/null || true
-  else
-    log_info "App not installed, skipping uninstall"
-  fi
+  # Unconditional: `simctl uninstall` is a no-op for an absent app, whereas
+  # gating on `ios_is_installed` risks skipping the uninstall on a transient
+  # `listapps` miss and leaving the data container — and its accumulated
+  # af_qa_logs.txt — in place, which makes a "fresh install" phase validate
+  # against the previous phase's markers.
+  xcrun simctl uninstall "$IOS_UDID" "$PACKAGE_NAME" 2>/dev/null || true
+  ios_purge_qa_logs
+}
+
+# Remove every stale af_qa_logs.txt so a fresh-install phase cannot match
+# markers written by an earlier phase. Belt and braces alongside the uninstall:
+# the QA log is the source of truth for [AF_QA] checks, and unlike Android's
+# `logcat -c` there is no way to reset it once the app is running.
+ios_purge_qa_logs() {
+  local sim_data_dir="$HOME/Library/Developer/CoreSimulator/Devices/${IOS_UDID}/data"
+  [[ -d "$sim_data_dir/Containers/Data/Application" ]] || return 0
+
+  local purged=0 qa_log
+  while IFS= read -r qa_log; do
+    [[ -z "$qa_log" ]] && continue
+    rm -f "$qa_log" 2>/dev/null && purged=$((purged + 1))
+  done < <(find "$sim_data_dir/Containers/Data/Application" -name "af_qa_logs.txt" -maxdepth 4 2>/dev/null)
+
+  [[ "$purged" -gt 0 ]] && log_info "Purged ${purged} stale QA log file(s)"
+  return 0
 }
 
 ios_install() {
@@ -346,7 +403,9 @@ ios_collect_logs() {
   sim_data_dir="$HOME/Library/Developer/CoreSimulator/Devices/${IOS_UDID}/data"
   if [[ -d "$sim_data_dir" ]]; then
     local qa_log
-    qa_log=$(find "$sim_data_dir/Containers/Data/Application" -name "af_qa_logs.txt" -maxdepth 4 2>/dev/null | head -1)
+    # Newest first: a reinstall can leave more than one data container behind,
+    # and only the most recently written log belongs to the running app.
+    qa_log=$(find "$sim_data_dir/Containers/Data/Application" -name "af_qa_logs.txt" -maxdepth 4 -exec stat -f '%m %N' {} + 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
     if [[ -n "$qa_log" && -f "$qa_log" ]]; then
       log_debug "Found iOS QA log file: $qa_log"
       cat "$qa_log" >> "$log_file"
@@ -486,7 +545,12 @@ run_phase_command() {
 
   log_info "${label}: ${command}"
   set +e
-  output=$(eval "$command" 2>&1)
+  # stdin is detached because callers iterate command lists with `while read`
+  # fed by a pipe or process substitution. `adb shell` drains stdin, which
+  # would starve the loop and silently skip every remaining command — that is
+  # how the `sleep` pre-actions between backgrounding and a deep link trigger
+  # used to disappear.
+  output=$(eval "$command" 2>&1 </dev/null)
   status=$?
   set -e
 
@@ -584,7 +648,10 @@ validate_check() {
       local minimum
       minimum=$(echo "$check_json" | jq -r '.minimum // 1')
       local count
-      count=$(grep -cE "$pattern" "$log_file" 2>/dev/null || echo "0")
+      # `grep -c` already prints 0 on no match and exits 1, so a `|| echo 0`
+      # fallback would make $count "0\n0" and break the comparison below.
+      count=$(grep -cE "$pattern" "$log_file" 2>/dev/null || true)
+      [[ -z "$count" ]] && count=0
       if [[ "$count" -ge "$minimum" ]]; then
         echo "{\"status\":\"PASS\",\"evidence\":\"Found ${count} matches (minimum: ${minimum})\"}"
       else
@@ -840,6 +907,7 @@ main() {
       log_info "Android device: $device"
     elif [[ "$PLATFORM" == "ios" ]]; then
       ios_ensure_udid
+      ios_approve_url_scheme
     fi
   fi
 
@@ -863,6 +931,18 @@ main() {
     # Apply phase filter if set
     if [[ -n "$PHASE_FILTER" && "$pid" != "$PHASE_FILTER" ]]; then
       log_debug "Skipping phase $pid (filter: $PHASE_FILTER)"
+      p=$((p + 1))
+      continue
+    fi
+
+    # Optional per-phase platform gate (omit `platforms` to run on every runner platform).
+    if ! echo "$phase" | jq -e --arg p "$PLATFORM" '
+        (.platforms // []) | length == 0 or index($p) != null
+      ' >/dev/null; then
+      log_info "Skipping phase ${pid} (scheduled for: $(echo "$phase" | jq -c '.platforms'), runner: ${PLATFORM})"
+      PHASE_RESULTS=$(echo "$PHASE_RESULTS" | jq \
+        --arg pid "$pid" \
+        '. + [{phase_id: $pid, status: "SKIPPED", checks: {}, log_file: "N/A", note: "Not scheduled for this platform"}]')
       p=$((p + 1))
       continue
     fi

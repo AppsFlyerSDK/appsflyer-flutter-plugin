@@ -1,79 +1,76 @@
 ---
 id: F-001
-name: SDK Initialization & Options Validation
+name: SDK Initialization
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-07-15
+last_verified: 2026-08-10
 depends_on: []
 ---
 
 ## Business Purpose
-This is the entry point that wires the Flutter app's dev key, app ID and startup flags into the native AppsFlyer SDK. Without it, no other AppsFlyer API works: no attribution, no events, no deep linking. The Dart-side validation (`_validateAFOptions` / `_validateMapOptions`) catches misconfiguration early (missing dev key, malformed iOS numeric App Store ID) via `assert`s, and decides whether the SDK auto-starts or waits for an explicit `startSDK()` call (F-002). It also stamps the plugin's identity (`Plugin.FLUTTER` / `AFSDKPluginFlutter`) onto the native SDK so AppsFlyer's backend can attribute traffic to the Flutter wrapper.
-
-> TODO: enrich from product specs — provide a Notion database URL and re-run Phase 4 to fill this automatically.
+`AppsFlyerSdk.init` configures the native AppsFlyer SDK 7 instance with the developer key and, on iOS, the Apple App ID. Before initialization, the platform bridge makes a best-effort call that identifies the integration as the Flutter plugin; failure of this reporting step does not abort initialization. Initialization does not register optional native listeners and does not send a session; those operations remain explicit public API calls.
 
 ---
 
 ## Trigger
-Called once by the host app immediately after constructing `AppsflyerSdk(options)`, typically in `main()` before `runApp()`. Runs whenever `initSdk()` is invoked, regardless of whether `AppsFlyerOptions` (typed) or a raw `Map` was passed to the factory constructor.
+Intended to be called once during application setup through the shared `AppsFlyerSdk.instance`, and before registering the native conversion, deep-link, or session-ready listeners the app needs. Dart does not enforce a single call. Android accepts no `appId`; iOS requires a non-empty value.
 
 ---
 
 ## Call Chain
+All Dart-to-native traffic uses the `af-api` `MethodChannel`. The public method wraps the platform-specific initialization parameters in the standard `{method, params}` RPC envelope.
+
 ```
-AppsflyerSdk(options) factory                                          [lib/src/appsflyer_sdk.dart]
-  → AppsflyerSdk.private(...)                                          [lib/src/appsflyer_sdk.dart]
-AppsflyerSdk.initSdk({registerConversionDataCallback, registerOnAppOpenAttributionCallback, registerOnDeepLinkingCallback})
-  → _validateAFOptions(AppsFlyerOptions) | _validateMapOptions(Map)     [lib/src/appsflyer_sdk.dart]
-    → _methodChannel.invokeMethod("initSdk", validatedOptions)
-      → Android: AppsflyerSdkPlugin.onMethodCall("initSdk") → initSdk(call, result)   [android/.../AppsflyerSdkPlugin.java]
-        → AppsFlyerLib.getInstance().init(afDevKey, gcdListener, mContext)
-        → instance.start(activity)  [only if isManualStartMode == false]
-      → iOS: AppsflyerSdkPlugin.handleMethodCall("initSdk") → initSdkWithCall:result:   [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
-        → [AppsFlyerLib shared].appsFlyerDevKey / .appleAppID / .isDebug = ...
-        → [[AppsFlyerLib shared] start]  [only if manualStart == NO]
+AppsFlyerSdk.instance.init(devKey: ..., appId: ...)                    [lib/src/appsflyer_sdk.dart]
+  → _invokeVoidRpc('init', platform-specific params)
+    → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
+      → Android: AppsflyerSdkPlugin.initFromRpc                       [android/.../AppsflyerSdkPlugin.kt]
+        → best-effort setPluginInfo(plugin: flutter, pluginVersion); failure is ignored
+        → Android RPC init(devKey)
+      → iOS: AppsflyerSdkPlugin.initFromRpc                           [ios/.../AppsflyerSdkPlugin.swift]
+        → best-effort setPluginInfo(plugin: flutter, pluginVersion); failure is ignored
+        → iOS RPC initialize(devKey, appId)
+        → handle pending launch options, when present
+        → mark the attribution bridge ready and flush queued lifecycle requests
 ```
+
+Listener registration is intentionally not part of this sequence. The app separately calls `registerConversionListener`, `registerDeepLinkListener`, and/or `registerSessionReadyListener` after initialization.
 
 ---
 
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `initSdk`, `_validateAFOptions`, `_validateMapOptions` — validation + MethodChannel dispatch |
-| `lib/src/appsflyer_options.dart` | `AppsFlyerOptions` typed config model (devKey, appId, ATT wait time, manualStart, etc.) |
-| `lib/src/appsflyer_constants.dart` | String keys shared across Dart/native (`AF_DEV_KEY`, `AF_APP_Id`, `AF_MANUAL_START`, `AF_GCD`, `AF_UDL`, `PLUGIN_VERSION`) |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `initSdk(call, result)` — native Android init, conditional auto-start |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsFlyerConstants.java` | Native Android mirror of the Dart string keys |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `initSdkWithCall:result:` — native iOS init, conditional auto-start |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/include/appsflyer_sdk/AppsflyerSdkPlugin.h` | `#define` string keys (`afDevKey`, `afAppId`, `afManualStart`, …) and `kAppsFlyerPluginVersion` |
+| `lib/src/appsflyer_sdk.dart` | `AppsFlyerSdk.instance`, `init`, `_invokeVoidRpc`, and `_invokeRpc` |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | Makes the non-blocking `setPluginInfo` call before the required `init` RPC; dev-key validation is left to the RPC layer so its `422` reaches the caller intact |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | Makes the non-blocking `setPluginInfo` call before `initialize`, forwards pending launch options, and marks the attribution bridge ready |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `afDevKey` (String, required), `appId` (String, required on iOS — validated against `^\d{8,11}$`), `showDebug` (bool), `manualStart` (bool), `timeToWaitForATTUserAuthorization` (double, iOS only), `disableAdvertisingIdentifier` (bool), `disableCollectASA` (bool, iOS only), `appInviteOneLink` (String?), plus derived flags `GCD`/`UDL` computed from the `registerConversionDataCallback` / `registerOnAppOpenAttributionCallback` / `registerOnDeepLinkingCallback` parameters |
-| **Output** | Native SDK instance initialized and, unless `manualStart: true`, started; Android returns `"success"` string to Dart, iOS returns `{"status": "OK"}`. Neither is currently exposed to the caller since `initSdk()`'s returned `Future` is rarely awaited for its value. |
+| **Input** | `devKey` (`String`, required by both native RPC layers); `appId` (`String?`, required by the native iOS RPC layer, omitted from the Android RPC request). Dart does not validate either value before transport. |
+| **Output** | `Future<void>` that completes after the required initialization operations succeed: Android `init`, or iOS `initialize` plus pending launch-options handling when present. Invalid input is validated by the native RPC layer and surfaced as `AppsFlyerException` when the RPC reports an error. `setPluginInfo` failure is intentionally non-blocking. No session is sent. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` — `check initSdk call` (line 93) constructs `AppsflyerSdk.private(...)` with `mapOptions` and asserts the mocked channel receives `initSdk`. This exercises `_validateMapOptions` end-to-end but does not assert on the resulting validated map's contents, and does not cover `_validateAFOptions` (the typed `AppsFlyerOptions` path) or the iOS App ID regex / ATT-wait-time assertions at all — those run only under `Platform.isIOS`, which the Dart test environment does not satisfy.
+`test/appsflyer_sdk_test.dart` verifies the iOS payload, confirms that Android omits `appId`, allows Android initialization without it, forwards invalid `devKey`/`appId` values to the native RPC layer instead of validating them in Dart, and verifies the singleton entry point.
 
 ---
 
 ## Known Limitations
-- Validation uses Dart `assert()`, which is stripped in release/profile builds — a missing `afDevKey` or malformed iOS `appId` will silently pass validation in release mode and only fail (or silently misbehave) once it reaches native code.
-- The plugin version string is duplicated in three places and has drifted: Dart `AppsflyerConstants.PLUGIN_VERSION = "6.17.9"` (`lib/src/appsflyer_constants.dart`) vs. Android `AppsFlyerConstants.PLUGIN_VERSION = "6.18.0"` and iOS `kAppsFlyerPluginVersion = "6.18.0"` (matching `pubspec.yaml`'s `6.18.0`). The value reported to AppsFlyer's backend via `PluginInfo`/`setPluginInfoWith:` therefore differs from what `getVersionNumber()` (F-003) returns to the app.
-- `disableCollectASA` and `timeToWaitForATTUserAuthorization` are only read/applied on iOS; on Android these options are silently ignored (no assertion or warning).
-- Android's `initSdk` calls `result.success("success")` unconditionally at the end, even though `setDisableAdvertisingIdentifiers`, `subscribeForDeepLink`, etc. earlier in the method have no error handling — a native exception before that line surfaces to Flutter only as a generic platform exception, not one of the plugin's own error codes.
+- Input validation for `devKey` and `appId` is performed by the native RPC layer. Android rejects an empty `devKey` through `InitRequest` (`422`); iOS rejects a missing or empty `appId` through `AFRPCInitRequest`. Dart forwards the values as supplied and does not validate them before transport.
+- Plugin identification is best-effort on both platforms. A `setPluginInfo` failure does not fail `init()`, so successful completion confirms native initialization but not successful plugin-info reporting.
+- Initialization alone does not produce conversion, deep-link, session-ready, or Launch events. The relevant native listeners and `start()` must be invoked explicitly.
 
 ---
 
 ## Dependencies
 ```mermaid
 flowchart LR
-    F001["F-001 · SDK Initialization & Options Validation"]:::sdkCore
+    F001["F-001 · SDK Initialization"]:::sdkCore
     classDef sdkCore fill:#4C6EF5,color:#fff
 ```

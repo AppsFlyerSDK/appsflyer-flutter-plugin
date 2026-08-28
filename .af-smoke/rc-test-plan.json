@@ -18,6 +18,7 @@
     },
     "ios": {
       "bundle_id": "com.appsflyer.example",
+      "url_scheme": "afexample",
       "app_path": "example_rc_smoke/build/ios/iphonesimulator/Runner.app",
       "build_cmd": "cd example_rc_smoke && flutter pub get && flutter build ios --simulator --debug"
     }
@@ -34,7 +35,7 @@
       "checks": [
         {
           "id": "sdk_started",
-          "description": "startSDK returns SUCCESS",
+          "description": "start() dispatched without RPC error (awaitResponse false; Launch HTTP verified by http_200_count)",
           "type": "log_contains",
           "pattern": "[AF_QA][startSDK] result: SUCCESS",
           "fail_action": "abort"
@@ -131,23 +132,23 @@
       "id": "phase_3",
       "name": "Foreground deep link (RC artifact)",
       "scenario_ref": "SMOKE-003",
-      "description": "Fresh install of the RC build, then deep link. onDeepLinking fires with Status.FOUND and deepLinkValue=qa_deeplink_fg. iOS uses `simctl launch -deepLinkURL` + AppDelegate replay; same rationale as phase_2.",
+      "description": "Fresh install of the RC build, then deep link on the first session. onDeepLinking fires with Status.FOUND and deepLinkValue=qa_deeplink_fg. iOS keeps the app in the foreground and uses `simctl openurl`, which the runner enables by pre-approving the scheme in the simulator's LaunchServices store. Mirrors the mechanic in .af-e2e/test-plan.json.",
       "requires_fresh_install": true,
       "wait_after_launch_sec": 240,
       "wait_after_trigger_sec": 90,
       "deep_link_url": "afexample://deeplink?deep_link_value=qa_deeplink_fg&af_sub1=foreground_test&pid=testmedia&c=deeplink_test",
       "pre_actions": {
         "android": ["adb shell am start -a android.intent.action.MAIN -c android.intent.category.HOME", "sleep 1"],
-        "ios": ["xcrun simctl terminate {{UDID}} {{BUNDLE_ID}}", "sleep 1"]
+        "ios": ["sleep 1"]
       },
       "trigger": {
         "android": "adb shell am start -W -a android.intent.action.VIEW -d \"{{DEEP_LINK_URL}}\"",
-        "ios": "xcrun simctl launch {{UDID}} {{BUNDLE_ID}} -deepLinkURL \"{{DEEP_LINK_URL}}\""
+        "ios": "xcrun simctl openurl {{UDID}} \"{{DEEP_LINK_URL}}\""
       },
       "checks": [
         {
           "id": "sdk_started",
-          "description": "startSDK returns SUCCESS on fresh install",
+          "description": "start() dispatched without RPC error on fresh install (Launch HTTP verified by http_200_count)",
           "type": "log_contains",
           "pattern": "[AF_QA][startSDK] result: SUCCESS",
           "fail_action": "abort"

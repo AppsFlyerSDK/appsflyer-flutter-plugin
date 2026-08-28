@@ -3,38 +3,30 @@ id: F-021
 name: Delayed Session Start Pending CUID
 type: sdkCore
 platform: android
-status: active
-last_verified: 2026-07-15
+status: removed
+last_verified: 2026-08-10
 depends_on: ["F-015"]
 ---
 
 ## Business Purpose
-Some apps only know the user's own customer ID (CUID) after login, but want every session — including the very first one — attributed with that ID rather than logging an "anonymous" session first. `waitForCustomerUserId(true)` tells the SDK to hold off logging the launch/session event until `setCustomerIdAndLogSession()` explicitly supplies the CUID and unblocks it. Without this pair of APIs, an app that authenticates after launch would either lose the CUID association on the first session or have to accept an anonymous first session in its AppsFlyer reporting.
+In SDK 6 the plugin exposed `waitForCustomerUserId(bool)` and `setCustomerIdAndLogSession(String)` so an app could hold the first session until it supplied a customer user ID after login.
 
-> TODO: enrich from product specs — provide a Notion database URL and re-run Phase 4 to fill this automatically.
+> **Removed in SDK 7.** Both APIs no longer exist in the Flutter plugin. SDK 7 replaces this pattern with the app-driven session model: `init()` does not send a session, so the app simply awaits `setCustomerUserId()` **before** `start()` to guarantee a CUID-attributed first session. See [`doc/migration-guide.md`](../../doc/migration-guide.md) and F-002 (SDK Start).
 
 ---
 
 ## Trigger
-`waitForCustomerUserId(true)` is called during startup configuration (typically before or instead of relying on auto-start) to arm the delay. `setCustomerIdAndLogSession(id)` is called later, once the app has resolved the user's customer ID (e.g. after login), to supply the ID and release the held session.
+None. The APIs have been removed. To gate the first session on a CUID, defer `start()` — called from the callback registered with `registerSessionReadyListener()` — until after `setCustomerUserId()` has completed.
 
 ---
 
 ## Call Chain
-```
-AppsflyerSdk.waitForCustomerUserId(wait)                               [lib/src/appsflyer_sdk.dart]
-  → _methodChannel.invokeMethod("waitForCustomerUserId", {'wait': wait})
-    → Android: AppsflyerSdkPlugin.onMethodCall("waitForCustomerUserId") → waitForCustomerUserId(call, result)   [android/.../AppsflyerSdkPlugin.java]
-      → AppsFlyerLib.getInstance().waitForCustomerUserId(wait)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("waitForCustomerUserId") → waitForCustomerId:result:              [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
-      → NO-OP — the method body only calls result(nil); no native AppsFlyerLib API is invoked
+There is no current call chain. Neither `waitForCustomerUserId` nor `setCustomerIdAndLogSession` exists in `lib/src/appsflyer_sdk.dart`, and neither is handled by the `executeRpc` dispatch on Android or iOS. The SDK 7 equivalent is call ordering:
 
-AppsflyerSdk.setCustomerIdAndLogSession(id)                            [lib/src/appsflyer_sdk.dart]
-  → _methodChannel.invokeMethod("setCustomerIdAndLogSession", {'id': id})
-    → Android: AppsflyerSdkPlugin.onMethodCall("setCustomerIdAndLogSession") → setCustomerIdAndLogSession(call, result)   [android/.../AppsflyerSdkPlugin.java]
-      → AppsFlyerLib.getInstance().setCustomerIdAndLogSession(id, mContext)
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("setCustomerIdAndLogSession") → setCustomerUserId:result:                  [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
-      → routed to the same handler as plain setCustomerUserId — [AppsFlyerLib shared] setCustomerUserID:id]; no "log session" semantics
+```
+AppsFlyerSdk.setCustomerUserId(id)   → RPC setCustomerUserId {customerId}   [F-015]
+AppsFlyerSdk.start()                 → RPC start {awaitResponse: false}     [F-002]
+  (await setCustomerUserId() first, then call start() from the session-ready callback)
 ```
 
 ---
@@ -42,36 +34,32 @@ AppsflyerSdk.setCustomerIdAndLogSession(id)                            [lib/src/
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `waitForCustomerIdAndLogSession` split into `waitForCustomerUserId(bool)` and `setCustomerIdAndLogSession(String)` — no `Platform.isAndroid` guard on either |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `waitForCustomerUserId(call, result)` (line 971), `setCustomerIdAndLogSession(call, result)` (line 1009) — both proxy real native APIs |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `waitForCustomerId:result:` (line 757, no-op stub), `setCustomerIdAndLogSession` dispatch aliased to `setCustomerUserId:result:` (line 107/722) |
-| `doc/API.md` | Explicitly documents both APIs as **"Android only!"** (lines 440, 449) |
+| — | No implementation remains. Removal is documented in [`doc/migration-guide.md`](../../doc/migration-guide.md) and `CHANGELOG.md`. |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `waitForCustomerUserId`: `wait` (bool) — `true` delays session logging until a CUID is set. `setCustomerIdAndLogSession`: `id` (String) — the customer user ID to attach and the trigger to release the held session. |
-| **Output** | `void` for both — fire-and-forget; no confirmation returned to Dart. |
+| **Input** | Removed: `waitForCustomerUserId(bool)` / `setCustomerIdAndLogSession(String)` |
+| **Output** | None. Use F-015 and F-002, which each return `Future<void>`. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` — `check waitForCustomerUserId call` (line 260) asserts the mocked channel receives `'waitForCustomerUserId'`. No test exists for `setCustomerIdAndLogSession` — it is absent from the mock handler's recognized-method switch (line 24-66) entirely, so calling it in a test would not even register as a captured method.
+No tests target the removed APIs. `test/appsflyer_sdk_test.dart` contains no references to `waitForCustomerUserId` or `setCustomerIdAndLogSession`; it separately verifies the current `setCustomerUserId` mapping and both `start()` values of `awaitResponse`, but does not run an end-to-end ordering test.
 
 ---
 
 ## Known Limitations
-- **Effectively Android-only, despite no platform guard in Dart.** On iOS, `waitForCustomerId:` is a hollow stub (`result(nil)` only) — calling `waitForCustomerUserId(true)` on iOS has zero effect on session logging. `setCustomerIdAndLogSession` on iOS is silently routed to the same code as plain `setCustomerUserId` (just sets the customer ID property) with no "wait/release" behavior at all. This means an app that relies on this feature to guarantee CUID-attributed first sessions gets that guarantee only on Android; on iOS the first session logs immediately, unattributed, regardless of `waitForCustomerUserId(true)`.
-- The official docs (`doc/API.md`) do flag both APIs "Android only," but the Dart API surface itself has no runtime warning, assertion, or `Platform.isAndroid` check — an integrator who skips the docs and only reads code/dartdoc could easily assume cross-platform parity.
-- No test coverage at all for `setCustomerIdAndLogSession`, and no test verifies the delay/release semantics (mocks only assert the method name was invoked, not any ordering or blocking behavior).
+- The delayed-session guarantee is now expressed through call ordering (`await setCustomerUserId()` before `start()`), not a dedicated API.
+- The removed APIs must not be restored or simulated in Dart, because the SDK 7 session model already lets the app decide when the first session is sent.
 
 ---
 
 ## Dependencies
 ```mermaid
 flowchart LR
-    F021["F-021 · Delayed Session Start Pending CUID"]:::sdkCore -->|"iOS: routed to same native handler as"| F015["F-015 · Customer User ID (CUID)"]:::sdkCore
+    F021["F-021 · Delayed Session Start Pending CUID (removed)"]:::sdkCore -->|"replaced by CUID + start ordering"| F015["F-015 · Customer User ID (CUID)"]:::sdkCore
     classDef sdkCore fill:#4C6EF5,color:#fff
 ```

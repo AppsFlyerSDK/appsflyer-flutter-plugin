@@ -288,6 +288,11 @@ jobs:
             echo "✅ pub.dev credentials found"
           fi
       
+      # This job's gate is `always()`, so a failure in validate-release does not
+      # stop it. Version checks belong here, ahead of the irreversible publish.
+      - name: Verify every version surface agrees
+        run: bash scripts/verify-version-consistency.sh
+
       - name: Publish to pub.dev
         if: needs.validate-release.outputs.is_dry_run != 'true'
         run: |
@@ -372,8 +377,13 @@ jobs:
         run: |
           VERSION="${{ needs.validate-release.outputs.version }}"
           
-          # Get SDK versions from files
-          ANDROID_SDK_VERSION=$(grep "implementation 'com.appsflyer:af-android-sdk:" android/build.gradle | sed -n "s/.*af-android-sdk:\([^']*\).*/\1/p" | head -1)
+          # Android has no local pin to read — it resolves through the bridge
+          # POM. This step runs after the publish, so a failed lookup must not
+          # leave a shipped version without a GitHub release.
+          ANDROID_SDK_VERSION=$(bash scripts/resolve-android-sdk-version.sh) || {
+            echo "::warning::Could not resolve the Android SDK version from the bridge POM; release notes will say unknown"
+            ANDROID_SDK_VERSION="unknown"
+          }
           IOS_SDK_VERSION=$(grep "s.ios.dependency 'AppsFlyerFramework'" ios/appsflyer_sdk.podspec | sed -n "s/.*AppsFlyerFramework',.*'\([^']*\)'.*/\1/p" | head -1)
           
           # Create enhanced release notes
@@ -405,9 +415,11 @@ jobs:
           
           ## 📚 Documentation
           
-          - [Installation Guide](https://github.com/${{ github.repository }}/blob/master/doc/Installation.md)
-          - [Basic Integration](https://github.com/${{ github.repository }}/blob/master/doc/BasicIntegration.md)
-          - [API Documentation](https://github.com/${{ github.repository }}/blob/master/doc/API.md)
+          - [Documentation index](https://github.com/${{ github.repository }}/blob/master/doc/README.md)
+          - [Installation](https://github.com/${{ github.repository }}/blob/master/doc/installation-guide.md)
+          - [Getting started](https://github.com/${{ github.repository }}/blob/master/doc/getting-started.md)
+          - [API reference](https://github.com/${{ github.repository }}/blob/master/doc/api-reference.md)
+          - [Migrating v6 → v7](https://github.com/${{ github.repository }}/blob/master/doc/migration-guide.md)
           - [Sample App](https://github.com/${{ github.repository }}/tree/master/example)
           
           ## 🔗 Links
@@ -474,8 +486,13 @@ jobs:
         run: |
           VERSION="${{ needs.validate-release.outputs.version }}"
           
-          # Extract Android SDK version
-          ANDROID_SDK_VERSION=$(grep "implementation 'com.appsflyer:af-android-sdk:" android/build.gradle | sed -n "s/.*af-android-sdk:\([^']*\).*/\1/p" | head -1)
+          # Android has no local pin to read — it resolves through the bridge
+          # POM. This job runs after the publish and only feeds a notification,
+          # so a failed lookup must not fail the release.
+          ANDROID_SDK_VERSION=$(bash scripts/resolve-android-sdk-version.sh) || {
+            echo "::warning::Could not resolve the Android SDK version from the bridge POM; reporting it as unknown"
+            ANDROID_SDK_VERSION="unknown"
+          }
           echo "android_sdk=$ANDROID_SDK_VERSION" >> $GITHUB_OUTPUT
           
           # Extract iOS SDK version from podspec

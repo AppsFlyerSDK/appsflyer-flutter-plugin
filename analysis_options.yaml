@@ -1,5 +1,9 @@
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  exclude:
+    - example_rc_smoke/**
+
 linter:
   rules:
     public_member_api_docs: false
@@ -7,3 +11,4 @@ linter:
     lines_longer_than_80_chars: false
     omit_local_variable_types: false
     avoid_positional_boolean_parameters: false
+    use_string_in_part_of_directives: false

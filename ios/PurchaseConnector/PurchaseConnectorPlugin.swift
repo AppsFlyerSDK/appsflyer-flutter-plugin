@@ -24,6 +24,14 @@ import Flutter
     
     /// Instance of method channel providing a bridge to Dart code.
     private var methodChannel: FlutterMethodChannel? = nil
+
+    /// Registrar whose engine installed the channel this singleton currently holds.
+    ///
+    /// This plugin keeps one channel per process while registration happens per engine, so a host
+    /// running several engines hands the channel to whichever one registered last. Recording the
+    /// registrar lets a detaching engine tell whether the channel is still its own before tearing
+    /// anything down, the same guard `AFRPCBridge` applies to the RPC event handler.
+    private weak var owningRegistrar: FlutterPluginRegistrar? = nil
     
     private var logOptions: AutoLogPurchaseRevenueOptions = []
     
@@ -37,9 +45,51 @@ import Flutter
 
     /// Mandatory method needed to register the plugin with iOS part of Flutter app.
     public static func register(with registrar: FlutterPluginRegistrar) {
+        /// Release the previous engine first: a stale channel would keep driving this singleton, and
+        /// its ownership-guarded `tearDown` would then skip clearing it. Per-engine state stays
+        /// impossible while `PurchaseConnector.shared()` is process-scoped.
+        shared.methodChannel?.setMethodCallHandler(nil)
+
         /// Create a new method channel with the registrar.
+        shared.owningRegistrar = registrar
         shared.methodChannel =  FlutterMethodChannel(name: AF_PURCHASE_CONNECTOR_CHANNEL, binaryMessenger: registrar.messenger())
         shared.methodChannel!.setMethodCallHandler(shared.methodCallHandler)
+    }
+
+    /// Releases everything this engine's registration owns, mirroring `EngineAttachment.dispose()` in
+    /// the Android connector: transaction observation stops, the delegate stops pointing at a channel
+    /// whose engine is gone, and `configure` becomes available again for the next engine.
+    ///
+    /// Called by `AppsflyerSdkPlugin.detachFromEngineForRegistrar:` — this plugin publishes no
+    /// instance of its own, so it has no detach callback to receive directly.
+    internal static func tearDownForEngineDetach(registrar: FlutterPluginRegistrar) {
+        onMain {
+            shared.tearDown(registrar: registrar)
+        }
+    }
+
+    private func tearDown(registrar: FlutterPluginRegistrar) {
+        /// A stale engine must not stop observing transactions for an engine that registered after it.
+        guard owningRegistrar === registrar else {
+            return
+        }
+        owningRegistrar = nil
+        connector?.stopObservingTransactions()
+        connector?.purchaseRevenueDelegate = nil
+        connector = nil
+        logOptions = []
+        methodChannel?.setMethodCallHandler(nil)
+        methodChannel = nil
+    }
+
+    /// Engine detach is the one entry point that may run off the main thread, and both StoreKit
+    /// observation and channel teardown belong on it.
+    private static func onMain(_ body: @escaping () -> Void) {
+        if Thread.isMainThread {
+            body()
+        } else {
+            DispatchQueue.main.async(execute: body)
+        }
     }
 
     /// Method called when a Flutter method call occurs. It handles and routes flutter method invocations.
@@ -141,7 +191,7 @@ extension PurchaseConnectorPlugin: PurchaseRevenueDelegate {
     /// Implementation of the `didReceivePurchaseRevenueValidationInfo` delegate method.
     /// When the validation info comes back after a purchase, it is reported back to the Flutter via the method channel.
     public func didReceivePurchaseRevenueValidationInfo(_ validationInfo: [AnyHashable : Any]?, error: Error?) {
-        var resMap: [AnyHashable : Any?] = [
+        let resMap: [AnyHashable : Any?] = [
             "validationInfo": validationInfo,
             "error" : error?.asDictionary
         ]
@@ -154,18 +204,26 @@ extension PurchaseConnectorPlugin: PurchaseRevenueDelegate {
 /// Extending `Error` to have a dictionary representation function. `asDictionary` will turn the current error instance into a dictionary containing `localizedDescription`, `domain` and `code` properties.
 extension Error {
     var asDictionary: [String: Any] {
-        var errorMap: [String: Any] = ["localizedDescription": self.localizedDescription]
-        if let nsError = self as? NSError {
-            errorMap["domain"] = nsError.domain
-            errorMap["code"] = nsError.code
-        }
-        return errorMap
+        let nsError = self as NSError
+        return [
+            "localizedDescription": self.localizedDescription,
+            "domain": nsError.domain,
+            "code": nsError.code,
+        ]
     }
 }
 
 extension Dictionary {
        
    var jsonData: Data? {
+      // `isValidJSONObject` must gate the write: `data(withJSONObject:)` raises
+      // `NSInvalidArgumentException` on a value it cannot represent, and `try?`
+      // does not catch an Objective-C exception. The validation payload comes from
+      // the native connector as an untyped `NSDictionary`, so returning nil here
+      // is the only way an unrepresentable value stays reportable.
+      guard JSONSerialization.isValidJSONObject(self) else {
+         return nil
+      }
       return try? JSONSerialization.data(withJSONObject: self, options: [.prettyPrinted])
    }
        

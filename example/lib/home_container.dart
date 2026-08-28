@@ -13,13 +13,13 @@ class HomeContainer extends StatefulWidget {
 
   // ignore: prefer_const_constructors_in_immutables
   HomeContainer({
-    Key? key,
+    super.key,
     required this.onData,
     required this.deepLinkData,
     required this.logEvent,
     required this.logAdRevenueEvent,
     required this.validatePurchase,
-  }) : super(key: key);
+  });
 
   @override
   State<HomeContainer> createState() => _HomeContainerState();
@@ -31,16 +31,18 @@ class _HomeContainerState extends State<HomeContainer> {
   final Map eventValues = {
     "af_content_id": "id123",
     "af_currency": "USD",
-    "af_revenue": "20"
+    "af_revenue": "20",
   };
 
   String _logEventResponse = "Awaiting event status";
 
   // Purchase validation fields
-  final TextEditingController _purchaseTokenController =
-      TextEditingController(text: "sample_purchase_token_12345");
-  final TextEditingController _productIdController =
-      TextEditingController(text: "com.example.product");
+  final TextEditingController _purchaseTokenController = TextEditingController(
+    text: "sample_purchase_token_12345",
+  );
+  final TextEditingController _productIdController = TextEditingController(
+    text: "com.example.product",
+  );
   String _validationResponse = "Awaiting validation";
 
   @override
@@ -117,8 +119,9 @@ class _HomeContainerState extends State<HomeContainer> {
                   const SizedBox(height: 12.0),
                   TextBorder(
                     controller: TextEditingController(
-                        text:
-                            "Event Name: $eventName\nEvent Values: $eventValues"),
+                      text:
+                          "Event Name: $eventName\nEvent Values: $eventValues",
+                    ),
                     labelText: "EVENT REQUEST",
                   ),
                   const SizedBox(height: 12.0),
@@ -129,26 +132,31 @@ class _HomeContainerState extends State<HomeContainer> {
                   const SizedBox(height: 20.0),
                   ElevatedButton(
                     onPressed: () {
-                      widget.logEvent(eventName, eventValues).then((onValue) {
-                        setState(() {
-                          _logEventResponse = "Event Status: $onValue";
-                        });
-                      }).catchError((onError) {
-                        setState(() {
-                          _logEventResponse = "Error: $onError";
-                        });
-                      });
+                      widget
+                          .logEvent(eventName, eventValues)
+                          .then((onValue) {
+                            setState(() {
+                              _logEventResponse = "Event Status: $onValue";
+                            });
+                          })
+                          .catchError((onError) {
+                            setState(() {
+                              _logEventResponse = "Error: $onError";
+                            });
+                          });
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
                       textStyle: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
                     ),
-                    child: Text("Trigger Purchase Event"),
+                    child: const Text("Trigger Purchase Event"),
                   ),
                   ElevatedButton(
                     onPressed: () {
@@ -157,13 +165,15 @@ class _HomeContainerState extends State<HomeContainer> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
                       textStyle: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
                     ),
-                    child: Text("Trigger AdRevenue Event"),
+                    child: const Text("Trigger AdRevenue Event"),
                   ),
                 ],
               ),
@@ -192,8 +202,10 @@ class _HomeContainerState extends State<HomeContainer> {
                     decoration: const InputDecoration(
                       labelText: "Purchase Token",
                       border: OutlineInputBorder(),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                     ),
                     maxLines: 2,
                   ),
@@ -203,21 +215,24 @@ class _HomeContainerState extends State<HomeContainer> {
                     decoration: const InputDecoration(
                       labelText: "Product ID",
                       border: OutlineInputBorder(),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12.0),
                   TextBorder(
                     labelText: "VALIDATION RESPONSE",
-                    controller:
-                        TextEditingController(text: _validationResponse),
+                    controller: TextEditingController(
+                      text: _validationResponse,
+                    ),
                   ),
                   const SizedBox(height: 20.0),
                   ElevatedButton(
                     onPressed: () {
-                      final purchaseToken =
-                          _purchaseTokenController.text.trim();
+                      final purchaseToken = _purchaseTokenController.text
+                          .trim();
                       final productId = _productIdController.text.trim();
 
                       if (purchaseToken.isEmpty || productId.isEmpty) {
@@ -231,32 +246,35 @@ class _HomeContainerState extends State<HomeContainer> {
                       widget
                           .validatePurchase(purchaseToken, productId)
                           .then((result) {
-                        setState(() {
-                          _validationResponse =
-                              "Validation successful!\nResult: ${Utils.formatJson(result ?? {})}";
-                        });
-                      }).catchError((error) {
-                        setState(() {
-                          _validationResponse =
-                              "Validation failed!\nError: $error";
-                        });
-                      });
+                            setState(() {
+                              _validationResponse =
+                                  "Validation successful!\nResult: ${Utils.formatJson(result ?? {})}";
+                            });
+                          })
+                          .catchError((error) {
+                            setState(() {
+                              _validationResponse =
+                                  "Validation failed!\nError: $error";
+                            });
+                          });
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
                       textStyle: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
                     ),
-                    child: Text("Validate Purchase V2"),
+                    child: const Text("Validate Purchase V2"),
                   ),
                 ],
               ),
-            )
+            ),
           ],
         ),
       ),

@@ -4,14 +4,12 @@ name: "Purchase Connector: Android Validation Result Listeners"
 type: purchaseValidation
 platform: android
 status: active
-last_verified: 2026-07-15
+last_verified: 2026-08-26
 depends_on: ["F-049"]
 ---
 
 ## Business Purpose
 On Android, F-049's `startObservingTransactions()` makes the native purchase-connector library automatically send every subscription (ARS) and in-app purchase (VIAP) transaction to AppsFlyer's server for validation, but that validation happens out-of-band from the app's own code. `setSubscriptionValidationResultListener` and `setInAppValidationResultListener` are how the app finds out the outcome of that server round trip — a typed success/failure result per purchase — so it can, for example, gate premium content on a confirmed-valid purchase or log a diagnostic when validation fails. Without these listeners the app would have automatic revenue attribution but zero visibility into whether any individual purchase was actually validated.
-
-> TODO: enrich from product specs — provide a Notion database URL and re-run Phase 4 to fill this automatically.
 
 ---
 
@@ -73,10 +71,10 @@ No dedicated test found. Grepping `test/` for `PurchaseConnector`, `Subscription
 ---
 
 ## Known Limitations
-- **Verified method-name mismatch that breaks delivery today**: `lib/src/appsflyer_constants.dart` defines the response/failure method names with a `#` separator (`"SubscriptionPurchaseValidationResultListener#onResponse"`, `"InAppValidationResultListener#onFailure"`, etc.), but `AppsFlyerPurchaseConnector.kt` actually invokes the method channel with a `:` separator (`"SubscriptionPurchaseValidationResultListener:onResponse"`, `"InAppValidationResultListener:onFailure"`). Since `MethodCall.method` on the Dart side is whatever string native sent, `_methodCallHandler`'s `switch` never matches these cases and falls through to `default: throw ArgumentError("Method not found: ...")`. As currently written, these two listeners cannot receive any event from Android — this is a functional break, not a hypothetical risk.
+- **Separator contract (fixed as CR-075)**: the Dart method-name constants in `lib/src/appsflyer_constants.dart` and the strings `AppsFlyerPurchaseConnector.kt` invokes over the channel now both use a `:` separator (`"SubscriptionPurchaseValidationResultListener:onResponse"`/`":onFailure"`, `"InAppValidationResultListener:onResponse"`/`":onFailure"`), so `_methodCallHandler`'s `switch` matches and delivery works. A prior `#` separator on the Dart side silently broke delivery (Dart matched nothing Kotlin sent); this was corrected under CR-075. Both sides must be kept in lock-step — changing the separator on only one side would re-break delivery. The Dart `default` case now logs through the plugin's gated `_log` instead of throwing, so a future mismatch fails silently rather than crashing — and in a release build the log itself is suppressed unless `enableDebug(true)` was called.
 - No listener exists on iOS for these two method names — they are only ever invoked from Android's `AppsFlyerPurchaseConnector.kt`. Calling either setter on iOS compiles and stores the handler but it will never fire (see F-052 for the iOS equivalent).
 - `JVMThrowable` models a JVM stack trace as a single joined string plus a recursively nested `cause` — a concept meaningless outside this Android validation-result path.
-- Android's Purchase Connector source (`AppsFlyerPurchaseConnector.kt`, `ConnectorWrapper.kt`) only compiles when `appsflyer.enable_purchase_connector=true` in `gradle.properties` (Gradle selects the `include-connector` vs `exlude-connector` source set). If not opted in, the `exlude-connector` stub `AppsFlyerPurchaseConnector` object has no method-channel handler at all, and these listeners never receive anything even though the Dart setters succeed silently (see F-054).
+- Android's Purchase Connector source (`AppsFlyerPurchaseConnector.kt`, `ConnectorWrapper.kt`) only compiles when `appsflyer.enable_purchase_connector=true` in `gradle.properties` (Gradle selects the `include-connector` vs `exclude-connector` source set). If not opted in, the `exclude-connector` stub `AppsFlyerPurchaseConnector` object has no method-channel handler at all, and these listeners never receive anything even though the Dart setters succeed silently (see F-054).
 
 ---
 
@@ -84,6 +82,5 @@ No dedicated test found. Grepping `test/` for `PurchaseConnector`, `Subscription
 ```mermaid
 flowchart LR
     F051["F-051 · Purchase Connector: Android Validation Result Listeners"]:::purchaseValidation -->|"requires configuration from"| F049["F-049 · Purchase Connector: Configuration & Lifecycle"]:::purchaseValidation
-    F053["F-053 · Purchase Connector: Google Play Data Models"]:::purchaseValidation -->|"payload shape for"| F051
     classDef purchaseValidation fill:#F59F00,color:#fff
 ```

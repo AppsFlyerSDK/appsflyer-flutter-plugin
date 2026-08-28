@@ -46,6 +46,19 @@ A healthy RC PR has all of these green before promotion:
 
 This is a plugin-level tightening of the contract in `appsflyer-mobile-plugin-tooling/contracts/rc-release-contract.md`, which only requires E2E as the publish gate. Adding `Lint, Test & Build` to the gate is allowed (stricter than the contract floor).
 
+## Native version inputs
+
+Since SDK 7 the plugin pins the RPC layer, not the native Android SDK:
+
+| Version | How it is set |
+|---------|---------------|
+| `af-android-plugin-bridge` | `android_bridge_version` input (empty = leave pin unchanged) |
+| Android AppsFlyer SDK | **Derived** — [`scripts/resolve-android-sdk-version.sh`](../../scripts/resolve-android-sdk-version.sh) reads it from the bridge POM. There is no `android_sdk_version` input. |
+| `AppsFlyerRPC` | Pinned in `ios/appsflyer_sdk.podspec`, read back for reporting |
+| iOS `AppsFlyerFramework` | `ios_sdk_version` input; must match what the pinned `AppsFlyerRPC` requires |
+
+Do not reintroduce a hand-entered input for a transitively resolved version — see the `RC-PREP` required-inputs rule in the contract. Every version rewrite must fail loudly when its pattern does not match, so a renamed dependency cannot turn a `sed` into a silent no-op.
+
 ## When smoke runs vs when it doesn't
 
 - **Auto** after RC-release succeeds with `dry_run=false`.

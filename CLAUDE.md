@@ -1,7 +1,12 @@
 # AppsFlyer Flutter Plugin
 
 ## Overview
-Flutter plugin providing mobile attribution and analytics for iOS and Android. Bridges native AppsFlyer SDKs (iOS v6.17.9, Android v6.17.6) via Dart MethodChannel/EventChannel. Supports Flutter 2+ with null safety.
+Flutter plugin providing mobile attribution and analytics for iOS and Android.
+The core bridge uses native AppsFlyer SDK 7.0.1 on Android and 7.0.2 on iOS
+(pinned by AppsFlyerRPC), Android RPC 7.0.12, and iOS AppsFlyerRPC 7.0.13. It
+requires Flutter 3.35+ and Dart 3.9+. On Android the host app also needs Kotlin
+Gradle Plugin 2.0.21+, AGP 8.9.1+, Gradle 8.11.1+, and JDK 17 — see
+`doc/installation-guide.md`.
 
 ## Starting a feature
 
@@ -29,12 +34,12 @@ For everything outside of feature delivery, invoke skills directly:
 
 ## Architecture
 - `lib/src/appsflyer_sdk.dart` — Main SDK class (singleton, MethodChannel/EventChannel bridge)
-- `lib/src/callbacks.dart` — Attribution and event callback handlers
+- `lib/src/appsflyer_event.dart` — Native RPC event envelope
 - `lib/src/udl/deeplink.dart` — Unified Deep Linking (UDL) implementation
 - `lib/src/purchase_connector/` — In-app purchase validation models
-- `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` — Android entry point
-- `android/src/main/kotlin/` — Kotlin Purchase Connector for Android
-- `ios/Classes/AppsflyerSdkPlugin.m` — iOS entry point (Objective-C)
+- `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` — Android entry point
+- `android/src/main/include-connector/` — Optional Kotlin Purchase Connector bridge
+- `ios/appsflyer_sdk/Sources/appsflyer_sdk/` — iOS RPC entry point (Swift)
 - `ios/PurchaseConnector/` — iOS purchase validation module
 - `test/` — Dart unit tests (mockito)
 - `example/` — Full Flutter example app (iOS + Android)
@@ -55,24 +60,67 @@ flutter pub run build_runner build   # Regenerate JSON serialization code
 - **JSON serialization**: Uses `json_annotation` + `json_serializable`. After changing annotated model classes, run `build_runner` to regenerate `.g.dart` files. Commit the generated files.
 - **Testing**: `mockito` for mocking. Add tests in `test/` for new public API.
 - Dart null safety is required — all new code must be null-safe.
-- Keep `AppsflyerSdk` as a singleton; do not change the instantiation pattern.
+- Keep `AppsFlyerSdk.instance` as the production singleton.
 
 ## Key Patterns
-- New SDK method: add Dart method in `appsflyer_sdk.dart` (invoke via `_channel.invokeMethod`), implement in `AppsflyerSdkPlugin.java` (Android) and `AppsflyerSdkPlugin.m` (iOS). Keep method name strings consistent across all three files.
-- Callbacks from native → Dart flow through EventChannels defined in `callbacks.dart`.
+- New core SDK methods must map to existing native RPC capabilities. Add the
+  Dart RPC call and only platform adaptation required by the RPC contracts;
+  keep business behavior in the native SDK/RPC modules.
+- Native RPC callbacks flow through the `af-events` EventChannel as
+  `_AppsFlyerEvent` envelopes parsed on the Dart side.
 - Deep linking (UDL) logic is isolated in `lib/src/udl/` — do not mix with core SDK channel calls.
 - Purchase Connector is self-contained in `lib/src/purchase_connector/` (Dart models) and `ios/PurchaseConnector/` / `android/.../kotlin/` (native).
 
 ## Testing
 - Run `flutter test test` for the Dart unit test suite.
+- Run `./gradlew :appsflyer_sdk:testDebugUnitTest` from `example/android` for the Android native tests. On a fresh clone, run `flutter build apk --config-only` from `example/` first: the Gradle wrapper is gitignored and is only written once the Flutter tool invokes Gradle.
+- Run `xcodebuild test -workspace ios/Runner.xcworkspace -scheme Runner -destination "id=<simulator-udid>"` from `example/` for the iOS native tests.
 - Integration testing requires running the `example/` app on a device/emulator.
-- CI uses Travis CI (`.travis.yml`) on Linux with Flutter stable.
+- CI is GitHub Actions (`.github/workflows/lint-test-build.yml`): the Dart suite on Linux, plus the Android native tests inside the Android build job. The iOS XCTest suite is not run in CI — run it locally.
 
 ## Notes
 - SDK version is set in `pubspec.yaml` and native dependency specs (podspec / `build.gradle`).
 - Generated files (`*.g.dart`) must be committed — run `build_runner` after model changes.
-- `doc/` and `example/` should be kept in sync with API changes.
-- iOS native layer is Objective-C; Kotlin is used only for the Android Purchase Connector.
+- `doc/` and `example/` must be kept in sync with API changes — see Documentation review.
+- The iOS core bridge is Swift only — no Objective-C. `AFRPCBridge.swift` reaches the
+  `@MainActor`-isolated `AppsFlyerRPCBridge` via `MainActor.assumeIsolated`; Swift and
+  Kotlin implement the optional Purchase Connector bridges.
+
+## Documentation review
+
+Applies to every code change, including pure refactors.
+
+After every code change, identify and review all related documentation. Update
+documentation whenever the change affects documented behavior, public APIs,
+parameters, configuration, architecture, workflows, examples, compatibility, or
+user-visible output. If no documentation update is needed, explicitly state which
+documentation was reviewed and why it remains accurate.
+
+Where to look, by what changed:
+
+| Changed | Review |
+|---------|--------|
+| Public Dart API surface | dartdoc on the member, `doc/api-reference.md`, `README.md`, `CHANGELOG.md` |
+| Platform-specific behavior or availability | `doc/api-reference.md`, the affected `internal-docs/features/F-NNN-*.md` |
+| Breaking change or removed API | `doc/migration-guide.md`, `CHANGELOG.md` — see also the API Removal Rule |
+| Behavior of a catalogued feature | matching `internal-docs/features/F-NNN-*.md` plus `internal-docs/features/INDEX.md` |
+| Architecture, channels, or RPC transport | `internal-docs/ARCHITECTURE.md` and the Architecture section above |
+| Setup, configuration, or native dependencies | `doc/installation-guide.md`, `doc/getting-started.md` |
+| Anything the sample app demonstrates | `example/` and `example/README.md` |
+
+Rules:
+
+- Correct outdated references and examples in the files you review, including stale
+  method names, signatures, return types, and snippets that no longer compile.
+- Never hand-edit generated output. Regenerate it — `*.g.dart` via
+  `flutter pub run build_runner build`.
+- Leave accurate documentation alone. An unnecessary documentation edit is a defect.
+
+Every task summary must state:
+
+- which documentation files were reviewed;
+- which documentation files were updated;
+- if none were updated, why the existing documentation remains accurate.
 
 ## Maintenance bypass
 

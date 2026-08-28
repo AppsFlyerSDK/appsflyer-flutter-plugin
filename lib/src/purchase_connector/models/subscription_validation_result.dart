@@ -7,7 +7,10 @@ class SubscriptionValidationResult {
   ValidationFailureData? failureData;
 
   SubscriptionValidationResult(
-      this.success, this.subscriptionPurchase, this.failureData);
+    this.success,
+    this.subscriptionPurchase,
+    this.failureData,
+  );
 
   factory SubscriptionValidationResult.fromJson(Map<String, dynamic> json) =>
       _$SubscriptionValidationResultFromJson(json);

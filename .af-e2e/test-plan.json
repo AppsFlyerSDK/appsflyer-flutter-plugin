@@ -3,10 +3,10 @@
     "plan_id": "flutter-e2e",
     "plugin": "flutter",
     "version": "1.0.0",
-    "description": "Thorough end-to-end test plan for the AppsFlyer Flutter plugin. Runs against plugin source (appsflyer_sdk: path: ..) in example/. Covers six scenarios: cold launch, background deep link, foreground deep link, custom event with parameters, identity APIs round-trip, and consent / SDK stop toggle. Mapped to E2E-001..E2E-006 in appsflyer-mobile-plugin-tooling/contracts/e2e-test-contract.md.",
+    "description": "Thorough end-to-end test plan for the AppsFlyer Flutter plugin. Runs against plugin source (appsflyer_sdk: path: ..) in example/. Covers eight scenarios: cold launch, background deep link, foreground deep link, custom event with parameters, identity APIs round-trip, consent / SDK stop toggle, a cold custom-scheme deep link into a killed process, and a cold https OneLink delivered by the OS (Android only). Mapped to E2E-001..E2E-008 in appsflyer-mobile-plugin-tooling/contracts/e2e-test-contract.md.",
     "platforms": ["android", "ios"],
     "schema_version": "1.0.0",
-    "tooling_contract_ref": "E2E-001, E2E-002, E2E-003, E2E-004, E2E-005, E2E-006"
+    "tooling_contract_ref": "E2E-001, E2E-002, E2E-003, E2E-004, E2E-005, E2E-006, E2E-007, E2E-008"
   },
 
   "config": {
@@ -18,6 +18,7 @@
     },
     "ios": {
       "bundle_id": "com.appsflyer.example",
+    "url_scheme": "afexample",
       "app_path": "example/build/ios/iphonesimulator/Runner.app",
       "build_cmd": "cd example && flutter build ios --simulator --debug"
     }
@@ -34,7 +35,7 @@
       "checks": [
         {
           "id": "sdk_started",
-          "description": "startSDK returns SUCCESS",
+          "description": "start() dispatched without RPC error (awaitResponse false; Launch HTTP verified by http_200_count)",
           "type": "log_contains",
           "pattern": "[AF_QA][startSDK] result: SUCCESS",
           "fail_action": "abort"
@@ -166,23 +167,23 @@
       "id": "phase_3",
       "name": "Foreground deep link",
       "scenario_ref": "E2E-003",
-      "description": "Fresh install. App is in foreground after SDK start. On Android a brief HOME switch triggers onPause and the VIEW intent brings the app back. On iOS the app is terminated and re-launched with `-deepLinkURL <url>` (same launch-arg path as phase_2), since `simctl openurl` against a running iOS-simulator app still triggers the 'Open in <App>?' confirmation prompt; the foreground-vs-killed distinction is Android-only. Both paths fire onDeepLinking with Status.FOUND.",
+      "description": "Fresh install, deep link resolved on the very first session. On Android a brief HOME switch triggers onPause and the VIEW intent brings the app back, so the SDK re-evaluates the intent through onBecameForeground. On iOS the app stays in the foreground and `simctl openurl` delivers the URL exactly as a real custom-scheme click would — the runner pre-approves the scheme in the simulator's LaunchServices store, so the 'Open in <App>?' prompt that would otherwise block a non-interactive run never appears. Both paths fire onDeepLinking with Status.FOUND.",
       "requires_fresh_install": true,
       "wait_after_launch_sec": 240,
       "wait_after_trigger_sec": 90,
       "deep_link_url": "afexample://deeplink?deep_link_value=qa_deeplink_fg&af_sub1=foreground_test&pid=testmedia&c=deeplink_test",
       "pre_actions": {
         "android": ["adb shell am start -a android.intent.action.MAIN -c android.intent.category.HOME", "sleep 1"],
-        "ios": ["xcrun simctl terminate {{UDID}} {{BUNDLE_ID}}", "sleep 1"]
+        "ios": ["sleep 1"]
       },
       "trigger": {
         "android": "adb shell am start -W -a android.intent.action.VIEW -d \"{{DEEP_LINK_URL}}\"",
-        "ios": "xcrun simctl launch {{UDID}} {{BUNDLE_ID}} -deepLinkURL \"{{DEEP_LINK_URL}}\""
+        "ios": "xcrun simctl openurl {{UDID}} \"{{DEEP_LINK_URL}}\""
       },
       "checks": [
         {
           "id": "sdk_started",
-          "description": "startSDK returns SUCCESS on fresh install",
+          "description": "start() dispatched without RPC error on fresh install (Launch HTTP verified by http_200_count)",
           "type": "log_contains",
           "pattern": "[AF_QA][startSDK] result: SUCCESS",
           "fail_action": "abort"
@@ -383,6 +384,134 @@
           "description": "No fatal exceptions across the stop/start cycle",
           "type": "absent",
           "patterns": ["Fatal Exception", "FATAL"],
+          "fail_action": "fail"
+        }
+      ]
+    },
+
+    {
+      "id": "phase_7",
+      "name": "Cold deep link, killed process",
+      "scenario_ref": "E2E-007",
+      "description": "The only phase that resolves a deep link with no live process. The app is installed and has already reported a session, then killed outright: on Android with `am force-stop`, on iOS with `simctl terminate`. The VIEW intent / launch argument then starts the process from scratch, so Android resolves the link through onActivityCreated -> onActivityCreatedWithDeeplink instead of the onBecameForeground path that phase_2 and phase_3 both exercise. That is also the path trampoline activities take, which is why a warm-start-only plan can miss regressions here. Runs last on purpose: phase_5 reinstalls the app, which wipes af_qa_logs.txt and clears logcat, so no earlier phase's FOUND line can satisfy these checks. Covers E2E-007.",
+      "requires_fresh_install": false,
+      "wait_after_trigger_sec": 120,
+      "deep_link_url": "afexample://deeplink?deep_link_value=qa_deeplink_cold&af_sub1=cold_test&pid=testmedia&c=deeplink_test",
+      "pre_actions": {
+        "android": [
+          "adb shell am force-stop {{PACKAGE_NAME}}",
+          "sleep 2"
+        ],
+        "ios": [
+          "xcrun simctl terminate {{UDID}} {{BUNDLE_ID}}",
+          "sleep 2"
+        ]
+      },
+      "trigger": {
+        "android": "adb shell am start -W -a android.intent.action.VIEW -d \"{{DEEP_LINK_URL}}\"",
+        "ios": "xcrun simctl launch {{UDID}} {{BUNDLE_ID}} -deepLinkURL \"{{DEEP_LINK_URL}}\""
+      },
+      "checks": [
+        {
+          "id": "cold_start_confirmed",
+          "description": "A second auto-run in the same window proves the trigger started a new process instead of resuming phase_5's (the QA log survives restarts, so one occurrence would pass vacuously)",
+          "type": "count_matches",
+          "pattern": "Pre-start auto APIs complete",
+          "minimum": 2,
+          "fail_action": "fail"
+        },
+        {
+          "id": "deeplink_found_cold",
+          "description": "onDeepLinking fires with Status.FOUND after the process was killed",
+          "type": "log_contains",
+          "pattern": "status=Status.FOUND",
+          "fail_action": "fail"
+        },
+        {
+          "id": "deeplink_value_cold",
+          "description": "deepLinkValue matches qa_deeplink_cold",
+          "type": "log_contains",
+          "pattern": "deepLinkValue=qa_deeplink_cold",
+          "fail_action": "fail"
+        },
+        {
+          "id": "cold_launch_http_200",
+          "description": "The relaunched process reaches AppsFlyer servers",
+          "type": "count_matches",
+          "pattern": "response code:200 OK|response_status=200",
+          "minimum": 1,
+          "fail_action": "fail"
+        },
+        {
+          "id": "no_fatal_errors",
+          "description": "No fatal exceptions or SDK start errors while restarting into a deep link",
+          "type": "absent",
+          "patterns": ["Fatal Exception", "FATAL", "[AF_QA][startSDK] error:"],
+          "fail_action": "fail"
+        }
+      ]
+    },
+
+    {
+      "id": "phase_8",
+      "name": "OneLink https into killed process",
+      "scenario_ref": "E2E-008",
+      "platforms": ["android"],
+      "description": "Android only. Same cold-start shape as phase_7, but the URL is a verified App Link on af-flutter-plugin.onelink.me with no query parameters — the OS routes the VIEW intent straight to MainActivity and the SDK resolves the short link server-side. Proves OS-level https delivery and OneLink template fields (flutter_plugin_udl / af_flutter_plugin_qa_v1) distinct from the custom-scheme phases. Skipped on iOS until Universal Link direct delivery is stable on the simulator CI image.",
+      "requires_fresh_install": false,
+      "wait_after_trigger_sec": 120,
+      "deep_link_url": "https://af-flutter-plugin.onelink.me/SBnY/flutter-qa-link",
+      "pre_actions": {
+        "android": [
+          "adb shell am force-stop {{PACKAGE_NAME}}",
+          "sleep 2"
+        ]
+      },
+      "trigger": {
+        "android": "adb shell am start -W -a android.intent.action.VIEW -d \"{{DEEP_LINK_URL}}\""
+      },
+      "checks": [
+        {
+          "id": "cold_start_confirmed",
+          "description": "Another auto-run after phase_7 proves this trigger started a new process (QA log survives restarts)",
+          "type": "count_matches",
+          "pattern": "Pre-start auto APIs complete",
+          "minimum": 2,
+          "fail_action": "fail"
+        },
+        {
+          "id": "deeplink_found_onelink",
+          "description": "onDeepLinking fires with Status.FOUND for an OS-delivered https link",
+          "type": "log_contains",
+          "pattern": "status=Status.FOUND",
+          "fail_action": "fail"
+        },
+        {
+          "id": "deeplink_value_onelink",
+          "description": "deepLinkValue matches the OneLink template",
+          "type": "log_contains",
+          "pattern": "deepLinkValue=flutter_plugin_udl",
+          "fail_action": "fail"
+        },
+        {
+          "id": "server_resolved_payload",
+          "description": "Payload carries deep_link_sub1 from the server-side OneLink template, not from the URL",
+          "type": "log_contains",
+          "pattern": "deep_link_sub1: af_flutter_plugin_qa_v1",
+          "fail_action": "fail"
+        },
+        {
+          "id": "direct_not_deferred",
+          "description": "Cold App Link delivery is a direct open, not deferred attribution",
+          "type": "log_contains",
+          "pattern": "is_deferred: false",
+          "fail_action": "fail"
+        },
+        {
+          "id": "no_fatal_errors",
+          "description": "No fatal exceptions or SDK start errors while starting into a deep link",
+          "type": "absent",
+          "patterns": ["Fatal Exception", "FATAL", "[AF_QA][startSDK] error:"],
           "fail_action": "fail"
         }
       ]

@@ -1,5 +1,224 @@
 # Versions
 
+## 7.0.2
+
+Migration to **AppsFlyer SDK 7**. This is a major release with intentional
+breaking changes. See [doc/migration-guide.md](doc/migration-guide.md) for
+removed APIs, renames, lifecycle changes, and upgrade instructions.
+
+- Flutter plugin version **7.0.2**
+- Minimum Flutter version **3.35.0**
+- Minimum Dart version **3.9.0** (and earlier than Dart **4.0.0**)
+- Android build toolchain, aligned with the AppsFlyer Android SDK: Kotlin Gradle
+  Plugin **2.0.21**, Android Gradle Plugin **8.9.1**, Gradle **8.11.1**, JDK **17**
+- Android AppsFlyer SDK **7.0.1**
+- iOS AppsFlyer SDK **7.0.2**
+- Android Purchase Connector **2.2.0**
+- iOS Purchase Connector **7.0.2**
+- iOS minimum deployment target **13.0**
+- Android minimum API level **21**
+- Documentation remains organized under [`doc/`](doc/README.md), with the
+  complete upgrade catalog in [doc/migration-guide.md](doc/migration-guide.md).
+
+**BREAKING**
+
+- Raised the minimum Flutter version to **3.35.0** (Dart **3.9.0**) and aligned the
+  Android build toolchain with the AppsFlyer Android SDK: Kotlin Gradle Plugin
+  **2.0.21**, Android Gradle Plugin **8.9.1**, Gradle **8.11.1**, JDK **17**. The
+  Android dependencies are compiled with Kotlin 2.0, so an older Kotlin Gradle
+  Plugin cannot read their metadata; the previously advertised floor of Flutter
+  `3.24` templates Kotlin `1.7.10` and could not build the plugin at all. The
+  build now fails at configuration time with a message naming the version found
+  and the file to change, because the Kotlin Gradle Plugin version is declared by
+  the app and does not change when Flutter is upgraded.
+- Replaced `AppsflyerSdk(options)` and `AppsFlyerOptions` with the shared
+  `AppsFlyerSdk.instance` singleton and explicit configuration methods.
+- Replaced `initSdk(...)` with `init(devKey:, appId:)`. `appId` is required on
+  iOS, optional on Android, and is not sent to the Android SDK.
+- Replaced `startSDK(...)` with `await start()`. Initialization no longer sends
+  a session. Call `registerSessionReadyListener(onReady)` and call `start()`
+  once for each readiness event.
+- Replaced callback registration flags with explicit listener registration that
+  takes the callback as an argument: `registerConversionListener(
+  onConversionDataSuccess:, onConversionDataFail:)`,
+  `registerDeepLinkListener(onDeepLinking:)`, and
+  `registerSessionReadyListener(onReady)`. Each callback is named after
+  the event it handles, so the same handler names apply across the AppsFlyer
+  plugins. Every callback except `onReady` is optional — pass only the ones you
+  need. The plugin holds one callback per
+  event and replaces it on re-registration, matching the native SDKs; no event
+  stream is exposed, so a single native event cannot fan out to several
+  handlers in the app. Registering and unregistering are all-or-nothing: when the
+  native call fails, the Dart callbacks are left exactly as they were.
+- `registerDeepLinkListener(onDeepLinking:)` must be called **before** `init()`.
+  Android decides once per install, while `init()` processes the launch intent,
+  whether to send the deferred deep-link resolution request, and skips it when no
+  listener is registered yet. The other listeners are still registered after
+  `init()`.
+- Native and plugin failures from operations that await a result are surfaced as
+  `AppsFlyerException` (`int? code`, `String message`). Non-numeric platform
+  codes leave `code` as `null`. `MissingPluginException` is not converted.
+  Failures from fire-and-forget calls are not reported.
+- `start`, `logEvent`, and `generateInviteLink` expose `awaitResponse` where the
+  native SDK supports waiting for a completion callback. It defaults to `false`
+  for `start` and `logEvent`, and to `true` for invite-link generation.
+  `validateAndLogInAppPurchase` has no such flag: both platforms always wait for
+  the validation result.
+- Removed OAOA callbacks and registration. Use Unified Deep Linking.
+- Replaced `performOnDeepLinking()` with
+  `performDeepLinking(url, {shouldTriggerSession})`.
+- Replaced legacy V1 Android/iOS purchase validation and
+  `validateAndLogInAppPurchaseV2(...)` with
+  `validateAndLogInAppPurchase(AFPurchaseDetails, ...)`. Use
+  `AFAndroidPurchaseDetails` with a Play purchase token or
+  `AFIOSPurchaseDetails` with an App Store transaction ID.
+- Replaced the cross-platform `sendPushNotificationData(Map)` shape with
+  platform-specific Android `sendPushNotificationData(...)` and iOS
+  `handlePushNotification(pushPayload)` APIs.
+- Replaced `setConsentDataV2(...)` and the `AppsFlyerConsent` wrapper with the
+  flat `setConsentData(...)` API and its four SDK 7 consent fields.
+- Renamed platform APIs to match the final SDK 7 surface, including
+  `enableDebug`, `setDisableSKAdNetwork`,
+  `setDisableAppleAdsAttribution`, `setDisableIDFVCollection`,
+  `setUseReceiptValidationSandbox`, and `setUseUninstallSandbox`.
+- `setUserFbLoginId` now accepts an `int`; mediation values use
+  `AFMediationNetwork`; invite-link fields use `referrerCustomerId` and
+  `userParams`.
+- Removed SDK 6 APIs that no longer exist in SDK 7 or are not exposed by the
+  plugin, including `onAppOpenAttribution`, `setUserEmails`, `EmailCryptType`,
+  raw IMEI and Android ID setters, V1 purchase validation, `setPushNotification`,
+  `enableUninstallTracking`, `waitForCustomerUserId`, and
+  `setCustomerIdAndLogSession`.
+- Runtime configuration setters must be re-applied on every cold start before
+  `start()`.
+- Every platform-only method now throws `AppsFlyerException` when called outside
+  its supported platform, instead of some logging a warning and returning a safe
+  default while others threw. The plugin no longer keeps its own table of which
+  platform implements what — calls are forwarded and the native layer
+  answers, so the surface stays correct as the native SDKs change. Code that
+  relied on an off-platform call being a silent no-op must guard it with
+  `Platform.isAndroid` / `Platform.isIOS` or catch the exception. The exception
+  `code` comes from the native layer, which reports `404` for an unimplemented
+  method on both platforms.
+- `getHostName()` and `getHostPrefix()` now return non-nullable `Future<String>`
+  instead of `Future<String?>`; unexpected native null replies throw
+  `AppsFlyerException` instead of surfacing as `null`. Both are available on
+  Android and iOS — see **Added** below.
+- Bool getters such as `isSessionReady`, `isStopped`, and `isPreInstalledApp` no
+  longer coerce an unexpected native `null` to `false`; they throw
+  `AppsFlyerException` instead.
+- `setSharingFilterForPartners(null)` and `setSharingFilterForPartners([])` are
+  forwarded to the native layer instead of being ignored in Dart, and clear the
+  filter on Android and iOS alike.
+- `setConsentData` accepts nullable consent fields: only `isUserSubjectToGDPR` is
+  required; the three consent booleans are optional and may be omitted or `null`
+  for non-GDPR users, matching native `AppsFlyerConsent`.
+- Added Android-only `collectDataFromLauncherActivity()`, which collects the
+  open/web referrer from the launcher activity's intent. Call it before
+  `start()`. It requires an attached activity and otherwise fails with
+  `AppsFlyerException` (code `422`).
+- `setInstallId()` requires `AppsFlyerAllowCustomInstallId=YES` in iOS
+  `Info.plist` and must be called before `init()` on iOS. Android requires
+  `APPSFLYER_ALLOW_CUSTOM_INSTALL_ID=true` in `AndroidManifest.xml` and the call
+  must follow `init()`.
+- Android Purchase Connector `2.2.0` requires Google Play Billing Library `8.x`.
+  The Flutter plugin does not add Billing Library; the app or its IAP plugin
+  must provide it. iOS Purchase Connector requires CocoaPods, while Core-only
+  apps can use Swift Package Manager.
+- Remove legacy `SingleInstallBroadcastReceiver` and
+  `MultipleInstallBroadcastReceiver` manifest entries. The plugin already
+  includes Google Play Install Referrer `2.2`.
+- Removed the Core CocoaPods Objective-C public headers
+  (`AppsflyerSdkPlugin.h`, `AppsFlyerAttribution.h`,
+  `AppsFlyerStreamHandler.h`, `FlutterAppDelegate+AppsFlyerStreamHandler.h`).
+  The iOS bridge is Swift-only; host apps that imported those headers must
+  rely on automatic plugin registration or import
+  `<appsflyer_sdk/appsflyer_sdk-Swift.h>` instead. See
+  [migration guide — iOS: Objective-C public headers removed](doc/migration-guide.md#ios-objective-c-public-headers-removed).
+
+See the [v6 → v7 migration guide](doc/migration-guide.md) for the complete
+replacement table.
+
+**Added**
+
+- Added `AppsFlyerSdk.instance`, `init(...)`,
+  `registerSessionReadyListener(onReady)`, `unregisterSessionReadyListener()`,
+  `isSessionReady()`, and `start()` for the SDK 7 lifecycle.
+- Added the cross-platform `enableDebug(bool)` toggle and Android-only
+  `setLogLevel(AFLogLevel)`.
+- Added typed event callbacks (`OnConversionDataSuccess`,
+  `OnConversionDataFailure`, `OnDeepLinkReceived`, `OnSessionReady`) and
+  `AppsFlyerException`.
+- Added hashed-PII setters `setUserEmail`, `setUserPhone`,
+  `setUserFirstName`, and `setUserLastName`, plus integer
+  `setUserFbLoginId` and `clearUserPii`.
+- Added `performDeepLinking`, `setDeepLinkTimeout`,
+  `appendParametersToDeepLinkingURL`, and iOS-only
+  `setFacebookDeferredAppLink`.
+- Added the `AFPurchaseDetails` interface with dedicated
+  `AFAndroidPurchaseDetails` and `AFIOSPurchaseDetails` implementations.
+- Added Android-only `logSession`, `setPreinstallAttribution`, `setAppId`,
+  `isPreInstalledApp`, `getAttributionId`,
+  `unregisterDeepLinkListener`, and `unregisterConversionListener` APIs.
+  On Android, `unregisterDeepLinkListener` does not reliably stop subsequent
+  deep-link events; do not depend on it as an effective unsubscribe.
+- Added `isStopped`, `getHostName`, and `getHostPrefix` on both platforms. On
+  iOS, `getHostName` and `getHostPrefix` return an empty string until `setHost`
+  is called.
+- Added iOS-only `setDisableAppleAdsAttribution`,
+  `setDisableIDFVCollection`, `setShouldCollectDeviceName`, and
+  `setUseUninstallSandbox` APIs.
+- Added `logInvite`, `logLocation`, `setInstallId`, and awaitable
+  `generateInviteLink` support.
+
+**Fixed**
+
+- iOS Purchase Connector: a validation payload the native SDK reports with a
+  value JSON cannot represent no longer terminates the app. The serialization
+  helper behind `didReceivePurchaseRevenueValidationInfo` called
+  `JSONSerialization.data(withJSONObject:)` under `try?`, which does not catch
+  the `NSInvalidArgumentException` that call raises, so an `NSDate`, an
+  `NSData` or a non-`String` key in the delegate's untyped dictionary aborted
+  the process. The helper now checks `isValidJSONObject` first and returns
+  `nil`, which surfaces as a reported parse failure — the callback fires with
+  no data and a log line — instead of a crash. Only affects apps that opted
+  into the Purchase Connector.
+- `enableDebug` now controls the plugin's own diagnostics as well as native SDK
+  logging. The plugin printed through `debugPrint`, which Flutter does not
+  compile out of release builds, so those lines reached production logs whatever
+  the app had passed to `enableDebug`. Release builds are quiet by default and
+  print again after `enableDebug(true)`; debug builds always print.
+- Calling the SDK from a background isolate — a push handler, a `workmanager`
+  task, `compute()` — now throws a catchable `AppsFlyerException` naming the
+  cause. Platform channels are bound to the main isolate, and the underlying
+  `StateError` escaped through the event stream's subscribe callback rather than
+  the returned `Future`, so no `try`/`catch` around the call could intercept it
+  and the background isolate terminated mid-task. `AppsFlyerSdk.instance` is
+  also a per-isolate singleton, so a background isolate never sees the instance
+  you configured. See [doc/getting-started.md](doc/getting-started.md#background-isolates).
+- Native events that fail to parse are logged by error type only. The log line
+  previously interpolated the error, and `FormatException.toString()` appends an
+  excerpt of the string it could not parse, so a truncated or malformed event put
+  raw attribution data — click and deep-link identifiers among it — into the host
+  app's release log. Stream errors are logged the same way, naming the platform
+  error code but not the message or details.
+- Purchase Connector: a validation payload that omitted an optional field was silently dropped — the generated `fromJson` casts were non-nullable, and the resulting error was raised inside a platform-message handler, so neither `onResponse` nor `onFailure` fired and the app could not catch it. **BREAKING:** every field of `ProductPurchase`, `SubscriptionPurchase` and the types it nests, `ValidationFailureData`, `JVMThrowable` and `IosError` is now nullable, matching the Google Play Developer API, which documents `purchaseToken`, `productId`, `quantity`, `purchaseType` and the obfuscated identifiers as conditionally present and omits any field left at its default value. `success` and the `result` maps stay non-nullable. A payload that still cannot be parsed is reported through `onFailure` with a message naming the callback and the error type — never the payload, which carries purchase and account identifiers. See [doc/migration-guide.md](doc/migration-guide.md).
+- Purchase Connector: removed stray `[AppsFlyer_PC_Debug]` `print` logging that shipped in release builds; the callback handler now accepts both JSON-string and already-decoded `Map` payloads and logs (instead of throwing) on an unrecognized callback name.
+- Purchase Connector (**Android**): subscription and in-app validation-result listeners (`setSubscriptionValidationResultListener` / `setInAppValidationResultListener`) never fired — the Dart callback-name constants used a `#` separator while the native side invokes the channel with `:`, so the handler's `switch` never matched. Aligned the Dart constants to `:`, so these result listeners now deliver.
+- **Android**: native events emitted while no Flutter engine was attached were
+  lost. The native SDK keeps the listener registered by a detached engine
+  (`subscribeForDeepLink` and `registerConversionListener` overwrite a single
+  reference, and deep links have no unsubscribe API), so a deep link or
+  conversion-data callback arriving after the Activity was destroyed — for
+  example a link tapped after leaving the app with the back button — was written
+  into the buffer of a plugin instance Dart could no longer reach. Buffering and
+  replay moved to a process-scoped relay, so those events are delivered to the
+  next subscriber in the order they were published.
+- Optional Android Purchase Connector state is cleared when the Flutter engine
+  detaches.
+- Corrected iOS ad-mediation identifiers for custom and direct monetization.
+- Updated documentation and examples for the final SDK 7 API.
+
 ## 6.18.0
 
 - Updated Android SDK from 6.17.6 to 6.18.0

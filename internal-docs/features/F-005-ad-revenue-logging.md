@@ -4,70 +4,85 @@ name: Ad Revenue Logging
 type: eventsAndRevenue
 platform: both
 status: active
-last_verified: 2026-07-15
+last_verified: 2026-08-10
 depends_on: []
 ---
 
 ## Business Purpose
-Apps that monetize through in-app advertising (rather than, or in addition to, direct purchases) need their ad-impression revenue attributed back to the campaigns/media sources that drove the installs — otherwise ROI/LTV reporting only sees purchase revenue and dramatically understates (or misses entirely) the true value of ad-monetized user cohorts. `logAdRevenue` reports a single ad-revenue event (network, mediation platform, currency, amount, optional extra params) to AppsFlyer so that ad monetization can be joined to install attribution the same way in-app purchase events are (see F-004). Removing it would blind AppsFlyer's dashboards to any revenue generated purely through ad impressions/clicks.
-
-> TODO: enrich from product specs — provide a Notion database URL and re-run Phase 4 to fill this automatically.
+Apps that monetize through in-app advertising (rather than, or in addition to, direct purchases) need their ad-impression revenue attributed back to the campaigns and media sources that drove the installs — otherwise ROI/LTV reporting only sees purchase revenue and dramatically understates (or misses entirely) the true value of ad-monetized user cohorts. `logAdRevenue` reports a single ad-revenue event (monetization network, mediation platform, currency, amount, optional extra parameters) to AppsFlyer so that ad monetization can be joined to install attribution the same way in-app purchase events are (see F-004). Removing it would blind AppsFlyer's dashboards to any revenue generated purely through ad impressions and clicks.
 
 ---
 
 ## Trigger
-Called by the host app whenever a mediation SDK (AdMob, AppLovin MAX, ironSource, Unity, etc.) reports a paid ad impression/click, typically from within that mediation SDK's own revenue-paid callback.
+Called after `init()` whenever a mediation SDK (AdMob, AppLovin MAX, ironSource, Unity, etc.) reports a paid ad impression or click, typically from within that mediation SDK's own revenue-paid callback. Dart and the RPC layers do not enforce initialization ordering before forwarding the call.
 
 ---
 
 ## Call Chain
+`logAdRevenue` takes flat, RPC-aligned named parameters. There is no Dart ad-revenue model class; the Dart layer builds the RPC parameter map inline and converts the typed `AFMediationNetwork` value to its platform-specific string.
+
 ```
-AppsflyerSdk.logAdRevenue(AdRevenueData)                                                          [lib/src/appsflyer_sdk.dart]
-  → _methodChannel.invokeMethod("logAdRevenue", adRevenueData.toMap())
-    → Android: AppsflyerSdkPlugin.onMethodCall("logAdRevenue") → logAdRevenue(call, result)        [android/.../AppsflyerSdkPlugin.java]
-      → MediationNetwork.valueOf(mediationNetworkString.toUpperCase(Locale.ENGLISH))
-      → new AFAdRevenueData(monetizationNetwork, mediationNetwork, currencyIso4217Code, revenue)
-      → AppsFlyerLib.getInstance().logAdRevenue(adRevenueData, additionalParameters)
-      → result.success(true)  |  result.error(...) on invalid/unexpected input
-    → iOS: AppsflyerSdkPlugin.handleMethodCall("logAdRevenue") → logAdRevenue:result:               [ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m]
-      → getEnumValueFromString: maps the Dart enum's string value to AppsFlyerAdRevenueMediationNetworkType
-      → [[AFAdRevenueData alloc] initWithMonetizationNetwork:mediationNetwork:currencyIso4217Code:eventRevenue:]
-      → [[AppsFlyerLib shared] logAdRevenue:additionalParameters:]
-      → (no result(...) call on the success path; result(...) is only invoked on error)
+AppsFlyerSdk.logAdRevenue(...)                                        [lib/src/appsflyer_sdk.dart]
+  → mediationNetwork.rpcValue(isIOS: _isIOS)                          [lib/src/appsflyer_constants.dart]
+  → _invokeVoidRpc('logAdRevenue', {monetizationNetwork, mediationNetwork,
+                                    currencyIso4217Code, revenue,
+                                    additionalParameters})
+    → _invokeRpc → MethodChannel('af-api').invokeMethod('executeRpc', {method, params})
+      → Android: AppsflyerSdkPlugin.executeRpc → dispatchRpc('logAdRevenue', ...)
+        → AppsFlyerRpcHandler.execute(json) → AppsFlyerLib.logAdRevenue(...)
+      → iOS: AppsflyerSdkPlugin.executeRpc → dispatchRpc:method:@"logAdRevenue"
+        → [AppsFlyerRPCBridge shared] executeJson:completion: → AFRPCRequestHandler → SDK
+  → successful per-call reply completes Future<void>
+  → PlatformException is converted to AppsFlyerException
 ```
+
+`logAdRevenue` does not send an `awaitResponse` parameter, so the Future completes after RPC validation and invocation of the void native logging API. It does not confirm that the native SDK accepted or uploaded the event.
+
+---
+
+## Cross-platform mediation-network quirk
+`AFMediationNetwork.rpcValue({required bool isIOS})` returns the canonical RPC string for each case (for example `applovinMax` → `"applovin_max"`). Two cases differ between platforms: the iOS RPC parser strips underscores and expects the short forms, while the Android bridge matches the underscored enum names.
+
+| `AFMediationNetwork` | `rpcValue(isIOS: false)` | `rpcValue(isIOS: true)` |
+|--|--|--|
+| `customMediation` | `custom_mediation` | `custom` |
+| `directMonetizationNetwork` | `direct_monetization_network` | `directmonetization` |
+
+Every other value returns the same string on both platforms.
 
 ---
 
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `logAdRevenue(AdRevenueData)` — Dart public API, `void`, serializes via `adRevenueData.toMap()` |
-| `lib/src/appsflyer_ad_revenue_data.dart` | `AdRevenueData` model: `monetizationNetwork`, `mediationNetwork` (String), `currencyIso4217Code`, `revenue` (double), optional `additionalParameters` |
-| `lib/src/appsflyer_constants.dart` | `AFMediationNetwork` enum with a `.value` getter mapping each case (e.g. `applovinMax`) to the exact lowercase/snake_case string (`"applovin_max"`) both native sides expect |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `logAdRevenue(MethodCall, Result)` — validates required args via `requireNonNullArgument`, converts the mediation-network string to the native `MediationNetwork` enum via `.valueOf(...toUpperCase())`, builds `AFAdRevenueData`, calls `AppsFlyerLib.getInstance().logAdRevenue(...)` |
-| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m` | `logAdRevenue:result:` and `getEnumValueFromString:` — validates required args, maps the mediation-network string to `AppsFlyerAdRevenueMediationNetworkType` via an explicit `NSDictionary` lookup table, builds `AFAdRevenueData`, calls `[[AppsFlyerLib shared] logAdRevenue:additionalParameters:]` |
-| `doc/API.md` | `logAdRevenue` / `AdRevenueData` / `AFMediationNetwork` public documentation and usage example |
+| `lib/src/appsflyer_sdk.dart` | `logAdRevenue({monetizationNetwork, mediationNetwork, currencyIso4217Code, revenue, additionalParameters})` → `Future<void>`; builds the flat RPC parameter map |
+| `lib/src/appsflyer_constants.dart` | `AFMediationNetwork` enum and its `rpcValue({required bool isIOS})` platform mapping |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | No per-method handler — generic `executeRpc` → `dispatchRpc('logAdRevenue', ...)` |
+| `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift` | No per-method handler — generic `executeRpc` → `dispatchRpc` |
+| `doc/api-reference.md` | `logAdRevenue` and `AFMediationNetwork` public documentation |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `monetizationNetwork` (String, required — the ad network the impression came from, e.g. "GoogleAdMob"); `mediationNetwork` (String, required — must equal one of `AFMediationNetwork.value`'s outputs, e.g. `"applovin_max"`); `currencyIso4217Code` (String, required); `revenue` (double, required); `additionalParameters` (Map, optional) |
-| **Output** | Android: `Future` (unused by the `void` Dart method) resolving `result.success(true)` on success, or `result.error("INVALID_ARGUMENT_PROVIDED", ...)` for a missing/unrecognized field, or `result.error("UNEXPECTED_ERROR", ...)` for any other throwable. iOS: `result(...)` is only ever invoked on the error paths (`FlutterError` with codes such as `NULL_MONETIZATION_NETWORK`, `INVALID_MEDIATION_NETWORK`, `UNEXPECTED_ERROR`); on success the method returns without calling `result` at all. |
+| **Input** | `monetizationNetwork` (`String`, required and non-empty in both RPC layers); `mediationNetwork` (`AFMediationNetwork`, required — typed, so an unknown network cannot be passed); `currencyIso4217Code` (`String`, required and non-empty; Android RPC additionally requires exactly three characters, while both native SDKs validate that it is an actual ISO 4217 code); `revenue` (`double`, required, with no Dart/RPC range validation); `additionalParameters` (`Map<String, dynamic>?`, optional) |
+| **Output** | `Future<void>`. RPC validation and bridge errors surface as `AppsFlyerException`. A completed Future means RPC validation succeeded and the void native logging API was invoked. Native SDK validation failures and upload failures are not returned to Dart. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` — `check logAdRevenue call` (line 296) constructs an `AdRevenueData` with `AFMediationNetwork.applovinMax.value`, calls `logAdRevenue`, and asserts the mocked channel receives `logAdRevenue` with `mediationNetwork == 'applovin_max'`. This exercises only the Dart-to-channel dispatch and the enum-to-string mapping; it does not exercise either native handler's mediation-network parsing/validation logic.
+`test/appsflyer_sdk_test.dart` — `maps every mediation network to the native RPC string` loops over every `AFMediationNetwork` value on both the Android- and iOS-configured SDK instances and asserts the full `logAdRevenue` RPC parameter map, including the platform-specific `mediationNetwork` strings (`custom_mediation` / `custom`, `direct_monetization_network` / `directmonetization`, and the shared underscored identifiers for the other networks).
+
+The `PlatformException becomes AppsFlyerException` test covers the shared `_invokeRpc` error conversion that `logAdRevenue` uses; it exercises that path through `logEvent` rather than through `logAdRevenue`.
 
 ---
 
 ## Known Limitations
-- **String-based mediation network mapping is duplicated three times** (Dart `AFMediationNetwork.value`, Android's `MediationNetwork.valueOf(...toUpperCase())`, iOS's hand-written `NSDictionary` in `getEnumValueFromString:`) with no shared source of truth — adding a new mediation network requires updating all three in lockstep, and a mismatch (e.g. a typo in one map) fails silently as an "unsupported network" error at runtime rather than a compile-time error.
-- **iOS never resolves the Flutter result on success**: in `logAdRevenue:result:`, the success path calls `[[AppsFlyerLib shared] logAdRevenue:additionalParameters:]` and returns without ever calling `result(...)`. Since the Dart-side `logAdRevenue` is `void` and does not await a result, this is silent to callers today, but it means the platform channel's pending reply is simply never resolved on the happy path — asymmetric with Android, which always calls `result.success(true)`.
-- Android's mediation-network parsing uses `.toUpperCase(Locale.ENGLISH)` then `MediationNetwork.valueOf(...)`; any string that doesn't exactly match a native enum constant after upper-casing (e.g. an unexpected value from a future `AFMediationNetwork` addition) throws `IllegalArgumentException`, caught and surfaced as `INVALID_ARGUMENT_PROVIDED` — but only after the Dart caller has already committed to that string via the shared enum, so failures depend on the plugin's native SDK dependency version staying in sync with `AFMediationNetwork`.
-- No compile-time guarantee that `AdRevenueData.mediationNetwork` (a plain `String`) was actually built from `AFMediationNetwork.value` — passing an arbitrary string compiles fine and only fails at the native layer.
+- The mediation-network string mapping is duplicated between Dart (`AFMediationNetwork.rpcValue`) and the native RPC parsers, with no shared source of truth. A newly supported mediation network requires coordinated updates on both sides, and a mismatch fails as an "unsupported network" at runtime rather than at compile time.
+- Future completion confirms only that the RPC request was validated and forwarded to the native logging API. Android silently ignores the call before SDK initialization, and both native SDKs can discard an invalid currency or payload without reporting that rejection through RPC. The native API also exposes no upload callback.
+- Android RPC requires a three-character currency string; iOS RPC requires only a non-empty string. Both native SDKs subsequently validate the actual ISO 4217 code, but native rejection is not surfaced to Dart.
+- `additionalParameters` values are untyped (`Map<String, dynamic>`), so an unsupported value can fail in the Flutter platform codec or plugin JSON serialization before reaching the native SDK.
 
 ---
 

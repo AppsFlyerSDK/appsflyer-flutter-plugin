@@ -1,71 +1,66 @@
 ---
 id: F-007
-name: Device ID Collection Opt-out (IMEI/Android ID)
+name: Android ID Collection Opt-out
 type: sdkCore
 platform: android
 status: active
-last_verified: 2026-07-15
+last_verified: 2026-08-10
 depends_on: []
 ---
 
 ## Business Purpose
-Google Play policy prohibits apps that bundle Google Play Services from collecting IMEI or Android ID for advertising/attribution purposes; only apps without Play Services are allowed to rely on these identifiers as a fallback. `setCollectIMEI`/`setCollectAndroidId` let a Play-Services-enabled app explicitly opt out of this collection so it stays compliant, while apps without Play Services can leave it enabled as their only device-level identifier fallback. Getting this wrong risks Play Store policy violations and app rejection/removal.
-
-> TODO: enrich from product specs — provide a Notion database URL and re-run Phase 4 to fill this automatically.
+`setCollectAndroidID` controls whether the Android SDK may collect Android ID as a fallback identifier. Apps must choose the value that matches their distribution context, consent basis, privacy disclosures, and current Google Play policy rather than assuming the identifier is always appropriate.
 
 ---
 
 ## Trigger
-Called by the host app during startup configuration, before or around SDK init, whenever the app needs to explicitly declare its IMEI/Android ID collection posture (typically apps that ship with Google Play Services present).
+Called by the host app during startup configuration, before `start()`, when it needs to declare its Android ID collection posture (typically apps shipping with Google Play Services present). Dart and RPC do not enforce this ordering.
 
 ---
 
 ## Call Chain
-```
-AppsflyerSdk.setCollectIMEI(isCollect)                                  [lib/src/appsflyer_sdk.dart]
-  → _methodChannel.invokeMethod("setCollectIMEI", {'isCollect': isCollect})
-    → Android: AppsflyerSdkPlugin.onMethodCall("setCollectIMEI") → setCollectIMEI(call, result)   [android/.../AppsflyerSdkPlugin.java]
-      → AppsFlyerLib.getInstance().setCollectIMEI(isCollect)
+`setCollectAndroidID` is a generic RPC with no Dart platform gate (Android ID is an Android-only identifier, so on iOS the native RPC layer answers that it does not implement the method and the call throws `AppsFlyerException`).
 
-AppsflyerSdk.setCollectAndroidId(isCollect)                             [lib/src/appsflyer_sdk.dart]
-  → _methodChannel.invokeMethod("setCollectAndroidId", {'isCollect': isCollect})
-    → Android: AppsflyerSdkPlugin.onMethodCall("setCollectAndroidId") → setCollectAndroidId(call, result)   [android/.../AppsflyerSdkPlugin.java]
-      → AppsFlyerLib.getInstance().setCollectAndroidID(isCollect)
 ```
-No iOS branch exists for either method name in `ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.m`'s `handleMethodCall:` — on iOS these calls fall through to `result(FlutterMethodNotImplemented)`.
+AppsFlyerSdk.setCollectAndroidID(isCollect)                           [lib/src/appsflyer_sdk.dart]
+  → off Android: native RPC reports the method as unavailable → AppsFlyerException
+  → _invokeVoidRpc('setCollectAndroidID', {isCollect})
+    → af-api "executeRpc" {method:'setCollectAndroidID', params}
+      → Android: dispatchRpc → AppsFlyerRpcHandler → AppsFlyerLib.setCollectAndroidID(isCollect)  [android/.../AppsflyerSdkPlugin.kt]
+```
 
 ---
 
 ## Files
 | File | Role |
 |------|------|
-| `lib/src/appsflyer_sdk.dart` | `setCollectIMEI(bool)`, `setCollectAndroidId(bool)` — platform-agnostic Dart API surface (no `Platform.isAndroid` guard) |
-| `android/src/main/java/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.java` | `setCollectIMEI`, `setCollectAndroidId` native handlers |
+| `lib/src/appsflyer_sdk.dart` | `setCollectAndroidID(bool)` — dispatched through RPC without a Dart platform check |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | generic `setCollectAndroidID` RPC dispatch over `AppsFlyerRpcHandler` |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | `isCollect` (bool) — `true` keeps collection enabled (default SDK behavior), `false` opts out. |
-| **Output** | `void` — fire-and-forget; no confirmation returned to Dart. |
+| **Input** | `isCollect` (`bool`) — `true` enables Android ID collection and `false` opts out. The native SDK's stored opt-in flag defaults to `false`. RPC param key `isCollect`. |
+| **Output** | `Future<void>` — on Android, completes after RPC handling and the synchronous native setter invocation; it does not confirm that an Android ID was subsequently collected. RPC or bridge failures are exposed as `AppsFlyerException`. On iOS the call still reaches the channel and throws `AppsFlyerException`, because the iOS RPC layer does not implement the method. |
 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` — `check setCollectIMEI call` (line 232) and `check setCollectAndroidId call` (line 238) assert the mocked channel receives the respective method names. Tests run in the Dart test harness only, so they cannot and do not distinguish Android vs. iOS native behavior.
+`test/appsflyer_sdk_test.dart` → `'maps every Android-only API'` verifies that `setCollectAndroidID(true)` dispatches RPC method `setCollectAndroidID` with `{'isCollect': true}`. `'platform-only calls are forwarded to the native RPC instead of being swallowed in Dart'` asserts that calling it on iOS still dispatches the RPC, and `'platform-only setters surface the native error'` asserts that the resulting native failure reaches the caller as `AppsFlyerException`. The Flutter tests do not verify whether the native SDK subsequently collects an Android ID.
 
 ---
 
 ## Known Limitations
-- **Android-only**: there is no corresponding native implementation on iOS (concept doesn't apply — IMEI/Android ID are Android-specific identifiers). Calling these methods from a Flutter app running on iOS results in a `MissingPluginException`/`FlutterMethodNotImplemented` at the native layer, since the Dart API has no platform guard and will happily invoke the channel method regardless of `Platform.isIOS`.
-- No compile-time or runtime warning in the Dart layer indicates these are Android-only; integrators must consult documentation (or this catalog) to learn that.
+- **Android-only** but not Dart-gated: calling it on iOS reaches the native RPC layer, which does not implement the method, so the call throws `AppsFlyerException` instead of quietly doing nothing.
+- Calling the API before `start()` is recommended configuration ordering but is not enforced by Dart or RPC.
 
 ---
 
 ## Dependencies
 ```mermaid
 flowchart LR
-    F007["F-007 · Device ID Collection Opt-out"]:::sdkCore
+    F007["F-007 · Android ID Collection Opt-out"]:::sdkCore
     classDef sdkCore fill:#4C6EF5,color:#fff
 ```
