@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:isolate';
 
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
@@ -104,8 +105,20 @@ void main() {
     });
 
     test('pluginVersion exposes the compiled plugin version constant', () {
-      expect(androidSdk.pluginVersion, '7.0.2');
-      expect(iosSdk.pluginVersion, '7.0.2');
+      // The release pipeline rewrites pubspec.yaml and this constant in one
+      // commit, so pubspec.yaml is the source of truth for the expected value.
+      final pubspecVersion = RegExp(
+        r'^version:\s*(\S+)\s*$',
+        multiLine: true,
+      ).firstMatch(File('pubspec.yaml').readAsStringSync())?.group(1);
+
+      expect(
+        pubspecVersion,
+        isNotNull,
+        reason: 'pubspec.yaml must declare a version',
+      );
+      expect(androidSdk.pluginVersion, pubspecVersion);
+      expect(iosSdk.pluginVersion, pubspecVersion);
     });
 
     test('listeners are registered explicitly', () async {
