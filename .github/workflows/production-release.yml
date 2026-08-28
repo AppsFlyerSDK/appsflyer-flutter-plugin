@@ -189,32 +189,23 @@ jobs:
           VERSION: ${{ steps.get-version.outputs.version }}
           DRY_RUN: ${{ steps.dry-run.outputs.value }}
         run: |
-          # Check if tag exists locally or remotely
-          if git rev-parse "$VERSION" >/dev/null 2>&1; then
-            echo "⚠️ Tag $VERSION already exists locally"
-            
+          set -euo pipefail
+          # A fresh checkout carries no tags, so they are fetched before either
+          # lookup. Both lookups name refs/tags explicitly, because a bare
+          # revision also resolves branches and never matches a remote tag.
+          git fetch --tags --quiet
+
+          if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null \
+            || [[ -n "$(git ls-remote --tags origin "refs/tags/$VERSION")" ]]; then
             if [[ "$DRY_RUN" == "true" ]]; then
-              echo "Dry run mode - continuing anyway"
+              echo "⚠️ Tag $VERSION already exists - continuing in dry run"
             else
-              echo "❌ Cannot create duplicate release"
+              echo "::error::Tag $VERSION already exists - cannot create a duplicate release"
               exit 1
             fi
+          else
+            echo "✅ Tag $VERSION does not exist - safe to proceed"
           fi
-          
-          # Check remote tags
-          git fetch --tags
-          if git rev-parse "origin/$VERSION" >/dev/null 2>&1; then
-            echo "⚠️ Tag $VERSION already exists remotely"
-            
-            if [[ "$DRY_RUN" == "true" ]]; then
-              echo "Dry run mode - continuing anyway"
-            else
-              echo "❌ Cannot create duplicate release"
-              exit 1
-            fi
-          fi
-          
-          echo "✅ Tag $VERSION does not exist - safe to proceed"
 
   # ===========================================================================
   # Job 2: Publish to pub.dev
@@ -339,7 +330,13 @@ jobs:
     name: 🏷️ Create GitHub Release
     runs-on: ubuntu-latest
     needs: [validate-release, publish-to-pubdev]
-    if: always() && needs.validate-release.outputs.is_valid == 'true' && needs.validate-release.outputs.is_dry_run != 'true'
+    # Tagging a version that never reached pub.dev leaves a release pointing at
+    # nothing, so this waits for the publish job to actually succeed.
+    if: |
+      always() &&
+      needs.validate-release.outputs.is_valid == 'true' &&
+      needs.validate-release.outputs.is_dry_run != 'true' &&
+      needs.publish-to-pubdev.result == 'success'
     
     steps:
       - name: Checkout repository
