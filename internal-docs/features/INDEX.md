@@ -1,6 +1,6 @@
 # AppsFlyer Flutter Plugin — Feature Catalog Index
 
-70 catalogued features across 6 categories. Seven are `removed` in SDK 7 (F-008, F-021, F-023, F-036, F-038, F-056, F-058) — kept as tombstone entries pointing to the current API or migration documentation. See `DIAGRAM.md` for runtime/init dependency diagrams and the verified dependency table.
+70 catalogued features across 6 categories. Six are `removed` in SDK 7 (F-021, F-023, F-036, F-038, F-056, F-058) — kept as tombstone entries pointing to the current API or migration documentation. See `DIAGRAM.md` for runtime/init dependency diagrams and the verified dependency table.
 
 > **Verification status:** Entries were re-checked on **2026-08-25** for the RPC 7.0.12 / 7.0.13 alignment (iOS bare `data` forwarding, `performDeepLinking` wire name on both platforms, `getHostName` / `getHostPrefix` / `isStopped` on iOS). The catalog-wide spot-check on **2026-08-10** against the Dart API, platform plugin sources, pinned Android/iOS RPC implementations, relevant native SDK behavior, and available tests remains the baseline. `last_verified` on each F-NNN file records an implementation audit, not proof of end-to-end device behavior; each feature's Tests and Known Limitations sections identify remaining coverage gaps.
 
@@ -17,7 +17,7 @@ SDK lifecycle, identity, privacy/consent, and low-level configuration.
 | F-003 | SDK/Plugin Version Retrieval | active | both |
 | F-006 | Custom Host Configuration | active | both |
 | F-007 | Android ID Collection Opt-out | active | android |
-| F-008 | Manual IMEI/Android ID Override | removed | android |
+| F-008 | Manual IMEI/Android ID/OAID Override | active | android |
 | F-009 | Minimum Time Between Sessions | active | both |
 | F-011 | TCF/DMA Automatic Consent Collection | active | both |
 | F-012 | Manual GDPR/DMA Consent API | active | both |
