@@ -48,6 +48,9 @@ throws `AppsFlyerException` — see
 - [setCustomerUserId](#setCustomerUserId)
 - [setAdditionalData](#setAdditionalData)
 - [setCollectAndroidID](#setCollectAndroidID)
+- [setImeiData](#setImeiData)
+- [setOaidData](#setOaidData)
+- [setAndroidIdData](#setAndroidIdData)
 - [setHost](#setHost)
 - [getHostName](#getHostName)
 - [getHostPrefix](#getHostPrefix)
@@ -769,6 +772,33 @@ await appsFlyerSdk.setAdditionalData(data);
 _Example:_
 ```dart
 await appsFlyerSdk.setCollectAndroidID(true);
+```
+---
+**<a id="setImeiData"> `Future<void> setImeiData(String imei)`** — **Android only**
+
+Supplies a pre-collected IMEI value to the SDK.
+
+_Example:_
+```dart
+await appsFlyerSdk.setImeiData('your-imei-value');
+```
+---
+**<a id="setOaidData"> `Future<void> setOaidData(String oaid)`** — **Android only**
+
+Supplies a pre-collected OAID value to the SDK.
+
+_Example:_
+```dart
+await appsFlyerSdk.setOaidData('your-oaid-value');
+```
+---
+**<a id="setAndroidIdData"> `Future<void> setAndroidIdData(String androidId)`** — **Android only**
+
+Supplies a pre-collected Android ID value to the SDK.
+
+_Example:_
+```dart
+await appsFlyerSdk.setAndroidIdData('your-android-id-value');
 ```
 ---
 **<a id="setHost"> `Future<void> setHost(String hostPrefixName, String hostName)`**

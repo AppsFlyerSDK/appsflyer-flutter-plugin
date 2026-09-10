@@ -1,12 +1,12 @@
 # AppsFlyer Flutter Plugin — Architecture (Flutter ↔ RPC ↔ Native SDK)
 
 **Status:** Current implementation  
-**Last verified:** 2026-08-25  
-**Flutter plugin:** 7.0.2  
+**Last verified:** 2026-09-09  
+**Flutter plugin:** 7.0.2+1  
 **Flutter:** >=3.35.0 · **Dart:** >=3.9.0  
 **Android toolchain:** KGP 2.0.21+, AGP 8.9.1+, Gradle 8.11.1+, JDK 17  
 **Android SDK:** 7.0.1  
-**Android RPC:** 7.0.12  
+**Android RPC:** 7.0.13  
 **iOS SDK:** 7.0.2  
 **iOS RPC:** 7.0.13
 
@@ -308,7 +308,7 @@ Listener registration can cause readiness or attribution work promptly, so appli
 
 Timeouts belong to the native RPC layers, not Dart. They bound how long a Flutter request waits; they do not cancel native work, so a late native operation may still complete after Dart has received an error.
 
-| Awaited operation | Android RPC 7.0.12 | iOS RPC 7.0.13 |
+| Awaited operation | Android RPC 7.0.13 | iOS RPC 7.0.13 |
 | --- | ---: | ---: |
 | `start` | 5 s | 10 s |
 | `logEvent` | 5 s | 10 s |

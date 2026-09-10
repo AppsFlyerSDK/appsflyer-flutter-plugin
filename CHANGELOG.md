@@ -1,5 +1,9 @@
 # Versions
 
+## 7.0.2+1
+
+- **Added** `setImeiData`, `setOaidData`, and `setAndroidIdData` (Android only)
+
 ## 7.0.2
 
 Migration to **AppsFlyer SDK 7**. This is a major release with intentional

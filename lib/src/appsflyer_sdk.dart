@@ -766,6 +766,21 @@ class AppsFlyerSdk {
     return _invokeVoidRpc('setCollectAndroidID', {'isCollect': isCollect});
   }
 
+  /// Supplies a pre-collected IMEI value to the SDK.
+  Future<void> setImeiData(String imei) {
+    return _invokeVoidRpc('setImeiData', {'imei': imei});
+  }
+
+  /// Supplies a pre-collected OAID value to the SDK.
+  Future<void> setOaidData(String oaid) {
+    return _invokeVoidRpc('setOaidData', {'oaid': oaid});
+  }
+
+  /// Supplies a pre-collected Android ID value to the SDK.
+  Future<void> setAndroidIdData(String androidId) {
+    return _invokeVoidRpc('setAndroidIdData', {'androidId': androidId});
+  }
+
   /// Disables collection of the network carrier and SIM operator names.
   ///
   /// Android only.
