@@ -219,24 +219,6 @@ class MainPageState extends State<MainPage> {
       AfQaLogger.error('getAppsFlyerUID', error);
     }
 
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      await _safeCall('setImeiData', () async {
-        const imei = 'qa_imei_demo';
-        await _appsflyerSdk.setImeiData(imei);
-        AfQaLogger.result('setImeiData', imei);
-      });
-      await _safeCall('setOaidData', () async {
-        const oaid = 'qa_oaid_demo';
-        await _appsflyerSdk.setOaidData(oaid);
-        AfQaLogger.result('setOaidData', oaid);
-      });
-      await _safeCall('setAndroidIdData', () async {
-        const androidId = 'qa_android_id_demo';
-        await _appsflyerSdk.setAndroidIdData(androidId);
-        AfQaLogger.result('setAndroidIdData', androidId);
-      });
-    }
-
     AfQaLogger.autoApis('--- Post-start auto APIs complete ---');
   }
 
