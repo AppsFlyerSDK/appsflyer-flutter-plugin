@@ -23,9 +23,17 @@ Pod::Spec.new do |s|
   s.subspec 'Core' do |ss|
     ss.source_files = 'appsflyer_sdk/Sources/appsflyer_sdk/**/*.swift'
     ss.dependency 'Flutter'
-    ss.ios.dependency 'AppsFlyerRPC', '7.0.13'
-    # Imported directly for `handleLaunchOptions:`; must stay on the version AppsFlyerRPC pins.
-    ss.ios.dependency 'AppsFlyerFramework', '7.0.2'
+    appsflyer_rpc_version = '7.0.13'
+    appsflyer_framework_version = '7.0.2'
+    # AppsFlyerRPC default_subspecs is Main, which pulls AppsFlyerFramework (Main). Strict mode
+    # must pin RPC/Strict and Framework/Strict together or CocoaPods installs both xcframeworks.
+    if defined?($AppsFlyerStrictMode) && $AppsFlyerStrictMode
+      ss.ios.dependency 'AppsFlyerRPC/Strict', appsflyer_rpc_version
+      ss.ios.dependency 'AppsFlyerFramework/Strict', appsflyer_framework_version
+    else
+      ss.ios.dependency 'AppsFlyerRPC/Main', appsflyer_rpc_version
+      ss.ios.dependency 'AppsFlyerFramework/Main', appsflyer_framework_version
+    end
   end
 
   s.subspec 'PurchaseConnector' do |ss|
