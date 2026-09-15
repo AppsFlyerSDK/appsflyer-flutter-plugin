@@ -1,6 +1,6 @@
 # Versions
 
-## 7.0.2+2
+## Unreleased
 
 - **Added** iOS Strict mode opt-in for CocoaPods: set `$AppsFlyerStrictMode = true`
   in the app `Podfile` before `pod install` to link `AppsFlyerRPC/Strict` and
