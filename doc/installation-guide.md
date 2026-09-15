@@ -73,12 +73,40 @@ Upgrade-specific removal of legacy receiver declarations is documented in
 
 ---
 
-## <a id="strictMode">👨‍👩‍👧‍👦  Strict mode for Kids Apps
+## 👨‍👩‍👧‍👦  Strict mode for Kids Apps
 
-The iOS SDK ships in two variants: **Strict** mode and **Regular** mode.
-Please read more: https://support.appsflyer.com/hc/en-us/articles/207032066#integration-strict-mode-sdk
+The iOS SDK ships in two variants: **Strict** mode and **Regular** mode
+(`AppsFlyerFramework/Main`). Strict mode ships a binary and privacy manifest
+suited to ad-ID-less apps (no IDFA/ATT surface). Please read more:
+https://support.appsflyer.com/hc/en-us/articles/207032066#integration-strict-mode-sdk
 
-> **⚠️ SDK 7 note:** The Flutter plugin does not currently expose Strict mode
-> as a public configuration option. Swift Package Manager uses the Regular SDK
-> variant. If your Kids App requires Strict mode, use CocoaPods and contact
-> AppsFlyer Support for the supported plugin configuration.
+### CocoaPods opt-in (iOS)
+
+Strict mode is selected at **`pod install`** time, not in `pubspec.yaml`. In your
+app's `ios/Podfile`, set the global **before** `flutter_ios_podfile_setup` (same
+pattern as [Purchase Connector](purchase-connector.md#how-to-opt-in)):
+
+```ruby
+$AppsFlyerStrictMode = true
+```
+
+Then run `cd ios && pod install` (or rebuild from Flutter). The plugin resolves
+`AppsFlyerRPC/Strict` and `AppsFlyerFramework/Strict` instead of the Main subspecs.
+
+Do **not** add `pod 'AppsFlyerFramework/Strict', …` to the Podfile yourself.
+That adds Strict alongside the plugin's Main dependency and CocoaPods fails with
+duplicate `AppsFlyerLib.xcframework` errors (see
+[GitHub issue #473](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/issues/473)).
+
+Runtime APIs such as `setDisableAdvertisingIdentifiers(true)` do not replace
+Strict mode — they configure behavior inside whichever native binary is linked.
+
+> **Swift Package Manager:** SPM integrations always use the Regular (`Main`)
+> SDK variant. Strict mode requires CocoaPods for this plugin.
+>
+> **Purchase Connector:** The optional Purchase Connector pod still declares a
+> dependency on the Regular `AppsFlyerFramework` subspec. Apps that enable both
+> `$AppsFlyerPurchaseConnector` and `$AppsFlyerStrictMode` may hit the same
+> duplicate-framework error until those native pins align. Use Strict mode only
+> with Core attribution unless AppsFlyer Support confirms a supported combination
+> for your versions.

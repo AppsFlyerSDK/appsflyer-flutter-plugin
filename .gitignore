@@ -116,6 +116,11 @@ covBadgeGen.js
 coverage/
 .env
 
+# Local CI log dumps / FVM (not part of the plugin repo)
+.ci-log-extract/
+.fvm/
+.fvmrc
+
 .af-e2e/reports/
 .af-smoke/reports/
 
