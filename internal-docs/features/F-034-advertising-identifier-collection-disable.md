@@ -61,6 +61,7 @@ AppsFlyerSdk.setDisableAdvertisingIdentifiers(disable)                [lib/src/a
 - The Dart method sends different param keys per platform (`isDisable` on Android, `disable` on iOS) because the two native RPC contracts differ. A future change to either key would break one platform without a compile-time check; the per-platform test assertions are the only guard.
 - No getter exists to read back the current disabled state from Dart.
 - The native API has no completion callback, so a completed `Future` confirms only that the RPC layer accepted the call.
+- On **iOS**, disabling collection at runtime does not link the **Strict** SDK binary or change the embedded privacy manifest. Use F-071 (`$AppsFlyerStrictMode` in the Podfile) when the app must ship Strict.
 
 ---
 

@@ -1576,6 +1576,12 @@ await appsFlyerSdk.setOneLinkCustomDomain(
 
 Disables collection of advertising identifiers (GAID / IDFA / OAID). Pass `true` to **disable** collection (enabled by default).
 
+On **iOS**, this is a runtime setting only. It does not select the Strict vs Main
+native SDK variant or change the embedded App Store privacy manifest. Kids apps
+and other ad-ID-less integrations that require the Strict binary must set
+`$AppsFlyerStrictMode = true` in the app Podfile before `pod install` — see
+[Installation — Strict mode](installation-guide.md#strictMode).
+
 _Example:_
 ```dart
 await appsFlyerSdk.setDisableAdvertisingIdentifiers(true);

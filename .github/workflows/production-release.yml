@@ -384,7 +384,10 @@ jobs:
             echo "::warning::Could not resolve the Android SDK version from the bridge POM; release notes will say unknown"
             ANDROID_SDK_VERSION="unknown"
           }
-          IOS_SDK_VERSION=$(grep "s.ios.dependency 'AppsFlyerFramework'" ios/appsflyer_sdk.podspec | sed -n "s/.*AppsFlyerFramework',.*'\([^']*\)'.*/\1/p" | head -1)
+          IOS_SDK_VERSION=$(sed -nE "s/.*appsflyer_framework_version = '([^']+)'.*/\1/p" ios/appsflyer_sdk.podspec | head -1)
+          if [[ -z "$IOS_SDK_VERSION" ]]; then
+            IOS_SDK_VERSION=$(grep "s.ios.dependency 'AppsFlyerFramework'" ios/appsflyer_sdk.podspec | sed -n "s/.*AppsFlyerFramework',.*'\([^']*\)'.*/\1/p" | head -1)
+          fi
           
           # Create enhanced release notes
           cat > final_release_notes.md << EOF
@@ -496,7 +499,10 @@ jobs:
           echo "android_sdk=$ANDROID_SDK_VERSION" >> $GITHUB_OUTPUT
           
           # Extract iOS SDK version from podspec
-          IOS_SDK_VERSION=$(grep "s.ios.dependency 'AppsFlyerFramework'" ios/appsflyer_sdk.podspec | sed -n "s/.*AppsFlyerFramework',.*'\([^']*\)'.*/\1/p" | head -1)
+          IOS_SDK_VERSION=$(sed -nE "s/.*appsflyer_framework_version = '([^']+)'.*/\1/p" ios/appsflyer_sdk.podspec | head -1)
+          if [[ -z "$IOS_SDK_VERSION" ]]; then
+            IOS_SDK_VERSION=$(grep "s.ios.dependency 'AppsFlyerFramework'" ios/appsflyer_sdk.podspec | sed -n "s/.*AppsFlyerFramework',.*'\([^']*\)'.*/\1/p" | head -1)
+          fi
           echo "ios_sdk=$IOS_SDK_VERSION" >> $GITHUB_OUTPUT
           
           # Extract Purchase Connector versions from build files

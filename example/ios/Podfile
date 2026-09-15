@@ -4,6 +4,9 @@ platform :ios, '15.0'
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
+# Kids / ad-ID-less iOS builds: uncomment before pod install (see doc/installation-guide.md#strictMode).
+# $AppsFlyerStrictMode = true
+
 project 'Runner', {
   'Debug' => :debug,
   'Profile' => :release,

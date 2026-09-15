@@ -13,7 +13,7 @@ invoke the session-ready callback immediately and trigger `start()`.
 | --- | --- | --- |
 | Anonymize attribution data for the current user | `anonymizeUser(true)` | Call before the first `start()`. Call `anonymizeUser(false)` to stop anonymizing future data. |
 | Stop all SDK activity and communication | `stop(true)` | Use for a complete SDK opt-out. Do not call `start()` while stopped. Call `stop(false)` to resume, then continue with the normal session-ready → `start()` flow. |
-| Disable advertising-identifier collection | `setDisableAdvertisingIdentifiers(true)` | Call before the first `start()` when your privacy choice requires GAID, IDFA, and OAID collection to be disabled. Pass `false` to enable collection again. |
+| Disable advertising-identifier collection | `setDisableAdvertisingIdentifiers(true)` | Call before the first `start()` when your privacy choice requires GAID, IDFA, and OAID collection to be disabled. Pass `false` to enable collection again. On iOS, also use [Strict mode](installation-guide.md#strictMode) when the app must link the Strict SDK binary and privacy manifest (CocoaPods `$AppsFlyerStrictMode`). |
 | Set user PII for network sharing | `setUserEmail`, `setUserPhone`, `setUserFirstName`, `setUserLastName`, `setUserFbLoginId` | Set only the values your app is allowed to share. Email, phone, and name values are hashed by the native SDK; the Facebook App-Scoped ID is not hashed. |
 | Remove previously set PII | `clearUserPii()` | Call on logout, before switching accounts, or when the app should no longer retain values set through the `setUser*` APIs. It does not clear the Customer User ID, consent, or anonymization state. |
 

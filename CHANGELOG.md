@@ -1,5 +1,12 @@
 # Versions
 
+## Unreleased
+
+- **Added** iOS Strict mode opt-in for CocoaPods: set `$AppsFlyerStrictMode = true`
+  in the app `Podfile` before `pod install` to link `AppsFlyerRPC/Strict` and
+  `AppsFlyerFramework/Strict` instead of the Main subspecs (fixes
+  [#473](https://github.com/AppsFlyerSDK/appsflyer-flutter-plugin/issues/473)).
+
 ## 7.0.2+1
 
 - **Added** `setImeiData`, `setOaidData`, and `setAndroidIdData` (Android only)
