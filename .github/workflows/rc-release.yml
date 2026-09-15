@@ -332,8 +332,18 @@ jobs:
             exit 1
           fi
 
-          # Spacing after the comma varies between podspec entries, so it is
-          # matched loosely. A pod that is absent is an error, not a skip.
+          # Core subspec pins native versions as Ruby variables (Main/Strict use the
+          # same version). PurchaseConnector stays on ss.ios.dependency lines.
+          pin_podspec_ruby_version() {
+            local var="$1" version="$2"
+            if ! grep -qE "[[:space:]]${var} = '" "$FILE"; then
+              echo "::error::$FILE has no ${var} assignment to update"
+              exit 1
+            fi
+            sed -i.bak -E "s/([[:space:]]${var} = ')[^']*/\1${version}/" "$FILE"
+            rm "${FILE}.bak"
+          }
+
           pin_pod_dep() {
             local pod="$1" version="$2"
             if ! grep -qE "ss\.ios\.dependency '${pod}'," "$FILE"; then
@@ -351,7 +361,7 @@ jobs:
           sed -i.bak -E "s/^([[:space:]]*s\.version[[:space:]]*=[[:space:]]*)'[^']*'/\1'${PODSPEC_VERSION}'/" "$FILE"
           rm "${FILE}.bak"
 
-          pin_pod_dep AppsFlyerFramework "$IOS_VER"
+          pin_podspec_ruby_version appsflyer_framework_version "$IOS_VER"
 
           # PurchaseConnector lives in an optional subspec. Defaults to IOS_VER
           # (same as ios_sdk_version) unless ios_pc_version was passed —
@@ -361,7 +371,7 @@ jobs:
           fi
 
           echo "Updated podspec lines:"
-          grep -nE "s\.version|AppsFlyerRPC|AppsFlyerFramework|PurchaseConnector" "$FILE"
+          grep -nE "s\.version|appsflyer_framework_version|appsflyer_rpc_version|AppsFlyerRPC|AppsFlyerFramework|PurchaseConnector" "$FILE"
 
       - name: Update plugin version constants (Android/iOS/Dart)
         run: |
@@ -404,7 +414,10 @@ jobs:
         run: |
           set -euo pipefail
           BRIDGE_VER=$(sed -nE 's/.*com\.appsflyer:af-android-plugin-bridge:([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' android/build.gradle | head -1)
-          IOS_RPC_VER=$(sed -nE "s/.*ss\.ios\.dependency 'AppsFlyerRPC',[[:space:]]*'([^']*)'.*/\1/p" ios/appsflyer_sdk.podspec | head -1)
+          IOS_RPC_VER=$(sed -nE "s/.*appsflyer_rpc_version = '([^']+)'.*/\1/p" ios/appsflyer_sdk.podspec | head -1)
+          if [[ -z "$IOS_RPC_VER" ]]; then
+            IOS_RPC_VER=$(sed -nE "s/.*ss\.ios\.dependency 'AppsFlyerRPC(\/(Main|Strict))?',[[:space:]]*'([^']+)'.*/\3/p" ios/appsflyer_sdk.podspec | head -1)
+          fi
           ANDROID_SDK_VER=$(bash scripts/resolve-android-sdk-version.sh)
 
           for pair in "BRIDGE_VER:$BRIDGE_VER" "IOS_RPC_VER:$IOS_RPC_VER" "ANDROID_SDK_VER:$ANDROID_SDK_VER"; do
@@ -896,7 +909,10 @@ jobs:
           echo "android_sdk=${{ needs.prepare-branch.outputs.android_sdk_version }}" >> $GITHUB_OUTPUT
 
           # Extract iOS SDK version
-          IOS_SDK_VERSION=$(grep "s.ios.dependency 'AppsFlyerFramework'" ios/appsflyer_sdk.podspec | sed -n "s/.*AppsFlyerFramework',.*'\([^']*\)'.*/\1/p" | head -1)
+          IOS_SDK_VERSION=$(sed -nE "s/.*appsflyer_framework_version = '([^']+)'.*/\1/p" ios/appsflyer_sdk.podspec | head -1)
+          if [[ -z "$IOS_SDK_VERSION" ]]; then
+            IOS_SDK_VERSION=$(grep "s.ios.dependency 'AppsFlyerFramework'" ios/appsflyer_sdk.podspec | sed -n "s/.*AppsFlyerFramework',.*'\([^']*\)'.*/\1/p" | head -1)
+          fi
           echo "ios_sdk=$IOS_SDK_VERSION" >> $GITHUB_OUTPUT
 
           # Extract Purchase Connector versions from build files
