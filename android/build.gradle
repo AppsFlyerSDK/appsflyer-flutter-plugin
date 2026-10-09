@@ -13,8 +13,17 @@ rootProject.allprojects {
         google()
     }
 }
+def agpMajor = com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION.tokenize('.')[0] as int
+// AGP 9 enables built-in Kotlin and no longer allows library subprojects to apply
+// the Kotlin Gradle Plugin (KGP). Apply KGP ourselves whenever built-in Kotlin is
+// not in effect; the pluginManager form keeps Flutter's static KGP detection from
+// flagging this plugin. See
+// https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-plugin-authors
+def builtInKotlinEnabled = project.findProperty('android.builtInKotlin')?.toString()?.toBoolean() ?: (agpMajor >= 9)
 apply plugin: 'com.android.library'
-apply plugin: 'org.jetbrains.kotlin.android'
+if (agpMajor < 9 || !builtInKotlinEnabled) {
+    pluginManager.apply('org.jetbrains.kotlin.android')
+}
 
 // The Kotlin Gradle Plugin version comes from the host app: this file applies
 // org.jetbrains.kotlin.android without a version, so there is nothing the
@@ -25,6 +34,7 @@ apply plugin: 'org.jetbrains.kotlin.android'
 // See doc/installation-guide.md.
 def minKotlinVersion = '2.0.21'
 def hostKotlinVersion =
+        builtInKotlinEnabled ? null :
         org.jetbrains.kotlin.gradle.plugin.KotlinPluginWrapperKt.getKotlinPluginVersion(project)
 
 static List<Integer> parseVersionParts(String version) {
@@ -45,7 +55,7 @@ static boolean isVersionAtLeast(String actual, String required) {
     return true
 }
 
-if (!isVersionAtLeast(hostKotlinVersion, minKotlinVersion)) {
+if (!builtInKotlinEnabled && !isVersionAtLeast(hostKotlinVersion, minKotlinVersion)) {
     throw new GradleException(
             "appsflyer_sdk requires Kotlin Gradle Plugin $minKotlinVersion or " +
             "later, but this app builds with $hostKotlinVersion.\n" +
@@ -74,8 +84,10 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = '17'
+    if (!builtInKotlinEnabled) {
+        kotlinOptions {
+            jvmTarget = '17'
+        }
     }
 
     namespace 'com.appsflyer.appsflyersdk'
@@ -108,4 +120,12 @@ dependencies {
     }
 
     testImplementation 'junit:junit:4.13.2'
+}
+
+if (builtInKotlinEnabled) {
+    kotlin {
+        compilerOptions {
+            jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+        }
+    }
 }
