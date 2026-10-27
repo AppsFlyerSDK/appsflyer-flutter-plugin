@@ -91,6 +91,12 @@ appsflyer.enable_purchase_connector=true
 ```
 Once you set these properties and rebuild the app, Purchase Connector will be integrated into your project and you can utilize its functionality in your app.
 
+> **iOS Strict mode:** Purchase Connector and `$AppsFlyerStrictMode` may conflict at
+> `pod install` because the Purchase Connector pod still pins Regular
+> `AppsFlyerFramework`. Kids / ad-ID-less apps using Strict mode should use Core
+> attribution only unless AppsFlyer Support confirms a supported combination — see
+> [Installation — Strict mode](installation-guide.md#strictMode).
+
 > ⚠️ **iOS + Swift Package Manager**: Purchase Connector requires **CocoaPods for the entire plugin** — there is no Swift Package Manager path for it, and it cannot currently be combined with Swift Package Manager for the Core integration either. This is a temporary limitation pending an upstream Flutter fix ([flutter/flutter#161182](https://github.com/flutter/flutter/issues/161182)). **If your app uses Purchase Connector, do not enable Swift Package Manager for this plugin — keep your `Podfile` and use CocoaPods for both Core and Purchase Connector.** If you enable SPM anyway, calling any Purchase Connector API throws `MissingPluginException` — see the next section. SPM is only recommended for apps that don't use Purchase Connector at all (see [installation-guide.md](installation-guide.md#ios-swift-package-manager-spm-support)).
 
 ### What Happens if You Use Dart Files Without Opting In?

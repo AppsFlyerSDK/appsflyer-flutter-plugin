@@ -368,6 +368,9 @@ void main() {
         'setIsUpdate': () => iosSdk.setIsUpdate(true),
         'setAppId': () => iosSdk.setAppId('123'),
         'disableAppSetId': () => iosSdk.disableAppSetId(),
+        'setImeiData': () => iosSdk.setImeiData('imei'),
+        'setOaidData': () => iosSdk.setOaidData('oaid'),
+        'setAndroidIdData': () => iosSdk.setAndroidIdData('android-id'),
         'setDisableSKAdNetwork': () => androidSdk.setDisableSKAdNetwork(true),
         'setDisableCollectASA': () => androidSdk.setDisableCollectASA(true),
         'setCurrentDeviceLanguage': () =>
@@ -444,6 +447,9 @@ void main() {
         () => androidSdk.setUseReceiptValidationSandbox(true),
         () => androidSdk.setUseUninstallSandbox(true),
         () => androidSdk.setDisableIDFVCollection(true),
+        () => androidSdk.setImeiData('imei'),
+        () => androidSdk.setOaidData('oaid'),
+        () => androidSdk.setAndroidIdData('android-id'),
         () => iosSdk.setCollectAndroidID(true),
       ]) {
         await expectLater(
@@ -1032,6 +1038,21 @@ void main() {
         () => androidSdk.setCollectAndroidID(true),
         'setCollectAndroidID',
         {'isCollect': true},
+      );
+      await expectVoidRpc(
+        () => androidSdk.setImeiData('imei-value'),
+        'setImeiData',
+        {'imei': 'imei-value'},
+      );
+      await expectVoidRpc(
+        () => androidSdk.setOaidData('oaid-value'),
+        'setOaidData',
+        {'oaid': 'oaid-value'},
+      );
+      await expectVoidRpc(
+        () => androidSdk.setAndroidIdData('android-id-value'),
+        'setAndroidIdData',
+        {'androidId': 'android-id-value'},
       );
       await expectVoidRpc(
         () => androidSdk.setDisableNetworkData(true),

@@ -1,58 +1,78 @@
 ---
 id: F-008
-name: Manual IMEI/Android ID Override
+name: Manual IMEI/Android ID/OAID Override
 type: sdkCore
 platform: android
-status: removed
-last_verified: 2026-08-10
+status: active
+last_verified: 2026-09-09
 depends_on: []
 ---
 
 ## Business Purpose
-In SDK 6 the plugin exposed `setImeiData(String)` and `setAndroidIdData(String)` so apps that already held IMEI/Android ID values could hand them to the SDK instead of relying on its automatic collection.
+Apps that already hold IMEI, Android ID, or OAID values can supply them to the Android SDK instead of relying on automatic collection. This matches the SDK 6 manual-override use case and was restored in plugin 7.0.2+1 when Android RPC 7.0.13 exposed the underlying RPC methods.
 
-> **Removed in SDK 7.** Both `setImeiData` and `setAndroidIdData` no longer exist in the Flutter plugin. These APIs are **not exposed by the SDK 7 RPC bridges** (`AppsFlyerRpcHandler` / `AppsFlyerRPCBridge`), so the plugin cannot reach them. Per the API Removal Rule, they were removed rather than shipped as silent no-ops. There is no RPC-reachable replacement. See [`doc/migration-guide.md`](../../doc/migration-guide.md).
+Apps must ensure manual identifier submission complies with store policy, consent, and privacy disclosures.
 
 ---
 
 ## Trigger
-N/A — the APIs have been removed. There is no Dart method, no RPC method, and no native handler.
+Called by the host app during startup configuration, typically before `start()`, when the app has already obtained the identifier through its own compliant collection path. Dart and RPC do not enforce ordering.
 
 ---
 
 ## Call Chain
-N/A — removed. No `setImeiData` / `setAndroidIdData` method exists in `lib/src/appsflyer_sdk.dart`, and neither name is handled by the `executeRpc` dispatch on Android or iOS.
+All three methods are generic RPC calls with no Dart platform gate (Android-only identifiers; on iOS the native RPC layer reports the method as unavailable and the call throws `AppsFlyerException`).
+
+```
+AppsFlyerSdk.setImeiData(imei) / setOaidData(oaid) / setAndroidIdData(androidId)  [lib/src/appsflyer_sdk.dart]
+  → off Android: native RPC reports the method as unavailable → AppsFlyerException
+  → _invokeVoidRpc('<method>', {<paramKey>: value})
+    → af-api "executeRpc" {method, params}
+      → Android: dispatchRpc → AppsFlyerRpcHandler → AppsFlyerLib setter  [android/.../AppsflyerSdkPlugin.kt]
+```
+
+| Dart method | RPC method | Param key |
+|-------------|------------|-----------|
+| `setImeiData(String imei)` | `setImeiData` | `imei` |
+| `setOaidData(String oaid)` | `setOaidData` | `oaid` |
+| `setAndroidIdData(String androidId)` | `setAndroidIdData` | `androidId` |
 
 ---
 
 ## Files
 | File | Role |
 |------|------|
-| — | No implementation remains in `lib/src/appsflyer_sdk.dart`. Removal is documented in [`doc/migration-guide.md`](../../doc/migration-guide.md) and `CHANGELOG.md`. |
+| `lib/src/appsflyer_sdk.dart` | `setImeiData`, `setOaidData`, `setAndroidIdData` — dispatched through RPC without a Dart platform check |
+| `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | generic RPC dispatch over `AppsFlyerRpcHandler` |
+| `android/build.gradle` | pins `af-android-plugin-bridge` **7.0.13+**, which implements these RPC methods |
 
 ---
 
 ## Input / Output
 | | |
 |--|--|
-| **Input** | N/A (removed) |
-| **Output** | N/A (removed) |
+| **Input** | Non-empty string for the identifier value. RPC param keys: `imei`, `oaid`, `androidId`. |
+| **Output** | `Future<void>` — on Android, completes after RPC handling and the synchronous native setter invocation. RPC or bridge failures throw `AppsFlyerException`. On iOS the call still reaches the channel and throws `AppsFlyerException` because the iOS RPC layer does not implement these methods. |
 
 ---
 
 ## Tests
-No tests — the APIs no longer exist. `test/appsflyer_sdk_test.dart` contains no references to `setImeiData` / `setAndroidIdData`.
+`test/appsflyer_sdk_test.dart` → `'maps cross-platform configuration and identity APIs'` verifies that each method dispatches the expected RPC method name and params on Android.
 
 ---
 
 ## Known Limitations
-- No RPC-reachable replacement exists in SDK 7. Apps that previously fed device identifiers manually must rely on the SDK's own (policy-compliant) collection; the Android-ID opt-out is covered by F-007 through `AppsFlyerSdk.instance.setCollectAndroidID(bool)`.
+- **Android-only** but not Dart-gated: calling on iOS throws `AppsFlyerException` instead of quietly doing nothing.
+- Requires **Android RPC 7.0.13+** (`af-android-plugin-bridge`). Plugin 7.0.2 shipped bridge 7.0.12, which did not expose these methods.
+- For opting out of automatic Android ID collection (without supplying a manual value), use F-007 `setCollectAndroidID(bool)`.
 
 ---
 
 ## Dependencies
 ```mermaid
 flowchart LR
-    F008["F-008 · Manual IMEI/Android ID Override (removed)"]:::sdkCore
+    F008["F-008 · Manual IMEI/Android ID/OAID Override"]:::sdkCore
+    F007["F-007 · Android ID Collection Opt-out"]:::sdkCore
+    F008 -.-> F007
     classDef sdkCore fill:#4C6EF5,color:#fff
 ```

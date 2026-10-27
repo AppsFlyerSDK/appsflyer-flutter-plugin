@@ -48,6 +48,9 @@ throws `AppsFlyerException` — see
 - [setCustomerUserId](#setCustomerUserId)
 - [setAdditionalData](#setAdditionalData)
 - [setCollectAndroidID](#setCollectAndroidID)
+- [setImeiData](#setImeiData)
+- [setOaidData](#setOaidData)
+- [setAndroidIdData](#setAndroidIdData)
 - [setHost](#setHost)
 - [getHostName](#getHostName)
 - [getHostPrefix](#getHostPrefix)
@@ -769,6 +772,33 @@ await appsFlyerSdk.setAdditionalData(data);
 _Example:_
 ```dart
 await appsFlyerSdk.setCollectAndroidID(true);
+```
+---
+**<a id="setImeiData"> `Future<void> setImeiData(String imei)`** — **Android only**
+
+Supplies a pre-collected IMEI value to the SDK.
+
+_Example:_
+```dart
+await appsFlyerSdk.setImeiData('your-imei-value');
+```
+---
+**<a id="setOaidData"> `Future<void> setOaidData(String oaid)`** — **Android only**
+
+Supplies a pre-collected OAID value to the SDK.
+
+_Example:_
+```dart
+await appsFlyerSdk.setOaidData('your-oaid-value');
+```
+---
+**<a id="setAndroidIdData"> `Future<void> setAndroidIdData(String androidId)`** — **Android only**
+
+Supplies a pre-collected Android ID value to the SDK.
+
+_Example:_
+```dart
+await appsFlyerSdk.setAndroidIdData('your-android-id-value');
 ```
 ---
 **<a id="setHost"> `Future<void> setHost(String hostPrefixName, String hostName)`**
@@ -1545,6 +1575,12 @@ await appsFlyerSdk.setOneLinkCustomDomain(
 **<a id="setDisableAdvertisingIdentifiers"> `Future<void> setDisableAdvertisingIdentifiers(bool disable)`**
 
 Disables collection of advertising identifiers (GAID / IDFA / OAID). Pass `true` to **disable** collection (enabled by default).
+
+On **iOS**, this is a runtime setting only. It does not select the Strict vs Main
+native SDK variant or change the embedded App Store privacy manifest. Kids apps
+and other ad-ID-less integrations that require the Strict binary must set
+`$AppsFlyerStrictMode = true` in the app Podfile before `pod install` — see
+[Installation — Strict mode](installation-guide.md#strictMode).
 
 _Example:_
 ```dart

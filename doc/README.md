@@ -6,7 +6,7 @@ topic you need.
 
 ## Integration journey
 
-1. **[Installation](installation-guide.md)** — add the package and configure native (iOS/Android) dependencies.
+1. **[Installation](installation-guide.md)** — add the package and configure native (iOS/Android) dependencies, including optional iOS [Strict mode](installation-guide.md#strictMode) for kids / ad-ID-less apps (CocoaPods).
 2. **[Getting started](getting-started.md)** — obtain the SDK singleton, call `init`, use the SDK 7 session-ready start model, and configure iOS 14 / ATT.
 3. **[Deep linking](deep-linking.md)** — OneLink / Unified Deep Linking, deferred & direct links, and Android/iOS link setup.
 4. **[In-app events & ad revenue](in-app-events.md)** — log custom events and ad-revenue events.

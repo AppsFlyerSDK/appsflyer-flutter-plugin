@@ -60,10 +60,18 @@ check "podspec s.version" \
 # SPM and CocoaPods are two delivery paths for the same release. Only the
 # podspec is rewritten by rc-release.yml, so Package.swift is compared against
 # it to keep both paths on one set of native versions.
-podspec_af=$(sed -nE "s/.*ss\.ios\.dependency 'AppsFlyerFramework',[[:space:]]*'([^']+)'.*/\1/p" \
+podspec_af=$(sed -nE "s/.*appsflyer_framework_version = '([^']+)'.*/\1/p" \
   ios/appsflyer_sdk.podspec | head -1)
-podspec_rpc=$(sed -nE "s/.*ss\.ios\.dependency 'AppsFlyerRPC',[[:space:]]*'([^']+)'.*/\1/p" \
+if [[ -z "$podspec_af" ]]; then
+  podspec_af=$(sed -nE "s/.*ss\.ios\.dependency 'AppsFlyerFramework(\/(Main|Strict))?',[[:space:]]*'([^']+)'.*/\3/p" \
+    ios/appsflyer_sdk.podspec | head -1)
+fi
+podspec_rpc=$(sed -nE "s/.*appsflyer_rpc_version = '([^']+)'.*/\1/p" \
   ios/appsflyer_sdk.podspec | head -1)
+if [[ -z "$podspec_rpc" ]]; then
+  podspec_rpc=$(sed -nE "s/.*ss\.ios\.dependency 'AppsFlyerRPC(\/(Main|Strict))?',[[:space:]]*'([^']+)'.*/\3/p" \
+    ios/appsflyer_sdk.podspec | head -1)
+fi
 
 if [[ -z "$podspec_af" || -z "$podspec_rpc" ]]; then
   echo "::error::podspec is missing an AppsFlyerFramework or AppsFlyerRPC pin"

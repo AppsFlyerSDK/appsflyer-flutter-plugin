@@ -9,7 +9,7 @@ it, and starting sessions with the SDK 7 session-ready model.
 
 - The plugin added to your app — see [Installation](installation-guide.md).
 - Your AppsFlyer **Dev Key** (from the AppsFlyer dashboard) and, for iOS, your **App ID**.
-- **iOS:** minimum deployment target `13.0`. For ATT/IDFA, see [iOS 14 & App Tracking Transparency](#ios-14--app-tracking-transparency) below.
+- **iOS:** minimum deployment target `13.0`. For ATT/IDFA, see [iOS 14 & App Tracking Transparency](#ios-14--app-tracking-transparency) below. For kids / ad-ID-less apps that must ship the Strict SDK binary and privacy manifest, see [Strict mode (CocoaPods)](installation-guide.md#strictMode) — that is a separate Podfile opt-in from `setDisableAdvertisingIdentifiers`.
 - **Android:** review the `AD_ID` permission note in the [README](../README.md#ad_id-permission-for-android).
 
 ## Startup sequence

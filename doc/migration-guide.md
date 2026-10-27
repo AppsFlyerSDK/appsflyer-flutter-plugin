@@ -149,10 +149,10 @@ plugin removes them from its public API:
 | Removed Flutter API (v6) | Why | SDK 7 replacement / action |
 | --- | --- | --- |
 | `setUserEmails(List, EmailCryptType)` | Not available in the Flutter plugin | Hashed `setUserEmail(String)` |
-| `setImeiData(String)` | Not available in the Flutter plugin | No Flutter SDK 7 replacement |
-| `setAndroidIdData(String)` | Not available in the Flutter plugin | No Flutter SDK 7 replacement |
 
 > The `EmailCryptType` enum was removed together with `setUserEmails`.
+
+> **`setImeiData` / `setAndroidIdData` / `setOaidData`:** These were unavailable in plugin **7.0.2**. Plugin **7.0.2+1** restores `setImeiData` and `setAndroidIdData` and adds `setOaidData` as Android-only APIs. See [api-reference.md](api-reference.md).
 
 ---
 

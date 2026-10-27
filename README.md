@@ -18,7 +18,7 @@ This plugin release bundles:
 
 | Platform | RPC layer the plugin pins | AppsFlyer SDK it brings |
 |----------|---------------------------|-------------------------|
-| Android | `af-android-plugin-bridge` **v7.0.12** | **v7.0.1** |
+| Android | `af-android-plugin-bridge` **v7.0.13** | **v7.0.1** |
 | iOS | `AppsFlyerRPC` **v7.0.13** | **v7.0.2** |
 
 Since v7.0.0 the plugin integrates through the AppsFlyer RPC layer instead of
