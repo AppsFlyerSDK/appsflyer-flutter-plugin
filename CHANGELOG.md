@@ -2,7 +2,10 @@
 
 ## Unreleased
 
+- **Added** `AFMediationNetwork.googleAdManager` and `AFMediationNetwork.cloudX`.
 - Android AppsFlyer SDK **7.0.4** (was 7.0.1)
+- iOS AppsFlyer SDK **7.0.4** (was 7.0.2)
+- iOS Purchase Connector **7.0.4** (was 7.0.2)
 - The plugin now sets the Android SDK version itself. Apps must not override it —
   a build that forces its own version fails. See
   [SDK Versions](README.md#sdk-versions).

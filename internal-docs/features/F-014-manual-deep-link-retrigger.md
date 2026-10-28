@@ -33,7 +33,7 @@ AppsFlyerSdk.performDeepLinking(String url, {bool shouldTriggerSession = false})
   → successful reply completes Future<void>
   → PlatformException is converted to AppsFlyerException
 ```
-AppsFlyerRPC 7.0.13 renamed the iOS RPC method from `performOnAppAttributionWithURL` to `performDeepLinking` to match Android. `performOnAppAttributionWithURL` is now only the native `AppsFlyerLib` selector the RPC layer calls underneath, not a wire name.
+The RPC method is `performDeepLinking` on both platforms. `performOnAppAttributionWithURL` is only the native `AppsFlyerLib` selector the iOS RPC layer calls underneath, not a wire name.
 The resolved deep link surfaces asynchronously over the `af-events` EventChannel as a `_AppsFlyerEvent` (`onDeepLinking` on Android, `onDeepLinkReceived` on iOS), which `DeepLinkResult._fromEvent` maps and delivers to the registered `onDeepLinking` callback (see F-037). The `Future` returned by this method only reports acceptance of the request, not the resolution outcome.
 
 ---

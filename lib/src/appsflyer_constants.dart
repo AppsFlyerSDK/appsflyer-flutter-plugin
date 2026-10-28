@@ -58,7 +58,9 @@ enum AFMediationNetwork {
   unity,
   toponPte,
   customMediation,
-  directMonetizationNetwork;
+  directMonetizationNetwork,
+  googleAdManager,
+  cloudX;
 
   String rpcValue({required bool isIOS}) {
     switch (this) {
@@ -90,6 +92,10 @@ enum AFMediationNetwork {
         return isIOS ? "custom" : "custom_mediation";
       case AFMediationNetwork.directMonetizationNetwork:
         return isIOS ? "directmonetization" : "direct_monetization_network";
+      case AFMediationNetwork.googleAdManager:
+        return "googleadmanager";
+      case AFMediationNetwork.cloudX:
+        return "cloudx";
     }
   }
 }

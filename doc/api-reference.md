@@ -198,6 +198,8 @@ an enumeration that includes the supported mediation networks by AppsFlyer.
 | toponPte |
 | customMediation |
 | directMonetizationNetwork |
+| googleAdManager |
+| cloudX |
 
 ---
 

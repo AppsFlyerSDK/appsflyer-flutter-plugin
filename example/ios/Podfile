@@ -43,7 +43,7 @@ target 'Runner' do
   pod 'GoogleAdsOnDeviceConversion', '~> 3.2.0'
 
   # SDK 7 RPC migration: AppsFlyerRPC (the native AFRPCRequestHandler bridge) and its transitive
-  # AppsFlyerFramework 7.0.1 dependency are resolved from CocoaPods via the appsflyer_sdk plugin
+  # AppsFlyerFramework dependency are resolved from CocoaPods via the appsflyer_sdk plugin
   # podspec. No local `:path` or CDN `:podspec` overrides are needed now that both pods are published.
 
   target 'RunnerTests' do
