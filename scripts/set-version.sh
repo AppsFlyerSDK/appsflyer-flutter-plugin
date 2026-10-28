@@ -8,6 +8,7 @@
 #   --ios-sdk V          podspec AppsFlyerFramework and the SPM exact pin
 #   --ios-pc V           podspec PurchaseConnector (optional subspec)
 #   --android-bridge V   android/build.gradle af-android-plugin-bridge
+#   --android-bom V      android/build.gradle af-android-sdk-bom (sets af-android-sdk)
 #   --android-pc V       android/build.gradle purchase-connector
 #
 # Native pins are rewritten only when passed; an omitted one is left as is.
@@ -22,6 +23,7 @@ PLUGIN_VERSION=""
 IOS_SDK=""
 IOS_PC=""
 ANDROID_BRIDGE=""
+ANDROID_BOM=""
 ANDROID_PC=""
 
 while [[ $# -gt 0 ]]; do
@@ -30,6 +32,7 @@ while [[ $# -gt 0 ]]; do
     --ios-sdk)        IOS_SDK="$2";        shift 2 ;;
     --ios-pc)         IOS_PC="$2";         shift 2 ;;
     --android-bridge) ANDROID_BRIDGE="$2"; shift 2 ;;
+    --android-bom)    ANDROID_BOM="$2";    shift 2 ;;
     --android-pc)     ANDROID_PC="$2";     shift 2 ;;
     *) echo "set-version: unknown argument '$1'" >&2; exit 1 ;;
   esac
@@ -127,6 +130,12 @@ if [[ -n "$ANDROID_BRIDGE" ]]; then
   rewrite "gradle af-android-plugin-bridge" "$GRADLE" \
     'com\.appsflyer:af-android-plugin-bridge:' \
     "s/com\.appsflyer:af-android-plugin-bridge:[0-9]+\.[0-9]+\.[0-9]+/com.appsflyer:af-android-plugin-bridge:${ANDROID_BRIDGE}/"
+fi
+
+if [[ -n "$ANDROID_BOM" ]]; then
+  rewrite "gradle af-android-sdk-bom" "$GRADLE" \
+    'com\.appsflyer:af-android-sdk-bom:' \
+    "s/com\.appsflyer:af-android-sdk-bom:[0-9]+\.[0-9]+\.[0-9]+/com.appsflyer:af-android-sdk-bom:${ANDROID_BOM}/"
 fi
 
 if [[ -n "$ANDROID_PC" ]]; then

@@ -49,6 +49,26 @@ Starting with v6.18.0, the plugin's **Core** integration supports Swift Package 
 **If you use Purchase Connector, do not enable SPM for this plugin.** [Purchase Connector](purchase-connector.md) requires CocoaPods for the entire plugin (Core included) — it cannot currently be combined with SPM, pending resolution of an upstream Flutter limitation ([flutter/flutter#161182](https://github.com/flutter/flutter/issues/161182)). Apps that do not use Purchase Connector can use SPM. Apps that use Purchase Connector must keep CocoaPods and set the `$AppsFlyerPurchaseConnector` Podfile flag as documented in [purchase-connector.md](purchase-connector.md).
 
 ---
+## Android: AppsFlyer SDK version
+
+The plugin does not pin `com.appsflyer:af-android-sdk`. Its version comes from
+`com.appsflyer:af-android-sdk-bom`, imported as a Gradle platform, which also
+aligns `af-android-sdk-base`. For the current version see
+[SDK Versions](../README.md#sdk-versions).
+
+**The plugin decides this version — do not override it.** Do not add
+`com.appsflyer:af-android-sdk` to your Gradle files, and do not import your own
+`af-android-sdk-bom`. The plugin, the RPC bridge and the native SDK ship as one
+tested set; to move the Android SDK, upgrade the plugin.
+
+Forcing the versions (`enforcedPlatform`, `resolutionStrategy.force`) does not
+work either: the plugin pins `af-android-plugin-bridge` with `strictly`, so such
+a build fails rather than producing an app that crashes at the first SDK call.
+
+The Purchase Connector is pinned by the plugin, not the BOM — see
+[purchase-connector.md](purchase-connector.md).
+
+---
 ## Android: Google Play Install Referrer (SDK 7)
 
 Plugin `7.x` uses AppsFlyer Android SDK 7, which collects Play Install Referrer via
