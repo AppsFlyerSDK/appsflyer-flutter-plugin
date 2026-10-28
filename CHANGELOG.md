@@ -1,6 +1,6 @@
 # Versions
 
-## Unreleased
+## 7.0.4
 
 - **Added** `AFMediationNetwork.googleAdManager` and `AFMediationNetwork.cloudX`.
 - Android AppsFlyer SDK **7.0.4** (was 7.0.1)
