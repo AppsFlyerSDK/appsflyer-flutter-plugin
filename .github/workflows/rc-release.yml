@@ -253,6 +253,7 @@ jobs:
     if: always() && needs.validate-release.outputs.is_valid == 'true'
     outputs:
       release_branch: ${{ steps.push.outputs.release_branch }}
+      release_sha: ${{ steps.push.outputs.release_sha }}
       # Versions as they ended up on the release branch. Report from these, not
       # from validate-release: its android_bridge_version and android_bom_version
       # are the requested inputs, empty whenever the operator left a pin alone.
@@ -542,6 +543,7 @@ jobs:
             fi
           fi
           echo "release_branch=$REL_BRANCH" >> $GITHUB_OUTPUT
+          echo "release_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   # ===========================================================================
   # Stage RC-E2E: End-to-end validation on plugin source (iOS)
@@ -728,6 +730,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.validate-release.outputs.version }}
+          # Tag the RC commit, not the commit the workflow was dispatched from.
+          target_commitish: ${{ needs.prepare-branch.outputs.release_sha }}
           name: Release Candidate ${{ needs.validate-release.outputs.version }}
           body_path: release_notes.md
           draft: false

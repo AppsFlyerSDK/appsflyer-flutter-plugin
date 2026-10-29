@@ -80,9 +80,10 @@ jobs:
           PARENT_UPDATED_AT: ${{ github.event.workflow_run.updated_at }}
         run: |
           set -euo pipefail
-          LATEST=$(gh api "repos/${{ github.repository }}/releases" --jq '[.[] | select(.prerelease == true)] | sort_by(.created_at) | last')
+          # published_at: created_at is the date of the tagged commit, not of the release.
+          LATEST=$(gh api "repos/${{ github.repository }}/releases" --jq '[.[] | select(.prerelease == true)] | sort_by(.published_at) | last')
           TAG=$(echo "$LATEST" | jq -r '.tag_name // empty')
-          CREATED_AT=$(echo "$LATEST" | jq -r '.created_at // empty')
+          CREATED_AT=$(echo "$LATEST" | jq -r '.published_at // empty')
           if [[ -z "$TAG" ]]; then
             echo "No prerelease found on the repo; cannot resolve RC context."
             echo "resolved_version=" >> "$GITHUB_OUTPUT"
@@ -102,7 +103,7 @@ jobs:
             DIFF=$(( PARENT_EPOCH - CREATED_EPOCH ))
           fi
           if (( DIFF > 1800 )); then
-            echo "Latest prerelease $TAG was created ${DIFF}s away from this run's completion — too stale to trust, skipping."
+            echo "Latest prerelease $TAG was published ${DIFF}s away from this run's completion — too stale to trust, skipping."
             echo "resolved_version=" >> "$GITHUB_OUTPUT"
             echo "resolved_branch=" >> "$GITHUB_OUTPUT"
             exit 0

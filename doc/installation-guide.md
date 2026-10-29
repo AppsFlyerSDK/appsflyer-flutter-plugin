@@ -61,9 +61,8 @@ aligns `af-android-sdk-base`. For the current version see
 `af-android-sdk-bom`. The plugin, the RPC bridge and the native SDK ship as one
 tested set; to move the Android SDK, upgrade the plugin.
 
-Forcing the versions (`enforcedPlatform`, `resolutionStrategy.force`) does not
-work either: the plugin pins `af-android-plugin-bridge` with `strictly`, so such
-a build fails rather than producing an app that crashes at the first SDK call.
+Forcing versions is unsupported: `enforcedPlatform` fails the build, and
+`resolutionStrategy.force` silently ships an untested combination.
 
 The Purchase Connector is pinned by the plugin, not the BOM — see
 [purchase-connector.md](purchase-connector.md).

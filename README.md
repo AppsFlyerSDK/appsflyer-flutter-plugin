@@ -32,9 +32,8 @@ do not import your own `af-android-sdk-bom`: the plugin, the RPC bridge and the
 native SDK are released and tested as one set, and any other combination is
 unsupported. To move the Android SDK, upgrade the plugin.
 
-Forcing the versions anyway (`enforcedPlatform`, `resolutionStrategy.force`)
-does not work either — the plugin pins its RPC bridge with `strictly`, so such a
-build fails instead of shipping a mismatched RPC layer.
+Forcing versions is unsupported: `enforcedPlatform` fails the build, and
+`resolutionStrategy.force` silently ships an untested combination.
 
 On iOS the podspec pins `AppsFlyerFramework` to the version `AppsFlyerRPC` and
 `PurchaseConnector` require; do not override it.
