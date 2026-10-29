@@ -4,7 +4,7 @@ name: "iOS Strict Mode: CocoaPods Opt-in"
 type: sdkCore
 platform: ios
 status: active
-last_verified: 2026-09-15
+last_verified: 2026-10-28
 depends_on: []
 ---
 
@@ -32,11 +32,11 @@ No runtime call chain — CocoaPods resolves native dependencies at `pod install
 App Podfile: $AppsFlyerStrictMode = true
   → ios/appsflyer_sdk.podspec (Core subspec)
       if defined?($AppsFlyerStrictMode) && $AppsFlyerStrictMode
-        ss.ios.dependency 'AppsFlyerRPC/Strict', '7.0.13'
-        ss.ios.dependency 'AppsFlyerFramework/Strict', '7.0.2'
+        ss.ios.dependency 'AppsFlyerRPC/Strict', appsflyer_rpc_version
+        ss.ios.dependency 'AppsFlyerFramework/Strict', appsflyer_framework_version
       else
-        ss.ios.dependency 'AppsFlyerRPC/Main', '7.0.13'
-        ss.ios.dependency 'AppsFlyerFramework/Main', '7.0.2'
+        ss.ios.dependency 'AppsFlyerRPC/Main', appsflyer_rpc_version
+        ss.ios.dependency 'AppsFlyerFramework/Main', appsflyer_framework_version
 ```
 
 Both RPC and Framework must use the same variant; RPC/Main pulls Main framework and
@@ -64,8 +64,9 @@ would duplicate `AppsFlyerLib.xcframework` if only Framework were switched.
 ## Known Limitations
 - **SPM (F-060):** No Strict path; `Package.swift` always resolves Regular/Main.
 - **Purchase Connector (F-054):** Enabling both `$AppsFlyerPurchaseConnector` and
-  `$AppsFlyerStrictMode` may still duplicate frameworks because the Purchase Connector
-  pod pins Regular `AppsFlyerFramework`.
+  `$AppsFlyerStrictMode` fails `pod install` with a duplicate `AppsFlyerLib.xcframework`:
+  the `PurchaseConnector` subspec always pulls Regular `AppsFlyerFramework`. Fix: branch
+  it on `$AppsFlyerStrictMode` like `Core`.
 - **Verification:** Confirm via `Podfile.lock`, paths under `Pods/.../xcframework/strict/`,
   and `plutil` on `PrivacyInfo.xcprivacy` — not via Dart logs.
 

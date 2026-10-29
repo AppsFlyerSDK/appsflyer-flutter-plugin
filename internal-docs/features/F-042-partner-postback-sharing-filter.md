@@ -33,7 +33,7 @@ AppsFlyerSdk.setSharingFilterForPartners(List<String>? partners)         [lib/sr
   → PlatformException is converted to AppsFlyerException
 ```
 
-`null` clears the filter on both platforms. Android RPC 7.0.12 dropped the `require(partners.isNotEmpty())` guard from `SetSharingFilterForPartnersRequest`, so a `null` partner list parses to an empty list and the handler calls the SDK setter with no arguments, which clears the filter.
+`null` clears the filter on both platforms. On Android a `null` partner list parses to an empty list and the handler calls the SDK setter with no arguments, which clears the filter.
 
 ---
 

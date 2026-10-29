@@ -19,7 +19,7 @@ This plugin release bundles:
 | Platform | RPC layer the plugin pins | AppsFlyer SDK it resolves to |
 |----------|---------------------------|------------------------------|
 | Android | `af-android-plugin-bridge` **v7.0.13** | **v7.0.4** |
-| iOS | `AppsFlyerRPC` **v7.0.13** | **v7.0.2** |
+| iOS | `AppsFlyerRPC` **v7.0.41** | **v7.0.4** |
 
 The Android SDK version is set by `af-android-sdk-bom` **v7.0.4**, imported as a
 Gradle platform. It governs `af-android-sdk` and `af-android-sdk-base`, not the
@@ -36,15 +36,15 @@ Forcing the versions anyway (`enforcedPlatform`, `resolutionStrategy.force`)
 does not work either — the plugin pins its RPC bridge with `strictly`, so such a
 build fails instead of shipping a mismatched RPC layer.
 
-On iOS the podspec pins `AppsFlyerFramework`, which must stay on the version
-`AppsFlyerRPC` requires.
+On iOS the podspec pins `AppsFlyerFramework` to the version `AppsFlyerRPC` and
+`PurchaseConnector` require; do not override it.
 
 ### Purchase Connector versions
 
 When Purchase Connector is enabled in your app:
 
 - Android **2.2.0**
-- iOS **7.0.2**
+- iOS **7.0.4**
 
 ## ❗❗ Breaking changes when updating to v7.x.x ❗❗
 

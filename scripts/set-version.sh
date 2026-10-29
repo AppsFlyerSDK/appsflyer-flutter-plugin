@@ -101,11 +101,10 @@ rewrite "podspec s.version" "$PODSPEC" \
   "s/^([[:space:]]*s\.version[[:space:]]*=[[:space:]]*)'[^']*'/\1'${PODSPEC_VERSION}'/"
 
 if [[ -n "$IOS_SDK" ]]; then
-  # Spacing after the comma varies between podspec entries, so it is matched
-  # loosely.
+  # The Main and Strict subspecs share this variable, so one rewrite covers both.
   rewrite "podspec AppsFlyerFramework" "$PODSPEC" \
-    "ss\.ios\.dependency 'AppsFlyerFramework'," \
-    "s/(ss\.ios\.dependency 'AppsFlyerFramework',[[:space:]]*)'[^']*'/\1'${IOS_SDK}'/"
+    "appsflyer_framework_version[[:space:]]*=" \
+    "s/(appsflyer_framework_version[[:space:]]*=[[:space:]]*)'[^']*'/\1'${IOS_SDK}'/"
 
   # SPM and CocoaPods deliver the same release, so the exact pin moves with the
   # podspec dependency. The AppsFlyerRPC binary target is not touched here: it

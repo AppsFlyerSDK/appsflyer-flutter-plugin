@@ -4,7 +4,7 @@ name: SDK Kill Switch (stop)
 type: sdkCore
 platform: both
 status: active
-last_verified: 2026-08-25
+last_verified: 2026-10-28
 depends_on: []
 ---
 
@@ -19,7 +19,7 @@ The host app awaits `AppsFlyerSdk.instance.stop(...)` at any point — typically
 ---
 
 ## Call Chain
-`stop` is an awaitable RPC setter on both platforms, and since AppsFlyerRPC 7.0.13 so is the `isStopped` getter. Neither is gated in Dart.
+`stop` is an awaitable RPC setter on both platforms, and so is the `isStopped` getter. Neither is gated in Dart.
 
 ```
 AppsFlyerSdk.stop(shouldStop)                                         [lib/src/appsflyer_sdk.dart]
@@ -61,7 +61,6 @@ AppsFlyerSdk.isStopped()
 ---
 
 ## Known Limitations
-- `isStopped()` requires AppsFlyerRPC 7.0.13 on iOS. Against an earlier iOS RPC the call is still dispatched and throws `AppsFlyerException` rather than returning a `false` that could not be distinguished from a genuine "not stopped" state.
 - Distinct from `anonymizeUser` (F-013): `stop` disables the entire SDK instance for all users/sessions, while `anonymizeUser` scopes an opt-out to the current user only.
 - `stop(false)` resumes SDK operation, but does not itself send a Launch. Normal per-foreground `start()` handling still applies after resumption.
 

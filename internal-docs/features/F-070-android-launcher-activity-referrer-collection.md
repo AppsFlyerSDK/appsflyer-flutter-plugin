@@ -12,7 +12,7 @@ depends_on: [F-001]
 `collectDataFromLauncherActivity()` exposes the Android native SDK's launcher-activity data collection API, which reads the open/web referrer from the launcher `Activity`'s intent so it can be attributed to the first session.
 
 ## Trigger
-Called explicitly on Android after `init()` and before the first `start()`, so the referrer reaches the first Launch. Added to the plugin with Android RPC 7.0.12, which introduced the `collectDataFromLauncherActivity` RPC method.
+Called explicitly on Android after `init()` and before the first `start()`, so the referrer reaches the first Launch.
 
 ## Call Chain
 ```

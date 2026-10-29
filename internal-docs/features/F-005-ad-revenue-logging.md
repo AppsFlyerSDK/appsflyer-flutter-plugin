@@ -4,7 +4,7 @@ name: Ad Revenue Logging
 type: eventsAndRevenue
 platform: both
 status: active
-last_verified: 2026-08-10
+last_verified: 2026-10-28
 depends_on: []
 ---
 
@@ -74,12 +74,15 @@ Every other value returns the same string on both platforms.
 ## Tests
 `test/appsflyer_sdk_test.dart` — `maps every mediation network to the native RPC string` loops over every `AFMediationNetwork` value on both the Android- and iOS-configured SDK instances and asserts the full `logAdRevenue` RPC parameter map, including the platform-specific `mediationNetwork` strings (`custom_mediation` / `custom`, `direct_monetization_network` / `directmonetization`, and the shared underscored identifiers for the other networks).
 
+It fails if an `AFMediationNetwork` value is missing from its expectation maps.
+
 The `PlatformException becomes AppsFlyerException` test covers the shared `_invokeRpc` error conversion that `logAdRevenue` uses; it exercises that path through `logEvent` rather than through `logAdRevenue`.
 
 ---
 
 ## Known Limitations
 - The mediation-network string mapping is duplicated between Dart (`AFMediationNetwork.rpcValue`) and the native RPC parsers, with no shared source of truth. A newly supported mediation network requires coordinated updates on both sides, and a mismatch fails as an "unsupported network" at runtime rather than at compile time.
+- No E2E or smoke scenario covers `logAdRevenue`; unit tests check only what the plugin sends, so a mediation string the native RPC rejects fails only at runtime.
 - Future completion confirms only that the RPC request was validated and forwarded to the native logging API. Android silently ignores the call before SDK initialization, and both native SDKs can discard an invalid currency or payload without reporting that rejection through RPC. The native API also exposes no upload callback.
 - Android RPC requires a three-character currency string; iOS RPC requires only a non-empty string. Both native SDKs subsequently validate the actual ISO 4217 code, but native rejection is not surfaced to Dart.
 - `additionalParameters` values are untyped (`Map<String, dynamic>`), so an unsupported value can fail in the Flutter platform codec or plugin JSON serialization before reaching the native SDK.

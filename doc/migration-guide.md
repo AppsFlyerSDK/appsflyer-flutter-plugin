@@ -268,8 +268,8 @@ both platforms always wait for the validation result.
 
 ## Purchase Connector dependency changes
 
-When Purchase Connector is enabled, plugin `7.0.2` resolves Android Purchase
-Connector `2.2.0` and iOS Purchase Connector `7.0.2`.
+When Purchase Connector is enabled, this plugin release resolves Android Purchase
+Connector `2.2.0` and iOS Purchase Connector `7.0.4`.
 
 Android Purchase Connector `2.2.0` supports Google Play Billing Library `8.x`.
 The Flutter plugin does not add the Billing Library itself, so your app or IAP
