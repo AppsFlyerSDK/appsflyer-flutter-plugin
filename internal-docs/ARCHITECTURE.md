@@ -5,7 +5,7 @@
 **Flutter plugin:** 7.0.2+2  
 **Flutter:** >=3.35.0 · **Dart:** >=3.9.0  
 **Android toolchain:** KGP 2.0.21+, AGP 8.9.1+, Gradle 8.11.1+, JDK 17  
-**Android SDK:** 7.0.1  
+**Android SDK:** 7.0.4 (via `af-android-sdk-bom`)  
 **Android RPC:** 7.0.13  
 **iOS SDK:** 7.0.2  
 **iOS RPC:** 7.0.13

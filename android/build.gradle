@@ -100,7 +100,21 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
-    implementation "com.appsflyer:af-android-plugin-bridge:7.0.13"
+    // Owns af-android-sdk and af-android-sdk-base; never pin those here.
+    // Never enforcedPlatform(): the BOM's bridge entry is stale at 7.0.1
+    // and would force the RPC layer down to it.
+    implementation platform("com.appsflyer:af-android-sdk-bom:7.0.4")
+
+    // strictly, because platform() only contributes a constraint: a plain pin
+    // would win merely by being higher, so an app's enforcedPlatform() or
+    // resolutionStrategy.force could drop the RPC layer to 7.0.1 and crash at
+    // the first SDK call. This fails the build instead. The version is read off
+    // the literal coordinate, which set-version.sh, the RC workflow and
+    // resolve-android-sdk-version.sh also parse.
+    def bridgeDep = "com.appsflyer:af-android-plugin-bridge:7.0.13"
+    implementation(bridgeDep) {
+        version { strictly bridgeDep.tokenize(':').last() }
+    }
 
     implementation 'com.android.installreferrer:installreferrer:2.2'
     if (includeConnector) {

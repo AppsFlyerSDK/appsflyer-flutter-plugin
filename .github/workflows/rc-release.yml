@@ -50,6 +50,11 @@ on:
         required: false
         default: ''
         type: string
+      android_bom_version:
+        description: 'AppsFlyer BOM version, i.e. the com.appsflyer:af-android-sdk-bom pin that governs which af-android-sdk resolves (defaults to unchanged — the current android/build.gradle pin is left as-is). Pass to update it.'
+        required: false
+        default: ''
+        type: string
       ios_pc_version:
         description: 'iOS Purchase Connector version (defaults to ios_sdk_version). Use when PC version differs from iOS SDK version.'
         required: false
@@ -107,6 +112,7 @@ jobs:
       release_branch: ${{ steps.compute.outputs.release_branch }}
       ios_sdk_version: ${{ steps.compute.outputs.ios_sdk_version }}
       android_bridge_version: ${{ steps.compute.outputs.android_bridge_version }}
+      android_bom_version: ${{ steps.compute.outputs.android_bom_version }}
       ios_pc_version: ${{ steps.compute.outputs.ios_pc_version }}
       android_pc_version: ${{ steps.compute.outputs.android_pc_version }}
       # Normalised dry_run. Resolved in its own step so it survives even if
@@ -152,6 +158,7 @@ jobs:
           VERSION: ${{ github.event.inputs.flutter_version }}
           IOS_VER: ${{ github.event.inputs.ios_sdk_version }}
           AND_BRIDGE_VER_INPUT: ${{ github.event.inputs.android_bridge_version }}
+          AND_BOM_VER_INPUT: ${{ github.event.inputs.android_bom_version }}
           IOS_PC_VER_INPUT: ${{ github.event.inputs.ios_pc_version }}
           AND_PC_VER_INPUT: ${{ github.event.inputs.android_pc_version }}
           BASE_BRANCH_INPUT: ${{ github.event.inputs.base_branch }}
@@ -178,6 +185,9 @@ jobs:
           if [[ -n "$AND_BRIDGE_VER_INPUT" && ! $AND_BRIDGE_VER_INPUT =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "❌ android_bridge_version must be X.Y.Z when provided"; exit 1
           fi
+          if [[ -n "$AND_BOM_VER_INPUT" && ! $AND_BOM_VER_INPUT =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ android_bom_version must be X.Y.Z when provided"; exit 1
+          fi
 
           # iOS PC defaults to the iOS SDK version, same semantics as Unity's
           # rc-release.yml. Android PC has no default — an empty output means
@@ -202,6 +212,7 @@ jobs:
           echo "release_branch=$RELEASE_BRANCH" >> $GITHUB_OUTPUT
           echo "ios_sdk_version=$IOS_VER" >> $GITHUB_OUTPUT
           echo "android_bridge_version=$AND_BRIDGE_VER_INPUT" >> $GITHUB_OUTPUT
+          echo "android_bom_version=$AND_BOM_VER_INPUT" >> $GITHUB_OUTPUT
           echo "ios_pc_version=$IOS_PC_VER" >> $GITHUB_OUTPUT
           echo "android_pc_version=$AND_PC_VER_INPUT" >> $GITHUB_OUTPUT
 
@@ -243,10 +254,11 @@ jobs:
     outputs:
       release_branch: ${{ steps.push.outputs.release_branch }}
       # Versions as they ended up on the release branch. Report from these, not
-      # from validate-release: its android_bridge_version is the requested
-      # input and is empty whenever the operator left the pin unchanged.
+      # from validate-release: its android_bridge_version and android_bom_version
+      # are the requested inputs, empty whenever the operator left a pin alone.
       android_sdk_version: ${{ steps.versions.outputs.android_sdk_version }}
       android_bridge_version: ${{ steps.versions.outputs.android_bridge_version }}
+      android_bom_version: ${{ steps.versions.outputs.android_bom_version }}
       ios_rpc_version: ${{ steps.versions.outputs.ios_rpc_version }}
     steps:
       - name: Checkout base branch
@@ -283,14 +295,13 @@ jobs:
           rm pubspec.yaml.bak
           grep "^version:" pubspec.yaml
 
-      # The Android SDK is not pinned directly — it resolves transitively from
-      # af-android-plugin-bridge (compile scope in the bridge POM). Rewriting
-      # the bridge pin is therefore the only way to change which SDK ships,
-      # which is why there is no android_sdk_version input.
-      - name: Update Android bridge & Purchase Connector pins
+      # The Android SDK is not pinned directly: af-android-sdk-bom sets it, the
+      # bridge pin only moves the RPC layer. Hence no android_sdk_version input.
+      - name: Update Android BOM, bridge & Purchase Connector pins
         run: |
           set -euo pipefail
           BRIDGE_VER='${{ needs.validate-release.outputs.android_bridge_version }}'
+          AND_BOM_VER='${{ needs.validate-release.outputs.android_bom_version }}'
           AND_PC_VER='${{ needs.validate-release.outputs.android_pc_version }}'
           FILE='android/build.gradle'
 
@@ -302,10 +313,18 @@ jobs:
               echo "::error::${FILE} has no com.appsflyer:${artifact} pin to update"
               exit 1
             fi
+            # The ':' stops a shorter name matching a longer one's prefix,
+            # keeping af-android-sdk and af-android-sdk-bom independent.
             sed -i.bak -E "s/com\.appsflyer:${artifact}:[0-9]+\.[0-9]+\.[0-9]+/com.appsflyer:${artifact}:${version}/" "$FILE"
             rm "${FILE}.bak"
             grep -n "com\.appsflyer:${artifact}:" "$FILE"
           }
+
+          if [[ -n "$AND_BOM_VER" ]]; then
+            pin_gradle_dep af-android-sdk-bom "$AND_BOM_VER"
+          else
+            echo "android_bom_version not provided — leaving the af-android-sdk-bom pin unchanged"
+          fi
 
           if [[ -n "$BRIDGE_VER" ]]; then
             pin_gradle_dep af-android-plugin-bridge "$BRIDGE_VER"
@@ -414,22 +433,24 @@ jobs:
         run: |
           set -euo pipefail
           BRIDGE_VER=$(sed -nE 's/.*com\.appsflyer:af-android-plugin-bridge:([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' android/build.gradle | head -1)
+          BOM_VER=$(sed -nE 's/.*com\.appsflyer:af-android-sdk-bom:([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' android/build.gradle | head -1)
           IOS_RPC_VER=$(sed -nE "s/.*appsflyer_rpc_version = '([^']+)'.*/\1/p" ios/appsflyer_sdk.podspec | head -1)
           if [[ -z "$IOS_RPC_VER" ]]; then
             IOS_RPC_VER=$(sed -nE "s/.*ss\.ios\.dependency 'AppsFlyerRPC(\/(Main|Strict))?',[[:space:]]*'([^']+)'.*/\3/p" ios/appsflyer_sdk.podspec | head -1)
           fi
           ANDROID_SDK_VER=$(bash scripts/resolve-android-sdk-version.sh)
 
-          for pair in "BRIDGE_VER:$BRIDGE_VER" "IOS_RPC_VER:$IOS_RPC_VER" "ANDROID_SDK_VER:$ANDROID_SDK_VER"; do
+          for pair in "BRIDGE_VER:$BRIDGE_VER" "BOM_VER:$BOM_VER" "IOS_RPC_VER:$IOS_RPC_VER" "ANDROID_SDK_VER:$ANDROID_SDK_VER"; do
             if [[ -z "${pair#*:}" ]]; then
               echo "::error::Could not resolve ${pair%%:*}"
               exit 1
             fi
           done
 
-          echo "Android bridge $BRIDGE_VER → AppsFlyer SDK $ANDROID_SDK_VER"
+          echo "Android AppsFlyer SDK $ANDROID_SDK_VER (BOM $BOM_VER, bridge $BRIDGE_VER)"
           echo "iOS AppsFlyerRPC $IOS_RPC_VER"
           echo "android_bridge_version=$BRIDGE_VER" >> "$GITHUB_OUTPUT"
+          echo "android_bom_version=$BOM_VER" >> "$GITHUB_OUTPUT"
           echo "android_sdk_version=$ANDROID_SDK_VER" >> "$GITHUB_OUTPUT"
           echo "ios_rpc_version=$IOS_RPC_VER" >> "$GITHUB_OUTPUT"
 
@@ -457,6 +478,15 @@ jobs:
 
           pin_readme_row Android af-android-plugin-bridge "$BRIDGE_VER" "$AND_VER"
           pin_readme_row iOS AppsFlyerRPC "$IOS_RPC_VER" "$IOS_VER"
+
+          # Moves with the Android row's SDK column. No match is an error, as above.
+          BOM_VER='${{ steps.versions.outputs.android_bom_version }}'
+          if ! grep -qE '^The Android SDK version is set by `af-android-sdk-bom` \*\*v[0-9.]+\*\*' README.md; then
+            echo "::error::README.md has no af-android-sdk-bom line to update"
+            exit 1
+          fi
+          sed -i.bak -E "s@(^The Android SDK version is set by \`af-android-sdk-bom\` \*\*v)[0-9.]+(\*\*)@\1${BOM_VER}\2@" README.md
+          rm README.md.bak
 
           # Both bullets carry bold markers, and they are the only `- <label>
           # **<version>**` lines in README, so they are matched without an
@@ -502,7 +532,7 @@ jobs:
           if [[ -n $(git status -s) ]]; then
             # lib/ carries the Dart PLUGIN_VERSION constant.
             git add pubspec.yaml android/ ios/ lib/ README.md
-            git commit -m "chore: prepare RC ${VERSION} (iOS ${{ needs.validate-release.outputs.ios_sdk_version }} / PC ${{ needs.validate-release.outputs.ios_pc_version }}, Android ${{ steps.versions.outputs.android_sdk_version }})"
+            git commit -m "chore: prepare RC ${VERSION} (iOS ${{ needs.validate-release.outputs.ios_sdk_version }} / PC ${{ needs.validate-release.outputs.ios_pc_version }}, Android ${{ steps.versions.outputs.android_sdk_version }} via BOM ${{ steps.versions.outputs.android_bom_version }})"
             git push --set-upstream origin "$REL_BRANCH"
           else
             echo "No changes to commit"
@@ -724,14 +754,24 @@ jobs:
           ref: ${{ needs.prepare-branch.outputs.release_branch }}
       - name: Create or update PR
         uses: actions/github-script@v7
+        # env, not interpolation: these come from published POMs, and a `${...}`
+        # or backtick would be evaluated as JS in the template literal below.
+        env:
+          BASE_VERSION: ${{ needs.validate-release.outputs.base_version }}
+          RELEASE_BRANCH: ${{ needs.prepare-branch.outputs.release_branch }}
+          ANDROID_SDK_VERSION: ${{ needs.prepare-branch.outputs.android_sdk_version }}
+          ANDROID_BOM_VERSION: ${{ needs.prepare-branch.outputs.android_bom_version }}
+          ANDROID_BRIDGE_VERSION: ${{ needs.prepare-branch.outputs.android_bridge_version }}
+          IOS_SDK_VERSION: ${{ needs.validate-release.outputs.ios_sdk_version }}
+          IOS_RPC_VERSION: ${{ needs.prepare-branch.outputs.ios_rpc_version }}
         with:
           script: |
-            const version = '${{ needs.validate-release.outputs.base_version }}';
-            const head = '${{ needs.prepare-branch.outputs.release_branch }}';
+            const version = process.env.BASE_VERSION;
+            const head = process.env.RELEASE_BRANCH;
             const base = 'master';
             // Find existing PR
             const { data: prs } = await github.rest.pulls.list({ owner: context.repo.owner, repo: context.repo.repo, state: 'open', head: `${context.repo.owner}:${head}` });
-            const body = `### Release ${version}\n\n- Android: AppsFlyer SDK ${{ needs.prepare-branch.outputs.android_sdk_version }} (via bridge ${{ needs.prepare-branch.outputs.android_bridge_version }})\n- iOS: AppsFlyer SDK ${{ needs.validate-release.outputs.ios_sdk_version }} (via AppsFlyerRPC ${{ needs.prepare-branch.outputs.ios_rpc_version }})\n\nThis PR was opened by the RC workflow.`;
+            const body = `### Release ${version}\n\n- Android: AppsFlyer SDK ${process.env.ANDROID_SDK_VERSION} (via BOM ${process.env.ANDROID_BOM_VERSION}, bridge ${process.env.ANDROID_BRIDGE_VERSION})\n- iOS: AppsFlyer SDK ${process.env.IOS_SDK_VERSION} (via AppsFlyerRPC ${process.env.IOS_RPC_VERSION})\n\nThis PR was opened by the RC workflow.`;
             if (prs.length > 0) {
               const pr = prs[0];
               await github.rest.pulls.update({ owner: context.repo.owner, repo: context.repo.repo, pull_number: pr.number, title: `Release ${version}`, body });
@@ -905,7 +945,7 @@ jobs:
           BASE_VERSION=$(echo "$VERSION" | sed 's/-rc[0-9]*$//')
 
           # The Android SDK has no pin in android/build.gradle to read; it comes
-          # from the bridge POM, which prepare-branch already resolved.
+          # from the BOM, which prepare-branch already resolved.
           echo "android_sdk=${{ needs.prepare-branch.outputs.android_sdk_version }}" >> $GITHUB_OUTPUT
 
           # Extract iOS SDK version

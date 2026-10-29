@@ -1,5 +1,12 @@
 # Versions
 
+## Unreleased
+
+- Android AppsFlyer SDK **7.0.4** (was 7.0.1)
+- The plugin now sets the Android SDK version itself. Apps must not override it —
+  a build that forces its own version fails. See
+  [SDK Versions](README.md#sdk-versions).
+
 ## 7.0.2+2
 
 - **Added** iOS Strict mode opt-in for CocoaPods: set `$AppsFlyerStrictMode = true`
