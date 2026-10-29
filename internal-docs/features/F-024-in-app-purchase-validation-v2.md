@@ -4,7 +4,7 @@ name: In-App Purchase Validation V2 (cross-platform)
 type: purchaseValidation
 platform: both
 status: active
-last_verified: 2026-08-25
+last_verified: 2026-10-28
 depends_on: []
 ---
 
@@ -21,7 +21,7 @@ Called by the host app after it detects a completed purchase or subscription ren
 ---
 
 ## Call Chain
-Both platforms dispatch the same RPC method name, `validateAndLogInAppPurchase`, but the purchase parameter shape is produced by the platform-specific `AFPurchaseDetails` implementation. Android uses a flat schema and iOS uses nested `product` and `transaction` objects. Neither payload carries an `awaitResponse` field: Android RPC 7.0.12 removed it and iOS never exposed it.
+Both platforms dispatch the same RPC method name, `validateAndLogInAppPurchase`, but the purchase parameter shape is produced by the platform-specific `AFPurchaseDetails` implementation. Android uses a flat schema and iOS uses nested `product` and `transaction` objects. Neither payload carries an `awaitResponse` field.
 
 ```
 AppsFlyerSdk.validateAndLogInAppPurchase(                                  [lib/src/appsflyer_sdk.dart]
@@ -39,7 +39,7 @@ AppsFlyerSdk.validateAndLogInAppPurchase(                                  [lib/
         → AppsFlyerRpcHandler.execute(json) → AppsFlyerLib.validateAndLogInAppPurchase(...)
       → iOS: AppsflyerSdkPlugin.executeRpc → dispatchRpc:method:@"validateAndLogInAppPurchase"
         → [AppsFlyerRPCBridge shared] executeJson:completion: → AFRPCRequestHandler → SDK
-        → forwards `resultObj["data"]` to Dart unchanged (validation-result map under AppsFlyerRPC 7.0.13+)
+        → forwards `resultObj["data"]` to Dart unchanged (validation-result map)
   → successful per-call reply completes the Future with the validation-result map
   → PlatformException is converted to AppsFlyerException
 ```
@@ -62,7 +62,7 @@ A `null` native reply is normalized to an empty map rather than propagated as `n
 | | |
 |--|--|
 | **Input** | `purchase` (`AFPurchaseDetails`) — `AFAndroidPurchaseDetails(purchaseType, productId, purchaseToken)` for Google Play or `AFIOSPurchaseDetails(purchaseType, productId, transactionId)` for the App Store; `additionalParameters` (`Map<String, String>?`, optional). `AFPurchaseType` serializes as `"one_time_purchase"` / `"subscription"` on Android and `"oneTimePurchase"` / `"subscription"` on iOS. |
-| **Output** | `Future<Map<String, dynamic>>` — completes with the native validation-result map, or an empty map when the native reply carries no payload. Android RPC 7.0.12 always awaits the callback and waits up to 5 seconds; iOS RPC 7.0.13 also always awaits and uses a 30-second timeout. Native and bridge failures throw `AppsFlyerException`. Passing the wrong platform's model throws `ArgumentError`, including on a non-mobile platform. |
+| **Output** | `Future<Map<String, dynamic>>` — completes with the native validation-result map, or an empty map when the native reply carries no payload. The Android RPC always awaits the callback and waits up to 5 seconds; the iOS RPC also always awaits and uses a 30-second timeout. Native and bridge failures throw `AppsFlyerException`. Passing the wrong platform's model throws `ArgumentError`, including on a non-mobile platform. |
 
 ---
 

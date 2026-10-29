@@ -16,23 +16,35 @@ To do so, please follow [this article](https://support.appsflyer.com/hc/en-us/ar
 
 This plugin release bundles:
 
-| Platform | RPC layer the plugin pins | AppsFlyer SDK it brings |
-|----------|---------------------------|-------------------------|
-| Android | `af-android-plugin-bridge` **v7.0.13** | **v7.0.1** |
-| iOS | `AppsFlyerRPC` **v7.0.13** | **v7.0.2** |
+| Platform | RPC layer the plugin pins | AppsFlyer SDK it resolves to |
+|----------|---------------------------|------------------------------|
+| Android | `af-android-plugin-bridge` **v7.0.13** | **v7.0.4** |
+| iOS | `AppsFlyerRPC` **v7.0.41** | **v7.0.4** |
+
+The Android SDK version is set by `af-android-sdk-bom` **v7.0.4**, imported as a
+Gradle platform. It governs `af-android-sdk` and `af-android-sdk-base`, not the
+RPC bridge or the Purchase Connector — the plugin pins those itself.
 
 Since v7.0.0 the plugin integrates through the AppsFlyer RPC layer instead of
-depending on the native SDK directly. On Android the SDK is resolved transitively
-by the bridge — do not pin `com.appsflyer:af-android-sdk` yourself. On iOS the
-podspec pins `AppsFlyerFramework` explicitly, and it must stay on the version
-`AppsFlyerRPC` requires.
+depending on the native SDK directly. **The plugin decides the Android SDK
+version — do not override it.** Do not pin `com.appsflyer:af-android-sdk`, and
+do not import your own `af-android-sdk-bom`: the plugin, the RPC bridge and the
+native SDK are released and tested as one set, and any other combination is
+unsupported. To move the Android SDK, upgrade the plugin.
+
+Forcing the versions anyway (`enforcedPlatform`, `resolutionStrategy.force`)
+does not work either — the plugin pins its RPC bridge with `strictly`, so such a
+build fails instead of shipping a mismatched RPC layer.
+
+On iOS the podspec pins `AppsFlyerFramework` to the version `AppsFlyerRPC` and
+`PurchaseConnector` require; do not override it.
 
 ### Purchase Connector versions
 
 When Purchase Connector is enabled in your app:
 
 - Android **2.2.0**
-- iOS **7.0.2**
+- iOS **7.0.4**
 
 ## ❗❗ Breaking changes when updating to v7.x.x ❗❗
 

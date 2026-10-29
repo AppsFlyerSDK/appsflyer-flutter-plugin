@@ -37,8 +37,6 @@ AppsFlyerSdk.getHostName() / AppsFlyerSdk.getHostPrefix()
   → PlatformException is converted to AppsFlyerException
 ```
 
-AppsFlyerRPC 7.0.13 added `getHostName` and `getHostPrefix` to iOS; before that release both were Android-only and threw on iOS.
-
 ---
 
 ## Files
@@ -59,7 +57,7 @@ AppsFlyerRPC 7.0.13 added `getHostName` and `getHostPrefix` to iOS; before that 
 ---
 
 ## Tests
-`test/appsflyer_sdk_test.dart` → `'maps cross-platform configuration and identity APIs'` verifies that `setHost('prefix', 'example.com')` dispatches RPC method `setHost` with params `{'hostPrefixName': 'prefix', 'hostName': 'example.com'}`. `'maps getters and native return values'` verifies that `getHostName()` and `getHostPrefix()` dispatch their RPC methods with an empty params map and return the mocked native values. `'unexpected null RPC result throws AppsFlyerException'` covers `getHostName()` and `getHostPrefix()` when the native reply is unexpectedly null. `'maps getters and native return values'` also asserts both getters dispatch on iOS, covering the 7.0.13 availability change. `'PlatformException with a numeric RPC code becomes AppsFlyerException'` covers the shared error-conversion path, although it does not invoke `setHost` specifically. There is no plugin test for empty or whitespace-only host values.
+`test/appsflyer_sdk_test.dart` → `'maps cross-platform configuration and identity APIs'` verifies that `setHost('prefix', 'example.com')` dispatches RPC method `setHost` with params `{'hostPrefixName': 'prefix', 'hostName': 'example.com'}`. `'maps getters and native return values'` verifies that `getHostName()` and `getHostPrefix()` dispatch their RPC methods with an empty params map and return the mocked native values. `'unexpected null RPC result throws AppsFlyerException'` covers `getHostName()` and `getHostPrefix()` when the native reply is unexpectedly null. `'maps getters and native return values'` also asserts both getters dispatch on iOS. `'PlatformException with a numeric RPC code becomes AppsFlyerException'` covers the shared error-conversion path, although it does not invoke `setHost` specifically. There is no plugin test for empty or whitespace-only host values.
 
 ---
 

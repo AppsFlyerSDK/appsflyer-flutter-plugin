@@ -9,7 +9,7 @@ depends_on: []
 ---
 
 ## Business Purpose
-Apps that already hold IMEI, Android ID, or OAID values can supply them to the Android SDK instead of relying on automatic collection. This matches the SDK 6 manual-override use case and was restored in plugin 7.0.2+1 when Android RPC 7.0.13 exposed the underlying RPC methods.
+Apps that already hold IMEI, Android ID, or OAID values can supply them to the Android SDK instead of relying on automatic collection.
 
 Apps must ensure manual identifier submission complies with store policy, consent, and privacy disclosures.
 
@@ -44,7 +44,7 @@ AppsFlyerSdk.setImeiData(imei) / setOaidData(oaid) / setAndroidIdData(androidId)
 |------|------|
 | `lib/src/appsflyer_sdk.dart` | `setImeiData`, `setOaidData`, `setAndroidIdData` — dispatched through RPC without a Dart platform check |
 | `android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsflyerSdkPlugin.kt` | generic RPC dispatch over `AppsFlyerRpcHandler` |
-| `android/build.gradle` | pins `af-android-plugin-bridge` **7.0.13+**, which implements these RPC methods |
+| `android/build.gradle` | pins `af-android-plugin-bridge`, which implements these RPC methods |
 
 ---
 
@@ -63,7 +63,6 @@ AppsFlyerSdk.setImeiData(imei) / setOaidData(oaid) / setAndroidIdData(androidId)
 
 ## Known Limitations
 - **Android-only** but not Dart-gated: calling on iOS throws `AppsFlyerException` instead of quietly doing nothing.
-- Requires **Android RPC 7.0.13+** (`af-android-plugin-bridge`). Plugin 7.0.2 shipped bridge 7.0.12, which did not expose these methods.
 - For opting out of automatic Android ID collection (without supplying a manual value), use F-007 `setCollectAndroidID(bool)`.
 
 ---

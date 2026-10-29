@@ -122,42 +122,12 @@ jobs:
           echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           echo "release_branch=$RELEASE_BRANCH" >> $GITHUB_OUTPUT
       
-      - name: Update pubspec.yaml to production version
-        run: |
-          VERSION='${{ steps.compute-version.outputs.version }}'
-          echo "Updating pubspec.yaml to production version: $VERSION"
-          sed -i "s/^version: .*/version: $VERSION/" pubspec.yaml
-          grep "^version:" pubspec.yaml
-      
-      - name: Update plugin version constants (Android/iOS/Dart)
-        run: |
-          VERSION='${{ steps.compute-version.outputs.version }}'
-          echo "Updating PLUGIN_VERSION constants to: $VERSION"
+      # Promotion only strips the -rcN suffix, so no native pins are passed.
+      - name: Write production version to every surface
+        env:
+          VERSION: ${{ steps.compute-version.outputs.version }}
+        run: bash scripts/set-version.sh --plugin-version "$VERSION"
 
-          # Android - AppsFlyerConstants.kt
-          ANDROID_FILE="android/src/main/kotlin/com/appsflyer/appsflyersdk/AppsFlyerConstants.kt"
-          if [ -f "$ANDROID_FILE" ]; then
-            sed -i "s/PLUGIN_VERSION = \".*\"/PLUGIN_VERSION = \"$VERSION\"/" "$ANDROID_FILE"
-            echo "✅ Android:" && grep "PLUGIN_VERSION" "$ANDROID_FILE"
-          fi
-
-          # Dart - appsflyer_constants.dart
-          DART_FILE="lib/src/appsflyer_constants.dart"
-          if [ -f "$DART_FILE" ]; then
-            sed -i "s/PLUGIN_VERSION = \".*\"/PLUGIN_VERSION = \"$VERSION\"/" "$DART_FILE"
-            echo "✅ Dart:" && grep "PLUGIN_VERSION" "$DART_FILE"
-          fi
-
-          # iOS - AppsflyerSdkPlugin.swift
-          IOS_FILE="ios/appsflyer_sdk/Sources/appsflyer_sdk/AppsflyerSdkPlugin.swift"
-          if [ -f "$IOS_FILE" ]; then
-            sed -i "s/kAppsFlyerPluginVersion = \".*\"/kAppsFlyerPluginVersion = \"$VERSION\"/" "$IOS_FILE"
-            echo "✅ iOS:" && grep "kAppsFlyerPluginVersion" "$IOS_FILE"
-          else
-            echo "::error::iOS plugin version file not found: $IOS_FILE" >&2
-            exit 1
-          fi
-      
       - name: Verify every version surface agrees
         run: bash scripts/verify-version-consistency.sh
 

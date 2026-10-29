@@ -1,7 +1,7 @@
 part of appsflyer_sdk;
 
 class _AppsFlyerConstants {
-  static const String PLUGIN_VERSION = "7.0.2+2";
+  static const String PLUGIN_VERSION = "7.0.4";
   static const String AF_EVENTS_CHANNEL = "af-events";
   static const String AF_METHOD_CHANNEL = "af-api";
 
@@ -58,7 +58,9 @@ enum AFMediationNetwork {
   unity,
   toponPte,
   customMediation,
-  directMonetizationNetwork;
+  directMonetizationNetwork,
+  googleAdManager,
+  cloudX;
 
   String rpcValue({required bool isIOS}) {
     switch (this) {
@@ -90,6 +92,10 @@ enum AFMediationNetwork {
         return isIOS ? "custom" : "custom_mediation";
       case AFMediationNetwork.directMonetizationNetwork:
         return isIOS ? "directmonetization" : "direct_monetization_network";
+      case AFMediationNetwork.googleAdManager:
+        return "googleadmanager";
+      case AFMediationNetwork.cloudX:
+        return "cloudx";
     }
   }
 }

@@ -6,9 +6,10 @@ This release is a major API cleanup. It replaces callback flags, callback slots,
 and SDK-6 names with an explicit SDK-7 lifecycle, typed callbacks, correlated
 `Future` results, and platform-aware models.
 
-Plugin `7.0.2` migrates to **AppsFlyer SDK 7** (Android `7.0.1`, iOS `7.0.2`). This
-is a major release with intentional breaking changes. Purchase Connector
-dependency changes are described later in this guide.
+Plugin `7.x` migrates to **AppsFlyer SDK 7**. For the native SDK versions this
+release resolves to, see [SDK Versions](../README.md#sdk-versions). This is a
+major release with intentional breaking changes. Purchase Connector dependency
+changes are described later in this guide.
 
 The minimum supported toolchain is Flutter `3.35.0` and Dart `3.9.0` (and
 earlier than Dart `4.0.0`). Android requires API 21 or later, and iOS requires
@@ -267,8 +268,8 @@ both platforms always wait for the validation result.
 
 ## Purchase Connector dependency changes
 
-When Purchase Connector is enabled, plugin `7.0.2` resolves Android Purchase
-Connector `2.2.0` and iOS Purchase Connector `7.0.2`.
+When Purchase Connector is enabled, this plugin release resolves Android Purchase
+Connector `2.2.0` and iOS Purchase Connector `7.0.4`.
 
 Android Purchase Connector `2.2.0` supports Google Play Billing Library `8.x`.
 The Flutter plugin does not add the Billing Library itself, so your app or IAP

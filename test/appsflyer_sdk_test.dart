@@ -534,6 +534,17 @@ void main() {
         AFMediationNetwork.directMonetizationNetwork: 'directmonetization',
       };
 
+      // Without this, adding an enum value and forgetting the maps above keeps
+      // the test green while claiming to cover every network.
+      expect(
+        androidMediationNetworks.keys,
+        unorderedEquals(AFMediationNetwork.values),
+      );
+      expect(
+        iosMediationNetworks.keys,
+        unorderedEquals(AFMediationNetwork.values),
+      );
+
       await _expectLogAdRevenueMediationNetworks(
         androidSdk,
         androidMediationNetworks,
@@ -2013,6 +2024,8 @@ const _sharedMediationNetworkRpcValues = {
   AFMediationNetwork.chartboost: 'chartboost',
   AFMediationNetwork.unity: 'unity',
   AFMediationNetwork.toponPte: 'topon_pte',
+  AFMediationNetwork.googleAdManager: 'googleadmanager',
+  AFMediationNetwork.cloudX: 'cloudx',
 };
 
 Future<void> _expectLogAdRevenueMediationNetworks(
