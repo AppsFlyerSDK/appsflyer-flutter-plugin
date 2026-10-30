@@ -48,7 +48,6 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     private var eventChannel: FlutterEventChannel?
     private var eventSink: FlutterEventSink?
     private var pendingEvents: [String] = []
-    private var eventHandlerRegistered = false
     /// Set in `tearDownForEngineDetach()` so in-flight `executeJson` completions and nested
     /// `DispatchQueue.main.async` work from `logAndOpenStoreFromRpc` do not call `FlutterResult` or
     /// `markBridgeReady(markedBy:)` after this engine's channel is gone.
@@ -65,7 +64,9 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
         channel.setStreamHandler(self)
         // Wire the bridge event handler as early as possible: the RPC layer drops events emitted
         // before a handler is attached, so it must be set before start() and listener registration.
-        registerEventHandler()
+        // Only a free slot is taken here, so a secondary engine registering the plugin later cannot
+        // redirect the events of the engine that already owns them; `initFromRpc` claims it outright.
+        AFRPCBridge.setEventHandlerIfUnowned(owner: self, makeEventHandler())
     }
 
     @objc(registerWithRegistrar:)
@@ -125,7 +126,6 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
             isEngineDetached = true
             eventSink = nil
             pendingEvents.removeAll()
-            eventHandlerRegistered = false
             // Ownership-checked: in a multi-engine host this instance may no longer hold the bridge's
             // single event-handler slot, and tearing down must not cut events off from the engine that
             // does. See `AFRPCBridge.eventHandlerOwner`.
@@ -143,15 +143,8 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
         }
     }
 
-    /// `eventHandlerRegistered` only keeps the second call site (`initFromRpc`) from re-registering
-    /// what `init(messenger:)` already installed — instance state cannot guard the bridge's global
-    /// slot, which is what `AFRPCBridge`'s owner tracking is for.
-    private func registerEventHandler() {
-        if eventHandlerRegistered {
-            return
-        }
-        eventHandlerRegistered = true
-        AFRPCBridge.setEventHandler(owner: self) { [weak self] jsonEvent in
+    private func makeEventHandler() -> (String) -> Void {
+        return { [weak self] jsonEvent in
             self?.deliverEvent(jsonEvent)
         }
     }
@@ -238,7 +231,9 @@ public class AppsflyerSdkPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     // ============================================================================
 
     private func initFromRpc(_ params: NSDictionary, result: @escaping FlutterResult) {
-        registerEventHandler()
+        // The engine that initializes the SDK is the one integrating it, so it takes the slot even
+        // from an instance that registered first — the same owner `markBridgeReady(markedBy:)` records.
+        AFRPCBridge.setEventHandler(owner: self, makeEventHandler())
 
         let devKey = stringParam(params, key: "devKey")
         let appId = stringParam(params, key: "appId")

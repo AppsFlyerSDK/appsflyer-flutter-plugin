@@ -24,11 +24,13 @@ enum AFRPCBridge {
     /// Owner of the handler currently installed in `AppsFlyerRPCBridge`'s single global slot.
     ///
     /// The slot holds one handler per process while plugin instances are per engine, so a host
-    /// running several engines (add-to-app, `FlutterEngineGroup`, multi-scene) hands the slot to
-    /// whichever instance registered last. Recording the owner lets a detaching instance tell
-    /// whether the installed handler is still its own, mirroring the `this.sink === sink` guard in
+    /// running several engines (add-to-app, `FlutterEngineGroup`, multi-scene, a background engine
+    /// reusing `GeneratedPluginRegistrant`) needs a rule for who holds it: plugin registration only
+    /// takes a free slot (`setEventHandlerIfUnowned`), and Dart `init` claims it outright
+    /// (`setEventHandler`). Recording the owner also lets a detaching instance tell whether the
+    /// installed handler is still its own, mirroring the `this.sink === sink` guard in
     /// `AppsFlyerEventBus.detach`. Weak so a released plugin cannot keep itself alive here.
-    @MainActor private static weak var eventHandlerOwner: AnyObject?
+    @MainActor private(set) static weak var eventHandlerOwner: AnyObject?
 
     /// `completion` is always invoked on the main thread.
     ///
@@ -53,10 +55,26 @@ enum AFRPCBridge {
     /// is the wrong tool here — GCD's async enqueue is the documented strict-FIFO contract.
     static func setEventHandler(owner: AnyObject, _ handler: @escaping (String) -> Void) {
         onMainActor {
-            eventHandlerOwner = owner
-            AppsFlyerRPCBridge.shared.setEventHandler { jsonEvent in
-                DispatchQueue.main.async { handler(jsonEvent) }
+            installEventHandler(owner: owner, handler)
+        }
+    }
+
+    /// No-op while another live instance holds the slot: registering the plugin on a secondary
+    /// engine must not pull attribution and deep-link events away from the engine that owns them.
+    static func setEventHandlerIfUnowned(owner: AnyObject, _ handler: @escaping (String) -> Void) {
+        onMainActor {
+            guard eventHandlerOwner == nil else {
+                return
             }
+            installEventHandler(owner: owner, handler)
+        }
+    }
+
+    @MainActor private static func installEventHandler(owner: AnyObject,
+                                                       _ handler: @escaping (String) -> Void) {
+        eventHandlerOwner = owner
+        AppsFlyerRPCBridge.shared.setEventHandler { jsonEvent in
+            DispatchQueue.main.async { handler(jsonEvent) }
         }
     }
 
