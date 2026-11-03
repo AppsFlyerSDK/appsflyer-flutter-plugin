@@ -2,9 +2,14 @@ package com.appsflyer.appsflyersdk
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 
 import com.appsflyer.AppsFlyerLib
 import com.appsflyer.pluginbridge.handler.AppsFlyerRpcHandler
@@ -98,7 +103,23 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
         if (currentActivity != null) {
             currentActivity.intent = intent
         }
+        forwardDeepLinkIntentIfNotStopped(intent)
         false
+    }
+
+    // Lifecycle of the attached Activity, observed so that onNewIntent can tell whether the
+    // Activity has been stopped since it last resumed.
+    private var observedLifecycle: Lifecycle? = null
+
+    @Volatile
+    private var stoppedSinceLastResume = false
+
+    private val activityLifecycleObserver = LifecycleEventObserver { _, event ->
+        when (event) {
+            Lifecycle.Event.ON_STOP -> stoppedSinceLastResume = true
+            Lifecycle.Event.ON_RESUME -> stoppedSinceLastResume = false
+            else -> Unit
+        }
     }
 
     private val eventStreamHandler: EventChannel.StreamHandler =
@@ -197,14 +218,55 @@ open class AppsflyerSdkPlugin : MethodCallHandler, FlutterPlugin, ActivityAware 
         detachActivity()
     }
 
+    /**
+     * Resolves the deep link of a `VIEW` intent delivered while the app stays in the foreground.
+     *
+     * The SDK resolves warm-start deep links when the app comes back to the foreground, that is,
+     * when the Activity resumes after having been stopped. When the app is already in the
+     * foreground (for example, a OneLink in a notification tapped while the app is open), Android
+     * only pauses the Activity around `onNewIntent` and never stops it, so the SDK does not resolve
+     * the intent and the registered `DeepLinkListener` is not called. Plugin 6.18.0 fixed the same
+     * case by calling `performOnDeepLinking` here; SDK 7 replaces it with `performDeepLinking`.
+     *
+     * When the Activity has been stopped (the app comes back from the background), the SDK
+     * resolves the intent itself once the Activity resumes, so forwarding it here would deliver it
+     * twice. The session is left to the session-ready `start()` call.
+     */
+    private fun forwardDeepLinkIntentIfNotStopped(intent: Intent) {
+        if (observedLifecycle == null || stoppedSinceLastResume) return
+        if (intent.action != Intent.ACTION_VIEW) return
+        val url = intent.dataString
+        if (url.isNullOrEmpty()) return
+        try {
+            AppsFlyerLib.getInstance().performDeepLinking(url, false)
+        } catch (t: Throwable) {
+            Log.e(AF_PLUGIN_TAG, "performDeepLinking failed for new intent: ${t.message}", t)
+        }
+    }
+
     private fun attachActivity(binding: ActivityPluginBinding) {
         activity = binding.activity
         AppsFlyerContextHolder.attachActivity(this, binding.activity)
         binding.addOnNewIntentListener(onNewIntentListener)
+        observeActivityLifecycle(binding.activity)
+    }
+
+    private fun observeActivityLifecycle(activity: Activity) {
+        stopObservingActivityLifecycle()
+        val lifecycle = (activity as? LifecycleOwner)?.lifecycle ?: return
+        lifecycle.addObserver(activityLifecycleObserver)
+        observedLifecycle = lifecycle
+    }
+
+    private fun stopObservingActivityLifecycle() {
+        observedLifecycle?.removeObserver(activityLifecycleObserver)
+        observedLifecycle = null
+        stoppedSinceLastResume = false
     }
 
     private fun detachActivity() {
         AppsFlyerContextHolder.detachActivity(this)
+        stopObservingActivityLifecycle()
         activity = null
     }
 
